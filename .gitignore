@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.env
+data/
+checkpoints/
+results/
+logs/
+*.gguf
+*.bin
+wandb/
+.DS_Store
+tokenizer/
+*.egg-info/
+dist/
+build/

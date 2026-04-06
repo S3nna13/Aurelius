@@ -1,0 +1,28 @@
+{
+  "model_type": "aurelius",
+  "tokenizer_class": "PreTrainedTokenizerFast",
+  "bos_token": "<|bos|>",
+  "eos_token": "<|eos|>",
+  "pad_token": "<|pad|>",
+  "unk_token": "<|unk|>",
+  "additional_special_tokens": [
+    "<|system|>",
+    "<|user|>",
+    "<|assistant|>",
+    "<|end|>",
+    "<|fim_prefix|>",
+    "<|fim_suffix|>",
+    "<|fim_middle|>",
+    "<|tool_call|>",
+    "<|tool_result|>"
+  ],
+  "vocab_size": 128000,
+  "num_reserved_special_tokens": 512,
+  "model_max_length": 8192,
+  "padding_side": "right",
+  "truncation_side": "right",
+  "clean_up_tokenization_spaces": false,
+  "add_bos_token": true,
+  "add_eos_token": false,
+  "chat_template": "{% for message in messages %}{% if message['role'] == 'system' %}<|system|>{{ message['content'] }}<|end|>{% elif message['role'] == 'user' %}<|user|>{{ message['content'] }}<|end|>{% elif message['role'] == 'assistant' %}<|assistant|>{{ message['content'] }}<|end|>{% endif %}{% endfor %}{% if add_generation_prompt %}<|assistant|>{% endif %}"
+}

@@ -1,0 +1,91 @@
+# =============================================================================
+# Aurelius 1.3B — Full Pre-training Configuration
+# Megatron-LM style config consumed by src/training/trainer.py
+# =============================================================================
+
+# ── Model ────────────────────────────────────────────────────────────────────
+model:
+  name: "aurelius-1.3b"
+  n_layers: 24
+  d_model: 2048
+  n_heads: 16           # query heads
+  n_kv_heads: 8         # key/value heads (GQA 2:1)
+  head_dim: 128
+  d_ff: 5632            # SwiGLU intermediate ≈ 2/3 × 4 × d_model
+  vocab_size: 128000
+  max_seq_len: 8192
+  rope_theta: 500000.0
+  rms_norm_eps: 1.0e-6
+  dropout: 0.0
+  tie_embeddings: true
+  activation: "silu"    # SwiGLU gate activation
+
+# ── Optimizer ────────────────────────────────────────────────────────────────
+optimizer:
+  type: "adamw"
+  lr: 3.0e-4            # peak learning rate
+  beta1: 0.9
+  beta2: 0.95
+  eps: 1.0e-8
+  weight_decay: 0.1
+
+# ── Learning-rate schedule ───────────────────────────────────────────────────
+scheduler:
+  type: "cosine"
+  warmup_steps: 2000
+  min_lr: 3.0e-5        # floor after cosine decay
+  total_steps: 143000   # 300B tokens ÷ 2M tokens/step
+
+# ── Batch sizing ─────────────────────────────────────────────────────────────
+batch:
+  global_batch_tokens: 2_097_152   # 2M tokens per global step
+  micro_batch_size: 4              # sequences per micro-batch per GPU
+  seq_len: 8192                    # tokens per sequence
+  # grad_accum is derived: global_batch_tokens / (micro_batch_size * seq_len * n_gpus)
+
+# ── Precision & performance ──────────────────────────────────────────────────
+precision:
+  dtype: "bf16"
+  flash_attention: true
+  flash_attention_version: 2
+  gradient_checkpointing: true     # activation checkpointing to save memory
+
+# ── Gradient clipping ────────────────────────────────────────────────────────
+gradient:
+  max_norm: 1.0
+
+# ── Training budget ──────────────────────────────────────────────────────────
+training:
+  total_tokens: 300_000_000_000    # 300B tokens
+  total_steps: 143000              # 300B / 2M
+  seed: 42
+
+# ── Checkpointing ───────────────────────────────────────────────────────────
+checkpoint:
+  save_interval_steps: 4800        # every ~10B tokens
+  save_dir: "checkpoints/aurelius-1.3b"
+  max_checkpoints: 5               # rolling window to save disk
+  format: "safetensors"
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+logging:
+  log_interval_steps: 10
+  wandb:
+    enabled: true
+    project: "aurelius-1.3b"
+    entity: null                   # set via WANDB_ENTITY env var
+    tags: ["pretrain", "1.3b", "300b-tokens"]
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+data:
+  # Paths to pre-tokenized datasets in Arrow/Parquet format
+  train_data_dir: "data/pretrain/train"
+  val_data_dir: "data/pretrain/val"
+  tokenizer: "tokenizers/aurelius-128k"
+  num_workers: 8
+  pin_memory: true
+
+# ── DeepSpeed ────────────────────────────────────────────────────────────────
+deepspeed:
+  config_file: "configs/deepspeed_zero1.json"
+  enabled: true
