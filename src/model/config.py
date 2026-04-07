@@ -35,6 +35,9 @@ class AureliusConfig:
     # Embedding
     tie_embeddings: bool = True
 
+    # Training efficiency
+    use_gradient_checkpointing: bool = False
+
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (
             f"d_model ({self.d_model}) must equal n_heads ({self.n_heads}) "

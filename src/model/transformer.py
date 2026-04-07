@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint as ckpt
 
 from .attention import GroupedQueryAttention, precompute_rope_frequencies
 from .config import AureliusConfig
@@ -127,10 +128,23 @@ class AureliusTransformer(nn.Module):
         x = self.embed(input_ids)
         freqs_cis = self.freqs_cis[past_len : past_len + S]
 
+        if self.config.use_gradient_checkpointing and past_key_values is not None:
+            raise ValueError("Gradient checkpointing is incompatible with KV cache (past_key_values)")
+
         present_key_values: list[tuple[torch.Tensor, torch.Tensor]] = []
         for i, layer in enumerate(self.layers):
             past_kv = past_key_values[i] if past_key_values is not None else None
-            x, kv = layer(x, freqs_cis, mask, past_kv)
+            if self.config.use_gradient_checkpointing and self.training:
+                # checkpoint needs all inputs as tensors; pass past_kv as None (no cache during training ckpt)
+                def make_ckpt_fn(l):
+                    def fn(x, freqs_cis, mask):
+                        out, kv = l(x, freqs_cis, mask, None)
+                        return out, kv[0], kv[1]
+                    return fn
+                x, k, v = ckpt(make_ckpt_fn(layer), x, freqs_cis, mask, use_reentrant=False)
+                kv = (k, v)
+            else:
+                x, kv = layer(x, freqs_cis, mask, past_kv)
             present_key_values.append(kv)
 
         x = self.norm(x)

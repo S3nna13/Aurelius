@@ -123,3 +123,48 @@ def test_kv_cache_position_offset(small_model, small_cfg):
         gen_out = small_model.generate(prompt, max_new_tokens=1, temperature=1.0, top_p=1.0)
     # The generated sequence length should be 6
     assert gen_out.shape == (1, 6)
+
+
+def test_gradient_checkpointing_reduces_memory():
+    """With gradient checkpointing enabled, forward+backward must complete and weights must update."""
+    import torch.optim as optim
+    torch.manual_seed(0)
+
+    cfg = AureliusConfig(
+        n_layers=4, d_model=64, n_heads=2, n_kv_heads=2,
+        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        use_gradient_checkpointing=True,
+    )
+    model = AureliusTransformer(cfg)
+    model.train()
+
+    optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+    tokens = torch.randint(0, 256, (2, 32))
+    labels = torch.randint(0, 256, (2, 32))
+
+    before = {n: p.clone() for n, p in model.named_parameters()}
+
+    loss, _, _ = model(tokens, labels=labels)
+    loss.backward()
+    optimizer.step()
+
+    assert torch.isfinite(loss)
+    changed = any(not torch.equal(before[n], p) for n, p in model.named_parameters() if p.requires_grad)
+    assert changed, "No weights changed after gradient checkpointing backward"
+
+
+def test_gradient_checkpointing_incompatible_with_kv_cache():
+    """Using gradient checkpointing with past_key_values must raise ValueError."""
+    cfg = AureliusConfig(
+        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
+        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+        use_gradient_checkpointing=True,
+    )
+    model = AureliusTransformer(cfg)
+    tokens = torch.randint(0, 256, (1, 4))
+    # Run one step to get past_key_values
+    _, _, pkv = model(tokens)
+
+    # Second call with past_key_values should raise
+    with pytest.raises(ValueError, match="incompatible"):
+        model(tokens[:, :1], past_key_values=pkv)
