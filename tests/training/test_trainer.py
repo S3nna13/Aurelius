@@ -68,3 +68,13 @@ def test_train_step_loss_is_finite(small_model, small_cfg):
         if p.requires_grad
     )
     assert any_changed, "No weights changed — gradients did not flow"
+
+
+def test_validate_returns_finite_loss(small_model, small_cfg):
+    """validate() must return a finite positive float."""
+    loader = _make_dict_dataloader(small_cfg.vocab_size)
+    trainer = _make_trainer(small_model, small_cfg, loader, val_loader=loader)
+
+    ppl = trainer.validate()
+    assert math.isfinite(ppl)
+    assert ppl > 0
