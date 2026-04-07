@@ -44,6 +44,63 @@ class TransformerBlock(nn.Module):
         return x
 
 
+class MoDBlock(nn.Module):
+    """Mixture-of-Depths wrapper: routes top-k tokens through the inner block.
+
+    Tokens below the routing threshold pass through unchanged (residual).
+    capacity_factor controls the fraction of tokens routed.
+    """
+
+    def __init__(self, block: TransformerBlock, capacity_factor: float = 0.5) -> None:
+        super().__init__()
+        self.block = block
+        self.capacity_factor = capacity_factor
+        hidden_dim = block.attn_norm.weight.shape[0]
+        self.router = nn.Linear(hidden_dim, 1, bias=False)
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        freqs_cis: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        B, S, D = x.shape
+
+        # 1. Compute per-token routing weights
+        routing_weights = self.router(x).squeeze(-1)  # (B, S)
+
+        # 2. Select top-k token indices by routing weight
+        k = max(1, int(self.capacity_factor * S))
+        _, top_indices = torch.topk(routing_weights, k, dim=-1)  # (B, k)
+
+        # 3. Extract selected tokens
+        # Sort indices so positional order is preserved (needed for RoPE freqs_cis)
+        top_indices_sorted, _ = torch.sort(top_indices, dim=-1)  # (B, k)
+
+        # Gather: (B, k, D)
+        idx_expanded = top_indices_sorted.unsqueeze(-1).expand(B, k, D)
+        x_selected = torch.gather(x, 1, idx_expanded)
+
+        # Slice freqs_cis for the selected positions using the first batch's indices
+        # (indices are the same across batch for topk by routing weight, but may differ)
+        # We pass the full freqs_cis and let the block use what it needs.
+        # Since TransformerBlock uses freqs_cis[:S], we pass freqs_cis directly and
+        # rely on the attention module indexing by position. To support variable
+        # selected positions, we gather the per-position freqs_cis for selected tokens.
+        # freqs_cis shape: (S, head_dim//2) — gather rows for each selected position.
+        # Use the first batch's sorted indices (broadcasting; same k for all batch items).
+        freqs_cis_selected = freqs_cis[top_indices_sorted[0]]  # (k, head_dim//2)
+
+        # 4. Run selected tokens through the inner block
+        x_processed = self.block(x_selected, freqs_cis_selected, mask)  # (B, k, D)
+
+        # 5. Scatter processed tokens back; unselected positions keep original x
+        out = x.clone()
+        out.scatter_(1, idx_expanded, x_processed)
+
+        return out
+
+
 class AureliusTransformer(nn.Module):
     """Aurelius 1.3B decoder-only transformer.
 
@@ -65,9 +122,14 @@ class AureliusTransformer(nn.Module):
         self.embed = nn.Embedding(self.config.vocab_size, self.config.d_model)
 
         # Transformer blocks
-        self.layers = nn.ModuleList(
-            [TransformerBlock(self.config, layer_idx=i) for i in range(self.config.n_layers)]
-        )
+        layers = []
+        first_mod_layer = self.config.n_layers // 2  # MoD applied to deeper half
+        for i in range(self.config.n_layers):
+            block = TransformerBlock(self.config, layer_idx=i)
+            if self.config.use_mod and i >= first_mod_layer:
+                block = MoDBlock(block, capacity_factor=self.config.mod_capacity_factor)
+            layers.append(block)
+        self.layers = nn.ModuleList(layers)
 
         # Final norm
         self.norm = RMSNorm(self.config.d_model, eps=self.config.rms_norm_eps)
