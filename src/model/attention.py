@@ -68,26 +68,33 @@ def precompute_rope_frequencies(
         freqs_linear = freqs_base / rope_scaling_factor
 
         # Period of each dimension: lambda_i = 2*pi / freq_i
-        # Boundaries: high-freq if lambda_i < 2*pi*beta_fast/factor
-        #             low-freq  if lambda_i > 2*pi*beta_slow/factor
+        # Thresholds (in position units):
+        #   high_freq_thresh: wavelengths *below* this are pure linear (high-freq)
+        #   low_freq_thresh:  wavelengths *above* this are pure NTK (low-freq)
+        # The middle band (low_freq_thresh < lambda_i < high_freq_thresh) gets
+        # a smooth blend. Note: high_freq_thresh > low_freq_thresh always.
+        # yarn_original_max_seq_len is available for attention mscale correction
+        # by callers; frequency computation uses rope_scaling_factor directly.
         lambda_i = 2.0 * math.pi / freqs_base  # period in positions
 
         high_freq_thresh = 2.0 * math.pi * yarn_beta_fast / rope_scaling_factor
         low_freq_thresh = 2.0 * math.pi * yarn_beta_slow / rope_scaling_factor
 
         # Blend factor: 0 = fully NTK (low-freq), 1 = fully linear (high-freq)
-        # Middle band: smooth interpolation based on position within [low, high]
+        # pure high-freq: lambda_i < low_freq_thresh  → blend = 1 (linear)
+        # pure low-freq:  lambda_i > high_freq_thresh → blend = 0 (NTK)
+        # middle band:    low_freq_thresh <= lambda_i <= high_freq_thresh → smooth blend
         blend = torch.zeros_like(freqs_base)
-        high_mask = lambda_i < high_freq_thresh          # pure linear interp
-        low_mask = lambda_i > low_freq_thresh            # pure NTK
-        mid_mask = ~high_mask & ~low_mask                # smooth blend
+        pure_high_mask = lambda_i < low_freq_thresh     # very short period → linear
+        pure_low_mask = lambda_i > high_freq_thresh     # very long period → NTK
+        mid_mask = ~pure_high_mask & ~pure_low_mask     # middle band
 
-        blend[high_mask] = 1.0
-        blend[low_mask] = 0.0
+        blend[pure_high_mask] = 1.0
+        blend[pure_low_mask] = 0.0
         if mid_mask.any():
-            # Linearly interpolate blend within the middle band
+            # Blend from 1.0 (at low_freq_thresh) to 0.0 (at high_freq_thresh)
             lam_mid = lambda_i[mid_mask]
-            t = (lam_mid - low_freq_thresh) / (high_freq_thresh - low_freq_thresh)
+            t = (high_freq_thresh - lam_mid) / (high_freq_thresh - low_freq_thresh)
             blend[mid_mask] = t.clamp(0.0, 1.0)
 
         freqs = blend * freqs_linear + (1.0 - blend) * freqs_ntk

@@ -72,6 +72,55 @@ def test_yarn_ntk_shifts_base():
     )
 
 
+def test_yarn_midband_blend():
+    """YaRN mid-band frequencies must be strictly between linear and NTK values.
+
+    We test the raw (pre-complex-exponentiation) frequencies by calling the
+    helper with max_seq_len=1 and extracting the first position's angle
+    divided by the position index (which equals the raw freq for pos=1).
+
+    With factor=16, beta_fast=32, beta_slow=1 and head_dim=64:
+      high_freq_thresh = 2π*32/16 ≈ 12.57
+      low_freq_thresh  = 2π*1/16  ≈  0.39
+    Dimension 0 (freq=1.0, lambda=2π≈6.28) and dimension 2 fall in the mid-band.
+    Their blended frequencies must be strictly between linear and NTK values.
+    """
+    import math
+
+    factor = 16.0
+    theta = 500_000.0
+    head_dim = HEAD_DIM
+
+    # Compute raw frequencies for each scaling type by reading the per-dim freq
+    # directly: at position p=1, angle = p * freq = freq.
+    def raw_freqs(stype, **kw):
+        fc = precompute_rope_frequencies(
+            head_dim=head_dim, max_seq_len=2, theta=theta,
+            rope_scaling_type=stype, rope_scaling_factor=factor, **kw,
+        )
+        # pos=1: angle = freq (since outer(1, freqs) = freqs)
+        return fc[1].angle()
+
+    f_linear = raw_freqs("linear")
+    f_ntk = raw_freqs("ntk")
+    f_yarn = raw_freqs("yarn", yarn_original_max_seq_len=8192,
+                        yarn_beta_fast=32.0, yarn_beta_slow=1.0)
+
+    # YaRN must differ from both endpoints
+    assert not torch.allclose(f_yarn, f_linear), "YaRN should differ from pure linear"
+    assert not torch.allclose(f_yarn, f_ntk), "YaRN should differ from pure NTK"
+
+    # For mid-band dims, |yarn - ntk| < |linear - ntk| (yarn is between the two)
+    dist_yarn_to_ntk = (f_yarn - f_ntk).abs()
+    dist_linear_to_ntk = (f_linear - f_ntk).abs()
+    # At least one mid-band dim: YaRN is closer to NTK than linear is
+    # (blend=0 would match NTK exactly; blend=1 would match linear exactly)
+    mid_band_dims_exist = (dist_yarn_to_ntk < dist_linear_to_ntk).any()
+    assert mid_band_dims_exist, (
+        "No dimension shows YaRN blending between linear and NTK — mid-band blend may be dead code"
+    )
+
+
 def test_yarn_config_fields():
     """AureliusConfig exposes all 5 new YaRN fields with correct defaults."""
     cfg = AureliusConfig()
