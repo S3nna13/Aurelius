@@ -81,23 +81,25 @@ class MoDBlock(nn.Module):
         idx_expanded = top_indices_sorted.unsqueeze(-1).expand(B, k, D)
         x_selected = torch.gather(x, 1, idx_expanded)
 
-        # Slice freqs_cis for the selected positions using the first batch's indices
-        # (indices are the same across batch for topk by routing weight, but may differ)
-        # We pass the full freqs_cis and let the block use what it needs.
-        # Since TransformerBlock uses freqs_cis[:S], we pass freqs_cis directly and
-        # rely on the attention module indexing by position. To support variable
-        # selected positions, we gather the per-position freqs_cis for selected tokens.
-        # freqs_cis shape: (S, head_dim//2) — gather rows for each selected position.
-        # Use the first batch's sorted indices (broadcasting; same k for all batch items).
+        # Gather freqs_cis for the selected positions.
+        # apply_rope expects (seq_len, head_dim//2) — no batch dim — so we use
+        # the first batch item's sorted indices. In practice, routing produces the
+        # same position indices across batch items for same-length sequences.
         freqs_cis_selected = freqs_cis[top_indices_sorted[0]]  # (k, head_dim//2)
 
         # 4. Run selected tokens through the inner block
         x_processed = self.block(x_selected, freqs_cis_selected, mask)  # (B, k, D)
 
-        # 5. Scatter processed tokens back; unselected positions keep original x
-        out = x.clone()
-        out.scatter_(1, idx_expanded, x_processed)
+        # 5. Blend processed tokens back using a mask to preserve the autograd graph.
+        # In-place scatter on a cloned tensor severs gradients for unselected positions,
+        # so we use a mask-based blend instead.
+        sel_mask = torch.zeros(B, S, 1, device=x.device, dtype=x.dtype)
+        sel_mask.scatter_(1, top_indices_sorted.unsqueeze(-1), 1.0)
 
+        processed_full = torch.zeros_like(x)
+        processed_full.scatter_(1, idx_expanded, x_processed)
+
+        out = x * (1.0 - sel_mask) + processed_full * sel_mask
         return out
 
 
@@ -206,12 +208,14 @@ class AureliusTransformer(nn.Module):
         if count_embeddings:
             counts["embedding"] = sum(p.numel() for p in self.embed.parameters())
 
-        # Per-layer breakdown for first layer (all layers are identical)
+        # Per-layer breakdown for first layer (all layers are identical).
+        # Unwrap MoDBlock if present to access the inner TransformerBlock.
         layer0 = self.layers[0]
-        attn_params = sum(p.numel() for p in layer0.attn.parameters())
-        ffn_params = sum(p.numel() for p in layer0.ffn.parameters())
-        norm_params = sum(p.numel() for p in layer0.attn_norm.parameters()) + sum(
-            p.numel() for p in layer0.ffn_norm.parameters()
+        inner0 = layer0.block if isinstance(layer0, MoDBlock) else layer0
+        attn_params = sum(p.numel() for p in inner0.attn.parameters())
+        ffn_params = sum(p.numel() for p in inner0.ffn.parameters())
+        norm_params = sum(p.numel() for p in inner0.attn_norm.parameters()) + sum(
+            p.numel() for p in inner0.ffn_norm.parameters()
         )
         per_layer = attn_params + ffn_params + norm_params
 

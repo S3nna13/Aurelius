@@ -121,3 +121,34 @@ def test_mod_disabled_passes_through(small_cfg):
     assert logits.shape == (2, 32, small_cfg.vocab_size), (
         f"Expected logits shape (2, 32, {small_cfg.vocab_size}), got {logits.shape}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 5: Gradient flow — all input positions must receive gradients
+# ---------------------------------------------------------------------------
+
+def test_mod_block_gradient_flow(small_cfg):
+    """Every token position (selected and unselected) must have a gradient.
+
+    Unselected tokens are passed through unchanged, so gradients must flow
+    back from the output to the input via the identity path.
+    """
+    block = TransformerBlock(small_cfg, layer_idx=0)
+    mod = MoDBlock(block, capacity_factor=0.5)
+
+    from src.model.attention import precompute_rope_frequencies
+    B, S, D = 1, 16, small_cfg.d_model
+    x = torch.randn(B, S, D, requires_grad=True)
+    freqs_cis = precompute_rope_frequencies(small_cfg.head_dim, small_cfg.max_seq_len, small_cfg.rope_theta)
+    freqs_cis = freqs_cis[:S]
+
+    out = mod(x, freqs_cis, mask=None)
+    loss = out.sum()
+    loss.backward()
+
+    assert x.grad is not None, "No gradient at input"
+    # Every token position should have non-zero gradient
+    grad_per_token = x.grad.abs().sum(dim=-1)  # (B, S)
+    assert (grad_per_token > 0).all(), (
+        f"Some token positions have zero gradient: {(grad_per_token == 0).nonzero()}"
+    )
