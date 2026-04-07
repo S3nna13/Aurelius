@@ -14,24 +14,8 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Iterable
-
 import torch
 from torch.optim import Optimizer
-
-
-def apply_qk_clip(param: torch.Tensor, threshold: float) -> None:
-    """Rescale param in-place if its Frobenius norm exceeds threshold.
-
-    Uses Frobenius norm as a cheap proxy for spectral norm.
-    Rescales by threshold/norm so the post-clip norm equals threshold exactly.
-    """
-    with torch.no_grad():
-        norm = param.float().norm()
-        if norm < 1e-30:
-            return
-        if norm > threshold:
-            param.mul_(threshold / norm)
 
 
 def _newton_schulz(G: torch.Tensor, steps: int = 5) -> torch.Tensor:
@@ -85,8 +69,6 @@ class Muon(Optimizer):
         momentum: Momentum coefficient (default: 0.95).
         weight_decay: L2 weight decay (default: 0.0).
         ns_steps: Newton-Schulz iteration steps (default: 5).
-        qk_clip: Frobenius norm threshold for QK-clip (default: None = disabled).
-        qk_clip_alpha: Rescaling balance between Q and K (default: 0.5 = equal split).
     """
 
     def __init__(
@@ -96,19 +78,9 @@ class Muon(Optimizer):
         momentum: float = 0.95,
         weight_decay: float = 0.0,
         ns_steps: int = 5,
-        qk_clip: float | None = None,
-        qk_clip_alpha: float = 0.5,
     ) -> None:
         defaults = dict(lr=lr, momentum=momentum, weight_decay=weight_decay, ns_steps=ns_steps)
         super().__init__(params, defaults)
-        self.qk_clip = qk_clip
-        self.qk_clip_alpha = qk_clip_alpha
-        self._qk_params: set[int] = set()
-
-    def mark_qk_params(self, params: Iterable[torch.Tensor]) -> None:
-        """Mark parameters as Q or K projections for QK-clip rescaling."""
-        for p in params:
-            self._qk_params.add(id(p))
 
     @torch.no_grad()
     def step(self, closure=None) -> torch.Tensor | None:
@@ -153,9 +125,5 @@ class Muon(Optimizer):
                     p.mul_(1.0 - lr * wd)
 
                 p.add_(g_orth.to(p.dtype), alpha=-lr)
-
-                # QK-clip: rescale Q/K projections if Frobenius norm exceeds threshold
-                if self.qk_clip is not None and id(p) in self._qk_params:
-                    apply_qk_clip(p, self.qk_clip)
 
         return loss

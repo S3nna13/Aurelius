@@ -176,27 +176,6 @@ def build_scheduler(optimizer: AdamW, cfg: TrainConfig) -> LambdaLR:
 
 
 # ---------------------------------------------------------------------------
-# MFU (Model FLOPs Utilization) estimator
-# ---------------------------------------------------------------------------
-
-def estimate_mfu(
-    model_params: int,
-    tokens_per_sec: float,
-    n_gpus: int = 1,
-    gpu_flops_bf16: float = 989e12,  # H100 SXM peak BF16 TFLOPS
-) -> float:
-    """Estimate model FLOPs utilization.
-
-    Uses the 6*N*D approximation for transformer forward+backward FLOPs,
-    where N = model parameters, D = tokens processed.
-    """
-    model_flops_per_token = 6 * model_params
-    achieved_flops = model_flops_per_token * tokens_per_sec
-    peak_flops = gpu_flops_bf16 * n_gpus
-    return achieved_flops / peak_flops if peak_flops > 0 else 0.0
-
-
-# ---------------------------------------------------------------------------
 # Checkpoint management
 # ---------------------------------------------------------------------------
 
@@ -586,29 +565,22 @@ class AureliusTrainer:
                         batch_tokens * self.cfg.log_interval_steps
                     ) / max(elapsed, 1e-6)
                     current_lr = self.scheduler.get_last_lr()[0]
-                    n_gpus = max(1, int(os.environ.get("WORLD_SIZE", "1")))
-                    mfu = estimate_mfu(
-                        self.n_params, tokens_per_sec, n_gpus=n_gpus,
-                    )
 
                     metrics = {
                         "train/loss": avg_loss,
                         "train/lr": current_lr,
                         "train/tokens_per_sec": tokens_per_sec,
-                        "train/mfu": mfu,
                         "train/tokens_seen": self.tokens_seen,
                         "train/step": self.global_step,
                     }
 
                     if self.accelerator.is_main_process:
                         logger.info(
-                            "step=%d  loss=%.4f  lr=%.2e  tok/s=%.0f"
-                            "  mfu=%.2f%%  tokens=%s",
+                            "step=%d  loss=%.4f  lr=%.2e  tok/s=%.0f  tokens=%s",
                             self.global_step,
                             avg_loss,
                             current_lr,
                             tokens_per_sec,
-                            mfu * 100,
                             f"{self.tokens_seen:,}",
                         )
                         if self.cfg.wandb_enabled:
