@@ -5,8 +5,6 @@ Supports Flash Attention via PyTorch's scaled_dot_product_attention.
 
 from __future__ import annotations
 
-import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,88 +17,13 @@ def precompute_rope_frequencies(
     max_seq_len: int,
     theta: float = 500_000.0,
     device: torch.device | None = None,
-    rope_scaling_type: str = "none",
-    rope_scaling_factor: float = 1.0,
-    yarn_original_max_seq_len: int = 8192,
-    yarn_beta_fast: float = 32.0,
-    yarn_beta_slow: float = 1.0,
 ) -> torch.Tensor:
     """Precompute the complex-valued RoPE frequency tensor.
-
-    Supports optional context extension via rope_scaling_type:
-      - "none" / "linear": standard RoPE (linear divides freq by factor)
-      - "ntk": NTK-aware scaling — scales the RoPE base
-      - "yarn": piecewise NTK-aware (YaRN) scaling for long-context extension
 
     Returns:
         Complex tensor of shape (max_seq_len, head_dim // 2).
     """
-    half_dim = head_dim // 2
-
-    if rope_scaling_type in ("none", "linear"):
-        # Standard RoPE; linear interpolation is equivalent to dividing frequencies
-        effective_theta = theta
-        freqs = 1.0 / (
-            effective_theta ** (torch.arange(0, head_dim, 2, device=device).float() / head_dim)
-        )
-        if rope_scaling_type == "linear" and rope_scaling_factor != 1.0:
-            freqs = freqs / rope_scaling_factor
-
-    elif rope_scaling_type == "ntk":
-        # NTK-aware scaling: scale the base so high-freq dims are unaffected
-        # theta_new = theta * factor^(d/(d-2))
-        scaled_theta = theta * (rope_scaling_factor ** (head_dim / (head_dim - 2)))
-        freqs = 1.0 / (
-            scaled_theta ** (torch.arange(0, head_dim, 2, device=device).float() / head_dim)
-        )
-
-    elif rope_scaling_type == "yarn":
-        # YaRN: piecewise NTK-aware scaling (Peng et al., 2023)
-        # Compute base (unscaled) frequencies
-        dim_indices = torch.arange(0, head_dim, 2, device=device).float()
-        freqs_base = 1.0 / (theta ** (dim_indices / head_dim))
-
-        # Compute NTK-scaled frequencies (scaled base)
-        scaled_theta = theta * (rope_scaling_factor ** (head_dim / (head_dim - 2)))
-        freqs_ntk = 1.0 / (scaled_theta ** (dim_indices / head_dim))
-
-        # Linear-interpolated frequencies: divide by scale factor
-        freqs_linear = freqs_base / rope_scaling_factor
-
-        # Period of each dimension: lambda_i = 2*pi / freq_i
-        # Thresholds (in position units):
-        #   high_freq_thresh: wavelengths *below* this are pure linear (high-freq)
-        #   low_freq_thresh:  wavelengths *above* this are pure NTK (low-freq)
-        # The middle band (low_freq_thresh < lambda_i < high_freq_thresh) gets
-        # a smooth blend. Note: high_freq_thresh > low_freq_thresh always.
-        # yarn_original_max_seq_len is available for attention mscale correction
-        # by callers; frequency computation uses rope_scaling_factor directly.
-        lambda_i = 2.0 * math.pi / freqs_base  # period in positions
-
-        high_freq_thresh = 2.0 * math.pi * yarn_beta_fast / rope_scaling_factor
-        low_freq_thresh = 2.0 * math.pi * yarn_beta_slow / rope_scaling_factor
-
-        # Blend factor: 0 = fully NTK (low-freq), 1 = fully linear (high-freq)
-        # pure high-freq: lambda_i < low_freq_thresh  → blend = 1 (linear)
-        # pure low-freq:  lambda_i > high_freq_thresh → blend = 0 (NTK)
-        # middle band:    low_freq_thresh <= lambda_i <= high_freq_thresh → smooth blend
-        blend = torch.zeros_like(freqs_base)
-        pure_high_mask = lambda_i < low_freq_thresh     # very short period → linear
-        pure_low_mask = lambda_i > high_freq_thresh     # very long period → NTK
-        mid_mask = ~pure_high_mask & ~pure_low_mask     # middle band
-
-        blend[pure_high_mask] = 1.0
-        blend[pure_low_mask] = 0.0
-        if mid_mask.any():
-            # Blend from 1.0 (at low_freq_thresh) to 0.0 (at high_freq_thresh)
-            lam_mid = lambda_i[mid_mask]
-            t = (high_freq_thresh - lam_mid) / (high_freq_thresh - low_freq_thresh)
-            blend[mid_mask] = t.clamp(0.0, 1.0)
-
-        freqs = blend * freqs_linear + (1.0 - blend) * freqs_ntk
-
-    else:
-        raise ValueError(f"Unknown rope_scaling_type: {rope_scaling_type!r}")
+    freqs = 1.0 / (theta ** (torch.arange(0, head_dim, 2, device=device).float() / head_dim))
 
     positions = torch.arange(max_seq_len, device=device).float()
     # outer product: (seq_len, head_dim // 2)
@@ -137,13 +60,12 @@ class GroupedQueryAttention(nn.Module):
     fallback depending on hardware and input characteristics.
     """
 
-    def __init__(self, config: AureliusConfig, apply_rope: bool = True) -> None:
+    def __init__(self, config: AureliusConfig) -> None:
         super().__init__()
         self.n_heads = config.n_heads
         self.n_kv_heads = config.n_kv_heads
         self.head_dim = config.head_dim
         self.n_rep = self.n_heads // self.n_kv_heads  # GQA repetition factor
-        self.apply_rope = apply_rope
 
         # Projections — no bias anywhere
         self.q_proj = nn.Linear(config.d_model, config.n_heads * config.head_dim, bias=False)
@@ -176,9 +98,8 @@ class GroupedQueryAttention(nn.Module):
         v = self.v_proj(x).view(B, S, self.n_kv_heads, self.head_dim)
 
         # Apply RoPE to queries and keys
-        if self.apply_rope:
-            q = apply_rope(q, freqs_cis)
-            k = apply_rope(k, freqs_cis)
+        q = apply_rope(q, freqs_cis)
+        k = apply_rope(k, freqs_cis)
 
         # Expand KV heads to match Q heads for GQA
         if self.n_rep > 1:
@@ -205,83 +126,3 @@ class GroupedQueryAttention(nn.Module):
         return self.o_proj(out)
 
 
-class DifferentialAttention(nn.Module):
-    """Differential Attention (DIFF Transformer, ICLR 2025).
-
-    Computes two softmax attention maps and takes their weighted difference,
-    cancelling attention noise and improving focus on relevant tokens.
-
-    Reference: Ye et al., "Differential Transformer", ICLR 2025.
-    arXiv: 2410.05258
-    """
-
-    def __init__(self, config: AureliusConfig, apply_rope: bool = True) -> None:
-        super().__init__()
-        assert config.head_dim % 2 == 0, "head_dim must be even for DifferentialAttention"
-        self.n_heads = config.n_heads
-        self.n_kv_heads = config.n_kv_heads
-        self.head_dim = config.head_dim
-        self.half_dim = config.head_dim // 2
-        self.n_rep = config.n_heads // config.n_kv_heads
-        self.apply_rope = apply_rope
-
-        # Same projections as GQA — shapes are identical
-        self.q_proj = nn.Linear(config.d_model, config.n_heads * config.head_dim, bias=False)
-        self.k_proj = nn.Linear(config.d_model, config.n_kv_heads * config.head_dim, bias=False)
-        self.v_proj = nn.Linear(config.d_model, config.n_kv_heads * config.head_dim, bias=False)
-        self.o_proj = nn.Linear(config.n_heads * config.head_dim, config.d_model, bias=False)
-
-        # Per-head learnable lambda (scalar per head, initialized to lambda_init)
-        # λ = exp(λ_param) / (exp(λ_param) + 1)  ≈ sigmoid
-        lambda_init = config.diff_attn_lambda_init
-        self.lambda_param = nn.Parameter(
-            torch.full((config.n_heads,), math.log(lambda_init / (1.0 - lambda_init)))
-        )
-        # Scale factor applied after differencing (1 - lambda_init) per paper
-        self.out_scale = 1.0 - lambda_init
-        self.attn_dropout = config.dropout
-
-    def forward(
-        self,
-        x: torch.Tensor,
-        freqs_cis: torch.Tensor,
-        mask: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        B, S, _ = x.shape
-
-        q = self.q_proj(x).view(B, S, self.n_heads, self.head_dim)
-        k = self.k_proj(x).view(B, S, self.n_kv_heads, self.head_dim)
-        v = self.v_proj(x).view(B, S, self.n_kv_heads, self.head_dim // 2 * 2)  # full head_dim for V
-
-        if self.apply_rope:
-            q = apply_rope(q, freqs_cis)
-            k = apply_rope(k, freqs_cis)
-
-        # GQA expand
-        if self.n_rep > 1:
-            k = k.unsqueeze(3).expand(B, S, self.n_kv_heads, self.n_rep, self.head_dim).reshape(B, S, self.n_heads, self.head_dim)
-            v = v.unsqueeze(3).expand(B, S, self.n_kv_heads, self.n_rep, self.head_dim).reshape(B, S, self.n_heads, self.head_dim)
-
-        # Split Q and K into two halves along head_dim
-        q1, q2 = q.chunk(2, dim=-1)   # each: (B, S, n_heads, half_dim)
-        k1, k2 = k.chunk(2, dim=-1)   # each: (B, S, n_heads, half_dim)
-
-        # Transpose to (B, n_heads, S, half_dim)
-        q1, q2 = q1.transpose(1, 2), q2.transpose(1, 2)
-        k1, k2 = k1.transpose(1, 2), k2.transpose(1, 2)
-        v_t = v.transpose(1, 2)  # (B, n_heads, S, head_dim)
-
-        drop_p = self.attn_dropout if self.training else 0.0
-
-        # Two attention maps — half_dim scaling happens inside SDPA
-        a1 = F.scaled_dot_product_attention(q1, k1, v_t, attn_mask=mask, dropout_p=drop_p, is_causal=mask is None)
-        a2 = F.scaled_dot_product_attention(q2, k2, v_t, attn_mask=mask, dropout_p=drop_p, is_causal=mask is None)
-
-        # Per-head learnable lambda: sigmoid of param, shape (n_heads, 1, 1) for broadcasting
-        lam = torch.sigmoid(self.lambda_param).to(x.dtype).view(1, self.n_heads, 1, 1)
-
-        # Differential combination: (A1 - λ*A2) * (1 - λ_init)
-        out = (a1 - lam * a2) * self.out_scale
-
-        out = out.transpose(1, 2).contiguous().view(B, S, -1)
-        return self.o_proj(out)

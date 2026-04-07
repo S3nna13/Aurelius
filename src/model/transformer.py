@@ -14,21 +14,9 @@ from .rms_norm import RMSNorm
 class TransformerBlock(nn.Module):
     """Single decoder layer: pre-norm attention + pre-norm FFN with residuals."""
 
-    def __init__(self, config: AureliusConfig, layer_idx: int = 0) -> None:
+    def __init__(self, config: AureliusConfig) -> None:
         super().__init__()
-        self.layer_idx = layer_idx
-
-        # Determine if this layer uses RoPE
-        nope = config.nope_every_n_layers
-        apply_rope = True if nope == 0 else ((layer_idx + 1) % nope != 0)
-
-        # Select attention class
-        if config.use_diff_attn:
-            from .attention import DifferentialAttention
-            self.attn = DifferentialAttention(config, apply_rope=apply_rope)
-        else:
-            self.attn = GroupedQueryAttention(config, apply_rope=apply_rope)
-
+        self.attn = GroupedQueryAttention(config)
         self.attn_norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
         self.ffn_norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
         self.ffn = SwiGLUFFN(config)
@@ -43,64 +31,6 @@ class TransformerBlock(nn.Module):
         x = x + self.ffn(self.ffn_norm(x))
         return x
 
-
-class MoDBlock(nn.Module):
-    """Mixture-of-Depths wrapper: routes top-k tokens through the inner block.
-
-    Tokens below the routing threshold pass through unchanged (residual).
-    capacity_factor controls the fraction of tokens routed.
-    """
-
-    def __init__(self, block: TransformerBlock, capacity_factor: float = 0.5) -> None:
-        super().__init__()
-        self.block = block
-        self.capacity_factor = capacity_factor
-        hidden_dim = block.attn_norm.weight.shape[0]
-        self.router = nn.Linear(hidden_dim, 1, bias=False)
-
-    def forward(
-        self,
-        x: torch.Tensor,
-        freqs_cis: torch.Tensor,
-        mask: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        B, S, D = x.shape
-
-        # 1. Compute per-token routing weights
-        routing_weights = self.router(x).squeeze(-1)  # (B, S)
-
-        # 2. Select top-k token indices by routing weight
-        k = max(1, int(self.capacity_factor * S))
-        _, top_indices = torch.topk(routing_weights, k, dim=-1)  # (B, k)
-
-        # 3. Extract selected tokens
-        # Sort indices so positional order is preserved (needed for RoPE freqs_cis)
-        top_indices_sorted, _ = torch.sort(top_indices, dim=-1)  # (B, k)
-
-        # Gather: (B, k, D)
-        idx_expanded = top_indices_sorted.unsqueeze(-1).expand(B, k, D)
-        x_selected = torch.gather(x, 1, idx_expanded)
-
-        # Gather freqs_cis for the selected positions.
-        # apply_rope expects (seq_len, head_dim//2) — no batch dim — so we use
-        # the first batch item's sorted indices. In practice, routing produces the
-        # same position indices across batch items for same-length sequences.
-        freqs_cis_selected = freqs_cis[top_indices_sorted[0]]  # (k, head_dim//2)
-
-        # 4. Run selected tokens through the inner block
-        x_processed = self.block(x_selected, freqs_cis_selected, mask)  # (B, k, D)
-
-        # 5. Blend processed tokens back using a mask to preserve the autograd graph.
-        # In-place scatter on a cloned tensor severs gradients for unselected positions,
-        # so we use a mask-based blend instead.
-        sel_mask = torch.zeros(B, S, 1, device=x.device, dtype=x.dtype)
-        sel_mask.scatter_(1, top_indices_sorted.unsqueeze(-1), 1.0)
-
-        processed_full = torch.zeros_like(x)
-        processed_full.scatter_(1, idx_expanded, x_processed)
-
-        out = x * (1.0 - sel_mask) + processed_full * sel_mask
-        return out
 
 
 class AureliusTransformer(nn.Module):
@@ -124,14 +54,9 @@ class AureliusTransformer(nn.Module):
         self.embed = nn.Embedding(self.config.vocab_size, self.config.d_model)
 
         # Transformer blocks
-        layers = []
-        first_mod_layer = self.config.n_layers // 2  # MoD applied to deeper half
-        for i in range(self.config.n_layers):
-            block = TransformerBlock(self.config, layer_idx=i)
-            if self.config.use_mod and i >= first_mod_layer:
-                block = MoDBlock(block, capacity_factor=self.config.mod_capacity_factor)
-            layers.append(block)
-        self.layers = nn.ModuleList(layers)
+        self.layers = nn.ModuleList(
+            [TransformerBlock(self.config) for _ in range(self.config.n_layers)]
+        )
 
         # Final norm
         self.norm = RMSNorm(self.config.d_model, eps=self.config.rms_norm_eps)
@@ -209,13 +134,11 @@ class AureliusTransformer(nn.Module):
             counts["embedding"] = sum(p.numel() for p in self.embed.parameters())
 
         # Per-layer breakdown for first layer (all layers are identical).
-        # Unwrap MoDBlock if present to access the inner TransformerBlock.
         layer0 = self.layers[0]
-        inner0 = layer0.block if isinstance(layer0, MoDBlock) else layer0
-        attn_params = sum(p.numel() for p in inner0.attn.parameters())
-        ffn_params = sum(p.numel() for p in inner0.ffn.parameters())
-        norm_params = sum(p.numel() for p in inner0.attn_norm.parameters()) + sum(
-            p.numel() for p in inner0.ffn_norm.parameters()
+        attn_params = sum(p.numel() for p in layer0.attn.parameters())
+        ffn_params = sum(p.numel() for p in layer0.ffn.parameters())
+        norm_params = sum(p.numel() for p in layer0.attn_norm.parameters()) + sum(
+            p.numel() for p in layer0.ffn_norm.parameters()
         )
         per_layer = attn_params + ffn_params + norm_params
 

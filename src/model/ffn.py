@@ -25,7 +25,7 @@ class SwiGLUFFN(nn.Module):
         self.gate_proj = nn.Linear(config.d_model, config.d_ff, bias=False)
         self.up_proj = nn.Linear(config.d_model, config.d_ff, bias=False)
         self.down_proj = nn.Linear(config.d_ff, config.d_model, bias=False)
-        self.dropout = nn.Dropout(config.dropout) if config.dropout > 0.0 else nn.Identity()
+        self.dropout = nn.Dropout(config.dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.dropout(self.down_proj(F.silu(self.gate_proj(x)) * self.up_proj(x)))
