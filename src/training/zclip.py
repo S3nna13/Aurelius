@@ -23,7 +23,6 @@ class ZClip:
     z_threshold). During warmup, falls back to fixed max_norm clipping.
 
     Args:
-        params: Iterable of parameter tensors (same as optimizer params).
         z_threshold: How many std devs above mean triggers a clip (default 2.5).
         ema_alpha: EMA smoothing factor for mean and variance (default 0.01).
         min_warmup_steps: Steps before z-score is used; uses fallback_clip
@@ -33,13 +32,11 @@ class ZClip:
 
     def __init__(
         self,
-        params: Iterable[torch.nn.Parameter],
         z_threshold: float = 2.5,
         ema_alpha: float = 0.01,
         min_warmup_steps: int = 100,
         fallback_clip: float = 1.0,
     ) -> None:
-        self.params = list(params)
         self.z_threshold = z_threshold
         self.ema_alpha = ema_alpha
         self.min_warmup_steps = min_warmup_steps
@@ -58,6 +55,7 @@ class ZClip:
 
         Returns:
             The pre-clip gradient norm (as a Python float).
+            Returns 0.0 without updating state if no gradients are present.
         """
         params_with_grad = [p for p in parameters if p.grad is not None]
 
@@ -71,6 +69,10 @@ class ZClip:
         )
         norm = float(total_norm_sq ** 0.5)
 
+        # Guard against non-finite norms (NaN/Inf corrupting EMA state)
+        if not math.isfinite(norm):
+            return norm
+
         alpha = self.ema_alpha
 
         if self._step < self.min_warmup_steps:
@@ -80,10 +82,6 @@ class ZClip:
                 for p in params_with_grad:
                     p.grad.detach().mul_(clip_coef)
             clipped_norm = min(norm, self.fallback_clip)
-
-            # Update EMA with the (possibly clipped) norm
-            self._ema_var = (1 - alpha) * (self._ema_var + alpha * (norm - self._ema_mean) ** 2)
-            self._ema_mean = (1 - alpha) * self._ema_mean + alpha * clipped_norm
         else:
             # Post-warmup: z-score based clipping
             std = math.sqrt(self._ema_var + 1e-8)
@@ -99,9 +97,10 @@ class ZClip:
             else:
                 clipped_norm = norm
 
-            # Update EMA with the (possibly clipped) norm
-            self._ema_var = (1 - alpha) * (self._ema_var + alpha * (norm - self._ema_mean) ** 2)
-            self._ema_mean = (1 - alpha) * self._ema_mean + alpha * clipped_norm
+        # Update EMA with the clipped norm (tracks "accepted" distribution)
+        # Variance update uses old mean before mean is updated
+        self._ema_var = (1 - alpha) * (self._ema_var + alpha * (clipped_norm - self._ema_mean) ** 2)
+        self._ema_mean = (1 - alpha) * self._ema_mean + alpha * clipped_norm
 
         self._step += 1
         return norm

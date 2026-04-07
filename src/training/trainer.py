@@ -389,7 +389,6 @@ class AureliusTrainer:
         self.zclip: ZClip | None = None
         if cfg.use_zclip:
             self.zclip = ZClip(
-                params=list(self.model.parameters()),
                 z_threshold=cfg.zclip_z_threshold,
                 ema_alpha=cfg.zclip_ema_alpha,
             )
