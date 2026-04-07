@@ -98,6 +98,12 @@ class GroupedQueryAttention(nn.Module):
         """
         B, S, _ = x.shape
 
+        if past_kv is not None and S > 1:
+            raise ValueError(
+                "KV cache only supports single-token decode (S=1). "
+                "For multi-token generation with cache, pass past_kv=None and use a causal mask."
+            )
+
         # Project new tokens
         q = self.q_proj(x).view(B, S, self.n_heads, self.head_dim)
         k_new = self.k_proj(x).view(B, S, self.n_kv_heads, self.head_dim)

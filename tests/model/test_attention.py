@@ -135,3 +135,26 @@ def test_kv_cache_grows(attn, small_cfg):
     freqs_next = precompute_rope_frequencies(small_cfg.head_dim, 5)[4:5]
     _, kv2 = attn(x_next, freqs_next, past_kv=kv)
     assert kv2[0].shape[1] == 5
+
+
+def test_kv_cache_batch_decode(attn, small_cfg):
+    """KV cache incremental decode works correctly for batch_size > 1."""
+    torch.manual_seed(1)
+    B = 2
+    seq = torch.randn(B, 6, small_cfg.d_model)
+    freqs_full = precompute_rope_frequencies(small_cfg.head_dim, 6)
+
+    # Full forward (reference)
+    out_full, _ = attn(seq, freqs_full)
+
+    # Prefill 5 tokens
+    freqs_prefix = freqs_full[:5]
+    _, kv = attn(seq[:, :5, :], freqs_prefix)
+
+    # Decode token 6
+    freqs_decode = freqs_full[5:6]
+    out_decode, _ = attn(seq[:, 5:6, :], freqs_decode, past_kv=kv)
+
+    assert out_decode.shape == (B, 1, small_cfg.d_model)
+    assert torch.allclose(out_full[:, 5:6, :], out_decode, atol=1e-4), \
+        f"Max diff: {(out_full[:, 5:6, :] - out_decode).abs().max()}"
