@@ -1,0 +1,8 @@
+# TIES merging: resolves sign conflicts between model deltas
+merge_method: ties
+base_model: "checkpoints/aurelius-1.3b-sft/final"
+models:
+  - path: "checkpoints/aurelius-1.3b-grpo/final"
+    weight: 1.0
+density: 0.5
+output_path: "checkpoints/aurelius-1.3b-merged-ties"

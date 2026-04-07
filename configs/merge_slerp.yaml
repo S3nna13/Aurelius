@@ -1,0 +1,8 @@
+# SLERP model merging: interpolates between SFT and GRPO checkpoints
+merge_method: slerp
+models:
+  - path: "checkpoints/aurelius-1.3b-sft/final"
+    weight: 0.5
+  - path: "checkpoints/aurelius-1.3b-grpo/final"
+    weight: 0.5
+output_path: "checkpoints/aurelius-1.3b-merged-slerp"
