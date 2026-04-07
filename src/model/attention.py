@@ -80,49 +80,73 @@ class GroupedQueryAttention(nn.Module):
         x: torch.Tensor,
         freqs_cis: torch.Tensor,
         mask: torch.Tensor | None = None,
-    ) -> torch.Tensor:
+        past_kv: tuple[torch.Tensor, torch.Tensor] | None = None,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         """
         Args:
             x: (batch, seq_len, d_model)
-            freqs_cis: (seq_len, head_dim // 2) — precomputed RoPE frequencies.
-            mask: Optional attention mask (broadcastable to (B, H, S, S)).
+            freqs_cis: (seq_len, head_dim // 2) — precomputed RoPE frequencies for
+                the NEW tokens only (the transformer passes the correctly offset slice).
+            mask: Optional attention mask (broadcastable to (B, H, S_total, S_total)).
+            past_kv: Optional cached (k, v) tensors from previous steps, each of shape
+                (batch, past_seq_len, n_kv_heads, head_dim). Stored pre-GQA-expansion.
 
         Returns:
-            (batch, seq_len, d_model)
+            (output, (k_cache, v_cache)) where:
+              - output has shape (batch, seq_len, d_model)
+              - k_cache and v_cache have shape (batch, past_seq_len + seq_len, n_kv_heads, head_dim)
         """
         B, S, _ = x.shape
 
-        # Project
+        # Project new tokens
         q = self.q_proj(x).view(B, S, self.n_heads, self.head_dim)
-        k = self.k_proj(x).view(B, S, self.n_kv_heads, self.head_dim)
-        v = self.v_proj(x).view(B, S, self.n_kv_heads, self.head_dim)
+        k_new = self.k_proj(x).view(B, S, self.n_kv_heads, self.head_dim)
+        v_new = self.v_proj(x).view(B, S, self.n_kv_heads, self.head_dim)
 
-        # Apply RoPE to queries and keys
+        # Apply RoPE to queries and new keys (freqs_cis covers only the new S positions)
         q = apply_rope(q, freqs_cis)
-        k = apply_rope(k, freqs_cis)
+        k_new = apply_rope(k_new, freqs_cis)
+
+        # Concat with cached KV (pre-GQA-expansion). Cached tokens already have RoPE applied.
+        if past_kv is not None:
+            past_k, past_v = past_kv
+            k = torch.cat([past_k, k_new], dim=1)
+            v = torch.cat([past_v, v_new], dim=1)
+        else:
+            k = k_new
+            v = v_new
+
+        # Store cache at n_kv_heads size (pre-expansion)
+        k_cache = k
+        v_cache = v
+
+        S_total = k.shape[1]
 
         # Expand KV heads to match Q heads for GQA
         if self.n_rep > 1:
-            k = k.unsqueeze(3).expand(B, S, self.n_kv_heads, self.n_rep, self.head_dim)
-            k = k.reshape(B, S, self.n_heads, self.head_dim)
-            v = v.unsqueeze(3).expand(B, S, self.n_kv_heads, self.n_rep, self.head_dim)
-            v = v.reshape(B, S, self.n_heads, self.head_dim)
+            k = k.unsqueeze(3).expand(B, S_total, self.n_kv_heads, self.n_rep, self.head_dim)
+            k = k.reshape(B, S_total, self.n_heads, self.head_dim)
+            v = v.unsqueeze(3).expand(B, S_total, self.n_kv_heads, self.n_rep, self.head_dim)
+            v = v.reshape(B, S_total, self.n_heads, self.head_dim)
 
         # Transpose to (B, n_heads, S, head_dim) for SDPA
         q = q.transpose(1, 2)
         k = k.transpose(1, 2)
         v = v.transpose(1, 2)
 
+        # is_causal=True only during full prefill with no explicit mask or cache
+        is_causal = mask is None and past_kv is None
+
         # Scaled dot-product attention (dispatches to Flash Attention when available)
         out = F.scaled_dot_product_attention(
             q, k, v,
             attn_mask=mask,
             dropout_p=self.attn_dropout if self.training else 0.0,
-            is_causal=mask is None,  # use built-in causal mask when no explicit mask
+            is_causal=is_causal,
         )
 
         # Reshape back: (B, n_heads, S, head_dim) -> (B, S, d_model)
         out = out.transpose(1, 2).contiguous().view(B, S, -1)
-        return self.o_proj(out)
+        return self.o_proj(out), (k_cache, v_cache)
 
 

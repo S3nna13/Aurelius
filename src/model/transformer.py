@@ -26,10 +26,12 @@ class TransformerBlock(nn.Module):
         x: torch.Tensor,
         freqs_cis: torch.Tensor,
         mask: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        x = x + self.attn(self.attn_norm(x), freqs_cis, mask)
+        past_kv: tuple[torch.Tensor, torch.Tensor] | None = None,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+        attn_out, kv = self.attn(self.attn_norm(x), freqs_cis, mask, past_kv)
+        x = x + attn_out
         x = x + self.ffn(self.ffn_norm(x))
-        return x
+        return x, kv
 
 
 
@@ -111,7 +113,7 @@ class AureliusTransformer(nn.Module):
         freqs_cis = self.freqs_cis[:S]
 
         for layer in self.layers:
-            x = layer(x, freqs_cis, mask)
+            x, _ = layer(x, freqs_cis, mask)
 
         x = self.norm(x)
         return self.lm_head(x)
