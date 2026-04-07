@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .attention import GroupedQueryAttention, precompute_rope_frequencies
 from .config import AureliusConfig
@@ -95,28 +96,111 @@ class AureliusTransformer(nn.Module):
         self,
         input_ids: torch.Tensor,
         mask: torch.Tensor | None = None,
-    ) -> torch.Tensor:
+        labels: torch.Tensor | None = None,
+        past_key_values: list[tuple[torch.Tensor, torch.Tensor] | None] | None = None,
+    ) -> tuple[torch.Tensor | None, torch.Tensor, list[tuple[torch.Tensor, torch.Tensor]]]:
         """
         Args:
             input_ids: (batch, seq_len) — token indices.
             mask: Optional attention mask broadcastable to (B, H, S, S).
+            labels: (batch, seq_len) — target token ids for computing cross-entropy loss.
+            past_key_values: Per-layer KV cache from a previous forward pass.
 
         Returns:
-            Logits of shape (batch, seq_len, vocab_size).
+            Tuple of (loss, logits, present_key_values):
+                loss: Scalar cross-entropy loss if labels provided, else None.
+                logits: (batch, seq_len, vocab_size).
+                present_key_values: List of (k, v) tensors, one per layer.
         """
         B, S = input_ids.shape
         assert S <= self.config.max_seq_len, (
             f"Sequence length {S} exceeds max_seq_len {self.config.max_seq_len}"
         )
 
-        x = self.embed(input_ids)
-        freqs_cis = self.freqs_cis[:S]
+        # Compute position offset from KV cache
+        past_len = (
+            past_key_values[0][0].shape[1]
+            if past_key_values is not None and past_key_values[0] is not None
+            else 0
+        )
 
-        for layer in self.layers:
-            x, _ = layer(x, freqs_cis, mask)
+        x = self.embed(input_ids)
+        freqs_cis = self.freqs_cis[past_len : past_len + S]
+
+        present_key_values: list[tuple[torch.Tensor, torch.Tensor]] = []
+        for i, layer in enumerate(self.layers):
+            past_kv = past_key_values[i] if past_key_values is not None else None
+            x, kv = layer(x, freqs_cis, mask, past_kv)
+            present_key_values.append(kv)
 
         x = self.norm(x)
-        return self.lm_head(x)
+        logits = self.lm_head(x)
+
+        loss = None
+        if labels is not None:
+            shift_logits = logits[:, :-1, :].contiguous()
+            shift_labels = labels[:, 1:].contiguous()
+            loss = F.cross_entropy(
+                shift_logits.view(-1, self.config.vocab_size),
+                shift_labels.view(-1),
+            )
+
+        return loss, logits, present_key_values
+
+    @torch.no_grad()
+    def generate(
+        self,
+        input_ids: torch.Tensor,
+        max_new_tokens: int = 256,
+        temperature: float = 1.0,
+        top_p: float = 0.9,
+        eos_token_id: int | None = None,
+    ) -> torch.Tensor:
+        """Autoregressive generation with top-p nucleus sampling and KV cache.
+
+        Args:
+            input_ids: (batch, prompt_len) — prompt token ids.
+            max_new_tokens: Maximum tokens to generate.
+            temperature: Sampling temperature (1.0 = no scaling).
+            top_p: Nucleus sampling threshold.
+            eos_token_id: Stop generation when this token is produced (all sequences).
+
+        Returns:
+            (batch, prompt_len + generated_len) token ids.
+        """
+        B, _ = input_ids.shape
+        past_key_values = None
+        cur_ids = input_ids
+
+        for _ in range(max_new_tokens):
+            _, logits, past_key_values = self(cur_ids, past_key_values=past_key_values)
+            next_logits = logits[:, -1, :]  # (B, vocab)
+
+            # Temperature scaling
+            if temperature != 1.0:
+                next_logits = next_logits / temperature
+
+            # Top-p nucleus sampling (batch-correct)
+            # Sort ASCENDING so cumsum is left-to-right from smallest probability
+            sorted_logits, sorted_indices = torch.sort(next_logits, descending=False)
+            cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
+            # Remove tokens that push cumulative prob above (1 - top_p)
+            sorted_mask = cumulative_probs <= (1.0 - top_p)
+            # Always keep at least the top-1 token
+            sorted_mask[..., -1:] = False
+            # Scatter mask back to original vocabulary ordering
+            mask = sorted_mask.scatter(1, sorted_indices, sorted_mask)
+            next_logits = next_logits.masked_fill(mask, float("-inf"))
+
+            next_token = torch.multinomial(next_logits.softmax(dim=-1), num_samples=1)  # (B, 1)
+
+            cur_ids = next_token  # next step: only the new token (cache handles context)
+            input_ids = torch.cat([input_ids, next_token], dim=1)
+
+            if eos_token_id is not None and (next_token == eos_token_id).all():
+                break
+
+        return input_ids
 
     def count_parameters(self, *, count_embeddings: bool = True) -> dict[str, int]:
         """Count model parameters broken down by component.
@@ -205,7 +289,7 @@ if __name__ == "__main__":
     tokens = torch.randint(0, config.vocab_size, (batch_size, seq_len), device=device)
 
     with torch.no_grad():
-        logits = model(tokens)
+        _, logits, _ = model(tokens)
 
     print(f"  Input shape:  {tokens.shape}")
     print(f"  Output shape: {logits.shape}")
