@@ -18,12 +18,13 @@ class BenchmarkSpec:
     """Specification for a single evaluation benchmark."""
 
     name: str
-    task: str
+    task: str                  # lm-evaluation-harness task name
     metric: str
     num_fewshot: int
     expected_low: float
     expected_high: float
     description: str = ""
+    subset: str = ""           # dataset subset/config (empty = default)
 
     def in_expected_range(self, score: float) -> bool:
         """Return ``True`` if *score* falls within the expected range."""
@@ -104,7 +105,7 @@ HUMANEVAL = BenchmarkSpec(
 
 MATH500 = BenchmarkSpec(
     name="MATH-500",
-    task="hendrycks/competition_math",
+    task="math",
     metric="exact_match",
     num_fewshot=4,
     expected_low=0.05,
@@ -114,17 +115,18 @@ MATH500 = BenchmarkSpec(
 
 GPQA_DIAMOND = BenchmarkSpec(
     name="GPQA-Diamond",
-    task="Idavidrein/gpqa",
+    task="gpqa_diamond",
     metric="exact_match",
     num_fewshot=0,
     expected_low=0.25,
     expected_high=0.38,
     description="198 expert-level science questions (PhD-level); tests deep domain reasoning",
+    subset="gpqa_diamond",
 )
 
 LIVECODEBENCH = BenchmarkSpec(
     name="LiveCodeBench",
-    task="livecodebench/code_generation_lite",
+    task="livecodebench",
     metric="pass@1",
     num_fewshot=0,
     expected_low=0.05,
