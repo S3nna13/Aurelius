@@ -527,8 +527,7 @@ class AureliusTrainer:
             labels = batch.get("labels", input_ids)
 
             with self.accelerator.accumulate(self.model):
-                outputs = self.model(input_ids=input_ids, labels=labels)
-                loss = outputs.loss if hasattr(outputs, "loss") else outputs["loss"]
+                loss, _, _ = self.model(input_ids=input_ids, labels=labels)
 
                 self.accelerator.backward(loss)
 
@@ -631,8 +630,7 @@ class AureliusTrainer:
         for batch in self.val_dataloader:
             input_ids = batch["input_ids"]
             labels = batch.get("labels", input_ids)
-            outputs = self.model(input_ids=input_ids, labels=labels)
-            loss = outputs.loss if hasattr(outputs, "loss") else outputs["loss"]
+            loss, _, _ = self.model(input_ids=input_ids, labels=labels)
             total_loss += loss.float().item()
             n_batches += 1
 
