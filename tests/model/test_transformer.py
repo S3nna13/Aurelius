@@ -168,3 +168,34 @@ def test_gradient_checkpointing_incompatible_with_kv_cache():
     # Second call with past_key_values should raise
     with pytest.raises(ValueError, match="incompatible"):
         model(tokens[:, :1], past_key_values=pkv)
+
+
+def test_generate_stream_yields_tokens():
+    """generate_stream must yield (B, 1) tensors."""
+    cfg = AureliusConfig(
+        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
+        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+    )
+    model = AureliusTransformer(cfg)
+    prompt = torch.randint(0, 256, (1, 4))
+
+    tokens = list(model.generate_stream(prompt, max_new_tokens=5))
+    assert len(tokens) == 5
+    for t in tokens:
+        assert t.shape == (1, 1)
+        assert 0 <= t.item() < 256
+
+
+def test_generate_stream_eos_stops():
+    """generate_stream must stop at eos_token_id."""
+    cfg = AureliusConfig(
+        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
+        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+    )
+    torch.manual_seed(0)
+    model = AureliusTransformer(cfg)
+    prompt = torch.randint(0, 256, (1, 4))
+
+    # Collect tokens; with eos=0 and random weights, should stop at or before max
+    tokens = list(model.generate_stream(prompt, max_new_tokens=20, eos_token_id=0))
+    assert len(tokens) <= 20

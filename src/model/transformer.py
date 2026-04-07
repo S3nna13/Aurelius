@@ -223,6 +223,61 @@ class AureliusTransformer(nn.Module):
 
         return input_ids
 
+    @torch.no_grad()
+    def generate_stream(
+        self,
+        input_ids: torch.Tensor,
+        max_new_tokens: int = 256,
+        temperature: float = 1.0,
+        top_p: float = 0.9,
+        eos_token_id: int | None = None,
+    ) -> "Iterator[torch.Tensor]":
+        """Autoregressive generation yielding one token at a time.
+
+        Same algorithm as generate(), but yields each new token as it is
+        produced instead of returning the full sequence at the end.
+
+        Args:
+            input_ids: (batch, prompt_len) — prompt token ids.
+            max_new_tokens: Maximum tokens to generate.
+            temperature: Sampling temperature.
+            top_p: Nucleus sampling threshold.
+            eos_token_id: Stop generation when this token is produced.
+
+        Yields:
+            (batch, 1) token id tensor for each generated token.
+        """
+        from typing import Iterator
+        import torch.nn.functional as F
+
+        B, _ = input_ids.shape
+        past_key_values = None
+        cur_ids = input_ids
+
+        for _ in range(max_new_tokens):
+            _, logits, past_key_values = self(cur_ids, past_key_values=past_key_values)
+            next_logits = logits[:, -1, :]
+
+            if temperature != 1.0:
+                next_logits = next_logits / temperature
+
+            # Top-p nucleus sampling (same as generate())
+            sorted_logits, sorted_indices = torch.sort(next_logits, descending=False)
+            cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
+            sorted_mask = cumulative_probs <= (1.0 - top_p)
+            sorted_mask[..., -1:] = False
+            mask = sorted_mask.scatter(1, sorted_indices, sorted_mask)
+            next_logits = next_logits.masked_fill(mask, float("-inf"))
+
+            next_token = torch.multinomial(next_logits.softmax(dim=-1), num_samples=1)  # (B, 1)
+
+            yield next_token
+
+            cur_ids = next_token
+
+            if eos_token_id is not None and (next_token == eos_token_id).all():
+                return
+
     def count_parameters(self, *, count_embeddings: bool = True) -> dict[str, int]:
         """Count model parameters broken down by component.
 
