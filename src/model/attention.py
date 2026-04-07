@@ -19,13 +19,82 @@ def precompute_rope_frequencies(
     max_seq_len: int,
     theta: float = 500_000.0,
     device: torch.device | None = None,
+    rope_scaling_type: str = "none",
+    rope_scaling_factor: float = 1.0,
+    yarn_original_max_seq_len: int = 8192,
+    yarn_beta_fast: float = 32.0,
+    yarn_beta_slow: float = 1.0,
 ) -> torch.Tensor:
     """Precompute the complex-valued RoPE frequency tensor.
+
+    Supports optional context extension via rope_scaling_type:
+      - "none" / "linear": standard RoPE (linear divides freq by factor)
+      - "ntk": NTK-aware scaling — scales the RoPE base
+      - "yarn": piecewise NTK-aware (YaRN) scaling for long-context extension
 
     Returns:
         Complex tensor of shape (max_seq_len, head_dim // 2).
     """
-    freqs = 1.0 / (theta ** (torch.arange(0, head_dim, 2, device=device).float() / head_dim))
+    half_dim = head_dim // 2
+
+    if rope_scaling_type in ("none", "linear"):
+        # Standard RoPE; linear interpolation is equivalent to dividing frequencies
+        effective_theta = theta
+        freqs = 1.0 / (
+            effective_theta ** (torch.arange(0, head_dim, 2, device=device).float() / head_dim)
+        )
+        if rope_scaling_type == "linear" and rope_scaling_factor != 1.0:
+            freqs = freqs / rope_scaling_factor
+
+    elif rope_scaling_type == "ntk":
+        # NTK-aware scaling: scale the base so high-freq dims are unaffected
+        # theta_new = theta * factor^(d/(d-2))
+        scaled_theta = theta * (rope_scaling_factor ** (head_dim / (head_dim - 2)))
+        freqs = 1.0 / (
+            scaled_theta ** (torch.arange(0, head_dim, 2, device=device).float() / head_dim)
+        )
+
+    elif rope_scaling_type == "yarn":
+        # YaRN: piecewise NTK-aware scaling (Peng et al., 2023)
+        # Compute base (unscaled) frequencies
+        dim_indices = torch.arange(0, head_dim, 2, device=device).float()
+        freqs_base = 1.0 / (theta ** (dim_indices / head_dim))
+
+        # Compute NTK-scaled frequencies (scaled base)
+        scaled_theta = theta * (rope_scaling_factor ** (head_dim / (head_dim - 2)))
+        freqs_ntk = 1.0 / (scaled_theta ** (dim_indices / head_dim))
+
+        # Linear-interpolated frequencies: divide by scale factor
+        freqs_linear = freqs_base / rope_scaling_factor
+
+        # Period of each dimension: lambda_i = 2*pi / freq_i
+        # Boundaries: high-freq if lambda_i < 2*pi*beta_fast/factor
+        #             low-freq  if lambda_i > 2*pi*beta_slow/factor
+        lambda_i = 2.0 * math.pi / freqs_base  # period in positions
+
+        high_freq_thresh = 2.0 * math.pi * yarn_beta_fast / rope_scaling_factor
+        low_freq_thresh = 2.0 * math.pi * yarn_beta_slow / rope_scaling_factor
+
+        # Blend factor: 0 = fully NTK (low-freq), 1 = fully linear (high-freq)
+        # Middle band: smooth interpolation based on position within [low, high]
+        blend = torch.zeros_like(freqs_base)
+        high_mask = lambda_i < high_freq_thresh          # pure linear interp
+        low_mask = lambda_i > low_freq_thresh            # pure NTK
+        mid_mask = ~high_mask & ~low_mask                # smooth blend
+
+        blend[high_mask] = 1.0
+        blend[low_mask] = 0.0
+        if mid_mask.any():
+            # Linearly interpolate blend within the middle band
+            lam_mid = lambda_i[mid_mask]
+            t = (lam_mid - low_freq_thresh) / (high_freq_thresh - low_freq_thresh)
+            blend[mid_mask] = t.clamp(0.0, 1.0)
+
+        freqs = blend * freqs_linear + (1.0 - blend) * freqs_ntk
+
+    else:
+        raise ValueError(f"Unknown rope_scaling_type: {rope_scaling_type!r}")
+
     positions = torch.arange(max_seq_len, device=device).float()
     # outer product: (seq_len, head_dim // 2)
     angles = torch.outer(positions, freqs)

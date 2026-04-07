@@ -1,0 +1,18 @@
+# YaRN fine-tuning: extend context from 8K to 128K
+# ~400 steps, small LR, continuation from pretrained checkpoint
+
+model:
+  rope_scaling_type: "yarn"
+  rope_scaling_factor: 16.0
+  yarn_original_max_seq_len: 8192
+  yarn_beta_fast: 32.0
+  yarn_beta_slow: 1.0
+  max_seq_length: 131072
+
+training:
+  learning_rate: 2e-5
+  num_steps: 400
+  warmup_steps: 20
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 16
+  checkpoint: "checkpoints/aurelius-1.3b-sft/final"

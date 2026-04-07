@@ -26,6 +26,13 @@ class AureliusConfig:
     # RoPE
     rope_theta: float = 500_000.0
 
+    # RoPE scaling (YaRN / NTK / linear context extension)
+    rope_scaling_type: str = "none"          # "none", "linear", "ntk", "yarn"
+    rope_scaling_factor: float = 1.0         # e.g. 16.0 for 8K → 128K
+    yarn_original_max_seq_len: int = 8192    # original trained context length
+    yarn_beta_fast: float = 32.0             # high-freq boundary
+    yarn_beta_slow: float = 1.0              # low-freq boundary
+
     # Normalization
     rms_norm_eps: float = 1e-6
 
