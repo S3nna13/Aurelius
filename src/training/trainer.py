@@ -26,6 +26,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Dataset
 
 from src.training.muon import Muon
+from src.training.zclip import ZClip
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,11 @@ class TrainConfig:
     use_muon: bool = True   # Use Muon for matrix params + AdamW for embeddings
     muon_lr: float = 0.02   # Muon learning rate (much higher than AdamW's 3e-4)
     muon_momentum: float = 0.95
+
+    # ZClip (adaptive gradient clipping)
+    use_zclip: bool = False
+    zclip_z_threshold: float = 2.5
+    zclip_ema_alpha: float = 0.01
 
     # DeepSpeed
     deepspeed_config: str | None = None
@@ -379,6 +385,19 @@ class AureliusTrainer:
             max_checkpoints=cfg.max_checkpoints,
         )
 
+        # ZClip (adaptive gradient clipping, opt-in)
+        self.zclip: ZClip | None = None
+        if cfg.use_zclip:
+            self.zclip = ZClip(
+                params=list(self.model.parameters()),
+                z_threshold=cfg.zclip_z_threshold,
+                ema_alpha=cfg.zclip_ema_alpha,
+            )
+            logger.info(
+                "ZClip enabled: z_threshold=%.1f, ema_alpha=%.4f",
+                cfg.zclip_z_threshold, cfg.zclip_ema_alpha,
+            )
+
         # Training state
         self.global_step: int = 0
         self.tokens_seen: int = 0
@@ -537,9 +556,12 @@ class AureliusTrainer:
 
                 # Gradient clipping
                 if self.accelerator.sync_gradients:
-                    self.accelerator.clip_grad_norm_(
-                        self.model.parameters(), self.cfg.max_grad_norm,
-                    )
+                    if self.zclip is not None:
+                        self.zclip.clip_grad_norm_(self.model.parameters())
+                    else:
+                        self.accelerator.clip_grad_norm_(
+                            self.model.parameters(), self.cfg.max_grad_norm,
+                        )
 
                 if self.muon_optimizer is not None:
                     self.muon_optimizer.step()
