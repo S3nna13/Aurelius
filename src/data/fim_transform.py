@@ -196,6 +196,13 @@ def fim_transform_batch(
     return results
 
 
+def apply_fim(text: str, seed: int = 42) -> str:
+    """Convenience wrapper: apply FIM and return the transformed string."""
+    rng = random.Random(seed)
+    result = fim_transform(text, rng=rng)
+    return result.text
+
+
 def fim_transform_stream(
     texts: Iterator[str],
     *,

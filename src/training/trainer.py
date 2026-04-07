@@ -25,6 +25,8 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Dataset
 
+from src.training.muon import Muon
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,6 +83,11 @@ class TrainConfig:
     num_workers: int = 8
     pin_memory: bool = True
 
+    # Optimizer variant
+    use_muon: bool = True   # Use Muon for matrix params + AdamW for embeddings
+    muon_lr: float = 0.02   # Muon learning rate (much higher than AdamW's 3e-4)
+    muon_momentum: float = 0.95
+
     # DeepSpeed
     deepspeed_config: str | None = None
 
@@ -128,6 +135,9 @@ class TrainConfig:
             deepspeed_config=raw.get("deepspeed", {}).get("config_file"),
             seed=raw.get("training", {}).get("seed", cls.seed),
             total_tokens=raw.get("training", {}).get("total_tokens", cls.total_tokens),
+            use_muon=raw.get("optimizer", {}).get("use_muon", cls.use_muon),
+            muon_lr=raw.get("optimizer", {}).get("muon_lr", cls.muon_lr),
+            muon_momentum=raw.get("optimizer", {}).get("muon_momentum", cls.muon_momentum),
         )
 
 
@@ -313,7 +323,15 @@ class AureliusTrainer:
 
         # Optimizer
         self.optimizer = self._build_optimizer()
-        self.scheduler = build_scheduler(self.optimizer, cfg)
+        # For Muon+AdamW pair, schedule only the AdamW optimizer
+        if isinstance(self.optimizer, list):
+            self.scheduler = build_scheduler(self.optimizer[1], cfg)  # AdamW
+            self.muon_optimizer = self.optimizer[0]
+            self.adamw_optimizer = self.optimizer[1]
+        else:
+            self.scheduler = build_scheduler(self.optimizer, cfg)
+            self.muon_optimizer = None
+            self.adamw_optimizer = self.optimizer
 
         # Accelerator (handles device placement, mixed precision, DeepSpeed)
         ds_plugin = None
@@ -331,14 +349,27 @@ class AureliusTrainer:
         )
 
         # Prepare with Accelerate
-        (
-            self.model,
-            self.optimizer,
-            self.train_dataloader,
-            self.scheduler,
-        ) = self.accelerator.prepare(
-            self.model, self.optimizer, self.train_dataloader, self.scheduler,
-        )
+        if isinstance(self.optimizer, list):
+            (
+                self.model,
+                self.muon_optimizer,
+                self.adamw_optimizer,
+                self.train_dataloader,
+                self.scheduler,
+            ) = self.accelerator.prepare(
+                self.model, self.muon_optimizer, self.adamw_optimizer,
+                self.train_dataloader, self.scheduler,
+            )
+            self.optimizer = [self.muon_optimizer, self.adamw_optimizer]
+        else:
+            (
+                self.model,
+                self.optimizer,
+                self.train_dataloader,
+                self.scheduler,
+            ) = self.accelerator.prepare(
+                self.model, self.optimizer, self.train_dataloader, self.scheduler,
+            )
         if self.val_dataloader is not None:
             self.val_dataloader = self.accelerator.prepare(self.val_dataloader)
 
@@ -353,8 +384,19 @@ class AureliusTrainer:
         self.tokens_seen: int = 0
         self.best_val_loss: float = float("inf")
 
-    def _build_optimizer(self) -> AdamW:
-        """Build AdamW with weight-decay exclusion for bias/norm params."""
+    def _build_optimizer(self) -> AdamW | list:
+        """Build optimizer(s).
+
+        When use_muon=True: returns a list [Muon, AdamW] — Muon for 2D weight
+        matrices in transformer layers, AdamW for embeddings and 1D params.
+        When use_muon=False: returns a single AdamW.
+        """
+        if self.cfg.use_muon:
+            return self._build_muon_adamw()
+        return self._build_adamw()
+
+    def _build_adamw(self) -> AdamW:
+        """Build standard AdamW with weight-decay exclusion for bias/norm params."""
         decay_params: list[torch.nn.Parameter] = []
         no_decay_params: list[torch.nn.Parameter] = []
 
@@ -375,6 +417,53 @@ class AureliusTrainer:
             betas=(self.cfg.beta1, self.cfg.beta2),
             eps=self.cfg.eps,
         )
+
+    def _build_muon_adamw(self) -> list:
+        """Build [Muon, AdamW] optimizer pair.
+
+        Muon: all 2D weight matrices in transformer projection layers.
+        AdamW: embeddings, normalization weights, lm_head, 1D params.
+        """
+        muon_params: list[torch.nn.Parameter] = []
+        adamw_decay: list[torch.nn.Parameter] = []
+        adamw_no_decay: list[torch.nn.Parameter] = []
+
+        muon_target_suffixes = (
+            "q_proj.weight", "k_proj.weight", "v_proj.weight", "o_proj.weight",
+            "gate_proj.weight", "up_proj.weight", "down_proj.weight",
+        )
+
+        for name, param in self.model.named_parameters():
+            if not param.requires_grad:
+                continue
+            if param.ndim >= 2 and any(name.endswith(s) for s in muon_target_suffixes):
+                muon_params.append(param)
+            elif "bias" in name or "norm" in name or "ln" in name or param.ndim < 2:
+                adamw_no_decay.append(param)
+            else:
+                adamw_decay.append(param)
+
+        muon_opt = Muon(
+            muon_params,
+            lr=self.cfg.muon_lr,
+            momentum=self.cfg.muon_momentum,
+            weight_decay=self.cfg.weight_decay,
+        )
+        adamw_opt = AdamW(
+            [
+                {"params": adamw_decay, "weight_decay": self.cfg.weight_decay},
+                {"params": adamw_no_decay, "weight_decay": 0.0},
+            ],
+            lr=self.cfg.lr,
+            betas=(self.cfg.beta1, self.cfg.beta2),
+            eps=self.cfg.eps,
+        )
+        logger.info(
+            "Muon: %d params | AdamW: %d params",
+            sum(p.numel() for p in muon_params),
+            sum(p.numel() for p in adamw_decay) + sum(p.numel() for p in adamw_no_decay),
+        )
+        return [muon_opt, adamw_opt]
 
     def _compute_grad_accum_steps(self) -> int:
         """Derive gradient accumulation steps from global batch config."""
@@ -452,9 +541,12 @@ class AureliusTrainer:
                         self.model.parameters(), self.cfg.max_grad_norm,
                     )
 
-                self.optimizer.step()
+                if self.muon_optimizer is not None:
+                    self.muon_optimizer.step()
+                    self.muon_optimizer.zero_grad()
+                self.adamw_optimizer.step()
                 self.scheduler.step()
-                self.optimizer.zero_grad()
+                self.adamw_optimizer.zero_grad()
 
             step_loss_accum += loss.detach().float().item()
             micro_steps_in_accum += 1
@@ -525,7 +617,7 @@ class AureliusTrainer:
         if self.accelerator.is_main_process:
             self.ckpt_mgr.save(
                 model=self.model,
-                optimizer=self.optimizer,
+                optimizer=self.adamw_optimizer,  # save AdamW state (Muon state is momentum buffers only)
                 scheduler=self.scheduler,
                 step=self.global_step,
                 tokens_seen=self.tokens_seen,

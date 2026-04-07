@@ -40,6 +40,7 @@ from datatrove.pipeline.filters import (
     FineWebQualityFilter,
     GopherQualityFilter,
     LanguageFilter,
+    LambdaFilter,
 )
 from datatrove.pipeline.readers import ParquetReader, JsonlReader
 from datatrove.pipeline.writers import ParquetWriter
@@ -70,6 +71,12 @@ class PipelineConfig:
     minhash_ngram_size: int = 5
     minhash_num_buckets: int = 14
     minhash_hashes_per_bucket: int = 8
+
+    # FineWeb-Edu quality score filter
+    # Documents scored 0-5 by Llama-3-70B for educational quality.
+    # >= 3.0 matches FineWeb-Edu's default threshold (8x token reduction).
+    # Set to 0.0 to disable (e.g. for non-FineWeb-Edu data).
+    edu_score_min: float = 3.0
 
     # Executor
     tasks: int = 64
@@ -123,6 +130,10 @@ def build_filter_pipeline(
         GopherQualityFilter(),
         C4QualityFilter(),
         FineWebQualityFilter(),
+        LambdaFilter(
+            filter_function=lambda doc: doc.metadata.get("int_score", doc.metadata.get("score", 0)) >= config.edu_score_min,
+            name="EduScoreFilter",
+        ),
         ParquetWriter(
             output_folder=intermediate_output,
             max_file_size=5 * 2**30,  # 5 GiB per shard

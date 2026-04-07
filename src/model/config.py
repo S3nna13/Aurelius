@@ -35,6 +35,15 @@ class AureliusConfig:
     # Embedding
     tie_embeddings: bool = True
 
+    # NoPE: remove RoPE from every N-th layer (SmolLM3 technique)
+    # 0 = disabled, 4 = every 4th layer (25% NoPE, matching SmolLM3's 3:1 ratio)
+    nope_every_n_layers: int = 0
+
+    # Differential Attention (ICLR 2025, Microsoft Research)
+    # Computes two attention maps and takes their difference to cancel noise
+    use_diff_attn: bool = False
+    diff_attn_lambda_init: float = 0.8  # initial λ value
+
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (
             f"d_model ({self.d_model}) must equal n_heads ({self.n_heads}) "

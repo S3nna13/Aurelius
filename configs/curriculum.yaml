@@ -1,0 +1,75 @@
+# =============================================================================
+# Aurelius 1.3B — 3-Stage Training Curriculum
+# Based on SmolLM3 (HuggingFace, 2025) and scaling law research
+#
+# Each stage shifts the data mixture toward higher-quality, specialized data.
+# The model learns broad language understanding first, then specializes in
+# code and math which require more tokens to acquire.
+# =============================================================================
+
+stages:
+  # ── Stage 1: Foundation (0 → 220B tokens) ──────────────────────────────────
+  # Broad web data for language modeling fundamentals.
+  # High web ratio ensures diverse vocabulary, grammar, world knowledge.
+  - name: "foundation"
+    token_range: [0, 220_000_000_000]
+    token_budget: 220_000_000_000
+    data_mix:
+      web:           0.85   # FineWeb-Edu (edu_score >= 3)
+      code:          0.12   # The Stack v2 (16 languages)
+      math:          0.03   # OpenWebMath
+
+    lr_schedule:
+      warmup_steps: 2000
+      peak_lr: 3.0e-4
+      min_lr: 3.0e-5
+      schedule: "cosine"
+
+  # ── Stage 2: Specialization (220B → 280B tokens) ────────────────────────────
+  # Shift toward code and math. Web ratio drops; code+math nearly double.
+  # Teaches multi-step reasoning and structured problem solving.
+  - name: "specialization"
+    token_range: [220_000_000_000, 280_000_000_000]
+    token_budget: 60_000_000_000
+    data_mix:
+      web:           0.65   # FineWeb-Edu
+      code:          0.20   # The Stack v2 + GitHub issues + Jupyter notebooks
+      math:          0.15   # OpenWebMath + AMPS + Proof-Pile-2
+
+    lr_schedule:
+      warmup_steps: 0       # continue from stage 1 LR
+      peak_lr: 1.5e-4       # slightly lower for stable specialization
+      min_lr: 3.0e-5
+      schedule: "cosine"
+
+  # ── Stage 3: Sharpening (280B → 300B tokens) ────────────────────────────────
+  # Final push: high-quality curated data for benchmark improvement.
+  # Lower web ratio; code+math at 60% for strong final performance.
+  - name: "sharpening"
+    token_range: [280_000_000_000, 300_000_000_000]
+    token_budget: 20_000_000_000
+    data_mix:
+      web:           0.40   # FineWeb-Edu (strictest filter: score >= 4)
+      code:          0.30   # The Stack v2 high-quality subset
+      math:          0.30   # OpenWebMath + competition math
+
+    lr_schedule:
+      warmup_steps: 0
+      peak_lr: 5.0e-5       # low LR for stable final training
+      min_lr: 1.0e-5
+      schedule: "cosine"
+
+# ── Expected benchmark trajectories ──────────────────────────────────────────
+# After stage 1 (~220B): MMLU ~37%, HellaSwag ~60%, ARC ~47%
+# After stage 2 (~280B): MMLU ~41%, HellaSwag ~67%, GSM8K ~22%
+# After stage 3 (~300B): MMLU ~44%, HellaSwag ~70%, GSM8K ~28%, HumanEval ~27%
+#
+# Post-training (SFT + GRPO) expected gains:
+#   MMLU: +2-4%, GSM8K: +15-25%, HumanEval: +8-15%
+
+# ── Implementation notes ─────────────────────────────────────────────────────
+# - Use intra-document masking (src/data/packing.py) throughout all stages
+# - FineWeb-Edu edu_score_min: stages 1&2 use >= 3.0, stage 3 uses >= 4.0
+# - Each stage saves a checkpoint: stage1_final, stage2_final, stage3_final
+# - Stage boundaries can be adjusted based on validation loss curves
+# - Total: 300B tokens at 2M tokens/step = 150,000 steps

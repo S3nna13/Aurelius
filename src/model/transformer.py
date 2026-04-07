@@ -14,10 +14,22 @@ from .rms_norm import RMSNorm
 class TransformerBlock(nn.Module):
     """Single decoder layer: pre-norm attention + pre-norm FFN with residuals."""
 
-    def __init__(self, config: AureliusConfig) -> None:
+    def __init__(self, config: AureliusConfig, layer_idx: int = 0) -> None:
         super().__init__()
+        self.layer_idx = layer_idx
+
+        # Determine if this layer uses RoPE
+        nope = config.nope_every_n_layers
+        apply_rope = True if nope == 0 else ((layer_idx + 1) % nope != 0)
+
+        # Select attention class
+        if config.use_diff_attn:
+            from .attention import DifferentialAttention
+            self.attn = DifferentialAttention(config, apply_rope=apply_rope)
+        else:
+            self.attn = GroupedQueryAttention(config, apply_rope=apply_rope)
+
         self.attn_norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
-        self.attn = GroupedQueryAttention(config)
         self.ffn_norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
         self.ffn = SwiGLUFFN(config)
 
@@ -54,7 +66,7 @@ class AureliusTransformer(nn.Module):
 
         # Transformer blocks
         self.layers = nn.ModuleList(
-            [TransformerBlock(self.config) for _ in range(self.config.n_layers)]
+            [TransformerBlock(self.config, layer_idx=i) for i in range(self.config.n_layers)]
         )
 
         # Final norm
