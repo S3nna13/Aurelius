@@ -14,12 +14,16 @@ def test_simpo_chosen_higher_reward_lower_loss():
 
 
 def test_simpo_rejected_higher_logp_high_loss():
-    """When rejected logp > chosen logp, loss should be > 1.0."""
+    """When rejected logp >> chosen logp, loss should be large (> 5.0 for this input).
+
+    With chosen=-5.0, rejected=-0.5, beta=2.0, gamma=0.5 the margin is ~-9.5
+    and loss = -log sigmoid(-9.5) ≈ 9.5.
+    """
     chosen_logps = torch.tensor([-5.0, -4.8])
     rejected_logps = torch.tensor([-0.5, -0.4])
     loss_fn = SimPOLoss(beta=2.0, gamma=0.5)
     loss, chosen_rewards, rejected_rewards = loss_fn(chosen_logps, rejected_logps)
-    assert loss.item() > 1.0
+    assert loss.item() > 5.0
 
 
 def test_simpo_margin_gamma_effect():

@@ -37,6 +37,8 @@ class SimPOLoss(nn.Module):
         gamma: float = 0.5,
         label_smoothing: float = 0.0,
     ) -> None:
+        if not 0.0 <= label_smoothing < 1.0:
+            raise ValueError(f"label_smoothing must be in [0, 1), got {label_smoothing}")
         super().__init__()
         self.beta = beta
         self.gamma = gamma
