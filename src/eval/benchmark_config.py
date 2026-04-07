@@ -102,6 +102,36 @@ HUMANEVAL = BenchmarkSpec(
     description="OpenAI HumanEval — Python code generation (pass@1)",
 )
 
+MATH500 = BenchmarkSpec(
+    name="MATH-500",
+    task="hendrycks/competition_math",
+    metric="exact_match",
+    num_fewshot=4,
+    expected_low=0.05,
+    expected_high=0.20,
+    description="500-problem subset of MATH; tests competition-level math reasoning",
+)
+
+GPQA_DIAMOND = BenchmarkSpec(
+    name="GPQA-Diamond",
+    task="Idavidrein/gpqa",
+    metric="exact_match",
+    num_fewshot=0,
+    expected_low=0.25,
+    expected_high=0.38,
+    description="198 expert-level science questions (PhD-level); tests deep domain reasoning",
+)
+
+LIVECODEBENCH = BenchmarkSpec(
+    name="LiveCodeBench",
+    task="livecodebench/code_generation_lite",
+    metric="pass@1",
+    num_fewshot=0,
+    expected_low=0.05,
+    expected_high=0.18,
+    description="Contamination-free coding problems from competitive programming sites",
+)
+
 
 # Ordered list used by the evaluation harness.
 ALL_BENCHMARKS: list[BenchmarkSpec] = [
@@ -111,6 +141,9 @@ ALL_BENCHMARKS: list[BenchmarkSpec] = [
     TRUTHFULQA,
     GSM8K,
     HUMANEVAL,
+    MATH500,
+    GPQA_DIAMOND,
+    LIVECODEBENCH,
 ]
 
 BENCHMARK_BY_NAME: dict[str, BenchmarkSpec] = {b.name: b for b in ALL_BENCHMARKS}
