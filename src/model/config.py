@@ -26,6 +26,11 @@ class AureliusConfig:
     # RoPE
     rope_theta: float = 500_000.0
 
+    # RoPE scaling for context extension
+    rope_scaling_type: str = "none"   # "none" or "yarn"
+    rope_scaling_factor: float = 1.0  # scale factor for YaRN (e.g., 4.0 for 4x extension)
+    rope_original_max_seq_len: int = 8192  # original training context length
+
     # Normalization
     rms_norm_eps: float = 1e-6
 

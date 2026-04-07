@@ -31,6 +31,69 @@ def precompute_rope_frequencies(
     return torch.polar(torch.ones_like(angles), angles)  # complex64
 
 
+def yarn_rope_frequencies(
+    head_dim: int,
+    max_seq_len: int,
+    theta: float = 500_000.0,
+    scale: float = 4.0,
+    original_max_seq_len: int = 8192,
+    beta_low: float = 1.0,
+    beta_high: float = 32.0,
+    device: torch.device | None = None,
+) -> torch.Tensor:
+    """Precompute RoPE frequency tensor with YaRN context extension.
+
+    YaRN (Yet another RoPE extensioN) applies dimension-dependent frequency
+    scaling, enabling context extension beyond the original training length.
+
+    Args:
+        head_dim: Attention head dimension.
+        max_seq_len: New (extended) maximum sequence length.
+        theta: RoPE theta base.
+        scale: Context extension factor (e.g., 4 = 4x longer context).
+        original_max_seq_len: Original training context length (before extension).
+        beta_low: Lower ramp boundary (wavelengths relative to original_max_seq_len).
+        beta_high: Upper ramp boundary.
+        device: Target device.
+
+    Returns:
+        Complex tensor of shape (max_seq_len, head_dim // 2).
+    """
+    # Number of frequency pairs
+    half_dim = head_dim // 2
+
+    # Dimension indices: 0, 2, 4, ..., head_dim-2  →  k = 0, 1, ..., half_dim-1
+    k = torch.arange(0, half_dim, device=device).float()
+
+    # Base frequencies: 1 / theta^(2k/head_dim)
+    base_freqs = 1.0 / (theta ** (2 * k / head_dim))
+
+    # Wavelength of each dimension relative to original context:
+    # wavelength_k = 2π / base_freqs[k]
+    # relative_wavelength = wavelength_k / original_max_seq_len
+    wavelengths = 2 * torch.pi / base_freqs  # (half_dim,)
+    relative = wavelengths / original_max_seq_len  # (half_dim,)
+
+    # Ramp function γ(k): 0 for low-freq (extrapolate), 1 for high-freq (interpolate)
+    # γ = clamp((relative - beta_high) / (beta_low - beta_high), 0, 1)
+    gamma = ((relative - beta_high) / (beta_low - beta_high)).clamp(0.0, 1.0)
+
+    # Apply YaRN scaling:
+    # - Interpolation (high γ): divide frequency by scale (positions scaled by 1/s)
+    # - Extrapolation (low γ): keep frequency unchanged
+    # Blend: scaled_freq = (1 - γ) * base_freq + γ * (base_freq / scale)
+    # Equivalently: scaled_freq = base_freq * (1 - γ * (1 - 1/scale))
+    scaled_freqs = base_freqs * (1.0 - gamma * (1.0 - 1.0 / scale))
+
+    # Compute positions for the extended context
+    positions = torch.arange(max_seq_len, device=device).float()
+
+    # Outer product: (max_seq_len, half_dim)
+    angles = torch.outer(positions, scaled_freqs)
+
+    return torch.polar(torch.ones_like(angles), angles)  # complex64
+
+
 def apply_rope(
     x: torch.Tensor,
     freqs_cis: torch.Tensor,

@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint as ckpt
 
-from .attention import GroupedQueryAttention, precompute_rope_frequencies
+from .attention import GroupedQueryAttention, precompute_rope_frequencies, yarn_rope_frequencies
 from .config import AureliusConfig
 from .ffn import SwiGLUFFN
 from .rms_norm import RMSNorm
@@ -71,15 +71,22 @@ class AureliusTransformer(nn.Module):
             self.lm_head.weight = self.embed.weight
 
         # Precompute RoPE frequencies (buffer — not a parameter, moves with .to())
-        self.register_buffer(
-            "freqs_cis",
-            precompute_rope_frequencies(
+        if self.config.rope_scaling_type == "yarn":
+            freqs = yarn_rope_frequencies(
                 self.config.head_dim,
                 self.config.max_seq_len,
                 self.config.rope_theta,
-            ),
-            persistent=False,
-        )
+                scale=self.config.rope_scaling_factor,
+                original_max_seq_len=self.config.rope_original_max_seq_len,
+            )
+        else:
+            freqs = precompute_rope_frequencies(
+                self.config.head_dim,
+                self.config.max_seq_len,
+                self.config.rope_theta,
+            )
+
+        self.register_buffer("freqs_cis", freqs, persistent=False)
 
         # Initialize weights
         self._init_weights()
