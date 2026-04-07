@@ -10,7 +10,7 @@ Each benchmark defines:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,18 +25,6 @@ class BenchmarkSpec:
     expected_high: float
     description: str = ""
     subset: str = ""           # dataset subset/config (empty = default)
-
-    def in_expected_range(self, score: float) -> bool:
-        """Return ``True`` if *score* falls within the expected range."""
-        return self.expected_low <= score <= self.expected_high
-
-    def status_label(self, score: float) -> str:
-        """Human-readable status string for a given score."""
-        if score < self.expected_low:
-            return "BELOW_EXPECTED"
-        if score > self.expected_high:
-            return "ABOVE_EXPECTED"
-        return "IN_RANGE"
 
 
 # ---------------------------------------------------------------------------
@@ -149,35 +137,3 @@ ALL_BENCHMARKS: list[BenchmarkSpec] = [
 ]
 
 BENCHMARK_BY_NAME: dict[str, BenchmarkSpec] = {b.name: b for b in ALL_BENCHMARKS}
-
-
-# ---------------------------------------------------------------------------
-# Aggregate helpers
-# ---------------------------------------------------------------------------
-
-@dataclass
-class BenchmarkResult:
-    """Result of running a single benchmark against a checkpoint."""
-
-    benchmark: BenchmarkSpec
-    score: float
-    checkpoint_path: str
-    checkpoint_step: int | None = None
-    raw_results: dict = field(default_factory=dict)
-
-    @property
-    def status(self) -> str:
-        return self.benchmark.status_label(self.score)
-
-    @property
-    def in_range(self) -> bool:
-        return self.benchmark.in_expected_range(self.score)
-
-    def summary_line(self) -> str:
-        pct = self.score * 100
-        low_pct = self.benchmark.expected_low * 100
-        high_pct = self.benchmark.expected_high * 100
-        return (
-            f"{self.benchmark.name:20s}  {pct:5.1f}%  "
-            f"(expected {low_pct:.0f}-{high_pct:.0f}%)  [{self.status}]"
-        )

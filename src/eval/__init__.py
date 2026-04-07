@@ -1,6 +1,5 @@
 from .benchmark_config import (
     BenchmarkSpec,
-    BenchmarkResult,
     ALL_BENCHMARKS,
     BENCHMARK_BY_NAME,
     MMLU,
@@ -16,7 +15,6 @@ from .benchmark_config import (
 
 __all__ = [
     "BenchmarkSpec",
-    "BenchmarkResult",
     "ALL_BENCHMARKS",
     "BENCHMARK_BY_NAME",
     "MMLU",

@@ -8,10 +8,8 @@ from __future__ import annotations
 
 import json
 import logging
-import subprocess
-import sys
 import time
-from dataclasses import asdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -19,13 +17,40 @@ from typing import Any
 from src.eval.benchmark_config import (
     ALL_BENCHMARKS,
     BENCHMARK_BY_NAME,
-    BenchmarkResult,
     BenchmarkSpec,
 )
 
 logger = logging.getLogger(__name__)
 
 RESULTS_DIR = Path("./results")
+
+
+@dataclass
+class BenchmarkResult:
+    """Result of running a single benchmark against a checkpoint."""
+
+    benchmark: BenchmarkSpec
+    score: float
+    checkpoint_path: str
+    checkpoint_step: int | None = None
+    raw_results: dict = field(default_factory=dict)
+
+    @property
+    def status(self) -> str:
+        if self.score < self.benchmark.expected_low:
+            return "BELOW_EXPECTED"
+        if self.score > self.benchmark.expected_high:
+            return "ABOVE_EXPECTED"
+        return "IN_RANGE"
+
+    def summary_line(self) -> str:
+        pct = self.score * 100
+        low_pct = self.benchmark.expected_low * 100
+        high_pct = self.benchmark.expected_high * 100
+        return (
+            f"{self.benchmark.name:20s}  {pct:5.1f}%  "
+            f"(expected {low_pct:.0f}-{high_pct:.0f}%)  [{self.status}]"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -115,9 +140,7 @@ class EvalHarness:
                 "  %s  (%.1fs elapsed)", result.summary_line(), elapsed,
             )
 
-        # Persist to disk.
         self._save_results(results, checkpoint_path, checkpoint_step)
-        self._update_trend_log(results, checkpoint_path, checkpoint_step)
 
         return results
 
@@ -137,25 +160,6 @@ class EvalHarness:
                 len(below),
                 ", ".join(r.benchmark.name for r in below),
             )
-
-    def load_trend(self, benchmark_name: str | None = None) -> list[dict[str, Any]]:
-        """Load the trend log, optionally filtered to one benchmark.
-
-        Returns a list of dicts with keys: ``timestamp``, ``checkpoint_step``,
-        ``benchmark``, ``score``, ``status``.
-        """
-        trend_path = self.results_dir / "trend_log.jsonl"
-        if not trend_path.exists():
-            return []
-
-        entries: list[dict[str, Any]] = []
-        for line in trend_path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            entry = json.loads(line)
-            if benchmark_name is None or entry.get("benchmark") == benchmark_name:
-                entries.append(entry)
-        return entries
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -182,18 +186,8 @@ class EvalHarness:
         checkpoint_path: Path,
         spec: BenchmarkSpec,
     ) -> dict[str, Any]:
-        """Invoke ``lm_eval`` as a subprocess and return parsed JSON results.
-
-        Falls back to the Python API (``lm_eval.simple_evaluate``) if the CLI
-        is unavailable.
-        """
-        try:
-            return self._run_via_python_api(checkpoint_path, spec)
-        except ImportError:
-            logger.info(
-                "lm_eval Python package not importable; falling back to CLI"
-            )
-            return self._run_via_cli(checkpoint_path, spec)
+        """Invoke ``lm_eval`` via the Python API and return parsed results."""
+        return self._run_via_python_api(checkpoint_path, spec)
 
     def _run_via_python_api(
         self,
@@ -212,40 +206,6 @@ class EvalHarness:
             device=self.device,
         )
         return results  # type: ignore[return-value]
-
-    def _run_via_cli(
-        self,
-        checkpoint_path: Path,
-        spec: BenchmarkSpec,
-    ) -> dict[str, Any]:
-        """Invoke lm_eval via the command line."""
-        cmd = [
-            sys.executable, "-m", "lm_eval",
-            "--model", "hf",
-            "--model_args", f"pretrained={checkpoint_path},dtype=bfloat16",
-            "--tasks", spec.task,
-            "--num_fewshot", str(spec.num_fewshot),
-            "--batch_size", self.batch_size,
-            "--device", self.device,
-            "--output_path", str(self.results_dir / "raw"),
-            "--log_samples",
-        ]
-        logger.info("CLI command: %s", " ".join(cmd))
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        # Parse the JSON from stdout (lm_eval prints JSON at the end).
-        for line in reversed(proc.stdout.splitlines()):
-            line = line.strip()
-            if line.startswith("{"):
-                return json.loads(line)  # type: ignore[no-any-return]
-        raise RuntimeError(
-            f"Could not parse lm_eval JSON output for {spec.name}.\n"
-            f"stdout: {proc.stdout[-500:]}\nstderr: {proc.stderr[-500:]}"
-        )
 
     @staticmethod
     def _extract_score(raw: dict[str, Any], spec: BenchmarkSpec) -> float:
@@ -309,34 +269,6 @@ class EvalHarness:
         )
         logger.info("Results saved to %s", out_path)
         return out_path
-
-    def _update_trend_log(
-        self,
-        results: list[BenchmarkResult],
-        checkpoint_path: Path,
-        checkpoint_step: int | None,
-    ) -> None:
-        """Append one JSONL entry per benchmark to the trend log."""
-        trend_path = self.results_dir / "trend_log.jsonl"
-        ts = datetime.now(tz=timezone.utc).isoformat()
-
-        lines: list[str] = []
-        for r in results:
-            entry = {
-                "timestamp": ts,
-                "checkpoint_path": str(checkpoint_path),
-                "checkpoint_step": checkpoint_step,
-                "benchmark": r.benchmark.name,
-                "score": r.score,
-                "status": r.status,
-            }
-            lines.append(json.dumps(entry, ensure_ascii=False))
-
-        with trend_path.open("a", encoding="utf-8") as f:
-            for line in lines:
-                f.write(line + "\n")
-
-        logger.info("Trend log updated at %s (%d entries)", trend_path, len(lines))
 
 
 # ---------------------------------------------------------------------------

@@ -7,15 +7,12 @@ FROM ./models/gguf/aurelius-1.3b-q4_k_m.gguf
 # --- System prompt ---
 SYSTEM """You are Aurelius, a helpful, harmless, and honest AI assistant. Answer questions clearly and concisely. If you are unsure about something, say so rather than guessing. Refuse requests for harmful, illegal, or unethical content."""
 
-# --- ChatML template ---
+# --- Chat template (matches tokenizer_config.json: <|system|>/<|user|>/<|assistant|>/<|end|>) ---
 TEMPLATE """
-{{- if .System }}<|im_start|>system
-{{ .System }}<|im_end|>
+{{- if .System }}<|system|>{{ .System }}<|end|>
 {{ end }}
-{{- range .Messages }}<|im_start|>{{ .Role }}
-{{ .Content }}<|im_end|>
-{{ end }}<|im_start|>assistant
-"""
+{{- range .Messages }}<|{{ .Role }}|>{{ .Content }}<|end|>
+{{ end }}<|assistant|>"""
 
 # --- Generation parameters ---
 PARAMETER temperature 0.7
@@ -27,5 +24,5 @@ PARAMETER num_gpu 1
 PARAMETER num_thread 8
 
 # --- Stop tokens ---
-PARAMETER stop "<|im_end|>"
-PARAMETER stop "<|im_start|>"
+PARAMETER stop "<|end|>"
+PARAMETER stop "<|user|>"
