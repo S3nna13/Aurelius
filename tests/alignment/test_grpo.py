@@ -1,5 +1,8 @@
 """Tests for GRPO alignment config and reward functions."""
 import pytest
+pytest.importorskip("datasets", reason="datasets not installed; skipping GRPO tests")
+pytest.importorskip("peft", reason="peft not installed; skipping GRPO tests")
+pytest.importorskip("trl", reason="trl not installed; skipping GRPO tests")
 from src.alignment.grpo import (
     GRPORunConfig,
     extract_answer,

@@ -4,7 +4,6 @@ from src.data.dataset_config import (
     AURELIUS_MIX,
     ARXIV,
     CODE_LANGUAGES,
-    DataDomain,
     DataMixConfig,
     DatasetSource,
     FINEWEB,
@@ -25,7 +24,6 @@ from src.data.fim_transform import (
     FIMResult,
     fim_transform,
     fim_transform_batch,
-    fim_transform_stream,
 )
 try:
     from src.data.pipeline import PipelineConfig, run_full_pipeline
@@ -37,7 +35,6 @@ __all__ = [
     "AURELIUS_MIX",
     "ARXIV",
     "CODE_LANGUAGES",
-    "DataDomain",
     "DataMixConfig",
     "DatasetSource",
     "FINEWEB",
@@ -57,7 +54,6 @@ __all__ = [
     "FIMResult",
     "fim_transform",
     "fim_transform_batch",
-    "fim_transform_stream",
     # pipeline
     "PipelineConfig",
     "run_full_pipeline",

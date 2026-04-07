@@ -78,25 +78,3 @@ class SimPOLoss(nn.Module):
             loss = nll_loss
 
         return loss.mean(), chosen_rewards, rejected_rewards
-
-
-def compute_simpo_loss(
-    policy_chosen_logps: torch.Tensor,
-    policy_rejected_logps: torch.Tensor,
-    beta: float = 2.0,
-    gamma: float = 0.5,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Functional SimPO loss. Returns (loss, chosen_rewards, rejected_rewards).
-
-    Args:
-        policy_chosen_logps: Average log-probabilities for chosen sequences. Shape: (batch,).
-        policy_rejected_logps: Average log-probabilities for rejected sequences. Shape: (batch,).
-        beta: Scaling factor for the reward signal.
-        gamma: Target reward margin between chosen and rejected.
-
-    Returns:
-        Tuple of (loss, chosen_rewards, rejected_rewards), where loss is a scalar
-        and rewards have shape (batch,).
-    """
-    loss_fn = SimPOLoss(beta=beta, gamma=gamma, label_smoothing=0.0)
-    return loss_fn(policy_chosen_logps, policy_rejected_logps)

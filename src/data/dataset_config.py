@@ -8,18 +8,6 @@ Total budget: 300B tokens (~230x model parameters).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum, auto
-
-
-class DataDomain(Enum):
-    """Broad category for each data source."""
-
-    WEB = auto()
-    CODE = auto()
-    EDUCATION = auto()
-    MATH = auto()
-    REFERENCE = auto()
-    SCIENTIFIC = auto()
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,7 +16,6 @@ class DatasetSource:
 
     name: str
     hf_dataset_id: str
-    domain: DataDomain
     target_tokens_billions: float
     weight: float  # sampling probability during training
     hf_subset: str | None = None
@@ -49,15 +36,6 @@ class DataMixConfig:
     @property
     def total_weight(self) -> float:
         return sum(s.weight for s in self.sources)
-
-    def normalized_weights(self) -> dict[str, float]:
-        """Return source weights normalized to sum to 1.0."""
-        total = self.total_weight
-        return {s.name: s.weight / total for s in self.sources}
-
-    def tokens_per_source(self) -> dict[str, float]:
-        """Return the target token count (in billions) per source."""
-        return {s.name: s.target_tokens_billions for s in self.sources}
 
     def validate(self) -> None:
         """Raise ValueError if the config is internally inconsistent."""
@@ -81,7 +59,6 @@ class DataMixConfig:
 FINEWEB = DatasetSource(
     name="fineweb",
     hf_dataset_id="HuggingFaceFW/fineweb",
-    domain=DataDomain.WEB,
     target_tokens_billions=195.0,
     weight=0.65,
     description="High-quality English web crawl data from CommonCrawl, "
@@ -91,7 +68,6 @@ FINEWEB = DatasetSource(
 THE_STACK_V2 = DatasetSource(
     name="the_stack_v2",
     hf_dataset_id="bigcode/the-stack-v2-dedup",
-    domain=DataDomain.CODE,
     target_tokens_billions=60.0,
     weight=0.20,
     description="Deduplicated source code across popular programming "
@@ -101,7 +77,6 @@ THE_STACK_V2 = DatasetSource(
 FINEWEB_EDU = DatasetSource(
     name="fineweb_edu",
     hf_dataset_id="HuggingFaceFW/fineweb-edu",
-    domain=DataDomain.EDUCATION,
     target_tokens_billions=24.0,
     weight=0.08,
     description="Educational subset of FineWeb, scored by a classifier "
@@ -111,7 +86,6 @@ FINEWEB_EDU = DatasetSource(
 OPENWEBMATH = DatasetSource(
     name="openwebmath",
     hf_dataset_id="open-web-math/open-web-math",
-    domain=DataDomain.MATH,
     target_tokens_billions=9.0,
     weight=0.03,
     description="Mathematical web pages filtered and cleaned for "
@@ -122,7 +96,6 @@ WIKIPEDIA_BOOKS = DatasetSource(
     name="wikipedia_books",
     hf_dataset_id="wikimedia/wikipedia",
     hf_subset="20231101.en",
-    domain=DataDomain.REFERENCE,
     target_tokens_billions=6.0,
     weight=0.02,
     description="English Wikipedia snapshots combined with "
@@ -133,7 +106,6 @@ ARXIV = DatasetSource(
     name="arxiv",
     hf_dataset_id="togethercomputer/RedPajama-Data-V2",
     hf_subset="arxiv",
-    domain=DataDomain.SCIENTIFIC,
     target_tokens_billions=6.0,
     weight=0.02,
     description="Scientific papers from ArXiv, providing exposure to "

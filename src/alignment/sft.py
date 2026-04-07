@@ -197,22 +197,6 @@ def formatting_func(example: dict[str, str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# LoRA configuration
-# ---------------------------------------------------------------------------
-
-def build_lora_config(cfg: SFTConfig) -> LoraConfig:
-    """Build PEFT LoRA configuration."""
-    return LoraConfig(
-        r=cfg.lora_r,
-        lora_alpha=cfg.lora_alpha,
-        lora_dropout=cfg.lora_dropout,
-        target_modules=list(cfg.lora_target_modules),
-        task_type=TaskType.CAUSAL_LM,
-        bias="none",
-    )
-
-
-# ---------------------------------------------------------------------------
 # Training
 # ---------------------------------------------------------------------------
 
@@ -306,7 +290,14 @@ def run_sft(cfg: SFTConfig | None = None) -> None:
     )
 
     # Build LoRA config (used only for non-Unsloth path)
-    peft_config = None if cfg.use_unsloth else build_lora_config(cfg)
+    peft_config = None if cfg.use_unsloth else LoraConfig(
+        r=cfg.lora_r,
+        lora_alpha=cfg.lora_alpha,
+        lora_dropout=cfg.lora_dropout,
+        target_modules=list(cfg.lora_target_modules),
+        task_type=TaskType.CAUSAL_LM,
+        bias="none",
+    )
 
     # Initialize SFTTrainer
     trainer = SFTTrainer(

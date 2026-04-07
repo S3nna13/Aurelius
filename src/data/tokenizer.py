@@ -57,10 +57,6 @@ MULTI_SPACE_TOKENS: list[str] = [
     "        ",  # 8 spaces (double indent)
 ]
 
-# Convenience name -> id mapping (populated after training / loading).
-_SPECIAL_NAME_TO_ID: dict[str, int] = {}
-
-
 # ---------------------------------------------------------------------------
 # Tokenizer wrapper
 # ---------------------------------------------------------------------------

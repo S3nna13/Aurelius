@@ -5,6 +5,9 @@ Models to Fill in the Middle* (Bavarian et al., 2022).  50 % of code
 examples are FIM-transformed; of those, half use Prefix-Suffix-Middle
 (PSM) format and half use Suffix-Prefix-Middle (SPM) format.
 
+Use ``fim_transform`` for a single example or ``fim_transform_batch`` for
+a list.  Each uses a per-example seeded RNG for reproducibility.
+
 Special tokens
 --------------
 - ``<|fim_prefix|>``
@@ -17,7 +20,6 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Iterator
 
 # ---------------------------------------------------------------------------
 # Special tokens
@@ -201,17 +203,3 @@ def apply_fim(text: str, seed: int = 42) -> str:
     rng = random.Random(seed)
     result = fim_transform(text, rng=rng)
     return result.text
-
-
-def fim_transform_stream(
-    texts: Iterator[str],
-    *,
-    config: FIMConfig | None = None,
-    seed: int = 42,
-) -> Iterator[FIMResult]:
-    """Lazily apply FIM over an iterator of code strings."""
-    if config is None:
-        config = FIMConfig()
-    for idx, text in enumerate(texts):
-        rng = random.Random(seed + idx)
-        yield fim_transform(text, config=config, rng=rng)

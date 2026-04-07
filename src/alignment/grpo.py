@@ -21,13 +21,10 @@ import logging
 import re
 from dataclasses import dataclass, field
 
-try:
-    from datasets import Dataset, load_dataset
-    from peft import LoraConfig, TaskType
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    from trl import GRPOConfig, GRPOTrainer
-except ImportError:
-    pass  # optional heavy deps; only needed at training time
+from datasets import Dataset, load_dataset
+from peft import LoraConfig, TaskType
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from trl import GRPOConfig, GRPOTrainer
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
 """Tests for SimPO (Simple Preference Optimization) loss."""
 import torch
 import pytest
-from src.alignment.simpo import SimPOLoss, compute_simpo_loss
+from src.alignment.simpo import SimPOLoss
 
 
 def test_simpo_chosen_higher_reward_lower_loss():
@@ -71,20 +71,3 @@ def test_simpo_batch_shapes():
     assert rejected_rewards.shape == torch.Size([batch_size])
 
 
-def test_compute_simpo_loss_functional():
-    """Functional API gives identical results to module API."""
-    chosen_logps = torch.tensor([-1.0, -1.5, -0.8])
-    rejected_logps = torch.tensor([-2.0, -2.5, -1.8])
-
-    beta, gamma = 2.0, 0.5
-
-    loss_fn = SimPOLoss(beta=beta, gamma=gamma, label_smoothing=0.0)
-    loss_mod, chosen_mod, rejected_mod = loss_fn(chosen_logps, rejected_logps)
-
-    loss_fn2, chosen_fn, rejected_fn = compute_simpo_loss(
-        chosen_logps, rejected_logps, beta=beta, gamma=gamma
-    )
-
-    torch.testing.assert_close(loss_fn2, loss_mod)
-    torch.testing.assert_close(chosen_fn, chosen_mod)
-    torch.testing.assert_close(rejected_fn, rejected_mod)
