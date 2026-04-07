@@ -98,3 +98,33 @@ def test_muon_weight_decay():
 
     # With weight_decay, norm should decrease
     assert linear.weight.norm() < 32 * 64 ** 0.5  # less than initialized all-ones norm
+
+
+def test_apply_qk_clip_rescales_large_norm():
+    from src.training.muon import apply_qk_clip
+    param = torch.nn.Parameter(torch.ones(64, 64) * 2.0)  # norm = 64*2 = large
+    original_norm = param.data.float().norm().item()
+    apply_qk_clip(param.data, threshold=10.0)
+    new_norm = param.data.float().norm().item()
+    assert new_norm < original_norm
+
+
+def test_apply_qk_clip_no_op_small_norm():
+    from src.training.muon import apply_qk_clip
+    param = torch.nn.Parameter(torch.randn(8, 8) * 0.01)
+    original = param.data.clone()
+    apply_qk_clip(param.data, threshold=100.0)
+    assert torch.allclose(param.data, original)
+
+
+def test_muon_qk_clip_updates_marked_params():
+    from src.training.muon import Muon
+    q = torch.nn.Parameter(torch.ones(32, 32) * 5.0)
+    other = torch.nn.Parameter(torch.randn(32, 32))
+    opt = Muon([q, other], lr=0.01, qk_clip=1.0)
+    opt.mark_qk_params([q])
+    q.grad = torch.randn_like(q)
+    other.grad = torch.randn_like(other)
+    opt.step()
+    # Q param norm should be <= threshold after clip
+    assert q.data.float().norm() <= 1.0 * 1.1  # small tolerance
