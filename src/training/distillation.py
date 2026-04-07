@@ -68,7 +68,7 @@ class DistillationLoss(nn.Module):
         # target:  KL(target || input) = sum(target * (log target - input))
         # Using batchmean reduction then scaling by T² restores gradient scale.
         student_log_probs = F.log_softmax(student_logits / T, dim=-1)
-        teacher_probs = F.softmax(teacher_logits / T, dim=-1)
+        teacher_probs = F.softmax(teacher_logits.detach() / T, dim=-1)
 
         # Flatten (batch * seq_len, vocab) for batchmean
         batch_seq = student_log_probs.shape[0] * student_log_probs.shape[1]
