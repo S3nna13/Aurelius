@@ -1,88 +1,98 @@
-"""Tests for GRPO alignment config and reward functions."""
+"""Tests for GRPO implementation."""
+import math
+import torch
 import pytest
-pytest.importorskip("datasets", reason="datasets not installed; skipping GRPO tests")
-pytest.importorskip("peft", reason="peft not installed; skipping GRPO tests")
-pytest.importorskip("trl", reason="trl not installed; skipping GRPO tests")
 from src.alignment.grpo import (
-    GRPORunConfig,
-    extract_answer,
-    gsm8k_reward,
-    format_reward,
-    combined_reward,
+    compute_advantages,
+    grpo_loss,
+    compute_sequence_log_probs,
+    GRPOConfig,
+    GRPOTrainer,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 
-def test_grpo_config_defaults():
-    cfg = GRPORunConfig()
-    assert cfg.num_generations == 8
-    assert cfg.learning_rate == 1e-6
-    assert cfg.beta1 if hasattr(cfg, 'beta1') else True  # no beta in GRPO
+@pytest.fixture
+def small_model():
+    torch.manual_seed(0)
+    cfg = AureliusConfig(
+        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
+        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=64,
+    )
+    return AureliusTransformer(cfg)
 
 
-def test_extract_answer_gsm8k_format():
-    text = "So we get 3 + 4 = 7. #### 7"
-    assert extract_answer(text) == "7"
+def test_compute_advantages_normalized():
+    """Advantages must have mean ~0 and std ~1."""
+    rewards = torch.tensor([1.0, 2.0, 3.0, 4.0])
+    adv = compute_advantages(rewards)
+    assert abs(adv.mean().item()) < 1e-5
+    assert abs(adv.std().item() - 1.0) < 0.1
 
 
-def test_extract_answer_the_answer_is():
-    text = "The answer is 42."
-    assert extract_answer(text) == "42"
+def test_compute_advantages_single_rollout():
+    """Single rollout should return 0 advantage (no contrast possible)."""
+    rewards = torch.tensor([5.0])
+    adv = compute_advantages(rewards)
+    assert adv.shape == (1,)
+    # With std=0, advantage is 0
+    assert adv[0].item() == pytest.approx(0.0, abs=1e-5)
 
 
-def test_extract_answer_not_found():
-    text = "I'm not sure how to solve this."
-    assert extract_answer(text) is None
+def test_grpo_loss_scalar():
+    """grpo_loss must return a finite scalar."""
+    log_probs_new = torch.tensor([-2.0, -3.0, -1.5, -2.5])
+    log_probs_old = log_probs_new.clone().detach()
+    advantages = torch.tensor([1.0, -0.5, 0.8, -1.3])
+    loss = grpo_loss(log_probs_new, log_probs_old, advantages)
+    assert loss.ndim == 0
+    assert torch.isfinite(loss)
 
 
-def test_extract_answer_with_commas():
-    text = "#### 1,234"
-    assert extract_answer(text) == "1234"
+def test_grpo_loss_on_policy_equals_negative_advantage_mean():
+    """When ratio=1 (old==new log probs), loss = -mean(advantages) if not clipped."""
+    log_probs = torch.tensor([-1.0, -2.0, -3.0])
+    advantages = torch.tensor([1.0, -1.0, 2.0])
+    loss = grpo_loss(log_probs, log_probs.detach(), advantages, clip_eps=1.0)
+    # ratio=1, no clipping: loss = -mean(advantages)
+    expected = -advantages.mean().item()
+    assert abs(loss.item() - expected) < 1e-5
 
 
-def test_gsm8k_reward_correct():
-    completions = ["Step 1: add. #### 7"]
-    ground_truths = ["#### 7"]
-    rewards = gsm8k_reward(completions, ground_truths)
-    assert rewards == [1.0]
+def test_compute_sequence_log_probs_shape(small_model):
+    """compute_sequence_log_probs must return a scalar."""
+    ids = torch.randint(0, 256, (1, 16))
+    lp = compute_sequence_log_probs(small_model, ids, response_start=8)
+    assert lp.ndim == 0
+    assert torch.isfinite(lp)
+    assert lp < 0
 
 
-def test_gsm8k_reward_incorrect():
-    completions = ["#### 5"]
-    ground_truths = ["#### 7"]
-    rewards = gsm8k_reward(completions, ground_truths)
-    assert rewards == [0.0]
+def test_grpo_trainer_step_updates_weights(small_model):
+    """GRPOTrainer.step must update model weights."""
+    # Reward fn: prefer shorter responses
+    def reward_fn(prompt, response):
+        return -len(response) / 100.0
 
+    # Minimal tokenizer mock
+    class FakeTok:
+        def decode(self, ids): return "x" * len(ids)
 
-def test_gsm8k_reward_batch():
-    completions = ["#### 3", "#### 10", "I don't know"]
-    ground_truths = ["#### 3", "#### 7", "#### 5"]
-    rewards = gsm8k_reward(completions, ground_truths)
-    assert rewards[0] == 1.0   # correct
-    assert rewards[1] == 0.0   # wrong
-    assert rewards[2] == 0.0   # no answer found
+    cfg = GRPOConfig(num_rollouts=4, num_steps=1, max_new_tokens=4, batch_size=1)
+    trainer = GRPOTrainer(small_model, reward_fn, cfg)
 
+    before = {n: p.clone() for n, p in small_model.named_parameters()}
+    prompt_ids = torch.randint(0, 256, (1, 8))
 
-def test_format_reward_step_marker():
-    completions = ["Step 1: 2 + 2 = 4. The answer is 4."]
-    rewards = format_reward(completions)
-    assert rewards[0] > 0.0
+    metrics = trainer.step(prompt_ids, "test prompt", FakeTok())
 
+    assert "loss" in metrics
+    assert math.isfinite(metrics["loss"])
 
-def test_format_reward_no_structure():
-    completions = ["I have no idea."]
-    rewards = format_reward(completions)
-    assert rewards[0] == 0.0
-
-
-def test_combined_reward_correct_gets_high_score():
-    completions = ["Step 1. #### 7"]
-    ground_truths = ["#### 7"]
-    rewards = combined_reward(completions, ground_truths)
-    assert rewards[0] >= 1.0  # at least correctness reward
-
-
-def test_combined_reward_wrong_gets_low():
-    completions = ["#### 999"]
-    ground_truths = ["#### 1"]
-    rewards = combined_reward(completions, ground_truths)
-    assert rewards[0] < 1.0
+    changed = any(
+        not torch.equal(before[n], p)
+        for n, p in small_model.named_parameters()
+        if p.requires_grad
+    )
+    assert changed, "No weights updated after GRPO step"
