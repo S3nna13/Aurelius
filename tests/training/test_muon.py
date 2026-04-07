@@ -107,6 +107,8 @@ def test_apply_qk_clip_rescales_large_norm():
     apply_qk_clip(param.data, threshold=10.0)
     new_norm = param.data.float().norm().item()
     assert new_norm < original_norm
+    assert new_norm <= 10.0 * 1.001   # must not exceed threshold
+    assert new_norm >= 10.0 * 0.999   # must be close to threshold (not over-shrunk)
 
 
 def test_apply_qk_clip_no_op_small_norm():
@@ -125,6 +127,9 @@ def test_muon_qk_clip_updates_marked_params():
     opt.mark_qk_params([q])
     q.grad = torch.randn_like(q)
     other.grad = torch.randn_like(other)
+    other_norm_before = other.data.float().norm().item()
     opt.step()
     # Q param norm should be <= threshold after clip
     assert q.data.float().norm() <= 1.0 * 1.1  # small tolerance
+    # Unmarked param must NOT be QK-clipped (its norm is unconstrained)
+    assert id(other) not in opt._qk_params

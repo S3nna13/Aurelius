@@ -20,17 +20,18 @@ import torch
 from torch.optim import Optimizer
 
 
-def apply_qk_clip(param: torch.Tensor, threshold: float, alpha: float = 0.5) -> None:
+def apply_qk_clip(param: torch.Tensor, threshold: float) -> None:
     """Rescale param in-place if its Frobenius norm exceeds threshold.
 
     Uses Frobenius norm as a cheap proxy for spectral norm.
-    Rescales by threshold/norm to keep attention logits bounded.
-    alpha controls the split (0.5 = symmetric for Q and K).
+    Rescales by threshold/norm so the post-clip norm equals threshold exactly.
     """
     with torch.no_grad():
         norm = param.float().norm()
+        if norm < 1e-30:
+            return
         if norm > threshold:
-            param.mul_((threshold / norm) ** (2 * alpha))
+            param.mul_(threshold / norm)
 
 
 def _newton_schulz(G: torch.Tensor, steps: int = 5) -> torch.Tensor:
@@ -155,6 +156,6 @@ class Muon(Optimizer):
 
                 # QK-clip: rescale Q/K projections if Frobenius norm exceeds threshold
                 if self.qk_clip is not None and id(p) in self._qk_params:
-                    apply_qk_clip(p, self.qk_clip, self.qk_clip_alpha)
+                    apply_qk_clip(p, self.qk_clip)
 
         return loss
