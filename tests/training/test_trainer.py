@@ -78,3 +78,37 @@ def test_validate_returns_finite_loss(small_model, small_cfg):
     ppl = trainer.validate()
     assert math.isfinite(ppl)
     assert ppl > 0
+
+
+def test_build_dataloaders_yields_dict_batches(tmp_path, small_cfg):
+    """build_dataloaders() must return loaders yielding {"input_ids", "labels"} dicts."""
+    import numpy as np
+    from src.training.trainer import build_dataloaders
+
+    train_dir = tmp_path / "train"
+    val_dir = tmp_path / "val"
+    train_dir.mkdir()
+    val_dir.mkdir()
+
+    seq_len = 16
+    tokens = np.arange(seq_len * 4 + 1, dtype=np.uint16)
+    np.save(train_dir / "shard_00.npy", tokens)
+    np.save(val_dir / "shard_00.npy", tokens)
+
+    cfg = TrainConfig(
+        train_data_dir=str(train_dir),
+        val_data_dir=str(val_dir),
+        seq_len=seq_len,
+        micro_batch_size=2,
+        num_workers=0,
+        pin_memory=False,
+    )
+
+    train_loader, val_loader = build_dataloaders(cfg)
+    assert val_loader is not None
+
+    train_batch = next(iter(train_loader))
+    assert "input_ids" in train_batch
+    assert "labels" in train_batch
+    assert train_batch["input_ids"].shape[1] == seq_len
+    assert train_batch["labels"].shape[1] == seq_len

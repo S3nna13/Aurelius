@@ -25,10 +25,68 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Dataset
 
+from src.data.tokenized_loader import TokenizedShardDataset
 from src.training.muon import Muon
 from src.training.zclip import ZClip
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Dataloader helpers
+# ---------------------------------------------------------------------------
+
+def _collate_fn(
+    batch: list[tuple[torch.Tensor, torch.Tensor]],
+) -> dict[str, torch.Tensor]:
+    """Convert (input_ids, labels) tuple batch to dict format expected by AureliusTrainer."""
+    input_ids = torch.stack([item[0] for item in batch])
+    labels = torch.stack([item[1] for item in batch])
+    return {"input_ids": input_ids, "labels": labels}
+
+
+def build_dataloaders(
+    cfg: "TrainConfig",
+) -> tuple[DataLoader, DataLoader | None]:
+    """Build train and validation DataLoaders from .npy token shards.
+
+    Globs all *.npy files in cfg.train_data_dir and cfg.val_data_dir,
+    wraps each in TokenizedShardDataset, and returns ready-to-use DataLoaders.
+
+    Returns:
+        (train_loader, val_loader) — val_loader is None if val_data_dir has no shards.
+    """
+    train_shards = sorted(Path(cfg.train_data_dir).glob("*.npy"))
+    if not train_shards:
+        raise FileNotFoundError(f"No .npy shards found in {cfg.train_data_dir}")
+
+    train_ds = TokenizedShardDataset(train_shards, seq_len=cfg.seq_len)
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=cfg.micro_batch_size,
+        shuffle=True,
+        num_workers=cfg.num_workers,
+        pin_memory=cfg.pin_memory,
+        collate_fn=_collate_fn,
+        drop_last=True,
+    )
+
+    val_shards = sorted(Path(cfg.val_data_dir).glob("*.npy"))
+    if not val_shards:
+        return train_loader, None
+
+    val_ds = TokenizedShardDataset(val_shards, seq_len=cfg.seq_len)
+    val_loader = DataLoader(
+        val_ds,
+        batch_size=cfg.micro_batch_size,
+        shuffle=False,
+        num_workers=cfg.num_workers,
+        pin_memory=cfg.pin_memory,
+        collate_fn=_collate_fn,
+        drop_last=False,
+    )
+
+    return train_loader, val_loader
 
 
 # ---------------------------------------------------------------------------
@@ -681,12 +739,13 @@ def main() -> None:
         cfg.total_steps, cfg.lr, cfg.global_batch_tokens,
     )
 
-    # Placeholder: real usage would build the model from AureliusConfig
-    # and construct dataloaders from the tokenized dataset.
-    logger.info(
-        "To launch training, instantiate AureliusTrainer with your model and "
-        "dataloaders, then call trainer.train(). See scripts/run_training.sh."
-    )
+    from src.model.transformer import AureliusTransformer
+    from src.model.config import AureliusConfig
+
+    model = AureliusTransformer(AureliusConfig())
+    train_loader, val_loader = build_dataloaders(cfg)
+    trainer = AureliusTrainer(model, train_loader, val_loader, cfg)
+    trainer.train()
 
 
 if __name__ == "__main__":
