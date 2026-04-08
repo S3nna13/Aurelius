@@ -1,157 +1,254 @@
-"""Reward model ensemble for more reliable RLHF scoring.
-
-Combines multiple RewardModel instances and supports mean, min, and geometric
-mean (product) aggregation. Also provides uncertainty estimation via std across
-ensemble members.
-"""
+"""Reward model ensemble for robust RLHF (uncertainty-weighted scoring)."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-
-from src.alignment.reward_model import RewardModel
+import torch.nn.functional as F
+from torch import Tensor
 
 
 @dataclass
 class EnsembleConfig:
-    """Configuration for RewardEnsemble."""
-    n_members: int = 3
-    aggregation: str = "mean"          # "mean" | "min" | "product"
-    uncertainty_threshold: float = 0.5  # flag high-uncertainty samples
+    """Configuration for EnsembleRewardModel."""
+
+    n_members: int = 4
+    aggregation: str = "mean"           # "mean" | "min" | "uncertainty_weighted"
+    uncertainty_threshold: float = 0.5  # flag high-uncertainty samples above this std
 
 
-class RewardEnsemble(nn.Module):
-    """An ensemble of RewardModel instances for robust RLHF reward scoring.
-
-    Members are stored in an ``nn.ModuleList`` so that ``parameters()``,
-    ``train()`` / ``eval()``, and ``state_dict()`` all propagate correctly.
+class RewardHead(nn.Module):
+    """Scalar reward head on top of a transformer's last hidden state.
 
     Args:
-        reward_models: List of :class:`~src.alignment.reward_model.RewardModel`
-            instances (or any ``nn.Module`` whose ``forward`` accepts
-            ``input_ids`` and returns a ``(B,)`` tensor).
+        d_model:  Input feature dimension.
+        dropout:  Dropout probability (default 0.1).
     """
 
-    def __init__(self, reward_models: list[RewardModel]) -> None:
+    def __init__(self, d_model: int, dropout: float = 0.1) -> None:
         super().__init__()
-        if not reward_models:
-            raise ValueError("reward_models must be a non-empty list")
-        self.members = nn.ModuleList(reward_models)
+        self.norm = nn.LayerNorm(d_model)
+        self.fc1 = nn.Linear(d_model, d_model // 2)
+        self.fc2 = nn.Linear(d_model // 2, 1)
+        self.dropout = nn.Dropout(dropout)
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _collect_scores(self, input_ids: torch.Tensor) -> torch.Tensor:
-        """Run all members and stack their scores.
-
-        Returns:
-            Tensor of shape ``(n_members, B)``.
-        """
-        member_scores = []
-        for member in self.members:
-            s = member.forward(input_ids)  # (B,)
-            member_scores.append(s)
-        return torch.stack(member_scores, dim=0)  # (n_members, B)
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def aggregate(self, scores: torch.Tensor, mode: str = "mean") -> torch.Tensor:
-        """Aggregate per-member scores along the member dimension (dim 0).
+    def forward(self, hidden_states: Tensor) -> Tensor:
+        """Compute scalar reward from hidden states.
 
         Args:
-            scores: ``(n_members, B)`` tensor of member scores.
-            mode:   One of ``"mean"``, ``"min"``, or ``"product"``.
+            hidden_states: ``(B, T, D)`` transformer hidden states.
 
         Returns:
-            ``(B,)`` aggregated scores.
+            ``(B,)`` scalar reward per sample.
         """
-        if mode == "mean":
-            return scores.mean(dim=0)
-        elif mode == "min":
-            return scores.min(dim=0).values
-        elif mode == "product":
-            # Geometric mean via log-space to avoid underflow.
-            # Reward scores can be negative, so clamp to a small positive value
-            # before taking the logarithm.
-            #   exp( mean( log( clamp(scores, min=eps) ) ) )
-            eps = 1e-8
-            return torch.exp(torch.log(scores.clamp(min=eps)).mean(dim=0))
-        else:
-            raise ValueError(
-                f"Unknown aggregation mode '{mode}'. "
-                "Choose from 'mean', 'min', 'product'."
-            )
+        x = hidden_states[:, -1, :]        # take last token: (B, D)
+        x = self.norm(x)
+        x = self.fc1(x)
+        x = F.gelu(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
+        return x.squeeze(-1)               # (B,)
 
-    def score(
+
+class EnsembleRewardModel(nn.Module):
+    """Parameter-efficient reward ensemble sharing a single backbone.
+
+    All ``n_members`` reward heads process the same backbone output, making
+    this an ensemble via diverse head initialisation rather than multiple
+    full models.
+
+    Args:
+        base_model:  Shared AureliusTransformer backbone.
+        config:      Ensemble hyperparameters.
+        d_model:     Hidden dimension used to size the reward heads.
+    """
+
+    def __init__(
         self,
-        input_ids: torch.Tensor,
-        mode: str = "mean",
-    ) -> torch.Tensor:
+        base_model: nn.Module,
+        config: EnsembleConfig,
+        d_model: int,
+    ) -> None:
+        super().__init__()
+        self.base_model = base_model
+        self.config = config
+
+        # Obtain vocab_size from the backbone config so we can project logits
+        vocab_size: int = base_model.config.vocab_size
+
+        # Map logits (B, T, vocab_size) -> pseudo-hidden-states (B, T, d_model)
+        self.hidden_extractor = nn.Linear(vocab_size, d_model)
+
+        # One reward head per ensemble member (all share the backbone)
+        self.reward_heads = nn.ModuleList(
+            [RewardHead(d_model) for _ in range(config.n_members)]
+        )
+
+    def _get_pseudo_hidden(self, input_ids: Tensor) -> Tensor:
+        """Run backbone once and project logits to pseudo-hidden-states.
+
+        Returns:
+            ``(B, T, d_model)``
+        """
+        with torch.no_grad():
+            _, logits, _ = self.base_model(input_ids)   # logits: (B, T, V)
+        # Project through a learnable linear to get pseudo-hidden-states
+        return self.hidden_extractor(logits)             # (B, T, d_model)
+
+    def forward(self, input_ids: Tensor) -> tuple[Tensor, Tensor]:
         """Score a batch of sequences.
 
         Args:
-            input_ids: ``(B, seq_len)`` token ids.
-            mode:       Aggregation mode — ``"mean"`` (default), ``"min"``,
-                        or ``"product"``.
+            input_ids: ``(B, T)`` token ids.
 
         Returns:
-            ``(B,)`` scalar reward per item.
+            Tuple ``(rewards, uncertainty)``:
+                - ``rewards``:     ``(B,)`` aggregated reward per sample.
+                - ``uncertainty``: ``(B,)`` std across ensemble members.
         """
-        stacked = self._collect_scores(input_ids)   # (n_members, B)
-        return self.aggregate(stacked, mode=mode)   # (B,)
+        pseudo_hidden = self._get_pseudo_hidden(input_ids)   # (B, T, d_model)
 
-    def score_with_uncertainty(
-        self,
-        input_ids: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Score a batch and return mean + std across ensemble members.
+        all_rewards = torch.stack(
+            [head(pseudo_hidden) for head in self.reward_heads], dim=1
+        )  # (B, n_members)
 
-        For a single-member ensemble the std is exactly 0.
+        rewards, uncertainty = aggregate_rewards(all_rewards, self.config)
+        return rewards, uncertainty
 
-        Args:
-            input_ids: ``(B, seq_len)`` token ids.
+    def get_all_rewards(self, input_ids: Tensor) -> Tensor:
+        """Return raw rewards from every head without aggregation.
 
         Returns:
-            Tuple ``(mean_scores, std_scores)``, each ``(B,)``.
+            ``(B, n_members)``
         """
-        stacked = self._collect_scores(input_ids)   # (n_members, B)
-        mean = stacked.mean(dim=0)                  # (B,)
-        # torch.std with correction=0 to match population std; for N=1 this is 0
-        if stacked.shape[0] == 1:
-            std = torch.zeros_like(mean)
-        else:
-            std = stacked.std(dim=0, correction=0)  # (B,)
-        return mean, std
+        pseudo_hidden = self._get_pseudo_hidden(input_ids)   # (B, T, d_model)
+        return torch.stack(
+            [head(pseudo_hidden) for head in self.reward_heads], dim=1
+        )  # (B, n_members)
 
 
-# ---------------------------------------------------------------------------
-# Module-level utility
-# ---------------------------------------------------------------------------
-
-def filter_by_uncertainty(
-    ensemble: RewardEnsemble,
-    input_ids: torch.Tensor,
-    threshold: float,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Filter batch items by uncertainty.
-
-    Samples whose ensemble std is below *threshold* are considered "safe".
+def aggregate_rewards(
+    member_rewards: Tensor,
+    config: EnsembleConfig,
+) -> tuple[Tensor, Tensor]:
+    """Aggregate per-member rewards into a single score with uncertainty.
 
     Args:
-        ensemble:   A :class:`RewardEnsemble` instance.
-        input_ids:  ``(B, seq_len)`` token ids.
-        threshold:  Uncertainty (std) threshold.
+        member_rewards: ``(B, n_members)`` raw rewards from each head.
+        config:         Ensemble config (selects aggregation strategy).
 
     Returns:
-        ``(safe_mask, scores)``
-        - ``safe_mask``: bool ``(B,)`` tensor — ``True`` where std < threshold.
-        - ``scores``:    ``(B,)`` mean reward scores.
+        ``(aggregated, uncertainty)`` both shape ``(B,)``.
     """
-    mean, std = ensemble.score_with_uncertainty(input_ids)
-    safe_mask = std < threshold
-    return safe_mask, mean
+    std = member_rewards.std(dim=1, correction=0) if member_rewards.shape[1] > 1 \
+        else torch.zeros(member_rewards.shape[0], device=member_rewards.device)
+
+    mode = config.aggregation
+
+    if mode == "mean":
+        aggregated = member_rewards.mean(dim=1)
+
+    elif mode == "min":
+        aggregated = member_rewards.min(dim=1).values
+
+    elif mode == "uncertainty_weighted":
+        eps = 1e-8
+        # Weight by inverse of each member's deviation from the ensemble mean
+        # Simpler approach: weight each member equally but down-weight by std
+        # Per-sample std is shared across members, so use 1/(std+eps) to
+        # scale the mean: high uncertainty -> lower effective reward.
+        # Actually compute per-sample weights over members using member deviations:
+        # w_k = 1 / (|r_k - mean| + eps), normalised per sample.
+        mean_over_members = member_rewards.mean(dim=1, keepdim=True)         # (B, 1)
+        deviations = (member_rewards - mean_over_members).abs() + eps        # (B, K)
+        weights = 1.0 / deviations                                           # (B, K)
+        weights = weights / weights.sum(dim=1, keepdim=True)                 # normalise
+        aggregated = (weights * member_rewards).sum(dim=1)                   # (B,)
+
+    else:
+        raise ValueError(
+            f"Unknown aggregation '{mode}'. "
+            "Choose from 'mean', 'min', 'uncertainty_weighted'."
+        )
+
+    return aggregated, std
+
+
+def detect_ood_samples(uncertainty: Tensor, threshold: float) -> Tensor:
+    """Return a boolean mask of out-of-distribution (high-uncertainty) samples.
+
+    Args:
+        uncertainty: ``(B,)`` uncertainty estimates (e.g. std across members).
+        threshold:   Samples with uncertainty above this value are flagged.
+
+    Returns:
+        ``(B,)`` bool tensor — ``True`` where uncertainty > threshold.
+    """
+    return uncertainty > threshold
+
+
+class EnsembleTrainer:
+    """Train an EnsembleRewardModel on preference pairs.
+
+    Args:
+        ensemble:   The :class:`EnsembleRewardModel` to train.
+        optimizer:  Any ``torch.optim.Optimizer`` wrapping the model's parameters.
+        config:     Ensemble configuration.
+    """
+
+    def __init__(
+        self,
+        ensemble: EnsembleRewardModel,
+        optimizer: torch.optim.Optimizer,
+        config: EnsembleConfig,
+    ) -> None:
+        self.ensemble = ensemble
+        self.optimizer = optimizer
+        self.config = config
+
+    def train_step(
+        self,
+        chosen_ids: Tensor,
+        rejected_ids: Tensor,
+    ) -> dict[str, float]:
+        """One gradient update on a preference pair batch.
+
+        For each head the Bradley-Terry loss is:
+            loss_k = -log(sigmoid(r_chosen_k - r_rejected_k))
+
+        The total loss is the mean over all heads.
+
+        Args:
+            chosen_ids:   ``(B, T)`` token ids of preferred responses.
+            rejected_ids: ``(B, T)`` token ids of rejected responses.
+
+        Returns:
+            Dict with keys ``"loss"``, ``"mean_reward_gap"``,
+            ``"mean_uncertainty"``.
+        """
+        self.ensemble.train()
+        self.optimizer.zero_grad()
+
+        chosen_all = self.ensemble.get_all_rewards(chosen_ids)    # (B, n_members)
+        rejected_all = self.ensemble.get_all_rewards(rejected_ids) # (B, n_members)
+
+        # Per-head Bradley-Terry loss, averaged over heads and batch
+        gap = chosen_all - rejected_all                            # (B, n_members)
+        loss_per_head = -F.logsigmoid(gap)                        # (B, n_members)
+        loss = loss_per_head.mean()
+
+        loss.backward()
+        self.optimizer.step()
+
+        # Diagnostics
+        with torch.no_grad():
+            mean_gap = gap.mean().item()
+            _, uncertainty = self.ensemble(chosen_ids)
+            mean_uncertainty = uncertainty.mean().item()
+
+        return {
+            "loss": loss.item(),
+            "mean_reward_gap": mean_gap,
+            "mean_uncertainty": mean_uncertainty,
+        }
