@@ -241,3 +241,134 @@ def test_cross_attn_gradients_flow():
 
     assert x.grad is not None, "Gradient did not flow back to x"
     assert not torch.all(x.grad == 0), "x.grad is all zeros — gradients may not be flowing"
+
+
+# ---------------------------------------------------------------------------
+# CrossAttention (new module) tests
+# ---------------------------------------------------------------------------
+
+def _tiny_aurelius_config():
+    """Minimal AureliusConfig for the new CrossAttention tests."""
+    return AureliusConfig(
+        n_layers=2,
+        d_model=64,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=16,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
+    )
+
+
+def test_cross_attention_output_shape():
+    cfg = _tiny_aurelius_config()
+    attn = CrossAttention(cfg)
+    x = torch.randn(2, 8, 64)
+    context = torch.randn(2, 16, 64)
+    out = attn(x, context)
+    assert out.shape == (2, 8, 64)
+
+
+def test_cross_attention_different_dims():
+    cfg = _tiny_aurelius_config()
+    # d_context=128, d_model=64
+    attn = CrossAttention(cfg, d_context=128)
+    x = torch.randn(2, 8, 64)
+    context = torch.randn(2, 16, 128)
+    out = attn(x, context)
+    assert out.shape == (2, 8, 64)
+
+
+def test_cross_attention_with_mask():
+    cfg = _tiny_aurelius_config()
+    attn = CrossAttention(cfg)
+    x = torch.randn(2, 8, 64)
+    context = torch.randn(2, 16, 64)
+
+    # All False mask means all context positions are padding → output should differ
+    all_false_mask = torch.zeros(2, 16, dtype=torch.bool)
+    out_masked = attn(x, context, context_mask=all_false_mask)
+    out_no_mask = attn(x, context, context_mask=None)
+    assert out_masked.shape == (2, 8, 64)
+    assert not torch.allclose(out_masked, out_no_mask), (
+        "All-False mask should produce different output than no mask"
+    )
+
+
+def test_cross_attention_attends_to_full_context():
+    """No causal constraint: query token 0 can attend to last context token."""
+    cfg = _tiny_aurelius_config()
+    attn = CrossAttention(cfg)
+    B, T_q, T_kv = 1, 8, 16
+    x = torch.randn(B, T_q, 64)
+    context = torch.randn(B, T_kv, 64)
+
+    # Mask: only the LAST context token is valid
+    mask = torch.zeros(B, T_kv, dtype=torch.bool)
+    mask[:, -1] = True
+
+    # Should not error — query token 0 can attend to the last context position
+    out = attn(x, context, context_mask=mask)
+    assert out.shape == (B, T_q, 64)
+
+
+def test_cross_attention_block_output_shape():
+    cfg = _tiny_aurelius_config()
+    block = CrossAttentionBlock(cfg, d_context=64)
+    B, T = 2, 8
+    x = torch.randn(B, T, 64)
+    context = torch.randn(B, 16, 64)
+    out = block(x, context)
+    assert out.shape == (B, T, 64)
+
+
+def test_rag_attention_layer_output_shape():
+    cfg = _tiny_aurelius_config()
+    rag = RAGAttentionLayer(cfg, n_docs=5, doc_embed_dim=None)
+    x = torch.randn(2, 8, 64)
+    docs = torch.randn(2, 5, 64)
+    out = rag(x, docs)
+    assert out.shape == (2, 8, 64)
+
+
+def test_rag_attention_with_doc_mask():
+    cfg = _tiny_aurelius_config()
+    rag = RAGAttentionLayer(cfg, n_docs=5)
+    x = torch.randn(2, 8, 64)
+    docs = torch.randn(2, 5, 64)
+
+    # Some documents are masked out
+    doc_mask = torch.ones(2, 5, dtype=torch.bool)
+    doc_mask[:, -1] = False  # last doc is padding
+
+    out = rag(x, docs, doc_mask=doc_mask)
+    assert out.shape == (2, 8, 64)
+
+
+def test_rag_attention_different_doc_dim():
+    cfg = _tiny_aurelius_config()
+    rag = RAGAttentionLayer(cfg, n_docs=5, doc_embed_dim=128)
+    x = torch.randn(2, 8, 64)
+    docs = torch.randn(2, 5, 128)  # 128-dim doc embeddings projected to 64
+    out = rag(x, docs)
+    assert out.shape == (2, 8, 64)
+
+
+def test_scaled_dot_product_cross_attention_shape():
+    B, H, T_q, T_kv, D = 2, 4, 8, 16, 16
+    q = torch.randn(B, H, T_q, D)
+    k = torch.randn(B, H, T_kv, D)
+    v = torch.randn(B, H, T_kv, D)
+    out = scaled_dot_product_cross_attention(q, k, v)
+    assert out.shape == (B, H, T_q, D)
+
+
+def test_cross_attention_q_t_kv_dimension():
+    """T_q != T_kv: 8 query tokens, 20 context tokens."""
+    cfg = _tiny_aurelius_config()
+    attn = CrossAttention(cfg)
+    x = torch.randn(2, 8, 64)
+    context = torch.randn(2, 20, 64)
+    out = attn(x, context)
+    assert out.shape == (2, 8, 64)
