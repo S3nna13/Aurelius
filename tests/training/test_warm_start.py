@@ -2,12 +2,43 @@
 
 import pytest
 import torch
+import torch.nn as nn
 
 from src.training.warm_start import (
+    WarmStartConfig,
+    WarmStartInitializer,
+    LayerDropout,
+    DepthGrowthScheduler,
+    count_matchable_params,
+    muggle_init,
     interpolation_warm_start,
     prefix_warm_start,
     warm_start_state,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
+
+
+# ---------------------------------------------------------------------------
+# Shared fixture
+# ---------------------------------------------------------------------------
+
+TEST_CONFIG = AureliusConfig(
+    n_layers=2,
+    d_model=64,
+    n_heads=4,
+    n_kv_heads=2,
+    head_dim=16,
+    d_ff=128,
+    vocab_size=256,
+    max_seq_len=64,
+    tie_embeddings=False,  # keep embed and lm_head separate for muggle_init tests
+)
+
+
+def make_model() -> AureliusTransformer:
+    torch.manual_seed(42)
+    return AureliusTransformer(TEST_CONFIG)
 
 
 def test_warm_start_state_loads_matching_keys():
