@@ -9,6 +9,7 @@ Reference: Andrychowicz et al. 2016, "Learning to learn by gradient descent by g
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -204,13 +205,29 @@ class MetaTrainingLoop:
         self.lstm_opt = lstm_optimizer
         self.meta_optimizer = torch.optim.Adam(lstm_optimizer.parameters(), lr=meta_lr)
 
+    class _TaskLossModule(nn.Module):
+        """Wrap a task loss closure so functional_call can swap task_model params."""
+
+        def __init__(self, task_model: nn.Module, task_loss_fn: Callable[[], torch.Tensor]) -> None:
+            super().__init__()
+            self.task_model = task_model
+            self.task_loss_fn = task_loss_fn
+
+        def forward(self) -> torch.Tensor:
+            return self.task_loss_fn()
+
     def meta_step(
         self,
         task_model: nn.Module,
-        task_loss_fn: callable,
+        task_loss_fn: Callable[[], torch.Tensor],
         n_unroll: int = 5,
     ) -> float:
         """Unroll optimizer for n_unroll steps, accumulate loss, meta-update.
+
+        Uses torch.func.functional_call to evaluate the task loss with a
+        differentiable parameter dict. This preserves the computational graph
+        from LSTM outputs -> updated params -> task loss -> meta_loss, so
+        gradients flow back into the LSTM parameters.
 
         Args:
             task_model: the model to optimize in the inner loop
@@ -222,46 +239,63 @@ class MetaTrainingLoop:
         """
         preprocessor = GradientPreprocessor()
         states: dict[str, tuple] = {}
-        meta_loss = torch.tensor(0.0)
+        loss_module = self._TaskLossModule(task_model, task_loss_fn)
+        meta_loss: torch.Tensor | None = None
+
+        # Maintain a differentiable parameter dict (updated each step via LSTM)
+        params: dict[str, torch.Tensor] = {
+            f"task_model.{name}": param.detach().clone().requires_grad_(True)
+            for name, param in task_model.named_parameters()
+        }
+        params.update(
+            {
+                f"task_model.{name}": buffer
+                for name, buffer in task_model.named_buffers()
+            }
+        )
 
         for _ in range(n_unroll):
-            loss = task_loss_fn()
-            meta_loss = meta_loss + loss
+            loss = torch.func.functional_call(loss_module, params, ())
+            meta_loss = loss if meta_loss is None else meta_loss + loss
 
-            # Compute gradients w.r.t. task_model parameters
+            # Compute gradients of loss w.r.t. current differentiable params
+            param_items = list(task_model.named_parameters())
+            param_names = [f"task_model.{name}" for name, _ in param_items]
+            param_list = [params[name] for name in param_names]
             grads = torch.autograd.grad(
                 loss,
-                list(task_model.parameters()),
+                param_list,
                 create_graph=True,
                 allow_unused=True,
             )
 
-            new_params = []
-            param_names = [name for name, _ in task_model.named_parameters()]
-
-            for (name, param), grad in zip(task_model.named_parameters(), grads):
+            # Apply learned optimizer: LSTM maps grad features -> updates
+            new_params = {
+                f"task_model.{name}": buffer
+                for name, buffer in task_model.named_buffers()
+            }
+            for name, grad in zip(param_names, grads):
+                param = params[name]
                 if grad is None:
-                    new_params.append(param)
+                    new_params[name] = param
                     continue
 
-                # Preprocess gradient
-                features = preprocessor.preprocess(grad)
-                features = features.unsqueeze(1)  # (numel, 1, 2)
+                # Preprocess gradient (detach to avoid double-differentiating preprocessor)
+                features = preprocessor.preprocess(grad.detach()).unsqueeze(1)
 
                 state = states.get(name, None)
                 updates, new_state = self.lstm_opt(features, state)
                 states[name] = new_state
 
-                # Update parameter in-place for next unroll step (functional style)
-                new_param = param - updates.view_as(param)
-                new_params.append(new_param)
+                # Differentiable update: gradient flows from meta_loss -> updates -> LSTM
+                new_params[name] = param - updates.view_as(param)
 
-            # Update task model parameters for next unroll step
-            for (name, param), new_param in zip(task_model.named_parameters(), new_params):
-                param.data = new_param.data
+            params = new_params
 
-        # Meta-update: backprop through unrolled steps
+        # Meta-update
         self.meta_optimizer.zero_grad()
+        if meta_loss is None:
+            return 0.0
         meta_loss.backward()
         self.meta_optimizer.step()
 

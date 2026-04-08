@@ -84,7 +84,9 @@ def compute_advantages(rewards: torch.Tensor, eps: float = 1e-8) -> torch.Tensor
     Returns:
         (N,) — group-normalized advantages: (r - mean) / (std + eps).
     """
-    std = torch.nan_to_num(rewards.std(), nan=0.0)  # sample std; nan→0 for N=1
+    if rewards.numel() <= 1:
+        return torch.zeros_like(rewards)
+    std = rewards.std()
     return (rewards - rewards.mean()) / (std + eps)
 
 

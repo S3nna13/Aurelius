@@ -1,17 +1,15 @@
-"""Tests for src/training/nas.py — Hyperband / Successive Halving NAS."""
+"""Tests for src/training/nas.py — DARTS-style differentiable architecture search."""
 from __future__ import annotations
 
-import random as _random
-
+import torch
+import torch.nn as nn
 import pytest
 
 from src.training.nas import (
-    HyperbandSearcher,
-    NASConfig,
-    NASResult,
-    SearchSpace,
-    Trial,
-    random_search,
+    ArchitectureStats,
+    DARTSCell,
+    DARTSSearcher,
+    MixedOperation,
 )
 
 
@@ -19,139 +17,197 @@ from src.training.nas import (
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-def make_lr_search_space() -> SearchSpace:
-    return SearchSpace(
-        continuous={"lr": (1e-5, 1e-1, True)},
-    )
+def make_mixed_op(d_model: int = 64, n_ops: int = 3) -> MixedOperation:
+    ops = {f'op_{i}': nn.Linear(d_model, d_model) for i in range(n_ops)}
+    return MixedOperation(ops)
 
 
-def lr_eval_fn(config: dict, steps: int) -> float:
-    """Minimum at lr=1e-3; adds tiny noise so losses differ slightly."""
-    rng = _random.Random(id(config) ^ steps)
-    return abs(config["lr"] - 1e-3) * 1000 + rng.uniform(0, 0.01)
+def make_simple_model(d_model: int = 32) -> nn.Module:
+    """Simple model containing a DARTSCell for searcher tests."""
+    class SimpleModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.cell = DARTSCell(d_model, n_candidates=2)
 
+        def forward(self, x):
+            return self.cell(x)
 
-# ---------------------------------------------------------------------------
-# SearchSpace tests
-# ---------------------------------------------------------------------------
-
-def test_search_space_sample_continuous():
-    ss = make_lr_search_space()
-    rng = _random.Random(0)
-    for _ in range(50):
-        cfg = ss.sample(rng)
-        assert "lr" in cfg
-        assert 1e-5 <= cfg["lr"] <= 1e-1
-
-
-def test_search_space_sample_log_scale():
-    """Log-scale sampling should produce values across multiple orders of magnitude."""
-    ss = make_lr_search_space()
-    rng = _random.Random(7)
-    values = [ss.sample(rng)["lr"] for _ in range(200)]
-    # Expect at least some values below 1e-3 and some above 1e-3
-    assert any(v < 1e-3 for v in values), "Expected values below 1e-3"
-    assert any(v > 1e-3 for v in values), "Expected values above 1e-3"
-    # Log-scale: should see values spanning at least 3 orders of magnitude
-    log_range = max(values) / min(values)
-    assert log_range > 100, f"Expected > 100x range, got {log_range:.1f}x"
-
-
-def test_search_space_sample_discrete():
-    ss = SearchSpace(
-        discrete={"n_layers": [2, 4, 6, 8, 12]},
-    )
-    rng = _random.Random(1)
-    sampled = {ss.sample(rng)["n_layers"] for _ in range(100)}
-    # All sampled values should be in the valid list
-    assert sampled <= {2, 4, 6, 8, 12}
-    # With 100 draws we should have seen at least a few distinct values
-    assert len(sampled) > 1
+    return SimpleModel()
 
 
 # ---------------------------------------------------------------------------
-# Trial dataclass
+# MixedOperation tests
 # ---------------------------------------------------------------------------
 
-def test_trial_dataclass():
-    trial = Trial(config={"lr": 1e-3}, trial_id=0)
-    assert trial.config == {"lr": 1e-3}
-    assert trial.trial_id == 0
-    assert trial.best_loss == float("inf")
-    assert trial.steps_trained == 0
-    assert trial.eliminated is False
+def test_mixed_operation_output_shape():
+    """(2, 16, 64) -> (2, 16, 64)."""
+    d_model = 64
+    mixed_op = make_mixed_op(d_model=d_model)
+    x = torch.randn(2, 16, d_model)
+    out = mixed_op(x)
+    assert out.shape == (2, 16, d_model)
 
 
-# ---------------------------------------------------------------------------
-# random_search tests
-# ---------------------------------------------------------------------------
-
-def test_random_search_returns_result():
-    ss = make_lr_search_space()
-    result = random_search(ss, lr_eval_fn, n_trials=10, budget_per_trial=20)
-    assert isinstance(result, NASResult)
-    assert "lr" in result.best_config
-    assert isinstance(result.best_loss, float)
+def test_mixed_operation_weights_sum_to_one():
+    """softmax weights should sum to ~1.0."""
+    mixed_op = make_mixed_op()
+    weights = mixed_op.architecture_weights()
+    total = sum(weights.values())
+    assert abs(total - 1.0) < 1e-5, f"Weights sum to {total}, expected ~1.0"
 
 
-def test_random_search_n_trials():
-    ss = make_lr_search_space()
-    result = random_search(ss, lr_eval_fn, n_trials=8, budget_per_trial=5)
-    assert len(result.trial_history) == 8
-    assert result.n_trials == 8
+def test_best_operation_valid():
+    """best_operation() returns a key from the ops dict."""
+    mixed_op = make_mixed_op()
+    best = mixed_op.best_operation()
+    assert best in mixed_op.ops, f"'{best}' not found in ops keys: {list(mixed_op.ops.keys())}"
 
 
-def test_random_search_best_is_min():
-    ss = make_lr_search_space()
-    result = random_search(ss, lr_eval_fn, n_trials=20, budget_per_trial=10, seed=42)
-    all_losses = [t.best_loss for t in result.trial_history]
-    assert result.best_loss <= min(all_losses) + 1e-9
+def test_architecture_weights_dict():
+    """architecture_weights() returns dict with all op names as keys."""
+    mixed_op = make_mixed_op(n_ops=4)
+    weights = mixed_op.architecture_weights()
+    assert set(weights.keys()) == set(mixed_op._op_names)
+    assert len(weights) == 4
 
 
 # ---------------------------------------------------------------------------
-# HyperbandSearcher tests
+# DARTSCell tests
 # ---------------------------------------------------------------------------
 
-def test_hyperband_search_returns_result():
-    ss = make_lr_search_space()
-    cfg = NASConfig(n_initial_configs=9, eta=3, min_budget=5, max_budget=45, seed=0)
-    searcher = HyperbandSearcher(ss, lr_eval_fn, cfg)
-    result = searcher.search()
-    assert isinstance(result, NASResult)
-    assert "lr" in result.best_config
-    assert isinstance(result.best_loss, float)
-    assert result.total_steps > 0
+def test_darts_cell_output_shape():
+    """DARTSCell(64): (2, 8, 64) -> (2, 8, 64)."""
+    d_model = 64
+    cell = DARTSCell(d_model)
+    x = torch.randn(2, 8, d_model)
+    out = cell(x)
+    assert out.shape == (2, 8, d_model)
 
 
-def test_hyperband_eliminates_configs():
-    """Hyperband should eliminate configs so fewer survive to the final rung."""
-    ss = make_lr_search_space()
-    cfg = NASConfig(n_initial_configs=9, eta=3, min_budget=5, max_budget=45, seed=1)
-    searcher = HyperbandSearcher(ss, lr_eval_fn, cfg)
-    result = searcher.search()
+# ---------------------------------------------------------------------------
+# DARTSSearcher tests
+# ---------------------------------------------------------------------------
 
-    # At least some trials should be eliminated
-    eliminated = [t for t in result.trial_history if t.eliminated]
-    surviving = [t for t in result.trial_history if not t.eliminated]
-    assert len(eliminated) > 0, "Expected some eliminated trials"
-    assert len(surviving) < len(result.trial_history), "Expected fewer survivors than total"
+def test_darts_searcher_model_step():
+    """model_step returns float."""
+    model = make_simple_model()
+    searcher = DARTSSearcher(model)
+    x = torch.randn(2, 4, 32)
+    out = model(x)
+    loss = out.mean()
+    result = searcher.model_step(loss)
+    assert isinstance(result, float)
 
 
-def test_hyperband_finds_reasonable_lr():
-    """Best config from Hyperband should be closer to optimal lr=1e-3 than average."""
-    ss = make_lr_search_space()
-    cfg = NASConfig(n_initial_configs=16, eta=3, min_budget=10, max_budget=90, seed=99)
-    searcher = HyperbandSearcher(ss, lr_eval_fn, cfg)
-    result = searcher.search()
+def test_darts_searcher_arch_step():
+    """arch_step returns float."""
+    model = make_simple_model()
+    searcher = DARTSSearcher(model)
+    x = torch.randn(2, 4, 32)
+    out = model(x)
+    loss = out.mean()
+    result = searcher.arch_step(loss)
+    assert isinstance(result, float)
 
-    best_lr = result.best_config["lr"]
-    best_distance = abs(best_lr - 1e-3)
 
-    # Compare against all trial losses: best should be in the top third
-    all_losses = [t.best_loss for t in result.trial_history if t.best_loss < float("inf")]
-    all_losses.sort()
-    top_third_threshold = all_losses[len(all_losses) // 3]
+def test_arch_weights_change_after_arch_step():
+    """arch weights change after arch_step."""
+    model = make_simple_model()
+    searcher = DARTSSearcher(model)
 
-    assert result.best_loss <= top_third_threshold, (
-        f"best_loss={result.best_loss:.4f} not in top third (threshold={top_third_threshold:.4f})"
-    )
+    # Capture arch weights before
+    arch_params_before = {
+        n: p.clone().detach()
+        for n, p in model.named_parameters()
+        if 'arch_weights' in n
+    }
+
+    # Forward + arch step
+    x = torch.randn(2, 4, 32)
+    out = model(x)
+    loss = out.mean()
+    searcher.arch_step(loss)
+
+    # Check that at least one arch weight changed
+    changed = False
+    for n, p in model.named_parameters():
+        if 'arch_weights' in n:
+            if not torch.allclose(p.detach(), arch_params_before[n]):
+                changed = True
+                break
+    assert changed, "Architecture weights did not change after arch_step"
+
+
+def test_model_weights_unchanged_after_arch_step():
+    """model weights unchanged after arch_step only."""
+    model = make_simple_model()
+    searcher = DARTSSearcher(model)
+
+    # Capture model (non-arch) weights before
+    model_params_before = {
+        n: p.clone().detach()
+        for n, p in model.named_parameters()
+        if 'arch_weights' not in n
+    }
+
+    # Forward + arch step only (NOT model_step)
+    x = torch.randn(2, 4, 32)
+    out = model(x)
+    loss = out.mean()
+    searcher.arch_step(loss)
+
+    # Check that all model weights remain unchanged
+    for n, p in model.named_parameters():
+        if 'arch_weights' not in n:
+            assert torch.allclose(p.detach(), model_params_before[n]), (
+                f"Model param '{n}' changed after arch_step only"
+            )
+
+
+def test_get_best_architecture():
+    """get_best_architecture returns dict with module names as keys."""
+    model = make_simple_model()
+    searcher = DARTSSearcher(model)
+    best_arch = searcher.get_best_architecture(model)
+    assert isinstance(best_arch, dict)
+    assert len(best_arch) > 0
+    # All keys should be strings (module names) and values should be op name strings
+    for k, v in best_arch.items():
+        assert isinstance(k, str)
+        assert isinstance(v, str)
+
+
+# ---------------------------------------------------------------------------
+# ArchitectureStats tests
+# ---------------------------------------------------------------------------
+
+def test_arch_stats_record():
+    """Recording updates history length."""
+    stats = ArchitectureStats()
+    mixed_op = make_mixed_op()
+    assert len(stats.history) == 0
+    stats.record(0, mixed_op)
+    stats.record(1, mixed_op)
+    assert len(stats.history) == 2
+    assert stats.history[0]['step'] == 0
+    assert stats.history[1]['step'] == 1
+
+
+def test_convergence_step_found():
+    """After setting one arch_weight very high, convergence_step returns a step."""
+    stats = ArchitectureStats()
+    mixed_op = make_mixed_op(n_ops=3)
+
+    # Step 0: uniform weights — no convergence
+    stats.record(0, mixed_op)
+
+    # Step 1: set one weight very high so softmax pushes it >= 0.8
+    with torch.no_grad():
+        mixed_op.arch_weights[0] = 10.0
+        mixed_op.arch_weights[1] = 0.0
+        mixed_op.arch_weights[2] = 0.0
+    stats.record(1, mixed_op)
+
+    step = stats.convergence_step(threshold=0.8)
+    assert step is not None, "Expected convergence_step to return a step"
+    assert step == 1, f"Expected convergence at step 1, got step {step}"
