@@ -147,7 +147,8 @@ class AgentLoop:
 
         with torch.no_grad():
             for _ in range(cfg.max_new_tokens_per_step):
-                logits = self.model(current_ids)  # (1, S, V)
+                output = self.model(current_ids)   # returns (loss, logits) tuple
+                logits = output[1]                 # (1, S, V)
                 next_logits = logits[0, -1, :]     # (V,)
 
                 if cfg.temperature > 0.0:
