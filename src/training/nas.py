@@ -1,224 +1,178 @@
-"""Neural Architecture Search via Hyperband (Successive Halving).
+"""Neural Architecture Search via DARTS (Differentiable Architecture Search).
 
-Efficient hyperparameter search using random sampling + successive halving.
-Each trial trains for increasing budgets; bad configurations are eliminated early.
+Implements DARTS-style differentiable architecture search where architecture
+choices are represented as continuous weights optimized by gradient descent.
 
-Reference: Li et al. 2018 "Hyperband: A Novel Bandit-Based Approach to HPO"
+Key idea: Instead of discrete architecture choices, represent the architecture
+as a weighted mixture of all candidate operations. Architecture weights (α) are
+learned alongside model weights via bilevel optimization.
+
+Reference: Liu et al. 2019 "DARTS: Differentiable Architecture Search"
+           arXiv:1806.09055
 """
 from __future__ import annotations
 
-import math
-import random
-from dataclasses import dataclass, field
-from typing import Any, Callable
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
-@dataclass
-class SearchSpace:
-    """Defines the hyperparameter search space."""
+class MixedOperation(nn.Module):
+    """A mixture of operations for differentiable architecture search.
 
-    # Each entry: param_name -> (low, high, log_scale)
-    # log_scale=True: sample uniformly in log space (good for lr)
-    continuous: dict[str, tuple[float, float, bool]] = field(default_factory=dict)
+    At each position, compute: output = sum_i (softmax(α)[i] * op_i(x))
 
-    # Discrete choices: param_name -> [option1, option2, ...]
-    discrete: dict[str, list[Any]] = field(default_factory=dict)
+    Args:
+        operations: dict of {name: nn.Module}
+    """
 
-    def sample(self, rng: random.Random | None = None) -> dict[str, Any]:
-        """Sample one configuration from the search space."""
-        rng = rng or random
-        config = {}
-        for name, (low, high, log_scale) in self.continuous.items():
-            if log_scale:
-                val = math.exp(rng.uniform(math.log(low), math.log(high)))
+    def __init__(self, operations: dict[str, nn.Module]) -> None:
+        super().__init__()
+        self.ops = nn.ModuleDict(operations)
+        # Architecture weights (unnormalized)
+        self.arch_weights = nn.Parameter(torch.zeros(len(operations)))
+        self._op_names = list(operations.keys())
+
+    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+        """Compute weighted mixture of all operations.
+
+        weights = softmax(arch_weights)
+        output = sum_i weights[i] * ops[i](x)
+        """
+        weights = F.softmax(self.arch_weights, dim=0)
+        out = None
+        for i, name in enumerate(self._op_names):
+            op_out = self.ops[name](x, *args, **kwargs)
+            if out is None:
+                out = weights[i] * op_out
             else:
-                val = rng.uniform(low, high)
-            config[name] = val
-        for name, choices in self.discrete.items():
-            config[name] = rng.choice(choices)
-        return config
+                out = out + weights[i] * op_out
+        return out
+
+    def best_operation(self) -> str:
+        """Return name of operation with highest arch weight."""
+        with torch.no_grad():
+            idx = int(self.arch_weights.argmax().item())
+        return self._op_names[idx]
+
+    def architecture_weights(self) -> dict[str, float]:
+        """Return dict {op_name: weight} with softmax applied."""
+        with torch.no_grad():
+            weights = F.softmax(self.arch_weights, dim=0)
+        return {name: float(weights[i].item()) for i, name in enumerate(self._op_names)}
 
 
-@dataclass
-class Trial:
-    """One NAS trial (one configuration)."""
-    config: dict[str, Any]
-    trial_id: int
-    best_loss: float = float("inf")
-    steps_trained: int = 0
-    eliminated: bool = False
+class DARTSCell(nn.Module):
+    """A DARTS-searchable transformer layer.
+
+    Searches over:
+    - Attention type: standard GQA vs sliding window (simplified here as two linear ops)
+    - FFN type: SwiGLU vs simple linear
+
+    For testability, operations are simplified to nn.Linear layers with different configs.
+    In production, these would be full attention + FFN modules.
+    """
+
+    def __init__(self, d_model: int, n_candidates: int = 3) -> None:
+        super().__init__()
+        # n_candidates linear operations as proxy for different architectures
+        ops = {
+            f'op_{i}': nn.Linear(d_model, d_model, bias=(i % 2 == 0))
+            for i in range(n_candidates)
+        }
+        self.mixed_op = MixedOperation(ops)
+        self.norm = nn.LayerNorm(d_model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x + self.mixed_op(self.norm(x))
+
+    def best_op(self) -> str:
+        return self.mixed_op.best_operation()
 
 
-@dataclass
-class NASConfig:
-    n_initial_configs: int = 16    # initial number of random configs
-    eta: int = 3                   # reduction factor (keep 1/eta each round)
-    min_budget: int = 10           # initial training steps per config
-    max_budget: int = 100          # max training steps (when winner is found)
-    seed: int = 42
+class DARTSSearcher:
+    """DARTS architecture search trainer.
 
+    Maintains two optimizers:
+    - model_optimizer: updates model weights (W) on training data
+    - arch_optimizer: updates architecture weights (α) on validation data
 
-@dataclass
-class NASResult:
-    """Best configuration found by NAS."""
-    best_config: dict[str, Any]
-    best_loss: float
-    n_trials: int
-    total_steps: int
-    trial_history: list[Trial]
-
-
-class HyperbandSearcher:
-    """Hyperband: successive halving with multiple brackets.
-
-    Each bracket starts with a different (n, budget) tradeoff.
+    Bilevel optimization:
+    - Inner loop: minimize train_loss wrt W (model weights)
+    - Outer loop: minimize val_loss wrt α (architecture weights)
     """
 
     def __init__(
         self,
-        search_space: SearchSpace,
-        eval_fn: Callable[[dict, int], float],  # (config, n_steps) -> validation_loss
-        cfg: NASConfig | None = None,
+        model: nn.Module,
+        arch_lr: float = 3e-4,
+        model_lr: float = 1e-3,
+        arch_weight_decay: float = 1e-3,
     ) -> None:
-        self.search_space = search_space
-        self.eval_fn = eval_fn
-        self.cfg = cfg or NASConfig()
-        self.rng = random.Random(self.cfg.seed)
-        self._trials: list[Trial] = []
-        self._total_steps = 0
+        # Separate model weights from arch weights
+        arch_params = [p for n, p in model.named_parameters() if 'arch_weights' in n]
+        model_params = [p for n, p in model.named_parameters() if 'arch_weights' not in n]
 
-    def _successive_halving(
-        self,
-        configs: list[dict],
-        budget: int,
-        n_rungs: int,
-    ) -> list[Trial]:
-        """Run successive halving on a list of configs.
-
-        Returns list of Trial objects (including eliminated ones).
-        """
-        cfg = self.cfg
-        all_trials: list[Trial] = []
-
-        # Create Trial objects for each config
-        active_trials: list[Trial] = []
-        for config in configs:
-            trial_id = len(self._trials) + len(all_trials) + len(active_trials)
-            trial = Trial(config=config, trial_id=trial_id)
-            active_trials.append(trial)
-            all_trials.append(trial)
-
-        current_budget = budget
-
-        for rung in range(n_rungs):
-            # Evaluate each active trial at current_budget steps
-            for trial in active_trials:
-                additional_steps = current_budget - trial.steps_trained
-                if additional_steps > 0:
-                    loss = self.eval_fn(trial.config, current_budget)
-                    trial.best_loss = loss
-                    trial.steps_trained = current_budget
-                    self._total_steps += additional_steps
-
-            # Sort by loss, keep top 1/eta
-            active_trials.sort(key=lambda t: t.best_loss)
-            n_keep = max(1, len(active_trials) // cfg.eta)
-
-            # Eliminate the bottom configs (unless last rung)
-            if rung < n_rungs - 1:
-                for trial in active_trials[n_keep:]:
-                    trial.eliminated = True
-                active_trials = active_trials[:n_keep]
-                current_budget = min(current_budget * cfg.eta, cfg.max_budget)
-
-        return all_trials
-
-    def search(self) -> NASResult:
-        """Run full Hyperband search.
-
-        Number of brackets = floor(log_{eta}(max_budget/min_budget)) + 1
-        For each bracket: sample n_i configs, run SHA with budget_i
-        """
-        cfg = self.cfg
-        eta = cfg.eta
-
-        # Number of brackets (s_max + 1)
-        s_max = math.floor(math.log(cfg.max_budget / cfg.min_budget, eta))
-        n_brackets = s_max + 1
-
-        all_trials: list[Trial] = []
-
-        for s in range(n_brackets - 1, -1, -1):
-            # Number of configs and initial budget for this bracket
-            # n_i = ceil(n_initial * eta^s / (s+1))
-            n_i = math.ceil(cfg.n_initial_configs * (eta ** s) / (s + 1))
-            # b_i = min_budget * eta^(s_max - s) — start lower for brackets with more configs
-            b_i = cfg.min_budget * (eta ** (s_max - s))
-            b_i = min(b_i, cfg.max_budget)
-
-            # Number of rungs for this bracket
-            n_rungs = s + 1
-
-            # Sample configs for this bracket
-            configs = [self.search_space.sample(self.rng) for _ in range(n_i)]
-
-            # Run successive halving
-            bracket_trials = self._successive_halving(configs, b_i, n_rungs)
-
-            # Track trial IDs properly
-            for trial in bracket_trials:
-                trial.trial_id = len(all_trials)
-                all_trials.append(trial)
-
-        self._trials = all_trials
-
-        # Find best trial
-        best_trial = min(all_trials, key=lambda t: t.best_loss)
-
-        return NASResult(
-            best_config=best_trial.config,
-            best_loss=best_trial.best_loss,
-            n_trials=len(all_trials),
-            total_steps=self._total_steps,
-            trial_history=all_trials,
+        self.arch_optimizer = torch.optim.Adam(
+            arch_params, lr=arch_lr, weight_decay=arch_weight_decay
         )
+        self.model_optimizer = torch.optim.Adam(model_params, lr=model_lr)
+
+    def model_step(self, train_loss: torch.Tensor) -> float:
+        """Update model weights on train loss. Returns loss float."""
+        self.model_optimizer.zero_grad()
+        train_loss.backward()
+        self.model_optimizer.step()
+        return float(train_loss.item())
+
+    def arch_step(self, val_loss: torch.Tensor) -> float:
+        """Update architecture weights on val loss. Returns loss float."""
+        self.arch_optimizer.zero_grad()
+        val_loss.backward()
+        self.arch_optimizer.step()
+        return float(val_loss.item())
+
+    def get_best_architecture(self, model: nn.Module) -> dict[str, str]:
+        """Return best operation for each MixedOperation in model.
+
+        Walk model.named_modules(), find MixedOperation instances.
+        Return {module_name: best_op_name}
+        """
+        result: dict[str, str] = {}
+        for name, module in model.named_modules():
+            if isinstance(module, MixedOperation):
+                result[name] = module.best_operation()
+        return result
 
 
-def random_search(
-    search_space: SearchSpace,
-    eval_fn: Callable[[dict, int], float],
-    n_trials: int,
-    budget_per_trial: int,
-    seed: int = 0,
-) -> NASResult:
-    """Simple random search baseline.
+class ArchitectureStats:
+    """Track architecture weight evolution during search."""
 
-    Sample n_trials configs, evaluate each for budget_per_trial steps.
-    Return best.
-    """
-    rng = random.Random(seed)
-    trials: list[Trial] = []
-    total_steps = 0
+    def __init__(self) -> None:
+        self.history: list[dict] = []  # list of {step: n, weights: {name: float}}
 
-    for i in range(n_trials):
-        config = search_space.sample(rng)
-        loss = eval_fn(config, budget_per_trial)
-        trial = Trial(
-            config=config,
-            trial_id=i,
-            best_loss=loss,
-            steps_trained=budget_per_trial,
-            eliminated=False,
-        )
-        trials.append(trial)
-        total_steps += budget_per_trial
+    def record(self, step: int, mixed_op: MixedOperation) -> None:
+        self.history.append({
+            'step': step,
+            'weights': mixed_op.architecture_weights(),
+        })
 
-    best_trial = min(trials, key=lambda t: t.best_loss)
+    def dominant_op_over_time(self) -> list[str]:
+        """Return list of best_operation at each recorded step."""
+        result = []
+        for entry in self.history:
+            weights = entry['weights']
+            best = max(weights, key=lambda k: weights[k])
+            result.append(best)
+        return result
 
-    return NASResult(
-        best_config=best_trial.config,
-        best_loss=best_trial.best_loss,
-        n_trials=n_trials,
-        total_steps=total_steps,
-        trial_history=trials,
-    )
+    def convergence_step(self, threshold: float = 0.8) -> int | None:
+        """Return first step where one operation has weight >= threshold.
+
+        Returns None if never converged.
+        """
+        for entry in self.history:
+            weights = entry['weights']
+            if any(w >= threshold for w in weights.values()):
+                return entry['step']
+        return None

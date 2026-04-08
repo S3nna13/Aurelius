@@ -1,17 +1,39 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-.venv/
-.env
-data/
-checkpoints/
-results/
-logs/
-*.gguf
-*.bin
-wandb/
-.DS_Store
-tokenizer/
+*.pyd
+.Python
 *.egg-info/
 dist/
 build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Checkpoints / large binaries
+*.pt
+*.pth
+*.bin
+*.gguf
+*.safetensors
+checkpoints/
+runs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+wandb/
