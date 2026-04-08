@@ -16,13 +16,38 @@ from src.data.quality_filter import (
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_good_text(n_sentences: int = 10) -> str:
-    """Return a plausible English paragraph that should pass all filters."""
-    sentence = (
-        "The quick brown fox jumps over the lazy dog near the riverbank "
-        "on a sunny afternoon while birds chirp softly in the trees."
-    )
-    return " ".join([sentence] * n_sentences)
+_SENTENCES = [
+    "The quick brown fox jumps over the lazy dog near the riverbank on a sunny afternoon.",
+    "Scientists discovered that deep ocean trenches harbor extraordinary forms of microbial life.",
+    "Modern programming languages balance expressiveness with performance in thoughtful ways.",
+    "A fresh breeze carried the scent of pine needles across the mountain meadow at dawn.",
+    "Historical records reveal surprising connections between seemingly unrelated civilisations.",
+    "Astronomers mapped thousands of exoplanets orbiting distant stars within our galaxy.",
+    "Renewable energy technology has advanced rapidly thanks to global research investment.",
+    "Children who read widely tend to develop stronger critical thinking and empathy skills.",
+    "Urban planners increasingly incorporate green spaces to improve residents' mental health.",
+    "Classical music theorists debate the harmonic language of late Romantic composers.",
+    "Geological surveys confirmed that ancient volcanic activity shaped this dramatic landscape.",
+    "Machine learning models require careful evaluation to avoid perpetuating existing biases.",
+    "The novelist wove themes of identity and belonging into each carefully crafted chapter.",
+    "Athletes train systematically to improve endurance strength and technical precision together.",
+    "Coastal communities adapt traditional fishing practices to cope with changing ocean conditions.",
+    "Philosophers have long questioned whether free will is compatible with physical determinism.",
+    "Software engineers refactor legacy codebases to improve maintainability and testability.",
+    "Migratory birds navigate thousands of kilometres using magnetic fields and star patterns.",
+    "Economic inequality shapes access to education healthcare and political representation.",
+    "Botanists catalogued hundreds of previously undescribed flowering plant species in the rainforest.",
+]
+
+
+def _make_good_text(n_sentences: int = 10, offset: int = 0) -> str:
+    """Return a plausible English paragraph that should pass all filters.
+
+    Uses a rotating pool of distinct sentences to keep vocabulary varied,
+    which prevents triggering word-repetition or unique-word-ratio filters.
+    """
+    chosen = [_SENTENCES[(offset + i) % len(_SENTENCES)] for i in range(n_sentences)]
+    return " ".join(chosen)
 
 
 # ---------------------------------------------------------------------------
@@ -42,7 +67,7 @@ def test_filter_short_text_rejected():
 def test_filter_good_text_passes():
     """A normal English paragraph should pass all quality checks."""
     f = TextQualityFilter()
-    text = _make_good_text(10)
+    text = _make_good_text(n_sentences=15, offset=0)
     result = f.filter(text)
     assert result.passed, f"Expected pass, got reasons: {result.reasons}"
 
@@ -93,7 +118,7 @@ def test_filter_batch_returns_all():
 def test_stats_pass_rate():
     """A corpus of all-good texts should have a pass_rate close to 1.0."""
     f = TextQualityFilter()
-    texts = [_make_good_text(10) for _ in range(20)]
+    texts = [_make_good_text(n_sentences=15, offset=i) for i in range(20)]
     s = f.stats(texts)
     assert s["n_total"] == 20
     assert s["pass_rate"] == pytest.approx(1.0, abs=0.05)
@@ -147,7 +172,8 @@ def test_minhash_disjoint_texts():
 
 def test_deduplication_removes_duplicates():
     """A corpus where one document is an exact duplicate should lose that doc."""
-    unique_texts = [_make_good_text(i + 5) for i in range(4)]
+    # Use offset so each block of sentences is drawn from a different part of the pool
+    unique_texts = [_make_good_text(n_sentences=10, offset=i * 5) for i in range(4)]
     # Append an exact copy of the first document
     texts = unique_texts + [unique_texts[0]]
     pipeline = DeduplicationPipeline()
