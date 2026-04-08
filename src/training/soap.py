@@ -1,9 +1,14 @@
-"""SOAP optimizer with lightweight matrix preconditioning.
+"""SOAP optimizer — Shampoo as Adam Preconditioner.
 
-This implementation follows the spirit of second-order adaptive optimizers by
-maintaining running row/column covariance estimates for matrix-shaped
-parameters, then preconditioning gradients with inverse square-root factors.
-Vectors and scalars fall back to Adam-style diagonal preconditioning.
+Reference: Vyas et al., "SOAP: Improving and Stabilizing Shampoo using Adam",
+arXiv:2409.11321 (2024).
+
+Key idea: For each 2D weight matrix W (m×n), maintain Kronecker-factor
+preconditioners L (m×m) and R (n×n) as EMAs of G@G^T and G^T@G respectively.
+Every `precond_freq` steps, eigen-decompose L and R to obtain orthonormal bases
+Q_L and Q_R.  Adam's first and second moments are maintained in the projected
+eigenspace; the preconditioned update is projected back to parameter space.
+1D parameters (biases, norms) fall back to plain Adam.
 """
 
 from __future__ import annotations
@@ -12,67 +17,81 @@ import torch
 from torch.optim import Optimizer
 
 
-def _matrix_inverse_root(matrix: torch.Tensor, eps: float) -> torch.Tensor:
-    """Compute a symmetric inverse square root for a PSD matrix."""
-    eye = torch.eye(matrix.size(0), device=matrix.device, dtype=matrix.dtype)
-    evals, evecs = torch.linalg.eigh(matrix + eps * eye)
-    inv_root = evecs @ torch.diag_embed(evals.clamp_min(eps).rsqrt()) @ evecs.transpose(-1, -2)
-    return inv_root
-
-
-def _flatten_to_matrix(tensor: torch.Tensor) -> tuple[torch.Tensor, torch.Size]:
-    """Flatten an arbitrary tensor to a 2D matrix for preconditioning."""
-    original_shape = tensor.shape
-    if tensor.dim() == 0:
-        return tensor.reshape(1, 1), original_shape
-    if tensor.dim() == 1:
-        return tensor.reshape(tensor.numel(), 1), original_shape
-    return tensor.reshape(tensor.shape[0], -1), original_shape
-
-
-def _restore_shape(matrix: torch.Tensor, shape: torch.Size) -> torch.Tensor:
-    """Restore a flattened matrix back to the original tensor shape."""
-    return matrix.reshape(shape)
-
-
 class SOAP(Optimizer):
-    """Second-order adaptive optimizer with matrix preconditioning."""
+    """SOAP: Shampoo as Adam Preconditioner.
+
+    For each 2D parameter W (m×n):
+      - L (m×m): left Kronecker factor EMA of G@G^T
+      - R (n×n): right Kronecker factor EMA of G^T@G
+      - Every `precond_freq` steps: eigen-decompose L→(Q_L, λ_L), R→(Q_R, λ_R)
+      - Project gradient into eigenspace: G_hat = Q_L^T @ G @ Q_R
+      - Apply Adam (m1, m2) in eigenspace
+      - Project back: update = Q_L @ adam_update @ Q_R^T
+
+    For 1D parameters (bias, scale): plain Adam.
+
+    Args:
+        params: model parameters
+        lr: learning rate (default 3e-4)
+        betas: (beta1, beta2) for Adam moments (default (0.95, 0.95))
+        eps: Adam epsilon (default 1e-8)
+        weight_decay: L2 weight decay applied as gradient penalty (default 0.01)
+        precond_freq: steps between preconditioner updates (default 10)
+        precond_beta: EMA decay for Kronecker factors (default 0.999)
+    """
 
     def __init__(
         self,
         params,
-        lr: float = 1e-3,
-        betas: tuple[float, float] = (0.9, 0.95),
-        shampoo_beta: float = 0.95,
+        lr: float = 3e-4,
+        betas: tuple[float, float] = (0.95, 0.95),
         eps: float = 1e-8,
-        weight_decay: float = 0.0,
-        precondition_frequency: int = 1,
+        weight_decay: float = 0.01,
+        precond_freq: int = 10,
+        precond_beta: float = 0.999,
     ) -> None:
-        if lr <= 0:
-            raise ValueError(f"lr must be positive, got {lr}")
-        if eps <= 0:
-            raise ValueError(f"eps must be positive, got {eps}")
-        beta1, beta2 = betas
-        if not 0 <= beta1 < 1 or not 0 <= beta2 < 1:
-            raise ValueError(f"betas must be in [0, 1), got {betas}")
-        if not 0 <= shampoo_beta < 1:
-            raise ValueError(f"shampoo_beta must be in [0, 1), got {shampoo_beta}")
-        if precondition_frequency < 1:
-            raise ValueError(
-                f"precondition_frequency must be >= 1, got {precondition_frequency}"
-            )
         defaults = dict(
             lr=lr,
             betas=betas,
-            shampoo_beta=shampoo_beta,
             eps=eps,
             weight_decay=weight_decay,
-            precondition_frequency=precondition_frequency,
+            precond_freq=precond_freq,
+            precond_beta=precond_beta,
         )
         super().__init__(params, defaults)
 
+    def _update_preconditioner(self, state: dict, grad: torch.Tensor) -> None:
+        """Update Kronecker factors and their eigenbases.
+
+        L = precond_beta * L + (1 - precond_beta) * G @ G^T
+        R = precond_beta * R + (1 - precond_beta) * G^T @ G
+
+        Eigendecomposition is performed every `precond_freq` steps (but NOT on
+        step 0 — no gradient history yet).  Q_L / Q_R are stored in state.
+        """
+        precond_beta = state["precond_beta"]
+        step = state["step"]
+        precond_freq = state["precond_freq"]
+
+        L = state["L"]
+        R = state["R"]
+
+        # EMA update of Kronecker factors
+        L.mul_(precond_beta).add_(grad @ grad.T, alpha=1.0 - precond_beta)
+        R.mul_(precond_beta).add_(grad.T @ grad, alpha=1.0 - precond_beta)
+
+        # Refresh eigenbases at the requested frequency (skip step 0)
+        if step > 0 and step % precond_freq == 0:
+            # torch.linalg.eigh returns eigenvalues in ascending order;
+            # eigenvectors form columns of Q.
+            _, Q_L = torch.linalg.eigh(L)
+            _, Q_R = torch.linalg.eigh(R)
+            state["Q_L"].copy_(Q_L)
+            state["Q_R"].copy_(Q_R)
+
     @torch.no_grad()
-    def step(self, closure=None) -> float | None:
+    def step(self, closure=None):
+        """Perform a single optimisation step."""
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -81,61 +100,86 @@ class SOAP(Optimizer):
         for group in self.param_groups:
             lr = group["lr"]
             beta1, beta2 = group["betas"]
-            shampoo_beta = group["shampoo_beta"]
             eps = group["eps"]
             weight_decay = group["weight_decay"]
-            precondition_frequency = group["precondition_frequency"]
+            precond_freq = group["precond_freq"]
+            precond_beta = group["precond_beta"]
 
-            for param in group["params"]:
-                if param.grad is None:
+            for p in group["params"]:
+                if p.grad is None:
                     continue
 
-                grad = param.grad
-                if weight_decay != 0.0:
-                    grad = grad.add(param, alpha=weight_decay)
+                grad = p.grad
 
-                state = self.state[param]
+                # Weight decay as gradient penalty
+                if weight_decay != 0.0:
+                    grad = grad.add(p, alpha=weight_decay)
+
+                state = self.state[p]
+                is_2d = p.dim() == 2
+
+                # ── Initialise state on first encounter ──────────────────────
                 if len(state) == 0:
                     state["step"] = 0
-                    state["exp_avg"] = torch.zeros_like(param)
-                    state["exp_avg_sq"] = torch.zeros_like(param)
-
-                    grad_matrix, _ = _flatten_to_matrix(grad)
-                    row_dim, col_dim = grad_matrix.shape
-                    state["row_cov"] = torch.zeros(
-                        row_dim, row_dim, device=param.device, dtype=param.dtype
-                    )
-                    state["col_cov"] = torch.zeros(
-                        col_dim, col_dim, device=param.device, dtype=param.dtype
-                    )
-                    state["row_inv_root"] = torch.eye(
-                        row_dim, device=param.device, dtype=param.dtype
-                    )
-                    state["col_inv_root"] = torch.eye(
-                        col_dim, device=param.device, dtype=param.dtype
-                    )
+                    if is_2d:
+                        m, n = p.shape
+                        state["exp_avg"] = torch.zeros(m, n, device=p.device, dtype=p.dtype)
+                        state["exp_avg_sq"] = torch.zeros(m, n, device=p.device, dtype=p.dtype)
+                        state["L"] = torch.zeros(m, m, device=p.device, dtype=p.dtype)
+                        state["R"] = torch.zeros(n, n, device=p.device, dtype=p.dtype)
+                        state["Q_L"] = torch.eye(m, device=p.device, dtype=p.dtype)
+                        state["Q_R"] = torch.eye(n, device=p.device, dtype=p.dtype)
+                        # Stash hyper-params for use inside _update_preconditioner
+                        state["precond_freq"] = precond_freq
+                        state["precond_beta"] = precond_beta
+                    else:
+                        state["exp_avg"] = torch.zeros_like(p)
+                        state["exp_avg_sq"] = torch.zeros_like(p)
 
                 state["step"] += 1
+                t = state["step"]
+
                 exp_avg = state["exp_avg"]
                 exp_avg_sq = state["exp_avg_sq"]
-                exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
-                exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
 
-                grad_matrix, original_shape = _flatten_to_matrix(grad)
-                row_cov = state["row_cov"]
-                col_cov = state["col_cov"]
-                row_cov.mul_(shampoo_beta).add_(grad_matrix @ grad_matrix.transpose(0, 1), alpha=1 - shampoo_beta)
-                col_cov.mul_(shampoo_beta).add_(grad_matrix.transpose(0, 1) @ grad_matrix, alpha=1 - shampoo_beta)
+                if is_2d:
+                    # ── Update Kronecker factors ──────────────────────────────
+                    self._update_preconditioner(state, grad)
 
-                if state["step"] % precondition_frequency == 0:
-                    state["row_inv_root"] = _matrix_inverse_root(row_cov, eps)
-                    state["col_inv_root"] = _matrix_inverse_root(col_cov, eps)
+                    Q_L = state["Q_L"]  # (m, m)
+                    Q_R = state["Q_R"]  # (n, n)
 
-                preconditioned = state["row_inv_root"] @ grad_matrix @ state["col_inv_root"]
-                preconditioned = _restore_shape(preconditioned, original_shape)
+                    # Project gradient into eigenspace
+                    g_hat = Q_L.T @ grad @ Q_R  # (m, n)
 
-                denom = exp_avg_sq.sqrt().add_(eps)
-                update = exp_avg / denom + preconditioned
-                param.add_(update, alpha=-lr)
+                    # Adam moment updates in eigenspace
+                    exp_avg.mul_(beta1).add_(g_hat, alpha=1.0 - beta1)
+                    exp_avg_sq.mul_(beta2).addcmul_(g_hat, g_hat, value=1.0 - beta2)
+
+                    # Bias-corrected moments
+                    bc1 = 1.0 - beta1 ** t
+                    bc2 = 1.0 - beta2 ** t
+                    m_hat = exp_avg / bc1
+                    v_hat = exp_avg_sq / bc2
+
+                    # Adam update in eigenspace
+                    adam_update = m_hat / (v_hat.sqrt().add_(eps))
+
+                    # Project back to parameter space
+                    update = Q_L @ adam_update @ Q_R.T
+
+                else:
+                    # ── Plain Adam for 1D parameters ─────────────────────────
+                    exp_avg.mul_(beta1).add_(grad, alpha=1.0 - beta1)
+                    exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
+
+                    bc1 = 1.0 - beta1 ** t
+                    bc2 = 1.0 - beta2 ** t
+                    m_hat = exp_avg / bc1
+                    v_hat = exp_avg_sq / bc2
+
+                    update = m_hat / (v_hat.sqrt().add_(eps))
+
+                p.add_(update, alpha=-lr)
 
         return loss
