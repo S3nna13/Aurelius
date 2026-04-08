@@ -155,6 +155,175 @@ class MultiModalTransformerBlock(nn.Module):
         return x, kv
 
 
+def scaled_dot_product_cross_attention(
+    q: torch.Tensor,    # (B, H, T_q, D)
+    k: torch.Tensor,    # (B, H, T_kv, D)
+    v: torch.Tensor,    # (B, H, T_kv, D)
+    mask: torch.Tensor | None = None,  # (B, 1, 1, T_kv) or (B, H, T_q, T_kv)
+) -> torch.Tensor:
+    """Scaled dot-product cross-attention (no causal mask).
+
+    mask: True positions are VALID (not masked). False → -inf.
+    Returns: (B, H, T_q, D)
+    """
+    if hasattr(F, "scaled_dot_product_attention"):
+        # Convert boolean valid-mask to additive float mask expected by SDPA
+        attn_mask = None
+        if mask is not None:
+            attn_mask = torch.zeros_like(mask, dtype=q.dtype)
+            attn_mask = attn_mask.masked_fill(~mask, float("-inf"))
+        return F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask, is_causal=False)
+    else:
+        # Manual fallback
+        scale = q.size(-1) ** -0.5
+        scores = torch.matmul(q, k.transpose(-2, -1)) * scale  # (B, H, T_q, T_kv)
+        if mask is not None:
+            scores = scores.masked_fill(~mask, float("-inf"))
+        weights = torch.softmax(scores, dim=-1)
+        return torch.matmul(weights, v)
+
+
+class CrossAttention(nn.Module):
+    """Multi-head cross-attention.
+
+    Q from x (decoder/query stream), K/V from context (encoder/retrieved docs).
+
+    Args:
+        config: AureliusConfig (for d_model, n_heads, head_dim)
+        d_context: int | None — if None, uses config.d_model (self-attention mode)
+    """
+
+    def __init__(self, config, d_context: int | None = None) -> None:
+        super().__init__()
+        self.d_model = config.d_model
+        self.n_heads = config.n_heads
+        self.head_dim = config.head_dim
+        self.d_context = d_context if d_context is not None else config.d_model
+        self.dropout = getattr(config, "dropout", 0.0)
+
+        inner_dim = self.n_heads * self.head_dim
+
+        # W_q: d_model → n_heads * head_dim
+        self.w_q = nn.Linear(self.d_model, inner_dim, bias=False)
+        # W_k: d_context → n_heads * head_dim
+        self.w_k = nn.Linear(self.d_context, inner_dim, bias=False)
+        # W_v: d_context → n_heads * head_dim
+        self.w_v = nn.Linear(self.d_context, inner_dim, bias=False)
+        # W_o: n_heads * head_dim → d_model
+        self.w_o = nn.Linear(inner_dim, self.d_model, bias=False)
+
+    def forward(
+        self,
+        x: torch.Tensor,                        # (B, T_q, d_model) — queries
+        context: torch.Tensor,                  # (B, T_kv, d_context) — keys and values
+        context_mask: torch.Tensor | None = None,  # (B, T_kv) bool mask, True=valid
+        **kwargs,
+    ) -> torch.Tensor:
+        """Returns: (B, T_q, d_model)
+
+        No causal mask — can attend to full context.
+        context_mask: False positions get -inf before softmax.
+        """
+        B, T_q, _ = x.shape
+        T_kv = context.shape[1]
+
+        q = self.w_q(x).view(B, T_q, self.n_heads, self.head_dim).transpose(1, 2)
+        k = self.w_k(context).view(B, T_kv, self.n_heads, self.head_dim).transpose(1, 2)
+        v = self.w_v(context).view(B, T_kv, self.n_heads, self.head_dim).transpose(1, 2)
+
+        # Build mask for scaled_dot_product_cross_attention: (B, 1, 1, T_kv) bool
+        attn_mask = None
+        if context_mask is not None:
+            attn_mask = context_mask.view(B, 1, 1, T_kv)
+
+        out = scaled_dot_product_cross_attention(q, k, v, mask=attn_mask)
+
+        # (B, n_heads, T_q, head_dim) → (B, T_q, d_model)
+        out = out.transpose(1, 2).contiguous().view(B, T_q, -1)
+        return self.w_o(out)
+
+
+class CrossAttentionBlock(nn.Module):
+    """Transformer block with cross-attention.
+
+    Architecture:
+        x = x + SelfAttention(RMSNorm(x))      # standard causal self-attention
+        x = x + CrossAttention(RMSNorm(x), context)  # cross-attend to context
+        x = x + FFN(RMSNorm(x))
+
+    Args:
+        config: AureliusConfig
+        d_context: int
+    """
+
+    def __init__(self, config, d_context: int) -> None:
+        super().__init__()
+        from .attention import GroupedQueryAttention
+        from .ffn import SwiGLUFFN
+        from .rms_norm import RMSNorm
+
+        self.self_attn = GroupedQueryAttention(config)
+        self.cross_attn = CrossAttention(config, d_context=d_context)
+        self.ffn = SwiGLUFFN(config)
+        self.norm1 = RMSNorm(config.d_model)
+        self.norm2 = RMSNorm(config.d_model)
+        self.norm3 = RMSNorm(config.d_model)
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        context: torch.Tensor,
+        context_mask: torch.Tensor | None = None,
+        **kwargs,
+    ) -> torch.Tensor:
+        from .attention import precompute_rope_frequencies
+
+        B, T, _ = x.shape
+        freqs = precompute_rope_frequencies(self.self_attn.head_dim, T, device=x.device)
+
+        # Self-attention (causal)
+        attn_out, _ = self.self_attn(self.norm1(x), freqs)
+        x = x + attn_out
+
+        # Cross-attention
+        x = x + self.cross_attn(self.norm2(x), context, context_mask=context_mask)
+
+        # FFN
+        x = x + self.ffn(self.norm3(x))
+        return x
+
+
+class RAGAttentionLayer(nn.Module):
+    """RAG-style cross-attention: attend to a set of retrieved document embeddings.
+
+    Retrieved documents are projected to the model's KV space, then the model
+    can cross-attend to them at every layer (FiD-style) or at specific layers.
+
+    Args:
+        config: AureliusConfig
+        n_docs: int (number of retrieved documents, default 5)
+        doc_embed_dim: int (dimension of document embeddings, default d_model)
+    """
+
+    def __init__(self, config, n_docs: int = 5, doc_embed_dim: int | None = None) -> None:
+        super().__init__()
+        doc_embed_dim = doc_embed_dim if doc_embed_dim is not None else config.d_model
+        self.doc_proj = nn.Linear(doc_embed_dim, config.d_model, bias=False)
+        self.cross_attn = CrossAttention(config, d_context=config.d_model)
+        self.norm = nn.LayerNorm(config.d_model)  # pre-norm on query
+
+    def forward(
+        self,
+        x: torch.Tensor,                # (B, T, d_model)
+        doc_embeddings: torch.Tensor,   # (B, n_docs, doc_embed_dim)
+        doc_mask: torch.Tensor | None = None,  # (B, n_docs) bool
+    ) -> torch.Tensor:
+        """Attend to documents, add to x via residual."""
+        docs = self.doc_proj(doc_embeddings)  # (B, n_docs, d_model)
+        attn_out = self.cross_attn(self.norm(x), docs, context_mask=doc_mask)
+        return x + attn_out
+
+
 def add_cross_attention_to_model(
     model,                                    # AureliusTransformer
     context_dim: int,

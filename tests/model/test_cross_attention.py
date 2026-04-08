@@ -11,6 +11,10 @@ from src.model.cross_attention import (
     CrossAttentionLayer,
     MultiModalTransformerBlock,
     add_cross_attention_to_model,
+    CrossAttention,
+    CrossAttentionBlock,
+    RAGAttentionLayer,
+    scaled_dot_product_cross_attention,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
