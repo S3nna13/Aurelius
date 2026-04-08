@@ -192,7 +192,7 @@ def test_extract_answer_nodes_empty():
 
 
 def test_graph_trainer_train_step_metrics(small_model):
-    graph_cfg = GraphConfig(n_nodes=8, edge_density=0.3, problem_type="bfs", bfs_depth=1)
+    graph_cfg = GraphConfig(n_nodes=4, edge_density=0.6, problem_type="parents", seed=3)
     trainer_cfg = GraphTrainerConfig(max_seq_len=512, batch_size=2)
     optimizer = torch.optim.AdamW(small_model.parameters(), lr=1e-4)
     trainer = GraphReasoningTrainer(

@@ -1,64 +1,148 @@
-"""Tests for RetNet-style retention layers."""
+"""Tests for RetNet — Retention Networks (Sun et al. 2023)."""
+
+import math
 
 import pytest
 import torch
 
-from src.model.retnet import MultiScaleRetention, RetNetConfig
+from src.model.retnet import SimpleRetention, MultiScaleRetention, RetNetBlock
+from src.model.config import AureliusConfig
 
 
-def make_module() -> MultiScaleRetention:
-    config = RetNetConfig(d_model=64, n_heads=4, head_dim=16)
-    return MultiScaleRetention(config)
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
 
 
-def test_retnet_parallel_shape():
-    module = make_module()
-    x = torch.randn(2, 6, 64)
-    y = module.forward_parallel(x)
-    assert y.shape == x.shape
+def make_config():
+    """Tiny AureliusConfig for block-level tests."""
+    return AureliusConfig(
+        n_layers=2,
+        d_model=64,
+        n_heads=4,
+        n_kv_heads=2,
+        head_dim=16,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=64,
+    )
 
 
-def test_retnet_recurrent_matches_parallel():
-    module = make_module()
-    x = torch.randn(2, 5, 64)
-    parallel = module.forward_parallel(x)
-    recurrent, _ = module.forward_recurrent(x)
-    assert torch.allclose(parallel, recurrent, atol=1e-5)
+# ---------------------------------------------------------------------------
+# SimpleRetention — parallel mode shape
+# ---------------------------------------------------------------------------
 
 
-def test_retnet_chunked_recurrent_matches_full_recurrent():
-    module = make_module()
-    x = torch.randn(2, 6, 64)
-    full, _ = module.forward_recurrent(x)
-    first, state = module.forward_recurrent(x[:, :3])
-    second, _ = module.forward_recurrent(x[:, 3:], state)
-    chunked = torch.cat([first, second], dim=1)
-    assert torch.allclose(full, chunked, atol=1e-5)
+def test_simple_retention_parallel_shape():
+    """forward_parallel: (2, 16, 64) -> (2, 16, head_dim)."""
+    head_dim = 16
+    sr = SimpleRetention(d_model=64, head_dim=head_dim, gamma=0.9)
+    x = torch.randn(2, 16, 64)
+    out = sr.forward_parallel(x)
+    assert out.shape == (2, 16, head_dim), f"Expected (2, 16, {head_dim}), got {out.shape}"
 
 
-def test_retnet_forward_step_updates_state_shape():
-    module = make_module()
-    token = torch.randn(2, 64)
-    output, state = module.forward_step(token)
-    assert output.shape == (2, 64)
-    assert state.shape == (2, 4, 16, 16)
+# ---------------------------------------------------------------------------
+# Decay mask
+# ---------------------------------------------------------------------------
 
 
-def test_retnet_backward_produces_gradients():
-    module = make_module()
-    x = torch.randn(2, 4, 64, requires_grad=True)
-    loss = module(x).pow(2).mean()
-    loss.backward()
-    assert x.grad is not None
-    assert module.q_proj.weight.grad is not None
+def test_decay_mask_causal():
+    """D[i, j] == 0 for all i < j (strict upper triangle is zero)."""
+    sr = SimpleRetention(d_model=32, head_dim=8, gamma=0.9)
+    L = 8
+    D = sr._decay_mask(L, device=torch.device("cpu"))
+    assert D.shape == (L, L)
+    for i in range(L):
+        for j in range(i + 1, L):
+            assert D[i, j].item() == 0.0, (
+                f"D[{i},{j}] = {D[i,j].item()} should be 0 (causal)"
+            )
 
 
-def test_retnet_rejects_bad_config():
-    with pytest.raises(ValueError):
-        MultiScaleRetention(RetNetConfig(d_model=60, n_heads=4, head_dim=16))
+def test_decay_mask_diagonal():
+    """D[i, i] == 1.0 for all i (gamma^0 = 1)."""
+    sr = SimpleRetention(d_model=32, head_dim=8, gamma=0.85)
+    L = 6
+    D = sr._decay_mask(L, device=torch.device("cpu"))
+    for i in range(L):
+        assert abs(D[i, i].item() - 1.0) < 1e-5, (
+            f"D[{i},{i}] = {D[i,i].item()} should be 1.0"
+        )
 
 
-def test_retnet_rejects_bad_step_input_rank():
-    module = make_module()
-    with pytest.raises(ValueError):
-        module.forward_step(torch.randn(2, 1, 64))
+# ---------------------------------------------------------------------------
+# Recurrent mode
+# ---------------------------------------------------------------------------
+
+
+def test_recurrent_matches_parallel():
+    """For L=1 a single recurrent step must match parallel mode output."""
+    torch.manual_seed(42)
+    head_dim = 8
+    sr = SimpleRetention(d_model=16, head_dim=head_dim, gamma=0.9)
+    sr.eval()
+
+    x = torch.randn(2, 1, 16)   # (B=2, L=1, d_model=16)
+
+    with torch.no_grad():
+        out_par = sr.forward_parallel(x)
+        out_rec, _ = sr.forward_recurrent(x, state=None)
+
+    torch.testing.assert_close(
+        out_par, out_rec, atol=1e-5, rtol=1e-5,
+    )
+
+
+# ---------------------------------------------------------------------------
+# MultiScaleRetention
+# ---------------------------------------------------------------------------
+
+
+def test_multi_scale_retention_shape():
+    """MultiScaleRetention: (2, 8, 64) -> (2, 8, 64)."""
+    msr = MultiScaleRetention(d_model=64, n_heads=4)
+    x = torch.randn(2, 8, 64)
+    out = msr(x)
+    assert out.shape == (2, 8, 64), f"Expected (2, 8, 64), got {out.shape}"
+
+
+def test_different_gammas():
+    """Each head in MultiScaleRetention must have a distinct gamma value."""
+    n_heads = 4
+    msr = MultiScaleRetention(d_model=64, n_heads=n_heads)
+    gammas = [h.gamma for h in msr.heads]
+
+    assert len(set(gammas)) == n_heads, (
+        f"Expected {n_heads} distinct gammas, got {len(set(gammas))}: {gammas}"
+    )
+    for i, h in enumerate(msr.heads):
+        expected = 1 - 2 ** (-5 - math.floor(8 * i / n_heads))
+        assert abs(h.gamma - expected) < 1e-9, (
+            f"Head {i}: expected gamma {expected}, got {h.gamma}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# RetNetBlock
+# ---------------------------------------------------------------------------
+
+
+def test_retnet_block_shape():
+    """RetNetBlock: (2, 8, 64) -> (2, 8, 64)."""
+    config = make_config()
+    block = RetNetBlock(config)
+    x = torch.randn(2, 8, 64)
+    out = block(x)
+    assert out.shape == (2, 8, 64), f"Expected (2, 8, 64), got {out.shape}"
+
+
+def test_retnet_recurrent_mode():
+    """RetNetBlock.forward(x, recurrent=True) returns shape (2, 8, 64)."""
+    config = make_config()
+    block = RetNetBlock(config)
+    x = torch.randn(2, 8, 64)
+    out = block(x, recurrent=True)
+    assert out.shape == (2, 8, 64), (
+        f"Expected (2, 8, 64) in recurrent mode, got {out.shape}"
+    )

@@ -1,123 +1,224 @@
-"""RetNet-style multi-scale retention layers."""
+"""RetNet — Retention Networks (Sun et al. 2023).
+
+Reference: "Retentive Network: A Successor to Transformer for Large Language Models"
+           Sun et al., 2023.
+
+Key idea: Replace attention with a retention mechanism that supports three compute
+modes:
+  - Parallel mode  (training):  O(N) via matrix ops with a causal decay mask.
+  - Recurrent mode (inference): O(1) per step, like an RNN.
+
+Retention(Q, K, V) = (Q @ K^T ⊙ D) @ V / sqrt(head_dim)
+where D[i,j] = gamma^(i-j) if i >= j else 0  (causal decay mask).
+"""
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 
 
-@dataclass(frozen=True)
-class RetNetConfig:
-    d_model: int
-    n_heads: int
-    head_dim: int
-
-    @property
-    def inner_dim(self) -> int:
-        return self.n_heads * self.head_dim
+# ---------------------------------------------------------------------------
+# Single-head retention
+# ---------------------------------------------------------------------------
 
 
-def _head_decay_mask(length: int, gammas: torch.Tensor, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
-    """Build the causal decay mask used by parallel retention."""
-    positions = torch.arange(length, device=device)
-    diff = positions[:, None] - positions[None, :]
-    causal = diff >= 0
-    diff = diff.clamp_min(0).to(dtype=dtype)
-    gamma = gammas.to(device=device, dtype=dtype)[:, None, None]
-    mask = torch.pow(gamma, diff.unsqueeze(0))
-    return mask * causal.unsqueeze(0)
+class SimpleRetention(nn.Module):
+    """Single-head retention with a fixed gamma decay factor.
 
+    Parallel mode (training): O(N) compute with matrix ops.
+    Recurrent mode (inference): O(1) per step.
 
-class MultiScaleRetention(nn.Module):
-    """Standalone RetNet block with parallel and recurrent execution."""
+    Retention(Q, K, V) = (Q @ K^T ⊙ D) @ V / sqrt(head_dim)
+    D[i,j] = gamma^(i-j) if i >= j else 0  (causal decay mask)
 
-    def __init__(self, config: RetNetConfig, gammas: torch.Tensor | None = None) -> None:
+    Args:
+        d_model:  model (input) hidden dimension.
+        head_dim: output dimension for this head.
+        gamma:    exponential decay factor in (0, 1).  Default 0.9.
+    """
+
+    def __init__(self, d_model: int, head_dim: int, gamma: float = 0.9) -> None:
         super().__init__()
-        if config.d_model <= 0 or config.n_heads <= 0 or config.head_dim <= 0:
-            raise ValueError("RetNetConfig dimensions must be positive")
-        if config.inner_dim != config.d_model:
-            raise ValueError(
-                f"d_model must equal n_heads * head_dim, got {config.d_model} and {config.inner_dim}"
-            )
-        self.config = config
-        self.q_proj = nn.Linear(config.d_model, config.inner_dim, bias=False)
-        self.k_proj = nn.Linear(config.d_model, config.inner_dim, bias=False)
-        self.v_proj = nn.Linear(config.d_model, config.inner_dim, bias=False)
-        self.out_proj = nn.Linear(config.inner_dim, config.d_model, bias=False)
-        if gammas is None:
-            gammas = torch.linspace(0.9, 0.99, config.n_heads)
-        if gammas.shape != (config.n_heads,):
-            raise ValueError(f"gammas must have shape ({config.n_heads},), got {tuple(gammas.shape)}")
-        self.register_buffer("gammas", gammas)
+        self.gamma = gamma
+        self.head_dim = head_dim
+        self.W_Q = nn.Linear(d_model, head_dim, bias=False)
+        self.W_K = nn.Linear(d_model, head_dim, bias=False)
+        self.W_V = nn.Linear(d_model, head_dim, bias=False)
 
-    def _project(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        batch, seq_len, _ = x.shape
-        q = self.q_proj(x).view(batch, seq_len, self.config.n_heads, self.config.head_dim)
-        k = self.k_proj(x).view(batch, seq_len, self.config.n_heads, self.config.head_dim)
-        v = self.v_proj(x).view(batch, seq_len, self.config.n_heads, self.config.head_dim)
-        return q, k, v
+    def _decay_mask(self, seq_len: int, device: torch.device) -> torch.Tensor:
+        """Causal decay mask D[i,j] = gamma^(i-j) for i >= j, else 0.
+
+        Shape: (seq_len, seq_len).
+        """
+        idx = torch.arange(seq_len, device=device)
+        diff = idx.unsqueeze(1) - idx.unsqueeze(0)   # (L, L) diff[i,j] = i - j
+        mask = torch.where(
+            diff >= 0,
+            torch.pow(torch.full_like(diff, self.gamma, dtype=torch.float32), diff.float()),
+            torch.zeros(seq_len, seq_len, device=device),
+        )
+        return mask  # (L, L)
 
     def forward_parallel(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute retention with a parallel causal mask."""
-        q, k, v = self._project(x)
-        scale = 1.0 / math.sqrt(self.config.head_dim)
-        scores = torch.einsum("bthd,bshd->bhts", q * scale, k)
-        decay = _head_decay_mask(
-            x.size(1),
-            self.gammas,
-            device=x.device,
-            dtype=x.dtype,
-        )
-        weights = scores * decay.unsqueeze(0)
-        retained = torch.einsum("bhts,bshd->bthd", weights, v)
-        return self.out_proj(retained.reshape(x.size(0), x.size(1), -1))
+        """Parallel (training) mode.
 
-    def initial_state(self, batch_size: int, device=None, dtype=None) -> torch.Tensor:
-        """Return an empty recurrent retention state."""
-        return torch.zeros(
-            batch_size,
-            self.config.n_heads,
-            self.config.head_dim,
-            self.config.head_dim,
-            device=device,
-            dtype=dtype or self.gammas.dtype,
-        )
+        Args:
+            x: (B, L, d_model)
 
-    def forward_step(self, x_t: torch.Tensor, state: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
-        """Process one token with recurrent retention state."""
-        if x_t.dim() != 2:
-            raise ValueError(f"x_t must be 2D (batch, d_model), got {x_t.shape}")
-        batch = x_t.size(0)
-        if state is None:
-            state = self.initial_state(batch, device=x_t.device, dtype=x_t.dtype)
+        Returns:
+            Tensor of shape (B, L, head_dim).
+        """
+        Q = self.W_Q(x)   # (B, L, head_dim)
+        K = self.W_K(x)   # (B, L, head_dim)
+        V = self.W_V(x)   # (B, L, head_dim)
 
-        q = self.q_proj(x_t).view(batch, self.config.n_heads, self.config.head_dim)
-        k = self.k_proj(x_t).view(batch, self.config.n_heads, self.config.head_dim)
-        v = self.v_proj(x_t).view(batch, self.config.n_heads, self.config.head_dim)
+        L = x.size(1)
+        D = self._decay_mask(L, x.device)  # (L, L)
 
-        gamma = self.gammas.to(device=x_t.device, dtype=x_t.dtype).view(1, self.config.n_heads, 1, 1)
-        outer = torch.einsum("bhd,bhe->bhde", k, v)
-        new_state = gamma * state + outer
-        output = torch.einsum("bhd,bhde->bhe", q / math.sqrt(self.config.head_dim), new_state)
-        output = self.out_proj(output.reshape(batch, -1))
-        return output, new_state
+        # (B, L, L) retention scores with causal decay
+        scores = (Q @ K.transpose(-2, -1)) * D.unsqueeze(0)
+        scores = scores / math.sqrt(self.head_dim)
+
+        return scores @ V  # (B, L, head_dim)
 
     def forward_recurrent(
         self,
-        x: torch.Tensor,
-        state: torch.Tensor | None = None,
+        x_t: torch.Tensor,
+        state: torch.Tensor | None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Compute retention sequentially."""
-        outputs = []
-        current_state = state
-        for index in range(x.size(1)):
-            out_t, current_state = self.forward_step(x[:, index], current_state)
-            outputs.append(out_t)
-        return torch.stack(outputs, dim=1), current_state
+        """Recurrent (inference) mode — process one token at a time.
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Default to the parallel implementation."""
-        return self.forward_parallel(x)
+        State update:
+            s_t = gamma * s_{t-1} + K_t^T @ V_t
+            y_t = Q_t @ s_t / sqrt(head_dim)
+
+        Args:
+            x_t:  (B, 1, d_model) — single new token.
+            state: (B, head_dim, head_dim) running KV state, or None for t=0.
+
+        Returns:
+            output: (B, 1, head_dim)
+            new_state: (B, head_dim, head_dim)
+        """
+        Q_t = self.W_Q(x_t)   # (B, 1, head_dim)
+        K_t = self.W_K(x_t)   # (B, 1, head_dim)
+        V_t = self.W_V(x_t)   # (B, 1, head_dim)
+
+        # K_t^T @ V_t: outer product per batch  (B, head_dim, head_dim)
+        kv = K_t.transpose(-2, -1) @ V_t
+
+        if state is None:
+            new_state = kv
+        else:
+            new_state = self.gamma * state + kv
+
+        out = (Q_t @ new_state) / math.sqrt(self.head_dim)  # (B, 1, head_dim)
+        return out, new_state
+
+
+# ---------------------------------------------------------------------------
+# Multi-head retention
+# ---------------------------------------------------------------------------
+
+
+class MultiScaleRetention(nn.Module):
+    """Multi-head retention with per-head gamma schedules.
+
+    Each head i gets a distinct decay:
+        gamma_i = 1 - 2^(-5 - floor(8 * i / n_heads))
+
+    This gives gammas ranging from ~0.88 (fast decay) to ~0.997 (slow decay).
+
+    Args:
+        d_model: hidden dimension.
+        n_heads: number of heads.
+    """
+
+    def __init__(self, d_model: int, n_heads: int) -> None:
+        super().__init__()
+        self.n_heads = n_heads
+        self.d_model = d_model
+        head_dim = d_model // n_heads
+
+        gammas = [
+            1 - 2 ** (-5 - math.floor(8 * i / n_heads))
+            for i in range(n_heads)
+        ]
+        self.heads = nn.ModuleList([
+            SimpleRetention(d_model, head_dim, gamma=g) for g in gammas
+        ])
+        # GroupNorm over all head outputs (C = d_model, groups = n_heads)
+        self.group_norm = nn.GroupNorm(n_heads, d_model)
+        self.out_proj = nn.Linear(d_model, d_model, bias=False)
+
+    def forward(self, x: torch.Tensor, recurrent: bool = False) -> torch.Tensor:
+        """Run all heads then project.
+
+        Args:
+            x:         (B, L, d_model)
+            recurrent: if True, use recurrent mode; else use parallel mode.
+
+        Returns:
+            Tensor of shape (B, L, d_model).
+        """
+        B, L, _ = x.shape
+
+        if not recurrent:
+            head_outs = [h.forward_parallel(x) for h in self.heads]
+        else:
+            head_outs_list: list[list[torch.Tensor]] = [[] for _ in self.heads]
+            states: list[torch.Tensor | None] = [None] * self.n_heads
+            for t in range(L):
+                x_t = x[:, t : t + 1, :]
+                for i, h in enumerate(self.heads):
+                    y_t, states[i] = h.forward_recurrent(x_t, states[i])
+                    head_outs_list[i].append(y_t)
+            head_outs = [torch.cat(steps, dim=1) for steps in head_outs_list]
+
+        combined = torch.cat(head_outs, dim=-1)          # (B, L, d_model)
+        combined = combined.transpose(1, 2)              # (B, d_model, L)
+        combined = self.group_norm(combined)             # (B, d_model, L)
+        combined = combined.transpose(1, 2)              # (B, L, d_model)
+        return self.out_proj(combined)
+
+
+# ---------------------------------------------------------------------------
+# RetNet Block
+# ---------------------------------------------------------------------------
+
+
+class RetNetBlock(nn.Module):
+    """A single RetNet layer: Multi-Scale Retention + SwiGLU FFN with pre-norm.
+
+    Matches the Aurelius block interface (pre-norm + residual, accepts **kwargs).
+
+    Args:
+        config: AureliusConfig (uses d_model, n_heads, rms_norm_eps, d_ff, dropout).
+    """
+
+    def __init__(self, config) -> None:
+        super().__init__()
+        from .ffn import SwiGLUFFN
+        from .rms_norm import RMSNorm
+
+        self.norm1 = RMSNorm(config.d_model, config.rms_norm_eps)
+        self.retention = MultiScaleRetention(config.d_model, config.n_heads)
+        self.norm2 = RMSNorm(config.d_model, config.rms_norm_eps)
+        self.ffn = SwiGLUFFN(config)
+
+    def forward(self, x: torch.Tensor, recurrent: bool = False, **kwargs) -> torch.Tensor:
+        """Pre-norm residual forward pass.
+
+        Args:
+            x:         (B, L, d_model)
+            recurrent: passed through to MultiScaleRetention.
+
+        Returns:
+            Tensor of shape (B, L, d_model).
+        """
+        x = x + self.retention(self.norm1(x), recurrent=recurrent)
+        x = x + self.ffn(self.norm2(x))
+        return x
