@@ -1,297 +1,370 @@
 """
 Noise Contrastive Estimation (NCE) and InfoNCE for the Aurelius LLM project.
 
-NCE replaces the expensive full-vocabulary softmax with a binary classification task:
-is this token real or noise-sampled? InfoNCE extends this idea to contrastive
-representation learning by maximising mutual information between anchor and positive
-representations using in-batch negatives.
+This module provides InfoNCE/SimCSE-style contrastive losses for training
+better text embeddings, including in-batch negatives, hard negative mining,
+and a full NCEEmbeddingTrainer.
 """
 
 from __future__ import annotations
 
+import random
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
 
 # ---------------------------------------------------------------------------
-# Noise distribution
+# Configuration
 # ---------------------------------------------------------------------------
 
-class NoiseDistribution:
-    """Smoothed unigram noise distribution for NCE sampling.
+@dataclass
+class NCEConfig:
+    """Configuration for Noise Contrastive Estimation embedding training."""
 
-    p_noise(w) ∝ freq(w)^alpha   (alpha=0.75 from word2vec)
+    temperature: float = 0.07
+    """InfoNCE temperature (lower = sharper distribution)."""
+
+    n_negatives: int = 7
+    """Number of negatives per positive sample."""
+
+    embedding_dim: int = 64
+    """Projected embedding dimension."""
+
+    pooling: str = "mean"
+    """Pooling strategy: 'mean' | 'last' | 'cls'."""
+
+    normalize: bool = True
+    """Whether to L2-normalize embeddings."""
+
+
+# ---------------------------------------------------------------------------
+# InfoNCE loss (explicit negatives)
+# ---------------------------------------------------------------------------
+
+def info_nce_loss(
+    anchors: Tensor,
+    positives: Tensor,
+    negatives: Tensor,
+    temperature: float = 0.07,
+) -> Tensor:
+    """InfoNCE loss with explicit negatives.
+
+    Loss = -log(exp(sim(a,p)/T) / (exp(sim(a,p)/T) + sum_k exp(sim(a,n_k)/T)))
+
+    Uses cosine similarity. Returns mean loss scalar.
+
+    Args:
+        anchors:   (B, D) anchor embeddings.
+        positives: (B, D) positive embeddings.
+        negatives: (B, K, D) negative embeddings.
+        temperature: InfoNCE temperature.
+
+    Returns:
+        Scalar loss tensor.
     """
+    # Positive cosine similarity: (B,)
+    sim_pos = F.cosine_similarity(anchors, positives, dim=-1)  # (B,)
 
-    def __init__(self, token_freqs: torch.Tensor, alpha: float = 0.75) -> None:
-        """
-        Args:
-            token_freqs: (vocab_size,) token frequency counts.
-            alpha: smoothing exponent (0.75 from word2vec).
-        """
-        smoothed = token_freqs.float().pow(alpha)
-        self.probs: torch.Tensor = smoothed / smoothed.sum()
+    # Negative similarities via bmm: (B, K)
+    anchors_norm = F.normalize(anchors, dim=-1)     # (B, D)
+    negs_norm = F.normalize(negatives, dim=-1)      # (B, K, D)
+    # (B, K, D) x (B, D, 1) -> (B, K, 1) -> (B, K)
+    sim_neg = torch.bmm(negs_norm, anchors_norm.unsqueeze(-1)).squeeze(-1)
 
-    # ------------------------------------------------------------------
-    def sample(self, n: int, device=None) -> torch.Tensor:
-        """Sample *n* noise token indices.
+    # Scale by temperature
+    sim_pos_scaled = sim_pos / temperature           # (B,)
+    sim_neg_scaled = sim_neg / temperature           # (B, K)
 
-        Returns:
-            (n,) int64 tensor of sampled token ids.
-        """
-        probs = self.probs
-        if device is not None:
-            probs = probs.to(device)
-        return torch.multinomial(probs, num_samples=n, replacement=True)
-
-    # ------------------------------------------------------------------
-    def log_prob(self, token_ids: torch.Tensor) -> torch.Tensor:
-        """Log probability of *token_ids* under the noise distribution.
-
-        Args:
-            token_ids: arbitrary-shape int64 tensor of token indices.
-
-        Returns:
-            Float tensor of the same shape as *token_ids*.
-        """
-        probs = self.probs.to(token_ids.device)
-        return torch.log(probs[token_ids])
+    # loss_i = logsumexp([sim_pos, sim_neg_0..K]) - sim_pos
+    logits = torch.cat([sim_pos_scaled.unsqueeze(1), sim_neg_scaled], dim=1)  # (B, K+1)
+    loss = torch.logsumexp(logits, dim=1) - sim_pos_scaled   # (B,)
+    return loss.mean()
 
 
 # ---------------------------------------------------------------------------
-# NCE loss
+# In-batch InfoNCE loss (SimCSE-style)
 # ---------------------------------------------------------------------------
 
-class NCELoss(nn.Module):
-    """Noise Contrastive Estimation loss.
+def in_batch_nce_loss(
+    embeddings_a: Tensor,
+    embeddings_b: Tensor,
+    temperature: float = 0.07,
+) -> Tensor:
+    """In-batch negatives InfoNCE (SimCSE-style).
 
-    For each real token we sample *k* noise tokens and train a binary
-    classifier:
+    Similarity matrix = embeddings_a @ embeddings_b.T / temperature.
+    Cross-entropy loss with diagonal targets.
 
-        P(real | token, context) = sigmoid(score - log(k * q(w)))
+    Args:
+        embeddings_a: (B, D) anchor embeddings.
+        embeddings_b: (B, D) positive embeddings; other items are negatives.
+        temperature:  InfoNCE temperature.
 
-    where score = hidden @ output_emb[w] + bias[w] and q(w) is the noise
-    probability.
+    Returns:
+        Scalar loss tensor.
     """
+    a = F.normalize(embeddings_a, dim=-1)   # (B, D)
+    b = F.normalize(embeddings_b, dim=-1)   # (B, D)
 
-    def __init__(
-        self,
-        vocab_size: int,
-        d_model: int,
-        k: int = 20,
-        noise_dist: NoiseDistribution | None = None,
-    ) -> None:
-        super().__init__()
-        self.vocab_size = vocab_size
-        self.d_model = d_model
-        self.k = k
-        self.noise_dist = noise_dist
+    logits = torch.matmul(a, b.T) / temperature   # (B, B)
 
-        # Output (target) embeddings — can be weight-tied with input embeddings
-        self.output_embeddings = nn.Embedding(vocab_size, d_model)
-        self.output_bias = nn.Parameter(torch.zeros(vocab_size))
+    B = embeddings_a.shape[0]
+    targets = torch.arange(B, device=embeddings_a.device)
 
-    # ------------------------------------------------------------------
-    def _score(
-        self,
-        hidden: torch.Tensor,   # (..., d_model)
-        token_ids: torch.Tensor,  # (...,)
-    ) -> torch.Tensor:
-        """Dot-product score + bias for each (hidden, token_id) pair."""
-        emb = self.output_embeddings(token_ids)   # (..., d_model)
-        bias = self.output_bias[token_ids]         # (...,)
-        return (hidden * emb).sum(-1) + bias       # (...,)
-
-    # ------------------------------------------------------------------
-    def forward(
-        self,
-        hidden: torch.Tensor,     # (B, S, d_model)
-        targets: torch.Tensor,    # (B, S) true next tokens
-        noise_dist: NoiseDistribution | None = None,
-    ) -> torch.Tensor:
-        """Compute the NCE loss.
-
-        Steps per position:
-        1. Score the true token.
-        2. Sample k noise tokens from the noise distribution.
-        3. Score each noise token.
-        4. Compute the binary-classification objective.
-
-        Returns:
-            Scalar loss tensor.
-        """
-        dist = noise_dist if noise_dist is not None else self.noise_dist
-
-        B, S, D = hidden.shape
-        device = hidden.device
-
-        # ---- true token scores ------------------------------------------
-        # targets: (B, S) → score: (B, S)
-        s_true = self._score(hidden, targets)
-
-        if dist is not None:
-            log_q_true = dist.log_prob(targets)  # (B, S)
-        else:
-            log_q_true = torch.full_like(s_true, -torch.log(torch.tensor(float(self.vocab_size))))
-
-        # Correction: subtract log(k * q(target))
-        delta_true = s_true - (torch.log(torch.tensor(float(self.k), device=device)) + log_q_true)
-        loss_true = -F.logsigmoid(delta_true)  # (B, S)
-
-        # ---- noise token scores -----------------------------------------
-        # Sample k noise tokens (shared across all positions for efficiency)
-        if dist is not None:
-            noise_ids = dist.sample(self.k, device=device)  # (k,)
-        else:
-            noise_ids = torch.randint(0, self.vocab_size, (self.k,), device=device)
-
-        # Expand hidden for noise scoring: (B, S, k, D)
-        hidden_exp = hidden.unsqueeze(2).expand(B, S, self.k, D)
-
-        # noise_ids_exp: (B, S, k)
-        noise_ids_exp = noise_ids.view(1, 1, self.k).expand(B, S, self.k)
-
-        # Embeddings: (k, D) → (B, S, k, D)
-        noise_emb = self.output_embeddings(noise_ids)  # (k, D)
-        noise_emb_exp = noise_emb.view(1, 1, self.k, D).expand(B, S, self.k, D)
-
-        # Bias: (k,) → (B, S, k)
-        noise_bias = self.output_bias[noise_ids].view(1, 1, self.k).expand(B, S, self.k)
-
-        s_noise = (hidden_exp * noise_emb_exp).sum(-1) + noise_bias  # (B, S, k)
-
-        if dist is not None:
-            log_q_noise = dist.log_prob(noise_ids_exp)  # (B, S, k)
-        else:
-            log_q_noise = torch.full_like(s_noise, -torch.log(torch.tensor(float(self.vocab_size))))
-
-        delta_noise = s_noise - (torch.log(torch.tensor(float(self.k), device=device)) + log_q_noise)
-        loss_noise = -F.logsigmoid(-delta_noise)  # (B, S, k)
-
-        # ---- combine ----------------------------------------------------
-        loss = loss_true + loss_noise.sum(-1)   # (B, S)
-        return loss.mean()
+    return F.cross_entropy(logits, targets)
 
 
 # ---------------------------------------------------------------------------
-# InfoNCE loss
+# Hard negative mining
 # ---------------------------------------------------------------------------
 
-class InfoNCELoss(nn.Module):
-    """InfoNCE contrastive loss with in-batch negatives.
+def hard_negative_mining(
+    anchor: Tensor,
+    candidates: Tensor,
+    top_k: int,
+    exclude_idx: int | None = None,
+) -> Tensor:
+    """Return indices of top-k most similar (hardest) negative candidates.
 
-    Given (anchor, positive) pairs, all other positives in the batch serve as
-    negatives:
+    Args:
+        anchor:      (D,) anchor embedding.
+        candidates:  (N, D) candidate embeddings.
+        top_k:       Number of hard negatives to return.
+        exclude_idx: Index to exclude (e.g., the known positive).
 
-        L = -log[ exp(sim(z_a, z_p)/tau) / Σ_j exp(sim(z_a, z_j)/tau) ]
-
-    where z are L2-normalised projections.
+    Returns:
+        (top_k,) LongTensor of candidate indices.
     """
+    a_norm = F.normalize(anchor.unsqueeze(0), dim=-1)   # (1, D)
+    c_norm = F.normalize(candidates, dim=-1)             # (N, D)
+    sims = (c_norm @ a_norm.T).squeeze(-1)               # (N,)
 
-    def __init__(
-        self,
-        d_model: int,
-        projection_dim: int = 128,
-        temperature: float = 0.07,
-    ) -> None:
-        super().__init__()
-        self.projector = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.ReLU(),
-            nn.Linear(d_model, projection_dim),
+    if exclude_idx is not None:
+        sims = sims.clone()
+        sims[exclude_idx] = float("-inf")
+
+    _, indices = torch.topk(sims, k=top_k)
+    return indices
+
+
+# ---------------------------------------------------------------------------
+# Random negative sampling
+# ---------------------------------------------------------------------------
+
+def sample_random_negatives(
+    batch_size: int,
+    n_negatives: int,
+    vocab_size: int,
+    seq_len: int,
+    rng: random.Random | None = None,
+) -> Tensor:
+    """Sample random negative token sequences.
+
+    Args:
+        batch_size:  Number of sequences in the batch.
+        n_negatives: Number of negatives per sequence.
+        vocab_size:  Vocabulary size; tokens sampled from [0, vocab_size).
+        seq_len:     Length of each sampled sequence.
+        rng:         Optional Python random.Random for reproducibility.
+
+    Returns:
+        (batch_size, n_negatives, seq_len) LongTensor.
+    """
+    if rng is not None:
+        seed = rng.randint(0, 2**31 - 1)
+        generator = torch.Generator()
+        generator.manual_seed(seed)
+        return torch.randint(
+            0, vocab_size, (batch_size, n_negatives, seq_len),
+            generator=generator, dtype=torch.long,
         )
-        self.temperature = temperature
+    return torch.randint(0, vocab_size, (batch_size, n_negatives, seq_len), dtype=torch.long)
 
-    # ------------------------------------------------------------------
-    def forward(
-        self,
-        anchors: torch.Tensor,    # (B, d_model)
-        positives: torch.Tensor,  # (B, d_model)
-    ) -> torch.Tensor:
-        """Compute InfoNCE with in-batch negatives.
+
+# ---------------------------------------------------------------------------
+# Embedding projector
+# ---------------------------------------------------------------------------
+
+class EmbeddingProjector(nn.Module):
+    """Project backbone hidden states to a lower-dimensional embedding space.
+
+    Architecture: Linear(d_model, embed_dim) + LayerNorm(embed_dim), then L2-normalize.
+    """
+
+    def __init__(self, d_model: int, embed_dim: int) -> None:
+        super().__init__()
+        self.linear = nn.Linear(d_model, embed_dim, bias=True)
+        self.norm = nn.LayerNorm(embed_dim)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Project and L2-normalize embeddings.
+
+        Args:
+            x: (B, D) pooled hidden states.
 
         Returns:
-            Scalar loss tensor.
+            (B, embed_dim) L2-normalized embeddings.
         """
-        B = anchors.shape[0]
-
-        z_a = F.normalize(self.projector(anchors), dim=-1)    # (B, proj_dim)
-        z_p = F.normalize(self.projector(positives), dim=-1)  # (B, proj_dim)
-
-        # Similarity matrix: (B, B)
-        logits = torch.matmul(z_a, z_p.T) / self.temperature
-
-        # Labels: diagonal (each anchor matches its own positive)
-        labels = torch.arange(B, device=anchors.device)
-
-        return F.cross_entropy(logits, labels)
+        out = self.linear(x)         # (B, embed_dim)
+        out = self.norm(out)         # (B, embed_dim)
+        out = F.normalize(out, dim=-1)  # unit norm
+        return out
 
 
 # ---------------------------------------------------------------------------
-# Self-normalised NCE
+# NCE Embedding Trainer
 # ---------------------------------------------------------------------------
 
-class SelfNormalizedNCE(nn.Module):
-    """Self-normalised NCE — encourages log Z ≈ 0.
-
-    Adds a regularisation term that penalises the log partition function
-    deviating from zero, eliminating the need to estimate Z explicitly.
-
-        total_loss = NCE_loss + lambda * (log Z)^2
-
-    where Z is estimated from the sampled noise scores.
-    """
+class NCEEmbeddingTrainer:
+    """Train embeddings using noise contrastive estimation."""
 
     def __init__(
         self,
-        nce_loss: NCELoss,
-        normalization_lambda: float = 1.0,
+        backbone: nn.Module,
+        projector: EmbeddingProjector,
+        cfg: NCEConfig,
+        optimizer: torch.optim.Optimizer,
     ) -> None:
-        super().__init__()
-        self.nce_loss = nce_loss
-        self.lam = normalization_lambda
+        self.backbone = backbone
+        self.projector = projector
+        self.cfg = cfg
+        self.optimizer = optimizer
 
-    # ------------------------------------------------------------------
-    def forward(
-        self,
-        hidden: torch.Tensor,    # (B, S, d_model)
-        targets: torch.Tensor,   # (B, S)
-        noise_dist: NoiseDistribution | None = None,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Compute total loss and normalisation penalty.
+    def get_embeddings(self, input_ids: Tensor) -> Tensor:
+        """Extract and project embeddings from the backbone.
+
+        Uses a forward hook on backbone.layers[-1] to capture hidden states,
+        pools per cfg.pooling, and projects via the projector.
+
+        Args:
+            input_ids: (B, T) token IDs.
 
         Returns:
-            (total_loss, normalization_penalty) — both scalar tensors.
+            (B, embed_dim) embeddings, L2-normalized if cfg.normalize is True.
         """
-        B, S, D = hidden.shape
-        device = hidden.device
-        dist = noise_dist if noise_dist is not None else self.nce_loss.noise_dist
+        captured: list[Tensor] = []
 
-        # NCE loss (standard)
-        base_loss = self.nce_loss(hidden, targets, noise_dist=dist)
+        def _hook(module, inp, output):
+            # TransformerBlock returns (hidden_states, kv_cache)
+            if isinstance(output, tuple):
+                captured.append(output[0])
+            else:
+                captured.append(output)
 
-        # --- estimate log Z from a sample of vocab scores ----------------
-        # Sample a small set of tokens to estimate Z
-        k_norm = max(self.nce_loss.k, 50)
-        if dist is not None:
-            sample_ids = dist.sample(k_norm, device=device)
+        handle = self.backbone.layers[-1].register_forward_hook(_hook)
+        try:
+            _ = self.backbone(input_ids)
+        finally:
+            handle.remove()
+
+        hidden = captured[0]  # (B, T, D)
+
+        if self.cfg.pooling == "mean":
+            pooled = hidden.mean(dim=1)      # (B, D)
+        elif self.cfg.pooling == "last":
+            pooled = hidden[:, -1, :]        # (B, D)
+        elif self.cfg.pooling == "cls":
+            pooled = hidden[:, 0, :]         # (B, D)
         else:
-            sample_ids = torch.randint(
-                0, self.nce_loss.vocab_size, (k_norm,), device=device
-            )
+            raise ValueError(f"Unknown pooling strategy: {self.cfg.pooling!r}")
 
-        # Compute scores for these tokens against mean hidden state
-        h_mean = hidden.detach().mean(dim=(0, 1), keepdim=False)  # (D,)
-        emb = self.nce_loss.output_embeddings(sample_ids)         # (k_norm, D)
-        bias = self.nce_loss.output_bias[sample_ids]              # (k_norm,)
-        scores = (emb * h_mean.unsqueeze(0)).sum(-1) + bias       # (k_norm,)
+        # Project — EmbeddingProjector always L2-normalizes
+        embeddings = self.projector(pooled)  # (B, embed_dim)
+        return embeddings
 
-        # log Z ≈ logsumexp over sample (biased but differentiable)
-        log_z = torch.logsumexp(scores, dim=0)
+    def train_step_in_batch(
+        self,
+        anchor_ids: Tensor,
+        positive_ids: Tensor,
+    ) -> dict[str, float]:
+        """Compute in-batch NCE loss, backward, step optimizer.
 
-        # Penalty: (log Z)^2  → encourages log Z → 0
-        penalty = self.lam * log_z.pow(2)
+        Args:
+            anchor_ids:   (B, T) anchor token IDs.
+            positive_ids: (B, T) positive token IDs.
 
-        total = base_loss + penalty
-        return total, penalty
+        Returns:
+            Dict with keys "loss", "mean_similarity", "alignment".
+        """
+        self.backbone.train()
+        self.projector.train()
+        self.optimizer.zero_grad()
+
+        emb_a = self.get_embeddings(anchor_ids)    # (B, E)
+        emb_p = self.get_embeddings(positive_ids)  # (B, E)
+
+        loss = in_batch_nce_loss(emb_a, emb_p, temperature=self.cfg.temperature)
+        loss.backward()
+        self.optimizer.step()
+
+        with torch.no_grad():
+            a_norm = F.normalize(emb_a.detach(), dim=-1)
+            p_norm = F.normalize(emb_p.detach(), dim=-1)
+
+            sim_matrix = torch.matmul(a_norm, p_norm.T)  # (B, B)
+            mean_sim = sim_matrix.mean().item()
+            alignment = sim_matrix.diagonal().mean().item()
+
+        return {
+            "loss": loss.item(),
+            "mean_similarity": mean_sim,
+            "alignment": alignment,
+        }
+
+    def evaluate_retrieval(
+        self,
+        query_ids: Tensor,
+        corpus_ids: Tensor,
+        top_k: int = 5,
+    ) -> dict[str, float]:
+        """Compute embedding-based retrieval metrics.
+
+        For each query i, finds the top-k most similar corpus items.
+        Assumes query i matches corpus i (identity mapping).
+
+        Args:
+            query_ids:  (Q, T) query token IDs.
+            corpus_ids: (C, T) corpus token IDs.
+            top_k:      Number of top results to retrieve.
+
+        Returns:
+            Dict with keys "recall@1", "recall@5", "mrr".
+        """
+        self.backbone.eval()
+        self.projector.eval()
+
+        with torch.no_grad():
+            q_emb = self.get_embeddings(query_ids)    # (Q, E)
+            c_emb = self.get_embeddings(corpus_ids)   # (C, E)
+
+            q_norm = F.normalize(q_emb, dim=-1)
+            c_norm = F.normalize(c_emb, dim=-1)
+
+            sim = torch.matmul(q_norm, c_norm.T)      # (Q, C)
+
+            Q = query_ids.shape[0]
+            recall_at_1 = 0.0
+            recall_at_5 = 0.0
+            mrr = 0.0
+
+            for i in range(Q):
+                ranked = torch.argsort(sim[i], descending=True).tolist()
+                gold = i
+
+                if ranked[0] == gold:
+                    recall_at_1 += 1.0
+                if gold in ranked[:5]:
+                    recall_at_5 += 1.0
+
+                rank = ranked.index(gold) + 1
+                mrr += 1.0 / rank
+
+        return {
+            "recall@1": recall_at_1 / Q,
+            "recall@5": recall_at_5 / Q,
+            "mrr": mrr / Q,
+        }

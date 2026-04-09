@@ -1,164 +1,272 @@
-"""Tests for src/training/nce.py — NCE and InfoNCE losses."""
+"""Tests for src/training/nce.py — NCE embedding training module."""
+
+from __future__ import annotations
+
+import random
 
 import pytest
 import torch
+import torch.nn as nn
 
-from src.training.nce import InfoNCELoss, NCELoss, NoiseDistribution, SelfNormalizedNCE
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
+from src.training.nce import (
+    NCEConfig,
+    EmbeddingProjector,
+    NCEEmbeddingTrainer,
+    hard_negative_mining,
+    in_batch_nce_loss,
+    info_nce_loss,
+    sample_random_negatives,
+)
+
+# ---------------------------------------------------------------------------
+# Shared constants
+# ---------------------------------------------------------------------------
+
+B = 4       # batch size
+T = 8       # sequence length
+D = 64      # model d_model
+E = 32      # embed_dim for projector
+
+TINY_CFG = AureliusConfig(
+    n_layers=2,
+    d_model=D,
+    n_heads=2,
+    n_kv_heads=2,
+    head_dim=32,
+    d_ff=128,
+    vocab_size=256,
+    max_seq_len=512,
+)
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
-VOCAB_SIZE = 100
-D_MODEL = 32
-BATCH = 2
-SEQ = 4
-
-
-@pytest.fixture()
-def token_freqs() -> torch.Tensor:
-    """Simple linearly-spaced frequency counts."""
-    return torch.arange(1, VOCAB_SIZE + 1, dtype=torch.float32)
-
-
-@pytest.fixture()
-def noise_dist(token_freqs) -> NoiseDistribution:
-    return NoiseDistribution(token_freqs)
-
-
-@pytest.fixture()
-def nce_loss() -> NCELoss:
-    return NCELoss(vocab_size=VOCAB_SIZE, d_model=D_MODEL, k=5)
-
-
-@pytest.fixture()
-def nce_loss_with_dist(token_freqs) -> NCELoss:
-    nd = NoiseDistribution(token_freqs)
-    return NCELoss(vocab_size=VOCAB_SIZE, d_model=D_MODEL, k=5, noise_dist=nd)
-
-
-@pytest.fixture()
-def hidden() -> torch.Tensor:
+@pytest.fixture(scope="module")
+def tiny_model() -> AureliusTransformer:
     torch.manual_seed(0)
-    return torch.randn(BATCH, SEQ, D_MODEL)
+    return AureliusTransformer(TINY_CFG)
 
 
-@pytest.fixture()
-def targets() -> torch.Tensor:
-    return torch.randint(0, VOCAB_SIZE, (BATCH, SEQ))
+@pytest.fixture(scope="module")
+def projector() -> EmbeddingProjector:
+    torch.manual_seed(0)
+    return EmbeddingProjector(d_model=D, embed_dim=E)
 
 
-# ---------------------------------------------------------------------------
-# NoiseDistribution tests
-# ---------------------------------------------------------------------------
-
-def test_noise_distribution_sums_to_one(noise_dist):
-    """Probability vector must sum to (approximately) 1."""
-    assert abs(noise_dist.probs.sum().item() - 1.0) < 1e-5
+@pytest.fixture(scope="module")
+def nce_cfg() -> NCEConfig:
+    return NCEConfig(temperature=0.07, n_negatives=7, embedding_dim=E)
 
 
-def test_noise_distribution_sample_shape(noise_dist):
-    """sample(100) should return a (100,) tensor."""
-    samples = noise_dist.sample(100)
-    assert samples.shape == (100,)
-    assert samples.dtype == torch.int64
+@pytest.fixture(scope="module")
+def trainer(tiny_model, projector, nce_cfg) -> NCEEmbeddingTrainer:
+    optimizer = torch.optim.Adam(
+        list(tiny_model.parameters()) + list(projector.parameters()), lr=1e-4
+    )
+    return NCEEmbeddingTrainer(
+        backbone=tiny_model,
+        projector=projector,
+        cfg=nce_cfg,
+        optimizer=optimizer,
+    )
 
 
-def test_noise_distribution_log_prob_range(noise_dist):
-    """Log probabilities must be ≤ 0 (probabilities ≤ 1)."""
-    ids = torch.arange(VOCAB_SIZE)
-    log_probs = noise_dist.log_prob(ids)
-    assert (log_probs <= 0).all(), "log probabilities must be non-positive"
-
-
-# ---------------------------------------------------------------------------
-# NCELoss tests
-# ---------------------------------------------------------------------------
-
-def test_nce_loss_scalar(nce_loss, hidden, targets):
-    """NCELoss.forward() must return a scalar tensor."""
-    loss = nce_loss(hidden, targets)
-    assert loss.shape == (), f"Expected scalar, got shape {loss.shape}"
-
-
-def test_nce_loss_positive(nce_loss, hidden, targets):
-    """NCE loss must be strictly positive."""
-    loss = nce_loss(hidden, targets)
-    assert loss.item() > 0, "NCE loss should be positive"
-
-
-def test_nce_loss_with_noise_dist(nce_loss_with_dist, hidden, targets, noise_dist):
-    """NCELoss should work when a NoiseDistribution is passed at forward time."""
-    loss = nce_loss_with_dist(hidden, targets, noise_dist=noise_dist)
-    assert loss.shape == ()
-    assert loss.item() > 0
-
-
-# ---------------------------------------------------------------------------
-# InfoNCELoss tests
-# ---------------------------------------------------------------------------
-
-@pytest.fixture()
-def infonce_loss() -> InfoNCELoss:
-    return InfoNCELoss(d_model=D_MODEL, projection_dim=16, temperature=0.07)
-
-
-def test_infonce_loss_scalar(infonce_loss):
-    """InfoNCELoss.forward() must return a scalar tensor."""
+@pytest.fixture
+def anchor_ids() -> torch.Tensor:
     torch.manual_seed(1)
-    anchors = torch.randn(BATCH, D_MODEL)
-    positives = torch.randn(BATCH, D_MODEL)
-    loss = infonce_loss(anchors, positives)
-    assert loss.shape == ()
+    return torch.randint(0, TINY_CFG.vocab_size, (B, T))
 
 
-def test_infonce_loss_batch_size_2(infonce_loss):
-    """InfoNCE must work with batch_size=2 (minimum for in-batch negatives)."""
+@pytest.fixture
+def positive_ids() -> torch.Tensor:
     torch.manual_seed(2)
-    anchors = torch.randn(2, D_MODEL)
-    positives = torch.randn(2, D_MODEL)
-    loss = infonce_loss(anchors, positives)
-    assert torch.isfinite(loss), "Loss should be finite"
+    return torch.randint(0, TINY_CFG.vocab_size, (B, T))
 
 
-def test_infonce_temperature_effect():
-    """Lower temperature should give higher-magnitude loss."""
-    torch.manual_seed(3)
-    anchors = torch.randn(4, D_MODEL)
-    positives = torch.randn(4, D_MODEL)
+# ---------------------------------------------------------------------------
+# 1. test_config_defaults
+# ---------------------------------------------------------------------------
 
-    loss_high_temp = InfoNCELoss(D_MODEL, projection_dim=16, temperature=1.0)(anchors, positives)
-    loss_low_temp = InfoNCELoss(D_MODEL, projection_dim=16, temperature=0.07)(anchors, positives)
+def test_config_defaults():
+    cfg = NCEConfig()
+    assert cfg.temperature == 0.07
+    assert cfg.n_negatives == 7
 
-    # Both projectors are freshly initialised (same random seed path), so
-    # we compare magnitudes: lower tau → more peaked distribution → generally
-    # higher cross-entropy when not perfectly aligned.
-    assert loss_low_temp.item() != loss_high_temp.item(), (
-        "Different temperatures should produce different losses"
+
+# ---------------------------------------------------------------------------
+# 2. test_info_nce_loss_scalar
+# ---------------------------------------------------------------------------
+
+def test_info_nce_loss_scalar():
+    torch.manual_seed(0)
+    anchors   = torch.randn(B, D)
+    positives = torch.randn(B, D)
+    negatives = torch.randn(B, 5, D)
+    loss = info_nce_loss(anchors, positives, negatives)
+    assert loss.shape == (), f"Expected scalar, got {loss.shape}"
+    assert torch.isfinite(loss).item()
+
+
+# ---------------------------------------------------------------------------
+# 3. test_info_nce_loss_positive_match — when pos == anchor, loss is low
+# ---------------------------------------------------------------------------
+
+def test_info_nce_loss_positive_match():
+    """When positives == anchors, the loss should be lower than with random positives."""
+    torch.manual_seed(0)
+    anchors   = torch.randn(B, D)
+    negatives = torch.randn(B, 5, D)
+
+    loss_match  = info_nce_loss(anchors, anchors.clone(), negatives)
+    loss_random = info_nce_loss(anchors, torch.randn(B, D), negatives)
+
+    assert loss_match.item() < loss_random.item(), (
+        f"Matched loss ({loss_match.item():.4f}) should be less than random "
+        f"({loss_random.item():.4f})"
     )
 
 
 # ---------------------------------------------------------------------------
-# SelfNormalizedNCE tests
+# 4. test_in_batch_nce_loss_scalar
 # ---------------------------------------------------------------------------
 
-@pytest.fixture()
-def self_norm_nce(nce_loss) -> SelfNormalizedNCE:
-    return SelfNormalizedNCE(nce_loss, normalization_lambda=1.0)
+def test_in_batch_nce_loss_scalar():
+    torch.manual_seed(0)
+    a = torch.randn(B, D)
+    b = torch.randn(B, D)
+    loss = in_batch_nce_loss(a, b)
+    assert loss.shape == (), f"Expected scalar, got {loss.shape}"
+    assert torch.isfinite(loss).item()
 
 
-def test_self_normalized_nce_returns_tuple(self_norm_nce, hidden, targets):
-    """SelfNormalizedNCE.forward() must return a 2-tuple of tensors."""
-    result = self_norm_nce(hidden, targets)
-    assert isinstance(result, tuple), "Should return a tuple"
-    assert len(result) == 2, "Tuple should have exactly 2 elements"
-    total, penalty = result
-    assert total.shape == ()
-    assert penalty.shape == ()
+# ---------------------------------------------------------------------------
+# 5. test_in_batch_nce_loss_identity — when a == b, loss is near 0
+# ---------------------------------------------------------------------------
+
+def test_in_batch_nce_loss_identity():
+    """When embeddings_a == embeddings_b, diagonal dominates -> very low loss."""
+    torch.manual_seed(0)
+    # Use orthogonal vectors so diagonal clearly dominates
+    a = torch.eye(B, D)   # each row is a unit vector
+    loss = in_batch_nce_loss(a, a.clone(), temperature=0.07)
+    assert loss.item() < 0.5, f"Identity loss should be near 0, got {loss.item():.4f}"
 
 
-def test_self_normalized_penalty_positive(self_norm_nce, hidden, targets):
-    """Normalisation penalty (lambda * log_Z^2) must be >= 0."""
-    _, penalty = self_norm_nce(hidden, targets)
-    assert penalty.item() >= 0, "Normalisation penalty must be non-negative"
+# ---------------------------------------------------------------------------
+# 6. test_hard_negative_mining_shape
+# ---------------------------------------------------------------------------
+
+def test_hard_negative_mining_shape():
+    torch.manual_seed(0)
+    anchor     = torch.randn(D)
+    candidates = torch.randn(20, D)
+    indices    = hard_negative_mining(anchor, candidates, top_k=5)
+    assert indices.shape == (5,), f"Expected (5,), got {indices.shape}"
+
+
+# ---------------------------------------------------------------------------
+# 7. test_hard_negative_mining_excludes
+# ---------------------------------------------------------------------------
+
+def test_hard_negative_mining_excludes():
+    torch.manual_seed(0)
+    anchor     = torch.randn(D)
+    candidates = torch.randn(20, D)
+    exclude    = 3
+    indices    = hard_negative_mining(anchor, candidates, top_k=5, exclude_idx=exclude)
+    assert exclude not in indices.tolist(), (
+        f"Excluded index {exclude} should not appear in result {indices.tolist()}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 8. test_sample_random_negatives_shape
+# ---------------------------------------------------------------------------
+
+def test_sample_random_negatives_shape():
+    K = 6
+    seqs = sample_random_negatives(batch_size=B, n_negatives=K, vocab_size=256, seq_len=T)
+    assert seqs.shape == (B, K, T), f"Expected ({B}, {K}, {T}), got {seqs.shape}"
+    assert seqs.dtype == torch.long
+
+
+# ---------------------------------------------------------------------------
+# 9. test_sample_random_negatives_vocab_range
+# ---------------------------------------------------------------------------
+
+def test_sample_random_negatives_vocab_range():
+    vocab_size = 256
+    seqs = sample_random_negatives(batch_size=B, n_negatives=5, vocab_size=vocab_size, seq_len=T)
+    assert seqs.min().item() >= 0, "Token IDs must be >= 0"
+    assert seqs.max().item() < vocab_size, f"Token IDs must be < {vocab_size}"
+
+
+# ---------------------------------------------------------------------------
+# 10. test_embedding_projector_shape
+# ---------------------------------------------------------------------------
+
+def test_embedding_projector_shape():
+    torch.manual_seed(0)
+    proj = EmbeddingProjector(d_model=D, embed_dim=E)
+    x    = torch.randn(B, D)
+    out  = proj(x)
+    assert out.shape == (B, E), f"Expected ({B}, {E}), got {out.shape}"
+
+
+# ---------------------------------------------------------------------------
+# 11. test_embedding_projector_normalized
+# ---------------------------------------------------------------------------
+
+def test_embedding_projector_normalized():
+    torch.manual_seed(0)
+    proj = EmbeddingProjector(d_model=D, embed_dim=E)
+    x    = torch.randn(B, D)
+    out  = proj(x)
+    norms = out.norm(dim=-1)
+    assert torch.allclose(norms, torch.ones(B), atol=1e-5), (
+        f"Expected unit norms, got {norms}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 12. test_nce_trainer_get_embeddings_shape
+# ---------------------------------------------------------------------------
+
+def test_nce_trainer_get_embeddings_shape(trainer, anchor_ids):
+    emb = trainer.get_embeddings(anchor_ids)
+    assert emb.shape == (B, E), f"Expected ({B}, {E}), got {emb.shape}"
+
+
+# ---------------------------------------------------------------------------
+# 13. test_nce_trainer_train_step_keys
+# ---------------------------------------------------------------------------
+
+def test_nce_trainer_train_step_keys(trainer, anchor_ids, positive_ids):
+    result = trainer.train_step_in_batch(anchor_ids, positive_ids)
+    assert "loss" in result, "Missing 'loss' key"
+    assert "mean_similarity" in result, "Missing 'mean_similarity' key"
+    assert "alignment" in result, "Missing 'alignment' key"
+
+
+# ---------------------------------------------------------------------------
+# 14. test_nce_trainer_loss_positive
+# ---------------------------------------------------------------------------
+
+def test_nce_trainer_loss_positive(trainer, anchor_ids, positive_ids):
+    result = trainer.train_step_in_batch(anchor_ids, positive_ids)
+    assert result["loss"] > 0, f"Loss should be positive, got {result['loss']}"
+
+
+# ---------------------------------------------------------------------------
+# 15. test_nce_trainer_evaluate_retrieval_keys
+# ---------------------------------------------------------------------------
+
+def test_nce_trainer_evaluate_retrieval_keys(trainer, anchor_ids, positive_ids):
+    result = trainer.evaluate_retrieval(anchor_ids, positive_ids, top_k=5)
+    assert "recall@1" in result, "Missing 'recall@1'"
+    assert "recall@5" in result, "Missing 'recall@5'"
+    assert "mrr" in result, "Missing 'mrr'"

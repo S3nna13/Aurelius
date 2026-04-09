@@ -1,334 +1,399 @@
 """Aurelius -- Activation Steering / Representation Engineering.
 
-Implements steering vectors (Zou et al. 2023, Turner et al. 2023): find a
-"steering vector" (difference of mean activations between positive and negative
-examples), then add alpha * steering_vector to the residual stream at a given
-layer during generation. This shifts model behavior toward the desired
-direction without fine-tuning.
+Implements steering vectors (Zou et al. 2023, Turner et al. 2023): extract a
+"steering vector" (e.g. mean-diff or PCA direction) from contrastive positive /
+negative activations, then add alpha * steering_vector to the residual stream
+at a given layer during generation.  This shifts model behaviour without
+fine-tuning.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable
+from dataclasses import dataclass, field
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 
 # ---------------------------------------------------------------------------
-# SteeringVector dataclass
+# Config / dataclasses
 # ---------------------------------------------------------------------------
 
 @dataclass
-class SteeringVector:
-    """A steering direction to be applied at a specific layer.
+class SteeringConfig:
+    """Configuration for activation steering.
 
     Attributes:
-        direction: (d_model,) unit-normalized steering direction.
+        layer_indices: Which transformer layers to steer.
+        coefficient: Steering strength (negative value negates the concept).
+        normalize: Normalize steering vectors to unit norm before storing.
+        mode: "add" | "project_out" | "clamp"
+        clamp_value: Threshold used when mode="clamp".
+    """
+    layer_indices: list[int]
+    coefficient: float = 1.0
+    normalize: bool = True
+    mode: str = "add"          # "add" | "project_out" | "clamp"
+    clamp_value: float = 5.0
+
+
+@dataclass
+class SteeringVector:
+    """A unit steering direction to be applied at a specific layer.
+
+    Attributes:
+        direction: (d_model,) steering direction (unit norm when normalize=True).
         layer_idx: Which transformer layer to intervene on.
-        label: Human-readable label, e.g. "helpful", "honest".
-        source: How the vector was computed ("mean_diff", "pca", "probing").
+        concept: Human-readable name of the concept being steered.
+        explained_variance: Explained variance from PCA fit; 0.0 for mean-diff.
     """
-    direction: torch.Tensor    # (d_model,)
+    direction: torch.Tensor      # (d_model,)
     layer_idx: int
-    label: str
-    source: str = "mean_diff"
+    concept: str = "steering"
+    explained_variance: float = 0.0
 
 
 # ---------------------------------------------------------------------------
-# SteeringVectorExtractor
+# Standalone extraction helpers
 # ---------------------------------------------------------------------------
 
-class SteeringVectorExtractor:
-    """Extract steering vectors from contrastive positive/negative text pairs.
+def extract_mean_diff_vector(
+    positive_activations: torch.Tensor,   # (N_pos, D)
+    negative_activations: torch.Tensor,   # (N_neg, D)
+    normalize: bool = True,
+) -> torch.Tensor:
+    """Compute mean-difference steering vector: mean(pos) - mean(neg).
 
     Args:
-        model: AureliusTransformer instance.
-        tokenizer_encode: Callable that maps str -> list[int].
-        layer_idx: Which layer's hidden states to capture.
-        max_seq_len: Maximum sequence length for tokenization.
+        positive_activations: (N_pos, D) activations for positive examples.
+        negative_activations: (N_neg, D) activations for negative examples.
+        normalize: If True, return unit-norm vector.
+
+    Returns:
+        (D,) steering direction.
+    """
+    direction = positive_activations.mean(dim=0) - negative_activations.mean(dim=0)
+    if normalize:
+        direction = F.normalize(direction, dim=0)
+    return direction
+
+
+def extract_pca_vector(
+    contrastive_activations: torch.Tensor,   # (2*N, D)
+    normalize: bool = True,
+) -> tuple[torch.Tensor, float]:
+    """Extract the top PCA component from contrastive activations.
+
+    Centers the activations, then uses torch.pca_lowrank to get the first
+    principal component.
+
+    Args:
+        contrastive_activations: (2*N, D) positive and negative activations.
+        normalize: If True, normalize the direction to unit norm.
+
+    Returns:
+        Tuple of ((D,) direction tensor, explained_variance_ratio float).
+    """
+    centered = contrastive_activations - contrastive_activations.mean(dim=0, keepdim=True)
+    # pca_lowrank returns (U, S, V); first PC lives in V[:, 0]
+    _U, S, V = torch.pca_lowrank(centered, q=1)
+    direction = V[:, 0]  # (D,)
+    if normalize:
+        direction = F.normalize(direction, dim=0)
+
+    # Explained variance ratio = S[0]^2 / sum(S_all^2)
+    # With q=1 we only have S[0]; compute total variance from data directly
+    total_var = (centered ** 2).sum()
+    if total_var.item() == 0.0:
+        explained_var = 0.0
+    else:
+        explained_var = float((S[0] ** 2) / total_var)
+        # Clamp to (0, 1] for safety
+        explained_var = max(min(explained_var, 1.0), 1e-9)
+
+    return direction, explained_var
+
+
+# ---------------------------------------------------------------------------
+# collect_activations
+# ---------------------------------------------------------------------------
+
+def collect_activations(
+    model: nn.Module,
+    input_ids: torch.Tensor,   # (B, T)
+    layer_idx: int,
+) -> torch.Tensor:
+    """Collect mean-pooled activations from layer ``layer_idx``.
+
+    Registers a single forward hook on ``model.layers[layer_idx]``, runs the
+    forward pass, and returns the (B, D) mean-pooled hidden states.
+
+    The TransformerBlock returns ``(hidden, kv)``; the hook captures
+    ``hidden`` (the first element of that tuple).
+
+    Args:
+        model: AureliusTransformer (or any model with a `.layers` ModuleList).
+        input_ids: (B, T) integer token ids.
+        layer_idx: Which layer to hook.
+
+    Returns:
+        (B, D) mean-pooled activations.
+    """
+    captured: list[torch.Tensor] = []
+
+    def _hook(module, inputs, output):
+        # TransformerBlock returns (hidden, kv); grab hidden
+        hidden = output[0] if isinstance(output, tuple) else output
+        # hidden: (B, T, D) — mean-pool over T
+        captured.append(hidden.detach().mean(dim=1))  # (B, D)
+
+    handle = model.layers[layer_idx].register_forward_hook(_hook)
+    try:
+        model.eval()
+        with torch.no_grad():
+            model(input_ids)
+    finally:
+        handle.remove()
+
+    return captured[0]  # (B, D)
+
+
+# ---------------------------------------------------------------------------
+# SteeringHook  (context manager for a single layer)
+# ---------------------------------------------------------------------------
+
+class SteeringHook:
+    """Context manager that injects a steering vector into one layer's output.
+
+    The hook modifies the (B, T, D) hidden state tensor returned by the layer
+    according to ``cfg.mode``:
+        - "add":          hidden += coeff * direction
+        - "project_out":  remove the component along ``direction``
+        - "clamp":        clamp activations projected onto direction
+
+    Args:
+        model: AureliusTransformer (or compatible).
+        steering_vector: The SteeringVector to apply.
+        cfg: SteeringConfig controlling strength and mode.
     """
 
     def __init__(
         self,
-        model: torch.nn.Module,
-        tokenizer_encode: Callable[[str], list[int]],
-        layer_idx: int,
-        max_seq_len: int = 64,
+        model: nn.Module,
+        steering_vector: SteeringVector,
+        cfg: SteeringConfig,
     ) -> None:
         self.model = model
-        self.tokenizer_encode = tokenizer_encode
-        self.layer_idx = layer_idx
-        self.max_seq_len = max_seq_len
+        self.steering_vector = steering_vector
+        self.cfg = cfg
+        self._handle = None
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # Context manager protocol
     # ------------------------------------------------------------------
 
-    def _get_hidden_states(self, texts: list[str]) -> torch.Tensor:
-        """Forward pass capturing hidden states at self.layer_idx.
+    def __enter__(self) -> "SteeringHook":
+        layer_idx = self.steering_vector.layer_idx
 
-        Uses a forward hook on model.layers[layer_idx].
-        Returns mean over sequence dimension: (len(texts), d_model).
-        """
-        captured: list[torch.Tensor] = []
-
-        def hook(module, inputs, output):
-            # TransformerBlock returns (hidden, kv); grab the hidden state
+        def _hook(module, inputs, output):
             if isinstance(output, tuple):
-                hidden = output[0]
+                hidden, *rest = output
+                hidden = self._apply_steering(hidden)
+                return (hidden, *rest)
             else:
-                hidden = output
-            # hidden: (B, S, D) -- mean over seq dim
-            captured.append(hidden.mean(dim=1).detach())
+                return self._apply_steering(output)
 
-        handle = self.model.layers[self.layer_idx].register_forward_hook(hook)
-        try:
-            self.model.eval()
-            with torch.no_grad():
-                results: list[torch.Tensor] = []
-                for text in texts:
-                    token_ids = self.tokenizer_encode(text)
-                    token_ids = token_ids[: self.max_seq_len]
-                    if len(token_ids) == 0:
-                        token_ids = [0]
-                    input_ids = torch.tensor([token_ids], dtype=torch.long)
-                    captured.clear()
-                    self.model(input_ids)
-                    # captured[0]: (1, d_model)
-                    results.append(captured[0])  # (1, d_model)
-        finally:
-            handle.remove()
-
-        return torch.cat(results, dim=0)  # (N, d_model)
-
-    # ------------------------------------------------------------------
-    # Extraction methods
-    # ------------------------------------------------------------------
-
-    def extract_mean_diff(
-        self,
-        positive_texts: list[str],
-        negative_texts: list[str],
-    ) -> SteeringVector:
-        """direction = normalize(mean(pos_hidden) - mean(neg_hidden))."""
-        pos_hidden = self._get_hidden_states(positive_texts)  # (N, D)
-        neg_hidden = self._get_hidden_states(negative_texts)  # (N, D)
-        direction = pos_hidden.mean(dim=0) - neg_hidden.mean(dim=0)  # (D,)
-        direction = F.normalize(direction, dim=0)
-        return SteeringVector(
-            direction=direction,
-            layer_idx=self.layer_idx,
-            label="steering",
-            source="mean_diff",
-        )
-
-    def extract_pca(
-        self,
-        positive_texts: list[str],
-        negative_texts: list[str],
-    ) -> SteeringVector:
-        """Compute (pos - neg) for each pair, stack into matrix, get first PC.
-
-        Uses torch.pca_lowrank(X, q=1) -> (U, S, V); first PC = V[:, 0].
-        Normalizes to unit norm.
-        """
-        pos_hidden = self._get_hidden_states(positive_texts)  # (N, D)
-        neg_hidden = self._get_hidden_states(negative_texts)  # (N, D)
-        diff_matrix = pos_hidden - neg_hidden  # (N, D)
-        # Center the matrix
-        diff_matrix = diff_matrix - diff_matrix.mean(dim=0, keepdim=True)
-        _U, _S, V = torch.pca_lowrank(diff_matrix, q=1)
-        direction = V[:, 0]  # (D,)
-        direction = F.normalize(direction, dim=0)
-        return SteeringVector(
-            direction=direction,
-            layer_idx=self.layer_idx,
-            label="steering",
-            source="pca",
-        )
-
-    def extract_multiple_layers(
-        self,
-        positive_texts: list[str],
-        negative_texts: list[str],
-        layer_indices: list[int],
-    ) -> list[SteeringVector]:
-        """Extract mean_diff steering vector for each layer in layer_indices."""
-        vectors: list[SteeringVector] = []
-        original_layer_idx = self.layer_idx
-        for idx in layer_indices:
-            self.layer_idx = idx
-            sv = self.extract_mean_diff(positive_texts, negative_texts)
-            sv.layer_idx = idx
-            vectors.append(sv)
-        self.layer_idx = original_layer_idx
-        return vectors
-
-
-# ---------------------------------------------------------------------------
-# ActivationSteerer
-# ---------------------------------------------------------------------------
-
-class ActivationSteerer:
-    """Apply steering vectors to model activations during forward pass.
-
-    Registers forward hooks on specified layers that add:
-        hidden_state += alpha * steering_vector.direction
-
-    Args:
-        model: AureliusTransformer instance.
-        steering_vectors: List of SteeringVector to apply.
-        alpha: Steering strength (e.g. 10.0 to 20.0).
-
-    Usage:
-        with ActivationSteerer(model, [sv], alpha=10.0):
-            output = model(input_ids)
-    """
-
-    def __init__(
-        self,
-        model: torch.nn.Module,
-        steering_vectors: list[SteeringVector],
-        alpha: float = 10.0,
-    ) -> None:
-        self.model = model
-        self.steering_vectors = steering_vectors
-        self.alpha = alpha
-        self._handles: list = []
-
-    def __enter__(self) -> "ActivationSteerer":
-        """Register all hooks."""
-        self._handles.clear()
-        for sv in self.steering_vectors:
-            direction = sv.direction  # (D,)
-            alpha = self.alpha
-
-            def make_hook(dir_: torch.Tensor, a: float):
-                def hook(module, inputs, output):
-                    if isinstance(output, tuple):
-                        hidden = output[0]
-                        rest = output[1:]
-                        hidden = hidden + a * dir_.to(hidden.device)
-                        return (hidden,) + rest
-                    else:
-                        return output + a * dir_.to(output.device)
-                return hook
-
-            handle = self.model.layers[sv.layer_idx].register_forward_hook(
-                make_hook(direction, alpha)
-            )
-            self._handles.append(handle)
+        self._handle = self.model.layers[layer_idx].register_forward_hook(_hook)
         return self
 
     def __exit__(self, *args) -> None:
-        """Remove all hooks."""
-        for handle in self._handles:
-            handle.remove()
-        self._handles.clear()
+        if self._handle is not None:
+            self._handle.remove()
+            self._handle = None
+
+    # ------------------------------------------------------------------
+    # Core steering logic
+    # ------------------------------------------------------------------
+
+    def _apply_steering(self, output: torch.Tensor) -> torch.Tensor:
+        """Apply steering to a (B, T, D) hidden state tensor.
+
+        Args:
+            output: (B, T, D) hidden states from the layer.
+
+        Returns:
+            Modified (B, T, D) hidden states.
+        """
+        direction = self.steering_vector.direction.to(output.device)  # (D,)
+        coeff = self.cfg.coefficient
+        mode = self.cfg.mode
+
+        if mode == "add":
+            # Broadcast direction (D,) over (B, T, D)
+            output = output + coeff * direction
+
+        elif mode == "project_out":
+            # Remove the component along direction from every token position
+            # proj shape: (B, T, 1) * (D,) -> (B, T, D)
+            proj_scalar = (output @ direction.unsqueeze(-1))  # (B, T, 1)
+            proj = proj_scalar * direction                     # (B, T, D)
+            output = output - proj
+
+        elif mode == "clamp":
+            # Clamp activations in the direction to [-clamp_value, clamp_value]
+            proj_scalar = output @ direction  # (B, T)
+            clamped = proj_scalar.clamp(-self.cfg.clamp_value, self.cfg.clamp_value)
+            diff = (clamped - proj_scalar).unsqueeze(-1)  # (B, T, 1)
+            output = output + diff * direction             # adjust in-direction component
+
+        else:
+            raise ValueError(f"Unknown steering mode: {mode!r}")
+
+        return output
+
+
+# ---------------------------------------------------------------------------
+# ActivationSteerer  (high-level API)
+# ---------------------------------------------------------------------------
+
+class ActivationSteerer:
+    """Extract steering vectors and apply them at inference time.
+
+    Args:
+        model: AureliusTransformer (or compatible nn.Module with ``.layers``).
+        cfg: SteeringConfig specifying layers, coefficient, and mode.
+    """
+
+    def __init__(self, model: nn.Module, cfg: SteeringConfig) -> None:
+        self.model = model
+        self.cfg = cfg
+
+    # ------------------------------------------------------------------
+    # Fitting
+    # ------------------------------------------------------------------
+
+    def fit_from_pairs(
+        self,
+        positive_ids: torch.Tensor,   # (N, T)
+        negative_ids: torch.Tensor,   # (N, T)
+        method: str = "mean_diff",    # "mean_diff" | "pca"
+    ) -> list[SteeringVector]:
+        """Extract steering vectors for each configured layer.
+
+        For each layer index in ``cfg.layer_indices``:
+            1. Collect mean-pooled activations for positive / negative examples.
+            2. Compute the steering direction via ``method``.
+
+        Args:
+            positive_ids: (N, T) token ids for positive examples.
+            negative_ids: (N, T) token ids for negative examples.
+            method: "mean_diff" or "pca".
+
+        Returns:
+            List of SteeringVector, one per layer in cfg.layer_indices.
+        """
+        vectors: list[SteeringVector] = []
+
+        for layer_idx in self.cfg.layer_indices:
+            pos_acts = collect_activations(self.model, positive_ids, layer_idx)   # (N, D)
+            neg_acts = collect_activations(self.model, negative_ids, layer_idx)   # (N, D)
+
+            if method == "mean_diff":
+                direction = extract_mean_diff_vector(
+                    pos_acts, neg_acts, normalize=self.cfg.normalize
+                )
+                explained_var = 0.0
+            elif method == "pca":
+                contrastive = torch.cat([pos_acts, neg_acts], dim=0)  # (2N, D)
+                direction, explained_var = extract_pca_vector(
+                    contrastive, normalize=self.cfg.normalize
+                )
+            else:
+                raise ValueError(f"Unknown method: {method!r}")
+
+            vectors.append(SteeringVector(
+                direction=direction,
+                layer_idx=layer_idx,
+                concept="steering",
+                explained_variance=explained_var,
+            ))
+
+        return vectors
+
+    # ------------------------------------------------------------------
+    # Steered generation
+    # ------------------------------------------------------------------
 
     def steer(
         self,
+        input_ids: torch.Tensor,           # (1, T) or (B, T)
         steering_vectors: list[SteeringVector],
-        alpha: float,
-    ) -> "ActivationSteerer":
-        """Return self as context manager with updated vectors and alpha."""
-        self.steering_vectors = steering_vectors
-        self.alpha = alpha
-        return self
+        max_new_tokens: int = 10,
+    ) -> torch.Tensor:
+        """Greedy-decode with all steering vectors applied simultaneously.
 
-
-# ---------------------------------------------------------------------------
-# compute_steering_effect
-# ---------------------------------------------------------------------------
-
-def compute_steering_effect(
-    model: torch.nn.Module,
-    tokenizer_encode: Callable[[str], list[int]],
-    tokenizer_decode: Callable[[list[int]], str],
-    prompt: str,
-    steering_vector: SteeringVector,
-    alphas: list[float],
-    max_new_tokens: int = 20,
-) -> dict:
-    """Generate text with different steering strengths.
-
-    Returns {alpha: generated_text} for each alpha in alphas.
-    alpha=0 is baseline (no steering).
-    """
-    results: dict = {}
-
-    token_ids = tokenizer_encode(prompt)
-    if len(token_ids) == 0:
-        token_ids = [0]
-    input_ids = torch.tensor([token_ids], dtype=torch.long)
-
-    for alpha in alphas:
-        if alpha == 0.0:
-            # Baseline: no steering
-            model.eval()
-            with torch.no_grad():
-                output_ids = model.generate(input_ids, max_new_tokens=max_new_tokens)
-        else:
-            steerer = ActivationSteerer(model, [steering_vector], alpha=alpha)
-            model.eval()
-            with steerer:
-                with torch.no_grad():
-                    output_ids = model.generate(input_ids, max_new_tokens=max_new_tokens)
-
-        # Decode only newly generated tokens
-        generated_ids = output_ids[0, len(token_ids):].tolist()
-        results[alpha] = tokenizer_decode(generated_ids)
-
-    return results
-
-
-# ---------------------------------------------------------------------------
-# ContrastiveActivationDataset
-# ---------------------------------------------------------------------------
-
-class ContrastiveActivationDataset:
-    """Simple container for positive/negative text pairs for steering vector extraction.
-
-    Provides some default pair sets via from_preset().
-    """
-
-    HELPFUL_PAIRS = (
-        ["I'd be happy to help with that!", "Sure, here's a clear explanation."],
-        ["I cannot and will not help.", "I refuse to assist."]
-    )
-
-    HONEST_PAIRS = (
-        ["I'm not certain, but I believe...", "The evidence suggests..."],
-        ["Definitely! 100% true.", "Absolutely guaranteed!"]
-    )
-
-    def __init__(self, positive: list[str], negative: list[str]) -> None:
-        assert len(positive) == len(negative), (
-            f"positive and negative must have equal length, "
-            f"got {len(positive)} vs {len(negative)}"
-        )
-        self.positive = positive
-        self.negative = negative
-
-    def __len__(self) -> int:
-        return len(self.positive)
-
-    @classmethod
-    def from_preset(cls, name: str) -> "ContrastiveActivationDataset":
-        """Create a dataset from a named preset.
+        Opens one SteeringHook per steering vector, then greedily decodes
+        ``max_new_tokens`` tokens.
 
         Args:
-            name: 'helpful' | 'honest'
+            input_ids: (1, T) starting token ids (batch size 1 expected).
+            steering_vectors: SteeringVectors from :meth:`fit_from_pairs`.
+            max_new_tokens: Number of tokens to generate.
 
         Returns:
-            ContrastiveActivationDataset with the preset pairs.
+            (1, max_new_tokens) generated token ids.
         """
-        if name == "helpful":
-            positive, negative = cls.HELPFUL_PAIRS
-        elif name == "honest":
-            positive, negative = cls.HONEST_PAIRS
-        else:
-            raise ValueError(f"Unknown preset: {name!r}. Choose from 'helpful', 'honest'.")
-        return cls(positive=list(positive), negative=list(negative))
+        self.model.eval()
+
+        # Build list of context managers
+        hooks = [
+            SteeringHook(self.model, sv, self.cfg)
+            for sv in steering_vectors
+        ]
+
+        generated: list[torch.Tensor] = []
+        cur_ids = input_ids  # (1, T)
+
+        # Enter all hooks
+        handles = [h.__enter__() for h in hooks]
+        try:
+            with torch.no_grad():
+                for _ in range(max_new_tokens):
+                    _loss, logits, _pkv = self.model(cur_ids)
+                    # Greedy: pick the argmax at the last position
+                    next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)  # (1, 1)
+                    generated.append(next_token)
+                    cur_ids = torch.cat([cur_ids, next_token], dim=1)
+        finally:
+            for h in hooks:
+                h.__exit__(None, None, None)
+
+        return torch.cat(generated, dim=1)  # (1, max_new_tokens)
+
+    # ------------------------------------------------------------------
+    # Probing
+    # ------------------------------------------------------------------
+
+    def measure_concept_activation(
+        self,
+        input_ids: torch.Tensor,
+        steering_vector: SteeringVector,
+    ) -> float:
+        """Measure how strongly the concept is expressed in the activations.
+
+        Projects the layer activations onto the steering direction and returns
+        the mean dot product across batch and sequence positions.
+
+        Args:
+            input_ids: (B, T) token ids.
+            steering_vector: The SteeringVector to probe.
+
+        Returns:
+            Mean projection (float).
+        """
+        acts = collect_activations(
+            self.model, input_ids, steering_vector.layer_idx
+        )  # (B, D)
+        direction = steering_vector.direction.to(acts.device)  # (D,)
+        return float((acts @ direction).mean().item())
