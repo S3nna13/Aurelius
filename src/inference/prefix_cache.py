@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import hashlib
-import random
 import time
 from dataclasses import dataclass, field
-from typing import Callable
 
 import torch
-import torch.nn as nn
 from torch import Tensor
 
 
@@ -17,45 +14,42 @@ from torch import Tensor
 class PrefixCacheConfig:
     """Configuration for prefix KV cache."""
 
-    max_cached_prefixes: int = 64
-    max_prefix_tokens: int = 512
-    eviction_policy: str = "lru"  # "lru" | "fifo" | "random"
-    compression_enabled: bool = False
-    ttl_seconds: float = 3600.0
+    max_entries: int = 64
+    max_prefix_len: int = 512
+    min_prefix_len: int = 8
+    eviction_policy: str = "lru"  # "lru" | "lfu"
 
 
 @dataclass
 class CacheEntry:
     """A single cached prefix entry."""
 
-    prefix_hash: str
     prefix_ids: list[int]
-    kv_cache: list[tuple[Tensor, Tensor]]  # one (K, V) pair per layer
-    n_layers: int
-    created_at: float
+    kv_cache: list[tuple[Tensor, Tensor]]  # one (K, V) per layer, shape (1, n_heads, T, head_dim)
+    hit_count: int
     last_accessed: float
-    access_count: int
-    prefix_len: int
+    created_at: float
 
 
-def hash_prefix(token_ids: list[int]) -> str:
-    """Return SHA256 hex digest of the token ids bytes."""
+def compute_prefix_hash(token_ids: list[int]) -> str:
+    """SHA256 hash of token id sequence for cache key lookup."""
     data = b"".join(i.to_bytes(4, "little") for i in token_ids)
     return hashlib.sha256(data).hexdigest()
 
 
 def find_longest_prefix_match(
-    token_ids: list[int], cache: dict[str, CacheEntry]
+    token_ids: list[int],
+    cache: dict[str, CacheEntry],
 ) -> tuple[str | None, int]:
     """Find the longest cached prefix that matches the start of token_ids.
 
-    Returns (cache_key, matched_length), or (None, 0) if no match.
+    Returns (cache_key, match_length) or (None, 0) if no match.
     """
     best_key: str | None = None
     best_len: int = 0
 
     for key, entry in cache.items():
-        plen = entry.prefix_len
+        plen = len(entry.prefix_ids)
         if plen <= len(token_ids) and token_ids[:plen] == entry.prefix_ids:
             if plen > best_len:
                 best_len = plen
@@ -64,190 +58,179 @@ def find_longest_prefix_match(
     return best_key, best_len
 
 
+def truncate_kv_cache(
+    kv_cache: list[tuple[Tensor, Tensor]],
+    length: int,
+) -> list[tuple[Tensor, Tensor]]:
+    """Truncate KV cache to first `length` tokens.
+
+    Each tensor has shape (1, H, T, D).
+    Returns new list with tensors sliced to (1, H, length, D).
+    """
+    return [(k[:, :, :length, :], v[:, :, :length, :]) for k, v in kv_cache]
+
+
+def merge_kv_caches(
+    prefix_kv: list[tuple[Tensor, Tensor]],
+    new_kv: list[tuple[Tensor, Tensor]],
+) -> list[tuple[Tensor, Tensor]]:
+    """Concatenate prefix_kv and new_kv along the sequence (T) dimension."""
+    assert len(prefix_kv) == len(new_kv), "KV caches must have same number of layers"
+    return [
+        (torch.cat([pk, nk], dim=2), torch.cat([pv, nv], dim=2))
+        for (pk, pv), (nk, nv) in zip(prefix_kv, new_kv)
+    ]
+
+
 class PrefixCache:
-    """LRU/FIFO/random cache for KV caches keyed on prefix token ids."""
+    """LRU/LFU cache for prefix KV states."""
 
-    def __init__(self, config: PrefixCacheConfig) -> None:
-        self.config = config
+    def __init__(self, cfg: PrefixCacheConfig) -> None:
+        self.cfg = cfg
         self._cache: dict[str, CacheEntry] = {}
-        self._insertion_order: list[str] = []  # for FIFO eviction
+        self._hits: int = 0
+        self._misses: int = 0
 
-    def get(self, prefix_ids: list[int]) -> CacheEntry | None:
-        """Look up exact prefix match by hash; update access time and count."""
-        key = hash_prefix(prefix_ids)
-        entry = self._cache.get(key)
-        if entry is not None:
+    def get(self, token_ids: list[int]) -> tuple[list[tuple[Tensor, Tensor]] | None, int]:
+        """Look up longest matching prefix.
+
+        Returns (kv_cache, match_length).
+        Updates hit_count and last_accessed. Returns (None, 0) on miss.
+        """
+        key, match_len = find_longest_prefix_match(token_ids, self._cache)
+        if key is not None and match_len > 0:
+            entry = self._cache[key]
+            entry.hit_count += 1
             entry.last_accessed = time.time()
-            entry.access_count += 1
-        return entry
+            self._hits += 1
+            return entry.kv_cache, match_len
+        self._misses += 1
+        return None, 0
 
-    def put(self, prefix_ids: list[int], kv_cache: list[tuple[Tensor, Tensor]]) -> None:
-        """Add entry; evict according to policy if at capacity."""
-        key = hash_prefix(prefix_ids)
+    def put(self, token_ids: list[int], kv_cache: list[tuple[Tensor, Tensor]]) -> None:
+        """Store KV cache for token_ids.
+
+        Evict if at capacity.
+        Only cache if len(token_ids) >= min_prefix_len.
+        Truncate to max_prefix_len if needed.
+        """
+        if len(token_ids) < self.cfg.min_prefix_len:
+            return
+
+        # Truncate if needed
+        if len(token_ids) > self.cfg.max_prefix_len:
+            token_ids = token_ids[: self.cfg.max_prefix_len]
+            kv_cache = truncate_kv_cache(kv_cache, self.cfg.max_prefix_len)
+
+        key = compute_prefix_hash(token_ids)
+
         if key in self._cache:
             # Update existing entry
             entry = self._cache[key]
             entry.kv_cache = kv_cache
             entry.last_accessed = time.time()
-            entry.access_count += 1
             return
 
         # Evict if at capacity
-        if len(self._cache) >= self.config.max_cached_prefixes:
-            self._evict_one()
+        if len(self._cache) >= self.cfg.max_entries:
+            self._evict()
 
         now = time.time()
-        entry = CacheEntry(
-            prefix_hash=key,
-            prefix_ids=list(prefix_ids),
+        self._cache[key] = CacheEntry(
+            prefix_ids=list(token_ids),
             kv_cache=kv_cache,
-            n_layers=len(kv_cache),
-            created_at=now,
+            hit_count=0,
             last_accessed=now,
-            access_count=0,
-            prefix_len=len(prefix_ids),
+            created_at=now,
         )
-        self._cache[key] = entry
-        self._insertion_order.append(key)
 
-    def _evict_one(self) -> None:
-        """Evict a single entry according to the configured policy."""
+    def _evict(self) -> None:
+        """Evict one entry per eviction_policy.
+
+        LRU: remove entry with smallest last_accessed
+        LFU: remove entry with smallest hit_count (tiebreak: oldest)
+        """
         if not self._cache:
             return
 
-        policy = self.config.eviction_policy
-        if policy == "lru":
-            # Evict least recently accessed
-            victim = min(self._cache.values(), key=lambda e: e.last_accessed)
-            victim_key = victim.prefix_hash
-        elif policy == "fifo":
-            # Evict first inserted that is still in cache
-            victim_key = None
-            for k in self._insertion_order:
-                if k in self._cache:
-                    victim_key = k
-                    break
-            if victim_key is None:
-                victim_key = next(iter(self._cache))
-        else:  # random
-            victim_key = random.choice(list(self._cache.keys()))
+        if self.cfg.eviction_policy == "lfu":
+            victim_key = min(
+                self._cache,
+                key=lambda k: (self._cache[k].hit_count, self._cache[k].created_at),
+            )
+        else:  # default: lru
+            victim_key = min(
+                self._cache,
+                key=lambda k: self._cache[k].last_accessed,
+            )
 
         del self._cache[victim_key]
-        if victim_key in self._insertion_order:
-            self._insertion_order.remove(victim_key)
-
-    def evict_expired(self) -> int:
-        """Remove entries older than ttl_seconds. Returns count removed."""
-        cutoff = time.time() - self.config.ttl_seconds
-        expired = [k for k, e in self._cache.items() if e.created_at < cutoff]
-        for k in expired:
-            del self._cache[k]
-            if k in self._insertion_order:
-                self._insertion_order.remove(k)
-        return len(expired)
-
-    def stats(self) -> dict[str, int]:
-        """Returns size, total_accesses, and capacity."""
-        total_accesses = sum(e.access_count for e in self._cache.values())
-        return {
-            "size": len(self._cache),
-            "total_accesses": total_accesses,
-            "capacity": self.config.max_cached_prefixes,
-        }
 
     def clear(self) -> None:
         """Empty the cache."""
         self._cache.clear()
-        self._insertion_order.clear()
+        self._hits = 0
+        self._misses = 0
+
+    def stats(self) -> dict[str, int | float]:
+        """Return {"size", "hits", "misses", "hit_rate"}."""
+        total = self._hits + self._misses
+        hit_rate = self._hits / total if total > 0 else 0.0
+        return {
+            "size": len(self._cache),
+            "hits": self._hits,
+            "misses": self._misses,
+            "hit_rate": hit_rate,
+        }
+
+    def __len__(self) -> int:
+        return len(self._cache)
 
 
-class PrefixCachedInference:
-    """Inference engine that leverages prefix caching."""
+def simulate_prefix_caching(
+    requests: list[list[int]],
+    cache: PrefixCache,
+    n_layers: int,
+    n_heads: int,
+    head_dim: int,
+) -> dict[str, float]:
+    """Simulate prefix cache hits/misses for a list of token requests.
 
-    def __init__(
-        self,
-        model: nn.Module,
-        cache: PrefixCache,
-        tokenizer_encode: Callable[[str], list[int]],
-        tokenizer_decode: Callable[[list[int]], str],
-    ) -> None:
-        self.model = model
-        self.cache = cache
-        self.tokenizer_encode = tokenizer_encode
-        self.tokenizer_decode = tokenizer_decode
+    For each request:
+      1. Look up prefix in cache
+      2. Compute "savings" = match_length tokens don't need recomputing
+      3. Create fake KV cache for the full request (random tensors)
+      4. Store in cache
 
-    @torch.no_grad()
-    def _compute_kv_cache(self, prefix_ids: list[int]) -> list[tuple[Tensor, Tensor]]:
-        """Run model forward on prefix_ids to generate KV cache entries."""
-        input_tensor = torch.tensor([prefix_ids], dtype=torch.long)
-        output = self.model(input_tensor)
-        # output is (loss, logits, past_key_values)
-        past_key_values = output[2] if len(output) > 2 else None
-        if past_key_values is None:
-            return []
-        return list(past_key_values)
+    Returns {"total_tokens", "reused_tokens", "reuse_fraction", "hit_rate"}
+    """
+    total_tokens = 0
+    reused_tokens = 0
 
-    def cache_prefix(self, prefix_text: str) -> int:
-        """Encode prefix_text, compute KV cache, store in cache. Returns prefix token length."""
-        prefix_ids = self.tokenizer_encode(prefix_text)
-        kv = self._compute_kv_cache(prefix_ids)
-        self.cache.put(prefix_ids, kv)
-        return len(prefix_ids)
+    for token_ids in requests:
+        seq_len = len(token_ids)
+        total_tokens += seq_len
 
-    @torch.no_grad()
-    def generate_with_cache(self, prompt: str, max_new_tokens: int = 8) -> str:
-        """Encode prompt, find matching prefix in cache, greedy decode from cached position.
+        _kv, match_len = cache.get(token_ids)
+        reused_tokens += match_len
 
-        Returns generated text (excluding prompt).
-        """
-        prompt_ids = self.tokenizer_encode(prompt)
+        # Create fake KV cache for the full request
+        fake_kv: list[tuple[Tensor, Tensor]] = [
+            (
+                torch.randn(1, n_heads, seq_len, head_dim),
+                torch.randn(1, n_heads, seq_len, head_dim),
+            )
+            for _ in range(n_layers)
+        ]
+        cache.put(token_ids, fake_kv)
 
-        # Find a matching prefix in cache
-        cache_key, match_len = find_longest_prefix_match(prompt_ids, self.cache._cache)
+    reuse_fraction = reused_tokens / total_tokens if total_tokens > 0 else 0.0
+    s = cache.stats()
+    hit_rate = s["hit_rate"]
 
-        past_key_values: list[tuple[Tensor, Tensor]] | None = None
-        start_pos = 0
-
-        if cache_key is not None and match_len > 0:
-            entry = self.cache._cache[cache_key]
-            entry.last_accessed = time.time()
-            entry.access_count += 1
-            past_key_values = entry.kv_cache if entry.kv_cache else None
-            start_pos = match_len
-
-        # Build remaining input ids (tokens after the cached prefix)
-        remaining_ids = prompt_ids[start_pos:]
-        if not remaining_ids and past_key_values is None:
-            remaining_ids = prompt_ids
-
-        generated: list[int] = []
-        cur_ids = torch.tensor([remaining_ids], dtype=torch.long) if remaining_ids else None
-
-        for _ in range(max_new_tokens):
-            if cur_ids is not None:
-                _, logits, past_key_values = self.model(
-                    cur_ids, past_key_values=past_key_values if past_key_values else None
-                )
-            else:
-                break
-
-            # Greedy: pick argmax of last token logits
-            next_token_id = int(logits[0, -1].argmax().item())
-            generated.append(next_token_id)
-
-            # Next step: only the new token
-            cur_ids = torch.tensor([[next_token_id]], dtype=torch.long)
-
-        return self.tokenizer_decode(generated)
-
-
-def compute_cache_hit_rate(cache: PrefixCache, queries: list[list[int]]) -> float:
-    """Simulate queries against cache; return hit rate (fraction with match)."""
-    if not queries:
-        return 0.0
-    hits = 0
-    for q in queries:
-        key, matched = find_longest_prefix_match(q, cache._cache)
-        if key is not None and matched > 0:
-            hits += 1
-    return hits / len(queries)
+    return {
+        "total_tokens": float(total_tokens),
+        "reused_tokens": float(reused_tokens),
+        "reuse_fraction": reuse_fraction,
+        "hit_rate": hit_rate,
+    }
