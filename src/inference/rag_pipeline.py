@@ -1,18 +1,12 @@
-"""RAG Pipeline: higher-level orchestration layer for Retrieval-Augmented Generation.
-
-Provides document ingestion (chunking + indexing), semantic retrieval (dense or
-sparse BM25), and augmented generation — all without external dependencies beyond
-PyTorch.
-"""
+"""Full RAG pipeline: chunking, BM25-style sparse retrieval, dense fusion, and generation."""
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Callable
+from dataclasses import dataclass
 
 import torch
-import torch.nn.functional as F
+import torch.nn as nn
 
 
 # ---------------------------------------------------------------------------
@@ -21,226 +15,84 @@ import torch.nn.functional as F
 
 @dataclass
 class RAGConfig:
-    chunk_size: int = 256           # characters per chunk
-    chunk_overlap: int = 64         # overlap between consecutive chunks
-    top_k: int = 3                  # number of chunks to retrieve
-    max_context_tokens: int = 512   # max tokens for retrieved context
-    rerank: bool = False            # whether to rerank retrieved chunks
+    chunk_size: int = 256        # tokens (words) per chunk
+    chunk_overlap: int = 32      # overlap words between consecutive chunks
+    n_retrieve: int = 5          # docs to retrieve (sparse + dense each)
+    n_rerank: int = 3            # top docs after reranking / RRF fusion
+    fusion_alpha: float = 0.5    # weight of dense vs sparse score
+    max_context_len: int = 1024  # max context length in words
 
 
 # ---------------------------------------------------------------------------
-# Core data structures
+# Text chunking
 # ---------------------------------------------------------------------------
 
-@dataclass
-class Document:
-    doc_id: str
-    title: str
-    text: str
-    metadata: dict = field(default_factory=dict)
+def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
+    """Split text into overlapping word-level chunks.
 
+    Each chunk has at most chunk_size words with overlap words shared with the
+    previous chunk. Returns an empty list if text is empty.
+    """
+    if not text or not text.strip():
+        return []
 
-@dataclass
-class Chunk:
-    chunk_id: str           # "{doc_id}_{chunk_idx}"
-    doc_id: str
-    text: str
-    start_char: int
-    end_char: int
-    embedding: torch.Tensor | None = None
+    words = text.split()
+    if not words:
+        return []
 
+    chunks: list[str] = []
+    start = 0
+    step = max(1, chunk_size - overlap)
 
-@dataclass
-class RetrievalResult:
-    query: str
-    retrieved_chunks: list[Chunk]
-    scores: list[float]     # similarity scores, descending
+    while start < len(words):
+        end = min(start + chunk_size, len(words))
+        chunk = " ".join(words[start:end])
+        chunks.append(chunk)
+        if end == len(words):
+            break
+        start += step
+
+    return chunks
 
 
 # ---------------------------------------------------------------------------
-# Document chunking
+# BM25 sparse index
 # ---------------------------------------------------------------------------
 
-class DocumentChunker:
-    """Split documents into overlapping chunks (character-based).
+class BM25Index:
+    """Simple BM25 scoring index (Robertson & Zaragoza 2009).
 
-    Args:
-        chunk_size: maximum characters per chunk.
-        chunk_overlap: overlap in characters between consecutive chunks.
+    Parameters
+    ----------
+    k1 : float
+        Term saturation parameter (default 1.5).
+    b : float
+        Length normalisation parameter (default 0.75).
     """
 
-    def __init__(self, chunk_size: int = 256, chunk_overlap: int = 64) -> None:
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-
-    def chunk_document(self, doc: Document) -> list[Chunk]:
-        """Split doc.text into overlapping chunks.
-
-        Tries to break at the last whitespace boundary within chunk_size;
-        falls back to a hard cut at exactly chunk_size characters.
-        """
-        text = doc.text
-        chunks: list[Chunk] = []
-        start = 0
-        idx = 0
-
-        while start < len(text):
-            end = start + self.chunk_size
-
-            if end >= len(text):
-                # Last (possibly short) chunk
-                chunk_text = text[start:]
-                chunks.append(Chunk(
-                    chunk_id=f"{doc.doc_id}_{idx}",
-                    doc_id=doc.doc_id,
-                    text=chunk_text,
-                    start_char=start,
-                    end_char=len(text),
-                ))
-                break
-            else:
-                # Try to find a whitespace boundary within [start, end]
-                boundary = text.rfind(" ", start, end)
-                if boundary == -1 or boundary <= start:
-                    # No suitable space found; hard-cut at chunk_size
-                    boundary = end
-
-                chunk_text = text[start:boundary]
-                chunks.append(Chunk(
-                    chunk_id=f"{doc.doc_id}_{idx}",
-                    doc_id=doc.doc_id,
-                    text=chunk_text,
-                    start_char=start,
-                    end_char=boundary,
-                ))
-                # Advance start by (chunk_size - overlap), but at least 1 to avoid infinite loop
-                step = max(1, self.chunk_size - self.chunk_overlap)
-                start += step
-                idx += 1
-
-        return chunks
-
-    def chunk_corpus(self, documents: list[Document]) -> list[Chunk]:
-        """Chunk all documents and return a flat list of all chunks."""
-        all_chunks: list[Chunk] = []
-        for doc in documents:
-            all_chunks.extend(self.chunk_document(doc))
-        return all_chunks
-
-
-# ---------------------------------------------------------------------------
-# Dense retriever
-# ---------------------------------------------------------------------------
-
-class DenseRetriever:
-    """Dense retrieval using cosine similarity over chunk embeddings.
-
-    Args:
-        embed_fn: callable (text: str) -> Tensor(D)
-        top_k: default number of chunks to retrieve.
-    """
-
-    def __init__(self, embed_fn: Callable[[str], torch.Tensor], top_k: int = 3) -> None:
-        self.embed_fn = embed_fn
-        self.top_k = top_k
-        self._chunks: list[Chunk] = []
-        self._embeddings: torch.Tensor | None = None  # (N, D)
-
-    def index(self, chunks: list[Chunk]) -> None:
-        """Embed all chunks and store for retrieval."""
-        self._chunks = list(chunks)
-        if not chunks:
-            self._embeddings = None
-            return
-
-        embs = []
-        for chunk in chunks:
-            emb = self.embed_fn(chunk.text)
-            embs.append(emb.detach().cpu())
-
-        self._embeddings = torch.stack(embs)  # (N, D)
-
-    def retrieve(self, query: str, top_k: int | None = None) -> RetrievalResult:
-        """Embed query and return top-k most similar chunks (cosine similarity)."""
-        k = top_k if top_k is not None else self.top_k
-
-        if not self._chunks or self._embeddings is None:
-            return RetrievalResult(query=query, retrieved_chunks=[], scores=[])
-
-        query_emb = self.embed_fn(query).detach().cpu().float()
-        query_norm = F.normalize(query_emb, dim=-1)
-        corpus_norm = F.normalize(self._embeddings.float(), dim=-1)  # (N, D)
-
-        scores = corpus_norm @ query_norm  # (N,)
-        k_actual = min(k, len(self._chunks))
-        top_scores, top_indices = torch.topk(scores, k_actual)
-
-        retrieved = [self._chunks[i] for i in top_indices.tolist()]
-        return RetrievalResult(
-            query=query,
-            retrieved_chunks=retrieved,
-            scores=top_scores.tolist(),
-        )
-
-    def update(self, new_chunks: list[Chunk]) -> None:
-        """Append new chunks to the existing index."""
-        if not new_chunks:
-            return
-
-        new_embs = []
-        for chunk in new_chunks:
-            emb = self.embed_fn(chunk.text)
-            new_embs.append(emb.detach().cpu())
-
-        new_tensor = torch.stack(new_embs)  # (M, D)
-        self._chunks.extend(new_chunks)
-
-        if self._embeddings is None:
-            self._embeddings = new_tensor
-        else:
-            self._embeddings = torch.cat([self._embeddings, new_tensor], dim=0)
-
-
-# ---------------------------------------------------------------------------
-# BM25 retriever
-# ---------------------------------------------------------------------------
-
-class BM25Retriever:
-    """Sparse BM25 retrieval (Robertson & Zaragoza 2009).
-
-    BM25 score(d, q) = sum_t IDF(t) * tf(t,d)*(k1+1) / (tf(t,d) + k1*(1 - b + b*dl/avgdl))
-
-    Args:
-        k1: term saturation parameter (default 1.5).
-        b: length normalisation parameter (default 0.75).
-        top_k: default number of chunks to retrieve.
-    """
-
-    def __init__(self, k1: float = 1.5, b: float = 0.75, top_k: int = 3) -> None:
+    def __init__(self, k1: float = 1.5, b: float = 0.75) -> None:
         self.k1 = k1
         self.b = b
-        self.top_k = top_k
-        self._chunks: list[Chunk] = []
-        self._vocab: dict[str, int] = {}
-        self._tf: list[dict[str, int]] = []   # per-chunk term frequencies
-        self._df: dict[str, int] = {}          # document (chunk) frequencies
+        self._documents: list[str] = []
+        self._tf: list[dict[str, int]] = []   # per-doc term frequency
+        self._df: dict[str, int] = {}          # document frequency per term
         self._avgdl: float = 0.0
+        self._n: int = 0
 
     @staticmethod
     def _tokenize(text: str) -> list[str]:
-        """Lowercase whitespace tokenization."""
         return text.lower().split()
 
-    def index(self, chunks: list[Chunk]) -> None:
-        """Build BM25 index from chunks."""
-        self._chunks = list(chunks)
-        self._vocab = {}
+    def index(self, documents: list[str]) -> None:
+        """Tokenize documents and compute IDF statistics."""
+        self._documents = list(documents)
         self._tf = []
         self._df = {}
+        self._n = len(documents)
 
         total_len = 0
-        for chunk in chunks:
-            tokens = self._tokenize(chunk.text)
+        for doc in documents:
+            tokens = self._tokenize(doc)
             total_len += len(tokens)
             tf: dict[str, int] = {}
             for tok in tokens:
@@ -249,129 +101,207 @@ class BM25Retriever:
             for tok in set(tokens):
                 self._df[tok] = self._df.get(tok, 0) + 1
 
-        self._avgdl = total_len / len(chunks) if chunks else 0.0
+        self._avgdl = total_len / self._n if self._n > 0 else 0.0
 
-    def retrieve(self, query: str, top_k: int | None = None) -> RetrievalResult:
-        """BM25 retrieval."""
-        k = top_k if top_k is not None else self.top_k
-
-        if not self._chunks:
-            return RetrievalResult(query=query, retrieved_chunks=[], scores=[])
+    def score(self, query: str, doc_idx: int) -> float:
+        """Compute BM25 score for a query against document at doc_idx."""
+        if not self._documents or doc_idx >= self._n:
+            return 0.0
 
         query_tokens = self._tokenize(query)
-        n = len(self._chunks)
-        scores: list[float] = []
+        tf_i = self._tf[doc_idx]
+        dl = sum(tf_i.values())
+        result = 0.0
 
-        for i, chunk in enumerate(self._chunks):
-            tf_i = self._tf[i]
-            dl = sum(tf_i.values())
-            score = 0.0
-            for tok in query_tokens:
-                tf_tok = tf_i.get(tok, 0)
-                df_tok = self._df.get(tok, 0)
-                if df_tok == 0:
-                    continue
-                idf = math.log((n - df_tok + 0.5) / (df_tok + 0.5) + 1)
-                numerator = tf_tok * (self.k1 + 1)
-                denominator = tf_tok + self.k1 * (1 - self.b + self.b * dl / self._avgdl)
-                score += idf * numerator / denominator
-            scores.append(score)
+        for tok in query_tokens:
+            tf_tok = tf_i.get(tok, 0)
+            df_tok = self._df.get(tok, 0)
+            if df_tok == 0:
+                continue
+            idf = math.log((self._n - df_tok + 0.5) / (df_tok + 0.5) + 1)
+            numerator = tf_tok * (self.k1 + 1)
+            denominator = tf_tok + self.k1 * (
+                1 - self.b + self.b * dl / self._avgdl
+            ) if self._avgdl > 0 else tf_tok + self.k1
+            result += idf * numerator / denominator
 
-        k_actual = min(k, n)
-        # argsort descending
-        ranked = sorted(range(n), key=lambda i: scores[i], reverse=True)[:k_actual]
-        retrieved = [self._chunks[i] for i in ranked]
-        top_scores = [scores[i] for i in ranked]
+        return result
 
-        return RetrievalResult(
-            query=query,
-            retrieved_chunks=retrieved,
-            scores=top_scores,
-        )
+    def search(self, query: str, top_k: int) -> list[tuple[int, float]]:
+        """Return top-k (doc_idx, score) pairs sorted by score descending."""
+        if not self._documents:
+            return []
+
+        scores = [(i, self.score(query, i)) for i in range(self._n)]
+        scores.sort(key=lambda x: x[1], reverse=True)
+        return scores[:top_k]
 
 
 # ---------------------------------------------------------------------------
-# RAG Pipeline
+# Reciprocal Rank Fusion
+# ---------------------------------------------------------------------------
+
+def reciprocal_rank_fusion(rankings: list[list[int]], k: int = 60) -> list[int]:
+    """Combine multiple ranked lists via Reciprocal Rank Fusion.
+
+    score(d) = sum_r 1 / (k + rank_r(d))   where rank is 1-based.
+
+    Parameters
+    ----------
+    rankings : list of ordered doc_idx lists (each is a ranked result).
+    k : RRF constant (default 60).
+
+    Returns
+    -------
+    List of doc indices sorted by RRF score descending.
+    """
+    rrf_scores: dict[int, float] = {}
+
+    for ranked_list in rankings:
+        for rank, doc_idx in enumerate(ranked_list, start=1):
+            rrf_scores[doc_idx] = rrf_scores.get(doc_idx, 0.0) + 1.0 / (k + rank)
+
+    sorted_docs = sorted(rrf_scores.keys(), key=lambda d: rrf_scores[d], reverse=True)
+    return sorted_docs
+
+
+# ---------------------------------------------------------------------------
+# Dense retriever (lightweight, no AureliusTransformer dependency)
+# ---------------------------------------------------------------------------
+
+class DenseRetriever(nn.Module):
+    """Lightweight dense retriever using a learnable projection matrix.
+
+    Encodes texts as mean-of-character-codes projected through a weight matrix.
+
+    Parameters
+    ----------
+    embed_dim : int
+        Embedding dimension (default 64).
+    """
+
+    def __init__(self, embed_dim: int = 64) -> None:
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.W = nn.Parameter(torch.eye(embed_dim))
+
+    def encode(self, texts: list[str]) -> torch.Tensor:
+        """Encode a list of texts into embeddings of shape (N, embed_dim).
+
+        Each text is represented as the mean of its character ordinals,
+        broadcast to embed_dim and projected by W.
+        """
+        vectors = []
+        for text in texts:
+            if text:
+                scalar = torch.tensor(
+                    [ord(c) for c in text], dtype=torch.float
+                ).mean()
+            else:
+                scalar = torch.zeros(1, dtype=torch.float).squeeze()
+            vec = scalar.expand(self.embed_dim).clone()  # (embed_dim,)
+            projected = vec @ self.W  # (embed_dim,)
+            vectors.append(projected)
+
+        return torch.stack(vectors)  # (N, embed_dim)
+
+    def search(
+        self, query: str, doc_embeddings: torch.Tensor, top_k: int
+    ) -> list[tuple[int, float]]:
+        """Dot-product similarity search.
+
+        Parameters
+        ----------
+        query : query string.
+        doc_embeddings : (N, embed_dim) tensor of document embeddings.
+        top_k : number of results.
+
+        Returns
+        -------
+        List of (doc_idx, score) tuples sorted by score descending.
+        """
+        query_emb = self.encode([query])[0]  # (embed_dim,)
+        scores = doc_embeddings @ query_emb  # (N,)
+        k = min(top_k, scores.shape[0])
+        top_scores, top_indices = torch.topk(scores, k)
+        return list(zip(top_indices.tolist(), top_scores.tolist()))
+
+
+# ---------------------------------------------------------------------------
+# Full RAG Pipeline
 # ---------------------------------------------------------------------------
 
 class RAGPipeline:
-    """Full RAG pipeline: chunk → index → retrieve → augment → generate.
+    """Full RAG pipeline: chunk, index, retrieve via sparse+dense fusion, format context.
 
-    Args:
-        model: AureliusTransformer instance.
-        tokenizer_encode: callable (text: str) -> Tensor of token ids (1D).
-        tokenizer_decode: callable (token_ids: Tensor) -> str.
-        retriever: DenseRetriever or BM25Retriever.
-        chunker: DocumentChunker.
-        config: RAGConfig.
+    Parameters
+    ----------
+    config : RAGConfig
     """
 
-    def __init__(
-        self,
-        model: torch.nn.Module,
-        tokenizer_encode: Callable[[str], torch.Tensor],
-        tokenizer_decode: Callable[[torch.Tensor], str],
-        retriever: DenseRetriever | BM25Retriever,
-        chunker: DocumentChunker,
-        config: RAGConfig | None = None,
-    ) -> None:
-        self.model = model
-        self.tokenizer_encode = tokenizer_encode
-        self.tokenizer_decode = tokenizer_decode
-        self.retriever = retriever
-        self.chunker = chunker
-        self.config = config or RAGConfig()
+    def __init__(self, config: RAGConfig) -> None:
+        self.config = config
+        self._chunks: list[str] = []
+        self._bm25 = BM25Index()
+        self._dense = DenseRetriever(embed_dim=64)
+        self._doc_embeddings: torch.Tensor | None = None
 
-    def ingest(self, documents: list[Document]) -> int:
-        """Chunk and index documents. Returns total chunk count."""
-        chunks = self.chunker.chunk_corpus(documents)
-        self.retriever.index(chunks)
-        return len(chunks)
+    def index_documents(self, documents: list[str]) -> None:
+        """Chunk each document, then index with BM25 and DenseRetriever.
 
-    def query(self, question: str) -> dict:
-        """Full RAG pipeline: retrieve → format → generate.
-
-        Returns:
-            dict with keys 'answer', 'retrieved_chunks', 'scores'.
+        All chunks across all documents are pooled into a single flat list.
         """
-        # 1. Retrieve top-k chunks
-        result = self.retriever.retrieve(question, top_k=self.config.top_k)
+        all_chunks: list[str] = []
+        for doc in documents:
+            chunks = chunk_text(doc, self.config.chunk_size, self.config.chunk_overlap)
+            all_chunks.extend(chunks)
 
-        # 2. Build context string, truncated to max_context_tokens
-        #    Rough estimate: 1 token ≈ 4 characters
-        max_chars = self.config.max_context_tokens * 4
-        context_parts: list[str] = []
-        used = 0
-        for chunk in result.retrieved_chunks:
-            if used + len(chunk.text) > max_chars:
-                remaining = max_chars - used
-                if remaining > 0:
-                    context_parts.append(chunk.text[:remaining])
-                break
-            context_parts.append(chunk.text)
-            used += len(chunk.text)
+        self._chunks = all_chunks
 
-        context_str = "\n".join(context_parts)
-        prompt = f"Context:\n{context_str}\nQuestion: {question}\nAnswer:"
+        if all_chunks:
+            self._bm25.index(all_chunks)
+            with torch.no_grad():
+                self._doc_embeddings = self._dense.encode(all_chunks)  # (N, 64)
+        else:
+            self._doc_embeddings = None
 
-        # 3. Tokenize and generate
-        input_ids = self.tokenizer_encode(prompt)
-        if input_ids.dim() == 1:
-            input_ids = input_ids.unsqueeze(0)  # (1, S)
+    def retrieve(self, query: str) -> list[str]:
+        """Retrieve top chunks for a query using BM25 + dense RRF fusion.
 
-        with torch.no_grad():
-            _, logits, _ = self.model(input_ids)
+        Steps:
+        1. BM25 search -> top n_retrieve chunk indices.
+        2. Dense search -> top n_retrieve chunk indices.
+        3. RRF fusion -> top n_rerank chunk indices.
+        4. Return corresponding chunk strings.
+        """
+        if not self._chunks or self._doc_embeddings is None:
+            return []
 
-        # Greedy next-token prediction (single step)
-        next_token_id = logits[0, -1].argmax(dim=-1, keepdim=True)
-        answer = self.tokenizer_decode(next_token_id)
+        cfg = self.config
 
-        return {
-            "answer": answer,
-            "retrieved_chunks": result.retrieved_chunks,
-            "scores": result.scores,
-        }
+        # BM25 ranked list (doc indices)
+        bm25_results = self._bm25.search(query, cfg.n_retrieve)
+        bm25_ranking = [idx for idx, _ in bm25_results]
 
-    def batch_query(self, questions: list[str]) -> list[dict]:
-        """Run query() for each question. Returns list of result dicts."""
-        return [self.query(q) for q in questions]
+        # Dense ranked list (doc indices)
+        dense_results = self._dense.search(query, self._doc_embeddings, cfg.n_retrieve)
+        dense_ranking = [idx for idx, _ in dense_results]
+
+        # RRF fusion
+        fused = reciprocal_rank_fusion([bm25_ranking, dense_ranking])
+        top_indices = fused[: cfg.n_rerank]
+
+        return [self._chunks[i] for i in top_indices]
+
+    def format_context(self, query: str, chunks: list[str]) -> str:
+        """Format retrieved chunks and query into a context string.
+
+        Format:
+            Context:
+            {chunk1}
+            {chunk2}
+            ...
+            Query: {query}
+        """
+        chunks_text = "\n".join(chunks)
+        return f"Context:\n{chunks_text}\nQuery: {query}"

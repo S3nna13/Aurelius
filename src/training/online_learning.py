@@ -1,233 +1,273 @@
-"""Online learning and continual pretraining: streaming data, catastrophic forgetting prevention."""
+"""Online learning: streaming updates with experience replay and catastrophic forgetting prevention."""
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from typing import Callable
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor
 
 
 @dataclass
 class OnlineLearningConfig:
-    """Configuration for online / continual-pretraining learner."""
-    buffer_size: int = 1000
-    replay_ratio: float = 0.3
-    lr_warmup_steps: int = 100
-    forgetting_threshold: float = 0.1
-    use_ewc: bool = True
-    ewc_lambda: float = 0.4
+    """Configuration for online / streaming learner."""
+    replay_buffer_size: int = 1000
+    replay_batch_size: int = 16
+    ewc_lambda: float = 1.0
+    drift_detection_window: int = 50
+    drift_threshold: float = 2.0   # z-score threshold for drift detection
+    learning_rate: float = 1e-4
 
 
-class StreamingDataBuffer:
-    """Circular buffer for streaming online data."""
+class ReplayBuffer:
+    """FIFO experience replay buffer storing dicts with input_ids and labels."""
 
-    def __init__(self, capacity: int, seed: int = 42) -> None:
-        self._buffer: list[tuple[Tensor, Tensor]] = []
-        self._capacity: int = capacity
-        self._rng: random.Random = random.Random(seed)
+    def __init__(self, max_size: int) -> None:
+        self._buffer: list[dict] = []
+        self._max_size = max_size
 
-    def add(self, input_ids: Tensor, labels: Tensor) -> None:
-        if len(self._buffer) >= self._capacity:
+    def add(self, item: dict) -> None:
+        """Add item dict; evict oldest when full (FIFO)."""
+        if len(self._buffer) >= self._max_size:
             self._buffer.pop(0)
-        self._buffer.append((input_ids, labels))
+        self._buffer.append(item)
 
-    def sample(self, n: int) -> list[tuple[Tensor, Tensor]]:
+    def sample(self, n: int) -> list[dict]:
+        """Random sample without replacement (with replacement if n > len)."""
         if len(self._buffer) == 0:
             return []
-        replace = len(self._buffer) < n
-        if replace:
-            return [self._rng.choice(self._buffer) for _ in range(n)]
-        return self._rng.sample(self._buffer, n)
+        if n > len(self._buffer):
+            return random.choices(self._buffer, k=n)
+        return random.sample(self._buffer, n)
 
     def __len__(self) -> int:
         return len(self._buffer)
 
-    def is_ready(self, min_size: int = 10) -> bool:
-        return len(self._buffer) >= min_size
+
+def detect_concept_drift(
+    loss_history: list[float],
+    window: int,
+    threshold: float,
+) -> bool:
+    """Detect concept drift by comparing mean loss in the two halves of a window.
+
+    Args:
+        loss_history: Recent loss values (most recent last).
+        window: Number of steps to consider.
+        threshold: z-score threshold above which drift is flagged.
+
+    Returns:
+        True if z_score = (mean2 - mean1) / (std1 + 1e-8) > threshold, else False.
+        Returns False if we don't yet have `window` data points.
+    """
+    if len(loss_history) < window:
+        return False
+
+    recent = loss_history[-window:]
+    half = window // 2
+    first_half = recent[:half]
+    second_half = recent[half:]
+
+    mean1 = sum(first_half) / len(first_half)
+    mean2 = sum(second_half) / len(second_half)
+
+    variance1 = sum((x - mean1) ** 2 for x in first_half) / len(first_half)
+    std1 = variance1 ** 0.5
+
+    z_score = (mean2 - mean1) / (std1 + 1e-8)
+    return z_score > threshold
+
+
+def compute_fisher_diagonal(
+    model: nn.Module,
+    data_batch: list[dict],
+    loss_fn: Callable,
+) -> dict[str, Tensor]:
+    """Compute diagonal Fisher information E[grad^2] for each parameter.
+
+    Runs forward+backward for each sample in data_batch and accumulates
+    squared gradients as an estimate of the Fisher diagonal.
+
+    Args:
+        model: The neural network module.
+        data_batch: List of dicts with "input_ids" and "labels" keys.
+        loss_fn: Callable(model, input_ids, labels) -> scalar loss tensor.
+
+    Returns:
+        Dict mapping param_name -> Fisher diagonal tensor (same shape as param).
+    """
+    fisher: dict[str, Tensor] = {
+        name: torch.zeros_like(param.data)
+        for name, param in model.named_parameters()
+        if param.requires_grad
+    }
+
+    model.eval()
+    n_samples = 0
+
+    for sample in data_batch:
+        input_ids = sample["input_ids"]
+        labels = sample["labels"]
+
+        model.zero_grad()
+        loss = loss_fn(model, input_ids, labels)
+        loss.backward()
+
+        for name, param in model.named_parameters():
+            if param.requires_grad and param.grad is not None:
+                fisher[name] += param.grad.data.pow(2)
+
+        n_samples += 1
+
+    # Normalize by number of samples
+    if n_samples > 0:
+        fisher = {name: f / n_samples for name, f in fisher.items()}
+
+    model.train()
+    return fisher
+
+
+def ewc_penalty(
+    model: nn.Module,
+    fisher: dict[str, Tensor],
+    optimal_params: dict[str, Tensor],
+    ewc_lambda: float,
+) -> Tensor:
+    """Compute EWC penalty to prevent catastrophic forgetting.
+
+    Penalty = ewc_lambda/2 * sum_i F_i * (theta_i - theta*_i)^2
+
+    Args:
+        model: Current model.
+        fisher: Dict of Fisher diagonal tensors per parameter name.
+        optimal_params: Dict of optimal (reference) parameter tensors.
+        ewc_lambda: Penalty strength.
+
+    Returns:
+        Scalar penalty tensor.
+    """
+    device = next(model.parameters()).device
+    penalty = torch.tensor(0.0, device=device)
+
+    for name, param in model.named_parameters():
+        if name not in fisher or name not in optimal_params:
+            continue
+        f = fisher[name].to(device)
+        opt = optimal_params[name].to(device)
+        penalty = penalty + (f * (param - opt).pow(2)).sum()
+
+    return ewc_lambda / 2.0 * penalty
 
 
 class OnlineLearner:
-    """Continual learning with experience replay and EWC regularization."""
+    """Online learner with experience replay, EWC, and drift detection."""
 
     def __init__(
         self,
         model: nn.Module,
-        optimizer: torch.optim.Optimizer,
         config: OnlineLearningConfig,
+        optimizer,
     ) -> None:
         self.model = model
-        self.optimizer = optimizer
         self.config = config
-        self.buffer: StreamingDataBuffer = StreamingDataBuffer(config.buffer_size)
-        self.fisher_diagonal: dict[str, Tensor] | None = None
-        self.reference_params: dict[str, Tensor] | None = None
-        self.step_count: int = 0
+        self.optimizer = optimizer
 
-    def compute_fisher(self, calibration_batches: list[tuple[Tensor, Tensor]]) -> None:
-        """Estimate diagonal Fisher information via squared gradients."""
-        self.model.eval()
+        self.replay_buffer = ReplayBuffer(config.replay_buffer_size)
+        self._loss_history: list[float] = []
+        self._fisher: dict[str, Tensor] = {}
+        self._optimal_params: dict[str, Tensor] = {}
 
-        self.reference_params = {
+    def _loss_fn(self, model: nn.Module, input_ids: Tensor, labels: Tensor) -> Tensor:
+        """Compute cross-entropy loss manually using model logits."""
+        _, logits, _ = model(input_ids)
+        # Shift for causal LM: predict next token
+        shift_logits = logits[:, :-1, :].contiguous()
+        shift_labels = labels[:, 1:].contiguous()
+        return F.cross_entropy(
+            shift_logits.view(-1, logits.size(-1)),
+            shift_labels.view(-1),
+        )
+
+    def update(self, input_ids: Tensor, labels: Tensor) -> dict:
+        """Process one streaming batch: replay + EWC + drift detection.
+
+        Args:
+            input_ids: (batch, seq_len) token indices.
+            labels: (batch, seq_len) target token ids.
+
+        Returns:
+            Dict with keys: task_loss, replay_loss, drift_detected, buffer_size.
+        """
+        # Add current sample to replay buffer
+        self.replay_buffer.add({"input_ids": input_ids, "labels": labels})
+
+        self.model.train()
+        self.optimizer.zero_grad()
+
+        # Compute task loss on current batch
+        task_loss_tensor = self._loss_fn(self.model, input_ids, labels)
+        task_loss_val = task_loss_tensor.item()
+
+        # Sample from replay buffer and compute replay loss
+        replay_loss_tensor = torch.tensor(0.0, device=task_loss_tensor.device)
+        replay_loss_val = 0.0
+
+        if len(self.replay_buffer) > 0:
+            n_replay = min(self.config.replay_batch_size, len(self.replay_buffer))
+            replay_samples = self.replay_buffer.sample(n_replay)
+            replay_losses = []
+            for sample in replay_samples:
+                r_ids = sample["input_ids"].to(task_loss_tensor.device)
+                r_lbl = sample["labels"].to(task_loss_tensor.device)
+                r_loss = self._loss_fn(self.model, r_ids, r_lbl)
+                replay_losses.append(r_loss)
+            if replay_losses:
+                replay_loss_tensor = torch.stack(replay_losses).mean()
+                replay_loss_val = replay_loss_tensor.item()
+
+        # Accumulate loss history and check for concept drift
+        self._loss_history.append(task_loss_val)
+        drift_detected = detect_concept_drift(
+            self._loss_history,
+            self.config.drift_detection_window,
+            self.config.drift_threshold,
+        )
+
+        # Combine losses
+        total_loss = task_loss_tensor + replay_loss_tensor
+
+        # Backward and optimizer step
+        total_loss.backward()
+        self.optimizer.step()
+
+        return {
+            "task_loss": task_loss_val,
+            "replay_loss": replay_loss_val,
+            "drift_detected": drift_detected,
+            "buffer_size": len(self.replay_buffer),
+        }
+
+    def consolidate(self) -> None:
+        """Save current params as optimal_params and compute Fisher on replay buffer."""
+        # Save current parameters as the optimal reference
+        self._optimal_params = {
             name: param.data.clone()
             for name, param in self.model.named_parameters()
             if param.requires_grad
         }
 
-        fisher: dict[str, Tensor] = {
-            name: torch.zeros_like(param.data)
-            for name, param in self.model.named_parameters()
-            if param.requires_grad
-        }
+        # Sample up to 10 items from replay buffer for Fisher computation
+        n_fisher = min(10, len(self.replay_buffer))
+        if n_fisher == 0:
+            self._fisher = {}
+            return
 
-        n_batches = max(1, len(calibration_batches))
-        for input_ids, labels in calibration_batches:
-            self.model.zero_grad()
-            loss, _, _ = self.model(input_ids=input_ids, labels=labels)
-            loss.backward()
-
-            for name, param in self.model.named_parameters():
-                if param.requires_grad and param.grad is not None:
-                    fisher[name] += param.grad.data.pow(2)
-
-        self.fisher_diagonal = {name: f / n_batches for name, f in fisher.items()}
-        self.model.train()
-
-    def ewc_penalty(self) -> Tensor:
-        """EWC penalty: fisher * (param - ref)^2 * lambda / 2, summed over params."""
-        if self.fisher_diagonal is None or self.reference_params is None:
-            device = next(self.model.parameters()).device
-            return torch.tensor(0.0, device=device)
-
-        device = next(self.model.parameters()).device
-        penalty = torch.tensor(0.0, device=device)
-
-        for name, param in self.model.named_parameters():
-            if not param.requires_grad or name not in self.fisher_diagonal:
-                continue
-            fisher = self.fisher_diagonal[name].to(device)
-            ref = self.reference_params[name].to(device)
-            penalty = penalty + (fisher * (param - ref).pow(2)).sum()
-
-        return self.config.ewc_lambda / 2.0 * penalty
-
-    def train_on_batch(
-        self, input_ids: Tensor, labels: Tensor
-    ) -> dict[str, float]:
-        """Add to buffer, mix with replay, forward + EWC, backward, step."""
-        self.buffer.add(input_ids, labels)
-        self.model.train()
-        self.optimizer.zero_grad()
-
-        loss, _, _ = self.model(input_ids=input_ids, labels=labels)
-
-        replay_loss_val = 0.0
-        if self.buffer.is_ready():
-            n_replay = max(1, int(input_ids.shape[0] * self.config.replay_ratio))
-            replay_samples = self.buffer.sample(n_replay)
-            replay_loss = torch.tensor(0.0, device=loss.device)
-            for r_ids, r_lbl in replay_samples:
-                r_ids = r_ids.to(loss.device)
-                r_lbl = r_lbl.to(loss.device)
-                r_loss, _, _ = self.model(input_ids=r_ids, labels=r_lbl)
-                replay_loss = replay_loss + r_loss
-            replay_loss = replay_loss / len(replay_samples)
-            replay_loss_val = replay_loss.item()
-        else:
-            replay_loss = torch.tensor(0.0, device=loss.device)
-
-        ewc_loss = torch.tensor(0.0, device=loss.device)
-        if self.config.use_ewc:
-            ewc_loss = self.ewc_penalty()
-        ewc_loss_val = ewc_loss.item()
-
-        total_loss = loss + replay_loss + ewc_loss
-        total_loss.backward()
-        self.optimizer.step()
-        self.step_count += 1
-
-        return {
-            "loss": loss.item(),
-            "replay_loss": replay_loss_val,
-            "ewc_loss": ewc_loss_val,
-            "buffer_size": len(self.buffer),
-        }
-
-    def evaluate_forgetting(
-        self,
-        old_batches: list[tuple[Tensor, Tensor]],
-        baseline_losses: list[float],
-    ) -> dict[str, float]:
-        """Compare current losses on old batches vs baselines."""
-        self.model.eval()
-        forgetting_values: list[float] = []
-
-        with torch.no_grad():
-            for (input_ids, labels), baseline in zip(old_batches, baseline_losses):
-                loss, _, _ = self.model(input_ids=input_ids, labels=labels)
-                delta = loss.item() - baseline
-                forgetting_values.append(delta)
-
-        self.model.train()
-
-        mean_forgetting = sum(forgetting_values) / max(1, len(forgetting_values))
-        max_forgetting = max(forgetting_values) if forgetting_values else 0.0
-        catastrophic = max_forgetting > self.config.forgetting_threshold
-
-        return {
-            "mean_forgetting": mean_forgetting,
-            "max_forgetting": max_forgetting,
-            "catastrophic": catastrophic,
-        }
-
-
-class DataStreamSimulator:
-    """Simulates a stream of task-shifted synthetic data."""
-
-    def __init__(
-        self,
-        vocab_size: int = 256,
-        seq_len: int = 16,
-        seed: int = 42,
-    ) -> None:
-        self.vocab_size = vocab_size
-        self.seq_len = seq_len
-        self._rng = torch.Generator()
-        self._rng.manual_seed(seed)
-
-    def next_batch(
-        self, task_id: int, batch_size: int = 4
-    ) -> tuple[Tensor, Tensor]:
-        """Generate a synthetic batch biased toward a token range for this task.
-
-        Returns (input_ids, labels) each of shape (batch_size, seq_len).
-        labels = input_ids shifted by 1 (causal LM).
-        """
-        n_tasks = task_id + 2
-        chunk = max(1, self.vocab_size // n_tasks)
-        lo = task_id * chunk
-        hi = min(lo + chunk, self.vocab_size)
-
-        input_ids = torch.randint(lo, hi, (batch_size, self.seq_len), generator=self._rng)
-        labels = torch.cat([input_ids[:, 1:], input_ids[:, :1]], dim=1)
-        return input_ids, labels
-
-
-def cosine_similarity_params(params_a: dict, params_b: dict) -> float:
-    """Cosine similarity between two flattened parameter vectors. Returns float in [-1, 1]."""
-    shared_keys = [k for k in params_a if k in params_b]
-    if not shared_keys:
-        return 0.0
-
-    vec_a = torch.cat([params_a[k].flatten().float() for k in shared_keys])
-    vec_b = torch.cat([params_b[k].flatten().float() for k in shared_keys])
-
-    dot = (vec_a * vec_b).sum()
-    norm_a = vec_a.norm()
-    norm_b = vec_b.norm()
-
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-
-    return (dot / (norm_a * norm_b)).item()
+        fisher_samples = self.replay_buffer.sample(n_fisher)
+        self._fisher = compute_fisher_diagonal(
+            self.model,
+            fisher_samples,
+            self._loss_fn,
+        )
