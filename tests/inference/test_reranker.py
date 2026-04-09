@@ -1,164 +1,252 @@
+"""Tests for the CrossEncoderReranker module (src/inference/reranker.py)."""
+
+from __future__ import annotations
+
+import math
+
 import pytest
 import torch
+
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.inference.reranker import (
-    RerankConfig,
-    CrossEncoderScorer,
-    DocumentReranker,
-    listwise_rerank_loss,
-    pairwise_rerank_loss,
-    RerankTrainer,
+    RerankerConfig,
+    ScoredDocument,
+    CrossEncoderReranker,
+    batch_score,
+    format_query_document,
+    rerank,
+    reciprocal_rank_fusion,
+    score_query_document_logit,
+    score_query_document_perplexity,
 )
 
-D_MODEL = 32
-VOCAB_SIZE = 256
-torch.manual_seed(0)
-
-
 # ---------------------------------------------------------------------------
-# Helpers
+# Shared tiny model config — fast enough to run in CI
 # ---------------------------------------------------------------------------
 
-def _make_scorer() -> CrossEncoderScorer:
+TINY_CFG = AureliusConfig(
+    n_layers=2,
+    d_model=64,
+    n_heads=2,
+    n_kv_heads=2,
+    head_dim=32,
+    d_ff=128,
+    vocab_size=256,
+    max_seq_len=512,
+)
+
+# Byte-level tokenizer capped at 256 tokens (fits within TINY_CFG.vocab_size)
+def byte_encode(s: str) -> list[int]:
+    return list(s.encode("utf-8", errors="replace"))[:256]
+
+
+@pytest.fixture(scope="module")
+def tiny_model() -> AureliusTransformer:
     torch.manual_seed(0)
-    return CrossEncoderScorer(d_model=D_MODEL, vocab_size=VOCAB_SIZE)
-
-
-def _make_query() -> torch.Tensor:
-    """Returns (1, 8) query token ids."""
-    return torch.randint(0, VOCAB_SIZE, (1, 8))
-
-
-def _make_doc() -> torch.Tensor:
-    """Returns (1, 16) document token ids."""
-    return torch.randint(0, VOCAB_SIZE, (1, 16))
-
-
-def _make_docs(n: int = 5) -> list[torch.Tensor]:
-    return [torch.randint(0, VOCAB_SIZE, (1, 16)) for _ in range(n)]
+    model = AureliusTransformer(TINY_CFG)
+    model.eval()
+    return model
 
 
 # ---------------------------------------------------------------------------
-# Tests
+# 1. test_config_defaults
 # ---------------------------------------------------------------------------
 
-def test_rerank_config_defaults():
-    cfg = RerankConfig()
-    assert cfg.max_length == 256
+def test_config_defaults():
+    cfg = RerankerConfig()
+    assert cfg.max_seq_len == 256
+    assert cfg.score_method == "logit"
     assert cfg.batch_size == 8
-    assert cfg.score_aggregation == "max"
+    assert cfg.normalize_scores is True
 
 
-def test_cross_encoder_scorer_output_shape():
-    scorer = _make_scorer()
-    query = _make_query()
-    doc = _make_doc()
-    out = scorer(query, doc)
-    assert out.shape == (1, 1)
+# ---------------------------------------------------------------------------
+# 2. test_format_query_document
+# ---------------------------------------------------------------------------
+
+def test_format_query_document():
+    result = format_query_document("What is AI?", "AI is a field of computer science.")
+    assert "Query:" in result
+    assert "Document:" in result
+    assert "Relevant:" in result
 
 
-def test_cross_encoder_scorer_differentiable():
-    scorer = _make_scorer()
-    query = _make_query()
-    doc = _make_doc()
-    out = scorer(query, doc)
-    loss = out.sum()
-    loss.backward()  # should not raise
+# ---------------------------------------------------------------------------
+# 3. test_score_logit_finite
+# ---------------------------------------------------------------------------
+
+def test_score_logit_finite(tiny_model):
+    score = score_query_document_logit(tiny_model, byte_encode, "hi", "hello world")
+    assert math.isfinite(score)
 
 
-def test_document_reranker_score_count():
-    scorer = _make_scorer()
-    config = RerankConfig()
-    reranker = DocumentReranker(scorer, config)
-    query = _make_query()
-    docs = _make_docs(5)
-    scores = reranker.score_documents(query, docs)
-    assert len(scores) == 5
+# ---------------------------------------------------------------------------
+# 4. test_score_perplexity_negative
+# ---------------------------------------------------------------------------
+
+def test_score_perplexity_negative(tiny_model):
+    score = score_query_document_perplexity(tiny_model, byte_encode, "hi", "hello world")
+    # Returns -perplexity, so must be <= 0
+    assert score <= 0.0
+    assert math.isfinite(score)
 
 
-def test_document_reranker_score_shape():
-    scorer = _make_scorer()
-    config = RerankConfig()
-    reranker = DocumentReranker(scorer, config)
-    query = _make_query()
-    docs = _make_docs(5)
-    scores = reranker.score_documents(query, docs)
-    assert scores.shape == (5,)
+# ---------------------------------------------------------------------------
+# 5. test_batch_score_length
+# ---------------------------------------------------------------------------
+
+def test_batch_score_length(tiny_model):
+    cfg = RerankerConfig(score_method="logit")
+    documents = ["doc one", "doc two", "doc three"]
+    scores = batch_score(tiny_model, byte_encode, "query", documents, cfg)
+    assert len(scores) == len(documents)
 
 
-def test_document_reranker_rerank_sorted():
-    scorer = _make_scorer()
-    config = RerankConfig()
-    reranker = DocumentReranker(scorer, config)
-    query = _make_query()
-    docs = _make_docs(5)
-    _, sorted_scores = reranker.rerank(query, docs)
-    # Scores should be in descending order
-    for i in range(len(sorted_scores) - 1):
-        assert sorted_scores[i].item() >= sorted_scores[i + 1].item()
+# ---------------------------------------------------------------------------
+# 6. test_batch_score_finite
+# ---------------------------------------------------------------------------
+
+def test_batch_score_finite(tiny_model):
+    cfg = RerankerConfig(score_method="logit")
+    documents = ["alpha", "beta", "gamma"]
+    scores = batch_score(tiny_model, byte_encode, "q", documents, cfg)
+    for s in scores:
+        assert math.isfinite(s)
 
 
-def test_document_reranker_top_k():
-    scorer = _make_scorer()
-    config = RerankConfig()
-    reranker = DocumentReranker(scorer, config)
-    query = _make_query()
-    docs = _make_docs(5)
-    sorted_docs, sorted_scores = reranker.rerank(query, docs, top_k=2)
-    assert len(sorted_docs) == 2
-    assert sorted_scores.shape == (2,)
+# ---------------------------------------------------------------------------
+# 7. test_rerank_sorted_descending
+# ---------------------------------------------------------------------------
+
+def test_rerank_sorted_descending():
+    documents = ["doc a", "doc b", "doc c"]
+    scores = [0.3, 0.9, 0.1]
+    result = rerank("query", documents, scores)
+    for i in range(len(result) - 1):
+        assert result[i].rerank_score >= result[i + 1].rerank_score
 
 
-def test_rerank_texts_returns_tuples():
-    scorer = _make_scorer()
-    config = RerankConfig()
-    reranker = DocumentReranker(scorer, config)
+# ---------------------------------------------------------------------------
+# 8. test_rerank_original_ranks
+# ---------------------------------------------------------------------------
 
-    def simple_tokenize(text: str) -> list[int]:
-        return [ord(c) % VOCAB_SIZE for c in text[:16]] or [0]
-
-    results = reranker.rerank_texts(
-        query="hello world",
-        documents=["first document", "second document", "third document"],
-        tokenize_fn=simple_tokenize,
-    )
-    assert len(results) == 3
-    for item in results:
-        assert isinstance(item, tuple)
-        assert len(item) == 2
-        assert isinstance(item[0], str)
-        assert isinstance(item[1], float)
+def test_rerank_original_ranks():
+    documents = ["first", "second", "third"]
+    scores = [0.5, 0.8, 0.2]
+    result = rerank("q", documents, scores)
+    # original_rank must be the index in the *input* list (0, 1, or 2)
+    original_ranks = {sd.original_rank for sd in result}
+    assert original_ranks == {0, 1, 2}
+    # The highest-scored document ("second", original_rank=1) should be first
+    assert result[0].original_rank == 1
+    assert result[0].text == "second"
 
 
-def test_listwise_rerank_loss_shape():
-    scores = torch.tensor([1.0, 0.5, 0.2])
-    labels = torch.tensor([1.0, 0.0, 0.0])
-    loss = listwise_rerank_loss(scores, labels)
-    assert loss.shape == ()  # scalar
+# ---------------------------------------------------------------------------
+# 9. test_reciprocal_rank_fusion_order
+# ---------------------------------------------------------------------------
+
+def test_reciprocal_rank_fusion_order():
+    # Doc 0 is top-ranked in both lists → should win
+    rankings = [[0, 1, 2], [0, 2, 1]]
+    fused = reciprocal_rank_fusion(rankings)
+    assert fused[0] == 0
 
 
-def test_pairwise_rerank_loss_positive_pos_neg():
-    """When pos_score >> neg_score, pairwise loss should be 0."""
-    pos_scores = torch.tensor([10.0])
-    neg_scores = torch.tensor([-10.0])
-    loss = pairwise_rerank_loss(pos_scores, neg_scores)
-    assert loss.item() == pytest.approx(0.0)
+# ---------------------------------------------------------------------------
+# 10. test_reciprocal_rank_fusion_shape
+# ---------------------------------------------------------------------------
+
+def test_reciprocal_rank_fusion_shape():
+    rankings = [[0, 1, 2], [1, 2, 3]]
+    fused = reciprocal_rank_fusion(rankings)
+    unique_docs = {d for r in rankings for d in r}
+    assert len(fused) == len(unique_docs)
 
 
-def test_rerank_trainer_step_keys():
-    torch.manual_seed(0)
-    scorer = _make_scorer()
-    optimizer = torch.optim.Adam(scorer.parameters(), lr=1e-3)
-    config = RerankConfig()
-    trainer = RerankTrainer(scorer, optimizer, config)
+# ---------------------------------------------------------------------------
+# 11. test_cross_encoder_rerank_returns_list
+# ---------------------------------------------------------------------------
 
-    query = _make_query()
-    pos_doc = _make_doc()
-    neg_doc = _make_doc()
+def test_cross_encoder_rerank_returns_list(tiny_model):
+    cfg = RerankerConfig(score_method="logit", normalize_scores=True)
+    reranker = CrossEncoderReranker(tiny_model, byte_encode, cfg)
+    documents = ["cat", "dog", "fish"]
+    result = reranker.rerank("pet", documents)
+    assert isinstance(result, list)
+    for item in result:
+        assert isinstance(item, ScoredDocument)
 
-    result = trainer.train_step(query, pos_doc, neg_doc)
-    assert "loss" in result
-    assert "pos_score" in result
-    assert "neg_score" in result
-    assert isinstance(result["loss"], float)
-    assert isinstance(result["pos_score"], float)
-    assert isinstance(result["neg_score"], float)
+
+# ---------------------------------------------------------------------------
+# 12. test_cross_encoder_rerank_count
+# ---------------------------------------------------------------------------
+
+def test_cross_encoder_rerank_count(tiny_model):
+    cfg = RerankerConfig(score_method="logit")
+    reranker = CrossEncoderReranker(tiny_model, byte_encode, cfg)
+    documents = ["one", "two", "three", "four"]
+    result = reranker.rerank("num", documents)
+    assert len(result) == len(documents)
+
+
+# ---------------------------------------------------------------------------
+# 13. test_cross_encoder_ndcg_range
+# ---------------------------------------------------------------------------
+
+def test_cross_encoder_ndcg_range(tiny_model):
+    cfg = RerankerConfig(score_method="logit")
+    reranker = CrossEncoderReranker(tiny_model, byte_encode, cfg)
+    documents = ["very relevant doc", "somewhat ok", "totally unrelated"]
+    labels = [2, 1, 0]
+    ndcg = reranker.evaluate_ndcg("query about docs", documents, labels, top_k=3)
+    assert 0.0 <= ndcg <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# 14. test_cross_encoder_ndcg_perfect
+# ---------------------------------------------------------------------------
+
+def test_cross_encoder_ndcg_perfect(tiny_model):
+    """A perfectly ranked list should yield NDCG = 1.0."""
+    cfg = RerankerConfig(score_method="logit")
+    reranker = CrossEncoderReranker(tiny_model, byte_encode, cfg)
+
+    documents = ["best", "good", "poor"]
+    labels = [2, 1, 0]
+
+    # Patch rerank to return the ideal ordering without running the model
+    original_rerank = reranker.rerank
+
+    def perfect_rerank(query, docs, original_scores=None):
+        return [
+            ScoredDocument("best", 0, 1.0, None),
+            ScoredDocument("good", 1, 0.5, None),
+            ScoredDocument("poor", 2, 0.0, None),
+        ]
+
+    reranker.rerank = perfect_rerank  # type: ignore[method-assign]
+    try:
+        ndcg = reranker.evaluate_ndcg("query", documents, labels, top_k=3)
+    finally:
+        reranker.rerank = original_rerank
+
+    assert ndcg == pytest.approx(1.0, abs=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# 15. test_cross_encoder_fusion_rerank
+# ---------------------------------------------------------------------------
+
+def test_cross_encoder_fusion_rerank(tiny_model):
+    cfg = RerankerConfig(score_method="logit")
+    reranker = CrossEncoderReranker(tiny_model, byte_encode, cfg)
+    list1 = ["apple", "banana", "cherry"]
+    list2 = ["cherry", "date", "apple"]
+    result = reranker.fusion_rerank("fruit", [list1, list2])
+    assert isinstance(result, list)
+    assert all(isinstance(s, str) for s in result)
+    # All unique docs should be present
+    all_unique = set(list1) | set(list2)
+    assert set(result) == all_unique
