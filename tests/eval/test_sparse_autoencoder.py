@@ -1,170 +1,154 @@
-"""Tests for SparseAutoencoder (SAE) for mechanistic interpretability."""
+"""Tests for sparse_autoencoder.py — 12 tests covering SAEConfig, SparseAutoencoder, sae_loss, SAETrainer, and utility functions."""
 
 import pytest
 import torch
-import torch.optim as optim
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.eval.sparse_autoencoder import (
     SAEConfig,
     SparseAutoencoder,
+    sae_loss,
     SAETrainer,
-    extract_sae_features_from_model,
+    extract_features_from_model,
+    find_top_activating_examples,
+    compute_feature_statistics,
 )
 
+# ---------------------------------------------------------------------------
+# Shared fixtures
+# ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
+D_MODEL = 64
+N_FEATURES = 128
+L1_COEFF = 0.001
+BATCH = 4
+
 
 @pytest.fixture
-def cfg():
-    return SAEConfig(d_hidden=64, n_features=256, l1_coeff=1e-3, normalize_decoder=True)
+def config():
+    return SAEConfig(d_model=D_MODEL, n_features=N_FEATURES, l1_coeff=L1_COEFF)
 
 
 @pytest.fixture
-def sae(cfg):
+def sae(config):
     torch.manual_seed(0)
-    return SparseAutoencoder(cfg)
+    return SparseAutoencoder(config)
 
 
 @pytest.fixture
-def small_model():
-    model_cfg = AureliusConfig(
-        n_layers=2,
-        d_model=64,
-        n_heads=4,
-        n_kv_heads=2,
-        head_dim=16,
-        d_ff=128,
-        vocab_size=256,
-        max_seq_len=64,
+def x():
+    torch.manual_seed(0)
+    return torch.randn(BATCH, D_MODEL)
+
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+
+def test_sae_config_defaults():
+    """SAEConfig has expected default values."""
+    cfg = SAEConfig()
+    assert cfg.d_model == 512
+    assert cfg.n_features == 4096
+    assert cfg.l1_coeff == 0.001
+    assert cfg.learning_rate == 1e-3
+    assert cfg.n_steps_warmup == 1000
+    assert cfg.normalize_decoder is True
+
+
+def test_sae_encode_shape(sae, x):
+    """encode returns (B, n_features)."""
+    features = sae.encode(x)
+    assert features.shape == (BATCH, N_FEATURES)
+
+
+def test_sae_encode_nonneg(sae, x):
+    """encode output is non-negative (ReLU applied)."""
+    features = sae.encode(x)
+    assert (features >= 0).all(), "encode output should be non-negative (ReLU)"
+
+
+def test_sae_decode_shape(sae, x):
+    """decode returns (B, d_model)."""
+    features = sae.encode(x)
+    reconstructed = sae.decode(features)
+    assert reconstructed.shape == (BATCH, D_MODEL)
+
+
+def test_sae_forward_returns_tuple(sae, x):
+    """forward returns a tuple of 3 tensors with correct shapes."""
+    result = sae(x)
+    assert isinstance(result, tuple)
+    assert len(result) == 3
+    reconstructed, features, x_centered = result
+    assert reconstructed.shape == (BATCH, D_MODEL)
+    assert features.shape == (BATCH, N_FEATURES)
+    assert x_centered.shape == (BATCH, D_MODEL)
+
+
+def test_sae_normalize_decoder(sae):
+    """After normalize_decoder_weights, W_dec rows have unit norm."""
+    sae.normalize_decoder_weights()
+    row_norms = sae.W_dec.data.norm(dim=-1)
+    assert torch.allclose(row_norms, torch.ones_like(row_norms), atol=1e-5), (
+        f"Row norms not 1.0: min={row_norms.min():.6f}, max={row_norms.max():.6f}"
     )
+
+
+def test_sae_loss_scalar(sae, x):
+    """sae_loss returns a scalar tensor."""
+    reconstructed, features, _ = sae(x)
+    total_loss, _ = sae_loss(reconstructed, x, features, L1_COEFF)
+    assert total_loss.shape == torch.Size([])
+    assert total_loss.item() >= 0.0
+
+
+def test_sae_loss_keys(sae, x):
+    """sae_loss metrics dict contains recon_loss, sparsity_loss, l0_norm."""
+    reconstructed, features, _ = sae(x)
+    _, metrics = sae_loss(reconstructed, x, features, L1_COEFF)
+    assert "recon_loss" in metrics
+    assert "sparsity_loss" in metrics
+    assert "l0_norm" in metrics
+
+
+def test_sae_trainer_step_keys(sae, config, x):
+    """SAETrainer.train_step returns dict with total_loss, recon_loss, sparsity_loss, l0_norm."""
+    trainer = SAETrainer(sae, config)
+    metrics = trainer.train_step(x)
+    assert "total_loss" in metrics
+    assert "recon_loss" in metrics
+    assert "sparsity_loss" in metrics
+    assert "l0_norm" in metrics
+
+
+def test_find_top_activating_examples_count():
+    """find_top_activating_examples returns n_top indices."""
     torch.manual_seed(0)
-    return AureliusTransformer(model_cfg)
+    features = torch.randn(20, N_FEATURES).abs()
+    n_top = 5
+    indices = find_top_activating_examples(features, feature_idx=0, n_top=n_top)
+    assert indices.shape == (n_top,)
 
 
-# ---------------------------------------------------------------------------
-# Shape tests
-# ---------------------------------------------------------------------------
-
-def test_sae_output_shapes(sae):
-    """encode: (4,8,64)->(4,8,256); decode: (4,8,256)->(4,8,64)."""
-    x = torch.randn(4, 8, 64)
-    f = sae.encode(x)
-    assert f.shape == (4, 8, 256), f"encode shape mismatch: {f.shape}"
-
-    x_hat = sae.decode(f)
-    assert x_hat.shape == (4, 8, 64), f"decode shape mismatch: {x_hat.shape}"
+def test_compute_feature_statistics_keys():
+    """compute_feature_statistics returns dict with expected keys."""
+    torch.manual_seed(0)
+    features = torch.randn(16, N_FEATURES).abs()
+    stats = compute_feature_statistics(features)
+    assert "mean_l0" in stats
+    assert "mean_activation" in stats
+    assert "dead_features" in stats
+    assert "max_activation" in stats
 
 
-# ---------------------------------------------------------------------------
-# Loss / metric value tests
-# ---------------------------------------------------------------------------
-
-def test_sae_reconstruction_loss_positive(sae):
-    """forward returns positive reconstruction loss."""
-    x = torch.randn(8, 64)
-    _, _, metrics = sae(x)
-    assert metrics["reconstruction_loss"] > 0.0
-
-
-def test_sae_sparsity_between_0_and_1(sae):
-    """sparsity metric is in [0, 1]."""
-    x = torch.randn(16, 64)
-    _, _, metrics = sae(x)
-    assert 0.0 <= metrics["sparsity"] <= 1.0
-
-
-def test_sae_l0_nonnegative(sae):
-    """l0 (mean active features per token) >= 0."""
-    x = torch.randn(16, 64)
-    _, _, metrics = sae(x)
-    assert metrics["l0"] >= 0.0
-
-
-# ---------------------------------------------------------------------------
-# Decoder normalization test
-# ---------------------------------------------------------------------------
-
-def test_normalize_decoder_unit_columns(sae):
-    """After normalize_decoder_(), all decoder columns have norm ≈ 1.0."""
-    sae.normalize_decoder_()
-    # decoder.weight shape: (d_hidden, n_features); columns = dim=0
-    col_norms = sae.decoder.weight.data.norm(dim=0)
-    assert torch.allclose(col_norms, torch.ones_like(col_norms), atol=1e-5), \
-        f"Column norms not 1.0: min={col_norms.min():.6f}, max={col_norms.max():.6f}"
-
-
-# ---------------------------------------------------------------------------
-# Trainer tests
-# ---------------------------------------------------------------------------
-
-def test_sae_trainer_step_returns_metrics(sae):
-    """train_step returns dict with required keys."""
-    optimizer = optim.Adam(sae.parameters(), lr=1e-4)
-    trainer = SAETrainer(sae, optimizer)
-    hidden = torch.randn(4, 8, 64)
-    metrics = trainer.train_step(hidden)
-    required_keys = {"reconstruction_loss", "l1_loss", "total_loss", "sparsity", "l0"}
-    assert required_keys.issubset(metrics.keys()), \
-        f"Missing keys: {required_keys - metrics.keys()}"
-
-
-def test_sae_trainer_loss_decreases(sae):
-    """After 20 steps on fixed activations, final loss < initial loss."""
-    torch.manual_seed(42)
-    optimizer = optim.Adam(sae.parameters(), lr=1e-3)
-    trainer = SAETrainer(sae, optimizer, normalize_every=100)
-    activations = [torch.randn(32, 64)]
-
-    initial_metrics = trainer.train_step(activations[0])
-    initial_loss = initial_metrics["total_loss"]
-
-    for _ in range(19):
-        final_metrics = trainer.train_step(activations[0])
-
-    final_loss = final_metrics["total_loss"]
-    assert final_loss < initial_loss, \
-        f"Loss did not decrease: initial={initial_loss:.6f}, final={final_loss:.6f}"
-
-
-# ---------------------------------------------------------------------------
-# Feature activation stats
-# ---------------------------------------------------------------------------
-
-def test_feature_activation_stats_shapes(sae):
-    """mean_activation has shape (n_features,)."""
-    x = torch.randn(20, 64)
-    stats = sae.feature_activation_stats(x)
-    assert stats["mean_activation"].shape == (256,)
-    assert stats["activation_frequency"].shape == (256,)
-    assert stats["max_activation"].shape == (256,)
-
-
-# ---------------------------------------------------------------------------
-# Hook-based extraction
-# ---------------------------------------------------------------------------
-
-def test_extract_features_from_model_shape(small_model, sae):
-    """Hook-based extraction returns (B, T, n_features)."""
-    B, T = 2, 8
-    input_ids = torch.randint(0, 256, (B, T))
-    features = extract_sae_features_from_model(small_model, sae, input_ids, layer_idx=0)
-    assert features.shape == (B, T, 256), f"Shape mismatch: {features.shape}"
-
-
-# ---------------------------------------------------------------------------
-# train_on_activations
-# ---------------------------------------------------------------------------
-
-def test_sae_train_on_activations_returns_list(sae):
-    """Returns list of length n_steps."""
-    optimizer = optim.Adam(sae.parameters(), lr=1e-4)
-    trainer = SAETrainer(sae, optimizer)
-    activations = [torch.randn(16, 64), torch.randn(16, 64)]
-    n_steps = 10
-    history = trainer.train_on_activations(activations, n_steps=n_steps)
-    assert isinstance(history, list)
-    assert len(history) == n_steps
+def test_sae_gradient_flow(sae, x):
+    """Backward pass through SAE works without errors."""
+    reconstructed, features, _ = sae(x)
+    total_loss, _ = sae_loss(reconstructed, x, features, L1_COEFF)
+    total_loss.backward()
+    # Check that gradients exist
+    assert sae.W_enc.grad is not None
+    assert sae.W_dec.grad is not None
+    assert sae.b_enc.grad is not None
+    assert sae.b_dec.grad is not None
