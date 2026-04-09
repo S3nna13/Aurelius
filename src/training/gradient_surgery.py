@@ -1,276 +1,206 @@
-"""PCGrad: Gradient Surgery for multi-task learning.
-
-Resolves gradient conflicts between tasks by projecting conflicting gradients
-onto each other's normal planes.
-
-Reference: Yu et al., 2020 - "Gradient Surgery for Multi-Task Learning"
-           arXiv:2001.06782
-"""
+"""Gradient surgery: conflict detection, projection, and multi-task gradient aggregation."""
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Callable
+from torch import Tensor
 
 
-class PCGrad:
+# ---------------------------------------------------------------------------
+# Flatten / unflatten
+# ---------------------------------------------------------------------------
+
+def flatten_gradients(model: nn.Module) -> Tensor:
+    """Concatenate all parameter gradients into one flat vector.
+
+    Skips parameters with None gradient.
+
+    Returns:
+        Tensor of shape (total_params,).
     """
-    PCGrad: Projecting Conflicting Gradients.
+    parts: list[Tensor] = []
+    for p in model.parameters():
+        if p.grad is not None:
+            parts.append(p.grad.detach().flatten())
+    if not parts:
+        return torch.zeros(0)
+    return torch.cat(parts)
 
-    For each pair of task gradients (g_i, g_j):
-    If cos(g_i, g_j) < 0 (conflicting):
-        g_i = g_i - (g_i . g_j / ||g_j||^2) * g_j
+
+def unflatten_gradients(flat_grad: Tensor, model: nn.Module) -> None:
+    """Scatter flat_grad back into model.parameters() .grad fields.
+
+    Only updates parameters that had non-None gradients (same skip logic as
+    flatten_gradients).
 
     Args:
-        optimizer: underlying optimizer
-        reduction: 'sum' | 'mean' for combining task gradients
+        flat_grad: flat gradient tensor produced by flatten_gradients.
+        model: the model whose .grad fields will be updated.
+    """
+    offset = 0
+    for p in model.parameters():
+        if p.grad is not None:
+            numel = p.numel()
+            p.grad = flat_grad[offset:offset + numel].reshape(p.shape).clone()
+            offset += numel
+
+
+# ---------------------------------------------------------------------------
+# Conflict detection
+# ---------------------------------------------------------------------------
+
+def compute_gradient_conflict(grad1: Tensor, grad2: Tensor) -> float:
+    """Cosine similarity between two gradient vectors.
+
+    Returns:
+        float in [-1, 1]. Negative values indicate conflicting gradients.
+    """
+    g1 = grad1.flatten().float()
+    g2 = grad2.flatten().float()
+    norm1 = g1.norm()
+    norm2 = g2.norm()
+    if norm1 < 1e-12 or norm2 < 1e-12:
+        return 0.0
+    return (torch.dot(g1, g2) / (norm1 * norm2)).item()
+
+
+# ---------------------------------------------------------------------------
+# Projection
+# ---------------------------------------------------------------------------
+
+def project_gradient(grad: Tensor, onto: Tensor) -> Tensor:
+    """Project grad onto the direction of `onto`.
+
+    Component: (grad · onto) / (onto · onto + 1e-8) * onto
+
+    Returns:
+        Tensor of the same shape as grad.
+    """
+    g = grad.flatten().float()
+    o = onto.flatten().float()
+    scale = torch.dot(g, o) / (torch.dot(o, o) + 1e-8)
+    projection = scale * o
+    return projection.reshape(grad.shape).to(grad.dtype)
+
+
+# ---------------------------------------------------------------------------
+# PCGrad aggregation
+# ---------------------------------------------------------------------------
+
+def gradient_surgery_step(gradients: list[Tensor]) -> Tensor:
+    """PCGrad: for each pair of task gradients, if cosine similarity < 0,
+    subtract the conflicting projection.
+
+    For each task i and each other task j:
+        if cos(g_i, g_j) < 0:
+            g_i = g_i - proj(g_i, g_j)
+
+    Args:
+        gradients: list of flat gradient tensors, one per task.
+
+    Returns:
+        Mean of modified gradients, shape (total_params,).
+    """
+    n = len(gradients)
+    if n == 0:
+        return torch.zeros(0)
+
+    modified = [g.clone().float() for g in gradients]
+
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            g_j = gradients[j].float()  # use original for reference
+            dot = torch.dot(modified[i], g_j)
+            if dot < 0:
+                norm_sq = torch.dot(g_j, g_j)
+                if norm_sq > 1e-12:
+                    modified[i] = modified[i] - (dot / norm_sq) * g_j
+
+    stacked = torch.stack(modified)
+    return stacked.mean(dim=0).to(gradients[0].dtype)
+
+
+# ---------------------------------------------------------------------------
+# Gradient Vaccine
+# ---------------------------------------------------------------------------
+
+def gradient_vaccine(gradients: list[Tensor], epsilon: float = 0.1) -> Tensor:
+    """Gradient Vaccine (Yu et al.): modify gradients to reduce inner-product variance.
+
+    For each gradient g_i:
+        g_avg = mean of all gradients
+        g_i_modified = g_i + epsilon * (g_avg - proj(g_i, g_avg))
+
+    Returns:
+        Average of modified gradients, shape (total_params,).
+    """
+    n = len(gradients)
+    if n == 0:
+        return torch.zeros(0)
+
+    grads_f = [g.float() for g in gradients]
+    g_avg = torch.stack(grads_f).mean(dim=0)
+
+    modified: list[Tensor] = []
+    for g_i in grads_f:
+        proj = project_gradient(g_i, g_avg)
+        g_mod = g_i + epsilon * (g_avg - proj)
+        modified.append(g_mod)
+
+    result = torch.stack(modified).mean(dim=0)
+    return result.to(gradients[0].dtype)
+
+
+# ---------------------------------------------------------------------------
+# GradientSurgeon
+# ---------------------------------------------------------------------------
+
+class GradientSurgeon:
+    """Aggregates task gradients using various surgery methods.
+
+    Args:
+        method: one of "pcgrad" | "vaccine" | "mean".
     """
 
-    def __init__(self, optimizer: torch.optim.Optimizer, reduction: str = 'mean') -> None:
-        self.optimizer = optimizer
-        self.reduction = reduction
-        self._params: list[torch.nn.Parameter] = []
-        for group in optimizer.param_groups:
-            self._params.extend(group['params'])
+    def __init__(self, method: str = "pcgrad") -> None:
+        if method not in ("pcgrad", "vaccine", "mean"):
+            raise ValueError(f"Unknown method '{method}'. Choose from: pcgrad, vaccine, mean")
+        self.method = method
 
-    def zero_grad(self) -> None:
-        """Zero gradients on the underlying optimizer."""
-        self.optimizer.zero_grad()
-
-    def pc_backward(self, losses: list[torch.Tensor]) -> None:
-        """
-        Compute PCGrad update for a list of task losses.
-
-        1. For each task i: compute gradient g_i = grad(loss_i)
-        2. For each task i, for each other task j:
-           - If g_i . g_j < 0: project g_i away from g_j
-        3. Sum (or mean) projected gradients across tasks
-        4. Set parameter .grad to projected sum/mean
+    def aggregate(self, task_gradients: list[Tensor]) -> Tensor:
+        """Aggregate a list of flat task gradient tensors into one.
 
         Args:
-            losses: list of per-task scalar losses (one per task)
-        """
-        # Collect per-task flat gradients
-        task_grads: list[list[torch.Tensor]] = []
-        for loss in losses:
-            # Zero before each backward so gradients don't accumulate
-            self.optimizer.zero_grad()
-            loss.backward(retain_graph=True)
-            # Snapshot per-parameter gradients for this task
-            per_param = []
-            for p in self._params:
-                if p.grad is not None:
-                    per_param.append(p.grad.detach().clone())
-                else:
-                    per_param.append(torch.zeros_like(p))
-            task_grads.append(per_param)
-
-        n_tasks = len(task_grads)
-        n_params = len(self._params)
-
-        # Apply PCGrad per parameter across tasks
-        projected: list[list[torch.Tensor]] = []
-        for i in range(n_tasks):
-            proj_i = [g.clone() for g in task_grads[i]]
-            for j in range(n_tasks):
-                if i == j:
-                    continue
-                # Project each parameter gradient independently
-                new_proj_i = []
-                for k in range(n_params):
-                    g_i_k = proj_i[k].view(-1)
-                    g_j_k = task_grads[j][k].view(-1)
-                    g_i_k_proj = self.project_gradient(g_i_k, g_j_k)
-                    new_proj_i.append(g_i_k_proj.view_as(proj_i[k]))
-                proj_i = new_proj_i
-            projected.append(proj_i)
-
-        # Combine projected gradients and assign to .grad
-        self.optimizer.zero_grad()
-        for k, p in enumerate(self._params):
-            param_grads = torch.stack([projected[i][k] for i in range(n_tasks)])
-            if self.reduction == 'mean':
-                p.grad = param_grads.mean(dim=0)
-            else:  # 'sum'
-                p.grad = param_grads.sum(dim=0)
-
-    def step(self) -> None:
-        """Take an optimizer step."""
-        self.optimizer.step()
-
-    @staticmethod
-    def project_gradient(g_i: torch.Tensor, g_j: torch.Tensor) -> torch.Tensor:
-        """
-        Project g_i to remove components conflicting with g_j.
-
-        If g_i . g_j >= 0: no conflict, return g_i unchanged.
-        If g_i . g_j < 0: return g_i - (g_i.g_j / ||g_j||^2) * g_j
-
-        Args:
-            g_i: flat gradient tensor to (potentially) project
-            g_j: flat reference gradient tensor
+            task_gradients: list of flat gradient tensors, one per task.
 
         Returns:
-            Projected gradient (same shape as g_i).
+            Aggregated flat gradient tensor.
         """
-        dot = torch.dot(g_i.view(-1), g_j.view(-1))
-        if dot < 0:
-            g_j_norm_sq = torch.dot(g_j.view(-1), g_j.view(-1))
-            g_i = g_i - (dot / (g_j_norm_sq + 1e-12)) * g_j
-        return g_i
+        if not task_gradients:
+            return torch.zeros(0)
 
+        if self.method == "pcgrad":
+            return gradient_surgery_step(task_gradients)
+        elif self.method == "vaccine":
+            return gradient_vaccine(task_gradients)
+        else:  # "mean"
+            stacked = torch.stack([g.float() for g in task_gradients])
+            return stacked.mean(dim=0).to(task_gradients[0].dtype)
 
-class GradientSurgeryMonitor:
-    """Monitor gradient conflicts during training."""
-
-    def __init__(self) -> None:
-        self.conflict_history: list[float] = []
-
-    def measure_conflict(self, gradients: list[torch.Tensor]) -> float:
-        """
-        Measure fraction of (i, j) gradient pairs that conflict (cos < 0).
+    def conflict_matrix(self, task_gradients: list[Tensor]) -> Tensor:
+        """Compute pairwise cosine similarities between task gradients.
 
         Args:
-            gradients: list of flat gradient tensors, one per task.
+            task_gradients: list of flat gradient tensors, one per task.
 
         Returns:
-            float in [0, 1] representing the fraction of conflicting pairs.
+            Tensor of shape (n_tasks, n_tasks).
         """
-        n = len(gradients)
-        if n < 2:
-            return 0.0
-
-        total_pairs = 0
-        conflicting_pairs = 0
-
+        n = len(task_gradients)
+        matrix = torch.zeros(n, n)
         for i in range(n):
             for j in range(n):
-                if i == j:
-                    continue
-                g_i = gradients[i].view(-1)
-                g_j = gradients[j].view(-1)
-                dot = torch.dot(g_i, g_j).item()
-                total_pairs += 1
-                if dot < 0:
-                    conflicting_pairs += 1
-
-        if total_pairs == 0:
-            return 0.0
-
-        return conflicting_pairs / total_pairs
-
-    def record(self, gradients: list[torch.Tensor]) -> None:
-        """Measure and record conflict fraction."""
-        rate = self.measure_conflict(gradients)
-        self.conflict_history.append(rate)
-
-    def mean_conflict_rate(self) -> float:
-        """Mean conflict rate across recorded steps."""
-        if not self.conflict_history:
-            return 0.0
-        return sum(self.conflict_history) / len(self.conflict_history)
-
-
-class MultiTaskTrainer:
-    """
-    Train a model on multiple tasks simultaneously using gradient surgery.
-
-    Args:
-        model: shared model
-        task_loss_fns: list of callables, each takes (model, batch) -> scalar loss
-        optimizer: shared optimizer
-        use_pcgrad: whether to use PCGrad (True) or simple sum (False)
-    """
-
-    def __init__(
-        self,
-        model: nn.Module,
-        task_loss_fns: list[Callable],
-        optimizer: torch.optim.Optimizer,
-        use_pcgrad: bool = True,
-    ) -> None:
-        self.model = model
-        self.task_loss_fns = task_loss_fns
-        self.optimizer = optimizer
-        self.use_pcgrad = use_pcgrad
-        self.monitor = GradientSurgeryMonitor()
-
-        if use_pcgrad:
-            self.pcgrad = PCGrad(optimizer, reduction='mean')
-        else:
-            self.pcgrad = None
-
-    def train_step(self, batches: list) -> dict:
-        """
-        Compute losses for all tasks, apply PCGrad or simple backward.
-
-        Args:
-            batches: list of batches, one per task.
-
-        Returns:
-            {
-                'task_losses': [float],
-                'total_loss': float,
-                'conflict_rate': float,
-            }
-        """
-        # Compute per-task losses
-        losses = []
-        for fn, batch in zip(self.task_loss_fns, batches):
-            loss = fn(self.model, batch)
-            losses.append(loss)
-
-        task_loss_values = [l.item() for l in losses]
-        total_loss = sum(task_loss_values)
-
-        if self.use_pcgrad and self.pcgrad is not None:
-            # Collect pre-PCGrad gradients for conflict measurement
-            raw_grads = []
-            for loss in losses:
-                self.optimizer.zero_grad()
-                loss.backward(retain_graph=True)
-                flat = []
-                for p in self.model.parameters():
-                    if p.requires_grad:
-                        if p.grad is not None:
-                            flat.append(p.grad.detach().view(-1))
-                        else:
-                            flat.append(torch.zeros(p.numel()))
-                raw_grads.append(torch.cat(flat))
-
-            conflict_rate = self.monitor.measure_conflict(raw_grads)
-            self.monitor.conflict_history.append(conflict_rate)
-
-            # Apply PCGrad
-            self.pcgrad.pc_backward(losses)
-        else:
-            # Simple sum of gradients
-            self.optimizer.zero_grad()
-            total = sum(losses)
-            total.backward()
-
-            # Measure conflict from individual task gradients
-            raw_grads = []
-            for loss in losses:
-                self.optimizer.zero_grad()
-                loss.backward(retain_graph=True)
-                flat = []
-                for p in self.model.parameters():
-                    if p.requires_grad:
-                        if p.grad is not None:
-                            flat.append(p.grad.detach().view(-1))
-                        else:
-                            flat.append(torch.zeros(p.numel()))
-                raw_grads.append(torch.cat(flat))
-            conflict_rate = self.monitor.measure_conflict(raw_grads)
-            self.monitor.conflict_history.append(conflict_rate)
-
-            # Recompute the actual backward for the step
-            self.optimizer.zero_grad()
-            sum(losses).backward()
-
-        return {
-            'task_losses': task_loss_values,
-            'total_loss': total_loss,
-            'conflict_rate': conflict_rate,
-        }
+                matrix[i, j] = compute_gradient_conflict(task_gradients[i], task_gradients[j])
+        return matrix
