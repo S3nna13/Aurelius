@@ -12,190 +12,184 @@ from torch import Tensor
 
 @dataclass
 class ExpertChoiceConfig:
-    n_experts: int = 8
-    capacity_factor: float = 1.25  # each expert processes capacity = capacity_factor * T/n_experts tokens
+    n_experts: int = 4
+    capacity_factor: float = 1.0    # tokens per expert = capacity_factor * T / n_experts
     d_model: int = 64
-    d_ff: int = 128
-    use_bias: bool = False
+    d_expert: int = 128             # expert hidden dim (typically 2-4x d_model)
+    use_aux_loss: bool = True
+    aux_loss_coeff: float = 0.01
 
 
-class ExpertChoiceRouter(nn.Module):
-    """Router for Expert Choice: each expert selects its top-capacity tokens.
+def compute_expert_capacity(
+    n_tokens: int,
+    n_experts: int,
+    capacity_factor: float,
+) -> int:
+    """Capacity = ceil(capacity_factor * n_tokens / n_experts). Minimum 1."""
+    return max(1, math.ceil(capacity_factor * n_tokens / n_experts))
 
-    Args:
-        d_model: Hidden dimension.
-        n_experts: Number of experts.
+
+def expert_choice_routing(
+    router_logits: Tensor,      # (T, n_experts) — token scores per expert
+    capacity: int,
+) -> tuple[Tensor, Tensor, Tensor]:
+    """Expert-choice routing: each expert picks top-capacity tokens.
+
+    1. router_probs = softmax(router_logits, dim=0) — normalize over tokens
+    2. For each expert e: select top-capacity tokens by router_probs[:, e]
+    3. Returns:
+       - expert_mask: (T, n_experts) binary, 1 if expert e chose token t
+       - token_indices: (n_experts, capacity) indices of chosen tokens per expert
+       - expert_weights: (n_experts, capacity) softmax weights for chosen tokens
     """
+    T, n_experts = router_logits.shape
 
-    def __init__(self, d_model: int, n_experts: int, capacity_factor: float = 1.25) -> None:
-        super().__init__()
-        self.n_experts = n_experts
-        self.capacity_factor = capacity_factor
-        self.weight = nn.Linear(d_model, n_experts, bias=False)
-        nn.init.normal_(self.weight.weight, std=0.01)
+    # Normalize over tokens (dim=0), not over experts
+    router_probs = F.softmax(router_logits, dim=0)  # (T, n_experts)
 
-    def forward(self, hidden: Tensor) -> tuple[Tensor, Tensor, Tensor]:
-        """Compute expert-choice routing.
+    # Transpose to (n_experts, T) so we can topk over tokens per expert
+    scores = router_probs.T  # (n_experts, T)
 
-        Args:
-            hidden: (B, T, D)
+    # Each expert selects top-capacity tokens
+    expert_weights, token_indices = torch.topk(scores, capacity, dim=-1)  # both (n_experts, capacity)
 
-        Returns:
-            indices: (E, capacity) — which N-indices each expert processes
-            weights: (E, capacity) — router weights for selected tokens
-            router_probs: (N, E) — full softmax (for aux loss)
-        """
-        B, T, D = hidden.shape
-        N = B * T
-        hidden_flat = hidden.reshape(N, D)
+    # Build binary expert_mask (T, n_experts)
+    expert_mask = torch.zeros(T, n_experts, dtype=router_logits.dtype, device=router_logits.device)
+    # Scatter ones at selected positions
+    expert_mask.scatter_(0, token_indices.T, 1.0)  # token_indices.T is (capacity, n_experts)
 
-        # Router logits and softmax
-        router_logits = self.weight(hidden_flat)          # (N, E)
-        router_probs = F.softmax(router_logits, dim=-1)   # (N, E)
+    return expert_mask, token_indices, expert_weights
 
-        # Each expert selects top-capacity tokens
-        capacity = math.ceil(self.capacity_factor * N / self.n_experts)
-        capacity = min(capacity, N)
 
-        # Transpose: (E, N) — each row is one expert's scores over all tokens
-        scores = router_probs.T  # (E, N)
-
-        # Top-capacity for each expert
-        weights, indices = torch.topk(scores, capacity, dim=-1)  # both (E, capacity)
-
-        return indices, weights, router_probs
+def compute_ec_router_loss(
+    router_probs: Tensor,       # (T, n_experts)
+    expert_mask: Tensor,        # (T, n_experts)
+) -> Tensor:
+    """Auxiliary loss to encourage diverse routing.
+    loss = mean(fraction_chosen_per_expert^2) — should be ~1/n_experts^2 when balanced.
+    Returns scalar.
+    """
+    T = router_probs.shape[0]
+    # fraction of tokens chosen per expert: (n_experts,)
+    fraction_chosen = expert_mask.sum(dim=0) / T  # (n_experts,)
+    loss = (fraction_chosen ** 2).mean()
+    return loss
 
 
 class ExpertChoiceFFN(nn.Module):
-    """Full MoE FFN using Expert Choice routing.
+    """Single expert FFN (Linear -> GELU -> Linear)."""
 
-    Each expert selects exactly capacity = ceil(capacity_factor * N / n_experts) tokens.
-    Load balance is guaranteed by construction; aux loss encourages routing entropy.
-
-    Args:
-        config: ExpertChoiceConfig
-    """
-
-    def __init__(self, config: ExpertChoiceConfig) -> None:
+    def __init__(self, d_model: int, d_expert: int) -> None:
         super().__init__()
-        self.config = config
-        self.n_experts = config.n_experts
+        self.fc1 = nn.Linear(d_model, d_expert)
+        self.fc2 = nn.Linear(d_expert, d_model)
 
-        self.router = ExpertChoiceRouter(
-            d_model=config.d_model,
-            n_experts=config.n_experts,
-            capacity_factor=config.capacity_factor,
-        )
+    def forward(self, x: Tensor) -> Tensor:
+        """x: (batch_tokens, d_model) -> (batch_tokens, d_model)"""
+        return self.fc2(F.gelu(self.fc1(x)))
 
-        # Each expert: Linear(d_model, d_ff) -> GELU -> Linear(d_ff, d_model)
+
+class ExpertChoiceLayer(nn.Module):
+    """Full expert-choice MoE layer."""
+
+    def __init__(self, cfg: ExpertChoiceConfig) -> None:
+        super().__init__()
+        self.cfg = cfg
+        self.router = nn.Linear(cfg.d_model, cfg.n_experts, bias=False)
         self.experts = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(config.d_model, config.d_ff, bias=config.use_bias),
-                nn.GELU(),
-                nn.Linear(config.d_ff, config.d_model, bias=config.use_bias),
-            )
-            for _ in range(config.n_experts)
+            ExpertChoiceFFN(cfg.d_model, cfg.d_expert)
+            for _ in range(cfg.n_experts)
         ])
 
-        # Store last routing info for token_utilization
-        self._last_indices: Tensor | None = None
-        self._last_N: int = 0
+    def forward(self, x: Tensor) -> tuple[Tensor, dict[str, Tensor]]:
+        """x: (B, T, D).
 
-    def forward(self, hidden: Tensor) -> tuple[Tensor, Tensor]:
-        """Route tokens via Expert Choice and compute weighted output.
+        1. Flatten to (B*T, D), compute router logits
+        2. expert_choice_routing to get selected tokens per expert
+        3. For each expert: gather selected tokens, run ExpertChoiceFFN, scatter back
+        4. Accumulate weighted outputs
+        5. Reshape to (B, T, D)
 
-        Args:
-            hidden: (B, T, D)
-
-        Returns:
-            output: (B, T, D)
-            aux_loss: scalar auxiliary loss (negative entropy to minimize)
+        Returns (output, {"aux_loss": scalar, "mean_capacity_util": float_tensor})
         """
-        B, T, D = hidden.shape
+        B, T, D = x.shape
+        cfg = self.cfg
+
+        # Flatten to (N, D)
+        x_flat = x.reshape(B * T, D)  # (N, D)
         N = B * T
-        hidden_flat = hidden.reshape(N, D)
 
-        indices, weights, router_probs = self.router(hidden_flat.reshape(B, T, D))
+        # Router logits
+        router_logits = self.router(x_flat)  # (N, n_experts)
 
-        # Store for token_utilization
-        self._last_indices = indices
-        self._last_N = N
+        # Compute capacity
+        capacity = compute_expert_capacity(N, cfg.n_experts, cfg.capacity_factor)
 
-        output = torch.zeros_like(hidden_flat)  # (N, D)
+        # Expert-choice routing
+        expert_mask, token_indices, expert_weights = expert_choice_routing(router_logits, capacity)
+        # expert_mask: (N, n_experts)
+        # token_indices: (n_experts, capacity)
+        # expert_weights: (n_experts, capacity)
+
+        # Initialize output buffer
+        output_buffer = torch.zeros(N, D, device=x.device, dtype=x.dtype)
 
         for e, expert in enumerate(self.experts):
-            expert_indices = indices[e]                         # (capacity,)
-            expert_weights = weights[e]                         # (capacity,)
-            expert_input = hidden_flat[expert_indices]          # (capacity, D)
-            expert_out = expert(expert_input)                   # (capacity, D)
-            # Weighted scatter back
-            output[expert_indices] += expert_weights.unsqueeze(-1) * expert_out
+            idx = token_indices[e]           # (capacity,)
+            w = expert_weights[e]            # (capacity,)
+            tokens = x_flat[idx]             # (capacity, D)
+            expert_out = expert(tokens)      # (capacity, D)
+            # Weighted accumulate
+            output_buffer.index_add_(0, idx, w.unsqueeze(-1) * expert_out)
 
-        output = output.reshape(B, T, D)
-        aux_loss = expert_choice_aux_loss(router_probs)
+        # Reshape back
+        output = output_buffer.reshape(B, T, D)
 
-        return output, aux_loss
+        # Compute auxiliary loss
+        router_probs = F.softmax(router_logits, dim=0)  # (N, n_experts) — over tokens
+        aux_loss = compute_ec_router_loss(router_probs, expert_mask)
 
-    def token_utilization(self) -> dict[str, float]:
-        """Returns per-expert token count as fraction of N.
+        # Mean capacity utilization
+        mean_cap_util = self.compute_utilization(expert_mask)
 
-        Must be called after a forward pass.
-        """
-        if self._last_indices is None:
-            return {}
-        N = self._last_N
-        result = {}
-        for e in range(self.n_experts):
-            count = self._last_indices[e].numel()
-            result[f"expert_{e}"] = count / N
-        return result
+        aux_info: dict[str, Tensor] = {
+            "aux_loss": aux_loss,
+            "mean_capacity_util": mean_cap_util,
+        }
 
+        return output, aux_info
 
-def expert_choice_aux_loss(router_probs: Tensor) -> Tensor:
-    """Entropy regularization on router_probs to encourage token spread.
-
-    Computes negative mean entropy over per-token routing distributions.
-    Minimizing this loss maximizes routing entropy (diverse expert usage).
-
-    Args:
-        router_probs: (N, E) — softmax probabilities
-
-    Returns:
-        scalar: -mean_entropy (minimize to maximize entropy)
-    """
-    eps = 1e-8
-    entropy = -(router_probs * torch.log(router_probs + eps)).sum(dim=-1)  # (N,)
-    mean_entropy = entropy.mean()
-    return -mean_entropy
+    def compute_utilization(self, expert_mask: Tensor) -> Tensor:
+        """Mean fraction of capacity used per expert. Shape scalar."""
+        # expert_mask: (T, n_experts) — each col sums to capacity
+        # utilization = mean over experts of (tokens chosen / total tokens)
+        T = expert_mask.shape[0]
+        per_expert_frac = expert_mask.sum(dim=0) / T  # (n_experts,)
+        return per_expert_frac.mean()
 
 
-class BalancedMoEFFN(nn.Module):
-    """Drop-in replacement combining Expert Choice with fallback to dense for short sequences.
+class ExpertChoiceTransformerBlock(nn.Module):
+    """Transformer block replacing FFN with ExpertChoiceLayer."""
 
-    Args:
-        config: ExpertChoiceConfig
-    """
-
-    def __init__(self, config: ExpertChoiceConfig) -> None:
+    def __init__(self, cfg: ExpertChoiceConfig) -> None:
         super().__init__()
-        self.expert_choice = ExpertChoiceFFN(config)
-        self.dense_fallback = nn.Linear(config.d_model, config.d_model)
-        self.min_tokens_for_moe: int = config.n_experts
+        self.norm1 = nn.LayerNorm(cfg.d_model)
+        self.attn = nn.MultiheadAttention(cfg.d_model, num_heads=2, batch_first=True)
+        self.norm2 = nn.LayerNorm(cfg.d_model)
+        self.moe = ExpertChoiceLayer(cfg)
 
-    def forward(self, hidden: Tensor) -> tuple[Tensor, Tensor]:
-        """Forward pass with fallback to dense for short sequences.
-
-        Args:
-            hidden: (B, T, D)
-
-        Returns:
-            output: (B, T, D)
-            aux_loss: scalar (0.0 for dense path)
+    def forward(self, x: Tensor) -> tuple[Tensor, dict]:
+        """Pre-norm, attention + residual, pre-norm, MoE + residual.
+        Returns (output, aux_info).
         """
-        B, T, D = hidden.shape
-        N = B * T
+        # Pre-norm attention
+        normed = self.norm1(x)
+        attn_out, _ = self.attn(normed, normed, normed)
+        x = x + attn_out
 
-        if N < self.min_tokens_for_moe:
-            return self.dense_fallback(hidden), torch.zeros(1, device=hidden.device, dtype=hidden.dtype)
+        # Pre-norm MoE
+        normed2 = self.norm2(x)
+        moe_out, aux_info = self.moe(normed2)
+        x = x + moe_out
 
-        return self.expert_choice(hidden)
+        return x, aux_info

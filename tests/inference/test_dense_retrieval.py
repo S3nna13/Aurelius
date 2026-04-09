@@ -1,271 +1,290 @@
-"""Tests for src/inference/dense_retrieval.py — 13 tests."""
+"""Tests for src/inference/dense_retrieval.py — 15 tests."""
 
 from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn.functional as F
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.inference.dense_retrieval import (
-    RetrieverConfig,
-    BiEncoder,
-    FlatIndex,
-    CrossEncoderReranker,
-    build_index,
-    retrieve_and_rerank,
+    DenseRetrievalConfig,
+    DenseRetriever,
+    IVFIndex,
+    ProductQuantizer,
+    compute_similarity,
+    kmeans_cluster,
 )
 
 # ---------------------------------------------------------------------------
-# Shared fixtures
+# Test configuration (small for speed)
 # ---------------------------------------------------------------------------
 
-VOCAB_SIZE = 256
-PROJ_DIM = 32
-SEQ_LEN = 16
+EMBED_DIM = 8
+N_SUBSPACES = 2
+N_CENTROIDS = 4
+N_CLUSTERS = 4
+N_PROBE = 2
 
 
-@pytest.fixture(scope="module")
-def small_cfg() -> AureliusConfig:
-    return AureliusConfig(
-        n_layers=2,
-        d_model=64,
-        n_heads=2,
-        n_kv_heads=2,
-        head_dim=32,
-        d_ff=128,
-        vocab_size=VOCAB_SIZE,
-        max_seq_len=512,
+def small_cfg(**kwargs) -> DenseRetrievalConfig:
+    defaults = dict(
+        embed_dim=EMBED_DIM,
+        n_subspaces=N_SUBSPACES,
+        n_centroids=N_CENTROIDS,
+        n_probe=N_PROBE,
+        n_clusters=N_CLUSTERS,
+        metric="cosine",
     )
+    defaults.update(kwargs)
+    return DenseRetrievalConfig(**defaults)
 
 
-@pytest.fixture(scope="module")
-def backbone(small_cfg: AureliusConfig) -> AureliusTransformer:
-    torch.manual_seed(42)
-    model = AureliusTransformer(small_cfg)
-    model.eval()
-    return model
+# ---------------------------------------------------------------------------
+# 1. test_config_defaults
+# ---------------------------------------------------------------------------
+
+def test_config_defaults():
+    cfg = DenseRetrievalConfig()
+    assert cfg.embed_dim == 64
+    assert cfg.n_subspaces == 4
+    assert cfg.n_centroids == 16
+    assert cfg.n_probe == 4
+    assert cfg.n_clusters == 8
+    assert cfg.metric == "cosine"
 
 
-@pytest.fixture(scope="module")
-def bi_encoder(backbone: AureliusTransformer) -> BiEncoder:
+# ---------------------------------------------------------------------------
+# 2. test_compute_similarity_cosine_shape
+# ---------------------------------------------------------------------------
+
+def test_compute_similarity_cosine_shape():
+    Q, N, D = 3, 10, EMBED_DIM
+    query = torch.randn(Q, D)
+    corpus = torch.randn(N, D)
+    sim = compute_similarity(query, corpus, metric="cosine")
+    assert sim.shape == (Q, N)
+
+
+# ---------------------------------------------------------------------------
+# 3. test_compute_similarity_self — cosine(x, x) → ~1.0
+# ---------------------------------------------------------------------------
+
+def test_compute_similarity_self():
     torch.manual_seed(0)
-    enc = BiEncoder(backbone, d_model=VOCAB_SIZE, proj_dim=PROJ_DIM)
-    enc.eval()
-    return enc
+    x = torch.randn(5, EMBED_DIM)
+    sim = compute_similarity(x, x, metric="cosine")
+    # Diagonal should be ~1.0
+    diag = sim.diagonal()
+    assert torch.allclose(diag, torch.ones(5), atol=1e-5), f"diagonal={diag}"
 
 
-@pytest.fixture(scope="module")
-def reranker(backbone: AureliusTransformer) -> CrossEncoderReranker:
+# ---------------------------------------------------------------------------
+# 4. test_compute_similarity_l2_nonneg — l2 returns non-positive values
+# ---------------------------------------------------------------------------
+
+def test_compute_similarity_l2_nonneg():
     torch.manual_seed(1)
-    r = CrossEncoderReranker(backbone)
-    r.eval()
-    return r
-
-
-@pytest.fixture(scope="module")
-def default_config() -> RetrieverConfig:
-    return RetrieverConfig(top_k=3, use_reranker=False)
-
-
-# ---------------------------------------------------------------------------
-# Helper: generate random token ids
-# ---------------------------------------------------------------------------
-
-def rand_ids(batch: int, seq: int = SEQ_LEN) -> torch.Tensor:
-    return torch.randint(0, VOCAB_SIZE, (batch, seq))
+    Q, N, D = 3, 7, EMBED_DIM
+    query = torch.randn(Q, D)
+    corpus = torch.randn(N, D)
+    sim = compute_similarity(query, corpus, metric="l2")
+    assert sim.shape == (Q, N)
+    assert (sim <= 0).all(), f"Expected all non-positive, got max={sim.max()}"
 
 
 # ---------------------------------------------------------------------------
-# 1. RetrieverConfig defaults
+# 5. test_kmeans_cluster_shapes
 # ---------------------------------------------------------------------------
 
-def test_retriever_config_defaults():
-    cfg = RetrieverConfig()
-    assert cfg.d_model == 512
-    assert cfg.index_type == "flat"
-    assert cfg.top_k == 5
-    assert cfg.use_reranker is False
-    assert cfg.normalize_embeddings is True
-    assert cfg.batch_size == 32
-
-
-# ---------------------------------------------------------------------------
-# 2. BiEncoder.encode output shape (B, proj_dim)
-# ---------------------------------------------------------------------------
-
-def test_bi_encoder_encode_shape(bi_encoder: BiEncoder):
-    ids = rand_ids(4)
-    embs = bi_encoder.encode(ids, normalize=False)
-    assert embs.shape == (4, PROJ_DIM)
+def test_kmeans_cluster_shapes():
+    torch.manual_seed(2)
+    N, D, k = 50, EMBED_DIM, 6
+    vectors = torch.randn(N, D)
+    centroids, assignments = kmeans_cluster(vectors, k=k)
+    assert centroids.shape == (k, D)
+    assert assignments.shape == (N,)
 
 
 # ---------------------------------------------------------------------------
-# 3. BiEncoder.encode L2-normalized (norms approx 1)
+# 6. test_kmeans_cluster_assignment_range
 # ---------------------------------------------------------------------------
 
-def test_bi_encoder_encode_normalized(bi_encoder: BiEncoder):
-    ids = rand_ids(3)
-    embs = bi_encoder.encode(ids, normalize=True)
-    norms = embs.norm(dim=-1)
-    assert torch.allclose(norms, torch.ones(3), atol=1e-5)
-
-
-# ---------------------------------------------------------------------------
-# 4. BiEncoder.forward returns two tensors of same shape
-# ---------------------------------------------------------------------------
-
-def test_bi_encoder_forward_shapes(bi_encoder: BiEncoder):
-    q_ids = rand_ids(2)
-    p_ids = rand_ids(2)
-    q_emb, p_emb = bi_encoder(q_ids, p_ids)
-    assert q_emb.shape == p_emb.shape == (2, PROJ_DIM)
+def test_kmeans_cluster_assignment_range():
+    torch.manual_seed(3)
+    N, D, k = 40, EMBED_DIM, 5
+    vectors = torch.randn(N, D)
+    centroids, assignments = kmeans_cluster(vectors, k=k)
+    assert assignments.min().item() >= 0
+    assert assignments.max().item() < k
 
 
 # ---------------------------------------------------------------------------
-# 5. FlatIndex.add increases size correctly
+# 7. test_pq_encode_shape
 # ---------------------------------------------------------------------------
 
-def test_flat_index_add_size():
-    idx = FlatIndex(dim=PROJ_DIM)
-    assert idx.size() == 0
+def test_pq_encode_shape():
+    torch.manual_seed(4)
+    cfg = small_cfg()
+    pq = ProductQuantizer(cfg)
+    fit_vecs = torch.randn(20, EMBED_DIM)
+    pq.fit(fit_vecs)
 
-    embs1 = torch.randn(5, PROJ_DIM)
-    idx.add(embs1)
-    assert idx.size() == 5
-
-    embs2 = torch.randn(3, PROJ_DIM)
-    idx.add(embs2)
-    assert idx.size() == 8
-
-
-# ---------------------------------------------------------------------------
-# 6. FlatIndex.search returns correct shapes (B, top_k) for scores and ids
-# ---------------------------------------------------------------------------
-
-def test_flat_index_search_shapes():
-    idx = FlatIndex(dim=PROJ_DIM)
-    idx.add(torch.randn(10, PROJ_DIM))
-
-    query = torch.randn(2, PROJ_DIM)
-    scores, ids = idx.search(query, top_k=3)
-
-    assert scores.shape == (2, 3)
-    assert ids.shape == (2, 3)
+    test_vecs = torch.randn(5, EMBED_DIM)
+    codes = pq.encode(test_vecs)
+    assert codes.shape == (5, N_SUBSPACES)
 
 
 # ---------------------------------------------------------------------------
-# 7. FlatIndex.search — top result is self when query is in index
+# 8. test_pq_decode_shape
 # ---------------------------------------------------------------------------
 
-def test_flat_index_search_self_match():
-    idx = FlatIndex(dim=PROJ_DIM)
-    # Normalize so dot-product == cosine
-    corpus = F.normalize(torch.randn(8, PROJ_DIM), dim=-1)
-    idx.add(corpus)
+def test_pq_decode_shape():
+    torch.manual_seed(5)
+    cfg = small_cfg()
+    pq = ProductQuantizer(cfg)
+    fit_vecs = torch.randn(20, EMBED_DIM)
+    pq.fit(fit_vecs)
 
-    # Query is exactly the 3rd vector
-    query = corpus[3].unsqueeze(0)  # (1, PROJ_DIM)
-    scores, ids = idx.search(query, top_k=1)
-
-    assert ids[0, 0].item() == 3
-
-
-# ---------------------------------------------------------------------------
-# 8. FlatIndex.reset clears the index
-# ---------------------------------------------------------------------------
-
-def test_flat_index_reset():
-    idx = FlatIndex(dim=PROJ_DIM)
-    idx.add(torch.randn(5, PROJ_DIM))
-    assert idx.size() == 5
-
-    idx.reset()
-    assert idx.size() == 0
+    test_vecs = torch.randn(5, EMBED_DIM)
+    codes = pq.encode(test_vecs)
+    decoded = pq.decode(codes)
+    assert decoded.shape == (5, EMBED_DIM)
 
 
 # ---------------------------------------------------------------------------
-# 9. CrossEncoderReranker.score output shape (B,)
+# 9. test_pq_encode_decode_approx — decoded ≈ original within reasonable error
 # ---------------------------------------------------------------------------
 
-def test_cross_encoder_score_shape(reranker: CrossEncoderReranker):
-    ids = rand_ids(4, seq=SEQ_LEN)
-    scores = reranker.score(ids)
-    assert scores.shape == (4,)
+def test_pq_encode_decode_approx():
+    torch.manual_seed(6)
+    cfg = small_cfg(n_centroids=16)  # more centroids → better approximation
+    pq = ProductQuantizer(cfg)
+    # Use structured data so centroids capture it well
+    fit_vecs = torch.randn(100, EMBED_DIM)
+    pq.fit(fit_vecs)
 
+    # Encode and decode the same fit vectors (in-distribution)
+    codes = pq.encode(fit_vecs)
+    decoded = pq.decode(codes)
 
-# ---------------------------------------------------------------------------
-# 10. build_index returns FlatIndex with correct size
-# ---------------------------------------------------------------------------
-
-def test_build_index_size(bi_encoder: BiEncoder):
-    passages = [rand_ids(1, seq=SEQ_LEN)[0] for _ in range(7)]
-    cfg = RetrieverConfig(batch_size=3)
-    idx = build_index(passages, bi_encoder, cfg)
-    assert isinstance(idx, FlatIndex)
-    assert idx.size() == 7
-
-
-# ---------------------------------------------------------------------------
-# 11. retrieve_and_rerank returns list of ints
-# ---------------------------------------------------------------------------
-
-def test_retrieve_and_rerank_returns_list(bi_encoder: BiEncoder):
-    passages = [rand_ids(1, seq=SEQ_LEN)[0] for _ in range(6)]
-    cfg = RetrieverConfig(top_k=3, use_reranker=False)
-    idx = build_index(passages, bi_encoder, cfg)
-
-    query_ids = rand_ids(1, seq=SEQ_LEN)
-    result = retrieve_and_rerank(query_ids, idx, bi_encoder, None, passages, cfg)
-
-    assert isinstance(result, list)
-    assert len(result) == 3
-    assert all(isinstance(i, int) for i in result)
-
-
-# ---------------------------------------------------------------------------
-# 12. retrieve_and_rerank — top result is most similar passage
-# ---------------------------------------------------------------------------
-
-def test_retrieve_and_rerank_top_is_most_similar(bi_encoder: BiEncoder):
-    """Construct passages where passage 0 is a near-copy of the query."""
-    torch.manual_seed(7)
-
-    # Use a fixed query
-    query_ids = rand_ids(1, seq=SEQ_LEN)  # (1, T)
-    # Passage 0 = same as query; passages 1..5 = random (very different vocab region)
-    similar_passage = query_ids[0].clone()  # same tokens
-    other_passages = [
-        # tokens drawn from high range (likely far in embedding space for this model)
-        torch.full((SEQ_LEN,), fill_value=max(1, VOCAB_SIZE - 1 - i), dtype=torch.long)
-        for i in range(5)
-    ]
-    passages = [similar_passage] + other_passages
-
-    cfg = RetrieverConfig(top_k=3, use_reranker=False)
-    idx = build_index(passages, bi_encoder, cfg)
-
-    result = retrieve_and_rerank(query_ids, idx, bi_encoder, None, passages, cfg)
-
-    # Passage 0 (identical to query) should be the top result
-    assert result[0] == 0, f"Expected passage 0 first, got {result}"
-
-
-# ---------------------------------------------------------------------------
-# 13. retrieve_and_rerank with reranker=None still works
-# ---------------------------------------------------------------------------
-
-def test_retrieve_and_rerank_no_reranker(bi_encoder: BiEncoder):
-    passages = [rand_ids(1, seq=SEQ_LEN)[0] for _ in range(5)]
-    cfg = RetrieverConfig(top_k=2, use_reranker=False)
-    idx = build_index(passages, bi_encoder, cfg)
-
-    query_ids = rand_ids(1, seq=SEQ_LEN)
-    result = retrieve_and_rerank(
-        query_ids, idx, bi_encoder, reranker=None, passage_ids_list=passages, config=cfg
+    # Decoded vectors should be strictly closer than a random baseline.
+    # For random Gaussian data with sub_dim=4, 16 centroids per subspace,
+    # reconstruction error should be clearly less than naive mean-prediction error.
+    naive_error = fit_vecs.norm(dim=1).mean().item()  # predict zero vector baseline
+    actual_error = (fit_vecs - decoded).norm(dim=1).mean().item()
+    assert actual_error < naive_error, (
+        f"PQ reconstruction ({actual_error:.4f}) should beat naive baseline ({naive_error:.4f})"
     )
 
-    assert isinstance(result, list)
-    assert len(result) == 2
-    assert all(0 <= i < 5 for i in result)
+
+# ---------------------------------------------------------------------------
+# 10. test_pq_asymmetric_distance_shape
+# ---------------------------------------------------------------------------
+
+def test_pq_asymmetric_distance_shape():
+    torch.manual_seed(7)
+    cfg = small_cfg()
+    pq = ProductQuantizer(cfg)
+    fit_vecs = torch.randn(20, EMBED_DIM)
+    pq.fit(fit_vecs)
+
+    test_vecs = torch.randn(5, EMBED_DIM)
+    codes = pq.encode(test_vecs)
+
+    query = torch.randn(EMBED_DIM)
+    dists = pq.asymmetric_distance(query, codes)
+    assert dists.shape == (5,)
+
+
+# ---------------------------------------------------------------------------
+# 11. test_ivf_build_and_len
+# ---------------------------------------------------------------------------
+
+def test_ivf_build_and_len():
+    torch.manual_seed(8)
+    cfg = small_cfg()
+    ivf = IVFIndex(cfg)
+    vectors = torch.randn(32, EMBED_DIM)
+    ivf.build(vectors)
+    assert len(ivf) == 32
+
+
+# ---------------------------------------------------------------------------
+# 12. test_ivf_search_returns_top_k
+# ---------------------------------------------------------------------------
+
+def test_ivf_search_returns_top_k():
+    torch.manual_seed(9)
+    cfg = small_cfg()
+    ivf = IVFIndex(cfg)
+    vectors = torch.randn(32, EMBED_DIM)
+    ivf.build(vectors)
+
+    query = torch.randn(EMBED_DIM)
+    scores, ids = ivf.search(query, top_k=3)
+    assert scores.shape == (3,)
+    assert len(ids) == 3
+
+
+# ---------------------------------------------------------------------------
+# 13. test_dense_retriever_exact_search_correct
+# ---------------------------------------------------------------------------
+
+def test_dense_retriever_exact_search_correct():
+    torch.manual_seed(10)
+    cfg = small_cfg()
+    retriever = DenseRetriever(cfg)
+
+    corpus = torch.randn(20, EMBED_DIM)
+    retriever.index(corpus)
+
+    # Query is exactly corpus[5]
+    query = corpus[5].clone()
+    results = retriever.exact_search(query, top_k=1)
+
+    assert len(results) == 1
+    assert results[0]["id"] == 5, f"Expected id=5, got id={results[0]['id']}"
+
+
+# ---------------------------------------------------------------------------
+# 14. test_dense_retriever_search_result_keys
+# ---------------------------------------------------------------------------
+
+def test_dense_retriever_search_result_keys():
+    torch.manual_seed(11)
+    cfg = small_cfg()
+    retriever = DenseRetriever(cfg)
+
+    corpus = torch.randn(20, EMBED_DIM)
+    retriever.index(corpus)
+
+    query = torch.randn(EMBED_DIM)
+    results = retriever.search(query, top_k=3)
+
+    assert len(results) > 0
+    for r in results:
+        assert "score" in r
+        assert "id" in r
+        # "text" key should be present (may be None)
+        assert "text" in r
+
+
+# ---------------------------------------------------------------------------
+# 15. test_dense_retriever_evaluate_recall_range
+# ---------------------------------------------------------------------------
+
+def test_dense_retriever_evaluate_recall_range():
+    torch.manual_seed(12)
+    cfg = small_cfg()
+    retriever = DenseRetriever(cfg)
+
+    n_corpus = 32
+    n_queries = 5
+    corpus = torch.randn(n_corpus, EMBED_DIM)
+    retriever.index(corpus)
+
+    # Ground truth: each query is nearest to the corresponding corpus vector
+    query_vectors = corpus[:n_queries].clone()
+    ground_truth_ids = list(range(n_queries))
+
+    recall = retriever.evaluate_recall(query_vectors, ground_truth_ids, top_k=10)
+    assert 0.0 <= recall <= 1.0, f"Recall out of [0, 1]: {recall}"

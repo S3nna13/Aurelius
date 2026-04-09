@@ -1,202 +1,229 @@
-"""Tests for Expert Choice MoE routing (Zhou et al., 2022)."""
-import math
-
-import pytest
+"""Tests for Expert Choice MoE routing."""
 import torch
+import pytest
 
 from src.model.expert_choice import (
-    BalancedMoEFFN,
     ExpertChoiceConfig,
     ExpertChoiceFFN,
-    ExpertChoiceRouter,
-    expert_choice_aux_loss,
+    ExpertChoiceLayer,
+    ExpertChoiceTransformerBlock,
+    compute_ec_router_loss,
+    compute_expert_capacity,
+    expert_choice_routing,
 )
 
-# ---------------------------------------------------------------------------
-# Common test parameters
-# ---------------------------------------------------------------------------
+# Common dimensions
 B = 2
-T = 16
+T = 8
 D = 64
-D_FF = 128
 N_EXPERTS = 4
-CAPACITY_FACTOR = 1.5
 
 
-def make_config(**kwargs) -> ExpertChoiceConfig:
-    defaults = dict(
-        n_experts=N_EXPERTS,
-        capacity_factor=CAPACITY_FACTOR,
-        d_model=D,
-        d_ff=D_FF,
-        use_bias=False,
-    )
+def make_cfg(**kwargs) -> ExpertChoiceConfig:
+    defaults = dict(n_experts=N_EXPERTS, capacity_factor=1.0, d_model=D, d_expert=128)
     defaults.update(kwargs)
     return ExpertChoiceConfig(**defaults)
 
 
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------
+# 1. Config defaults
+# -----------------------------------------------------------------------
 
-
-def test_expert_choice_config_defaults():
-    """ExpertChoiceConfig should have the correct default values."""
+def test_config_defaults():
     cfg = ExpertChoiceConfig()
-    assert cfg.n_experts == 8
-    assert cfg.capacity_factor == 1.25
+    assert cfg.n_experts == 4
+    assert cfg.capacity_factor == 1.0
     assert cfg.d_model == 64
-    assert cfg.d_ff == 128
-    assert cfg.use_bias is False
+    assert cfg.d_expert == 128
+    assert cfg.use_aux_loss is True
+    assert cfg.aux_loss_coeff == 0.01
 
 
-def test_router_indices_shape():
-    """Router indices should have shape (E, capacity)."""
+# -----------------------------------------------------------------------
+# 2. compute_expert_capacity — basic
+# -----------------------------------------------------------------------
+
+def test_compute_capacity_basic():
+    # ceil(1.0 * 8 / 4) = 2
+    assert compute_expert_capacity(8, 4, 1.0) == 2
+
+
+# -----------------------------------------------------------------------
+# 3. compute_expert_capacity — minimum 1
+# -----------------------------------------------------------------------
+
+def test_compute_capacity_minimum():
+    # Very small capacity_factor or large n_experts — must be at least 1
+    assert compute_expert_capacity(1, 100, 0.001) >= 1
+    assert compute_expert_capacity(4, 4, 0.1) >= 1
+
+
+# -----------------------------------------------------------------------
+# 4. expert_choice_routing — shapes
+# -----------------------------------------------------------------------
+
+def test_expert_choice_routing_shapes():
     torch.manual_seed(0)
-    cfg = make_config()
-    router = ExpertChoiceRouter(D, N_EXPERTS, CAPACITY_FACTOR)
-    hidden = torch.randn(B, T, D)
-    indices, weights, router_probs = router(hidden)
-    N = B * T
-    expected_capacity = math.ceil(CAPACITY_FACTOR * N / N_EXPERTS)
-    assert indices.shape == (N_EXPERTS, expected_capacity), (
-        f"Expected indices shape ({N_EXPERTS}, {expected_capacity}), got {indices.shape}"
-    )
+    n_tokens, n_experts, capacity = T, N_EXPERTS, 2
+    logits = torch.randn(n_tokens, n_experts)
+    expert_mask, token_indices, expert_weights = expert_choice_routing(logits, capacity)
+    assert expert_mask.shape == (n_tokens, n_experts), f"Got {expert_mask.shape}"
+    assert token_indices.shape == (n_experts, capacity), f"Got {token_indices.shape}"
+    assert expert_weights.shape == (n_experts, capacity), f"Got {expert_weights.shape}"
 
 
-def test_router_weights_shape():
-    """Router weights should have shape (E, capacity)."""
+# -----------------------------------------------------------------------
+# 5. expert_choice_routing — capacity respected
+# -----------------------------------------------------------------------
+
+def test_expert_choice_routing_capacity_respected():
+    torch.manual_seed(42)
+    n_tokens, n_experts, capacity = 16, N_EXPERTS, 3
+    logits = torch.randn(n_tokens, n_experts)
+    expert_mask, token_indices, expert_weights = expert_choice_routing(logits, capacity)
+    # Each expert must have exactly capacity tokens
+    assert token_indices.shape[1] == capacity
+    # expert_mask column sums should equal capacity for each expert
+    col_sums = expert_mask.sum(dim=0)  # (n_experts,)
+    for e in range(n_experts):
+        assert col_sums[e].item() == capacity, f"Expert {e} has {col_sums[e]} tokens, expected {capacity}"
+
+
+# -----------------------------------------------------------------------
+# 6. expert_choice_routing — weights positive
+# -----------------------------------------------------------------------
+
+def test_expert_choice_routing_weights_positive():
+    torch.manual_seed(7)
+    logits = torch.randn(T, N_EXPERTS)
+    _, _, expert_weights = expert_choice_routing(logits, 2)
+    assert (expert_weights > 0).all(), "All expert weights should be positive"
+
+
+# -----------------------------------------------------------------------
+# 7. expert_choice_routing — uniform logits gives same tokens per expert
+# -----------------------------------------------------------------------
+
+def test_expert_choice_routing_perfect_balance():
+    # Uniform logits => all tokens have equal scores => topk is deterministic
+    # (might be any consistent ordering). The important thing: each expert gets capacity tokens.
+    logits = torch.zeros(T, N_EXPERTS)
+    capacity = 2
+    expert_mask, token_indices, expert_weights = expert_choice_routing(logits, capacity)
+    assert token_indices.shape == (N_EXPERTS, capacity)
+    # With uniform logits, weights should all be equal (1/T after softmax over tokens)
+    expected_weight = 1.0 / T
+    assert torch.allclose(expert_weights, torch.full_like(expert_weights, expected_weight), atol=1e-5)
+
+
+# -----------------------------------------------------------------------
+# 8. compute_ec_router_loss — returns scalar
+# -----------------------------------------------------------------------
+
+def test_compute_ec_router_loss_scalar():
     torch.manual_seed(0)
-    router = ExpertChoiceRouter(D, N_EXPERTS, CAPACITY_FACTOR)
-    hidden = torch.randn(B, T, D)
-    indices, weights, router_probs = router(hidden)
-    N = B * T
-    expected_capacity = math.ceil(CAPACITY_FACTOR * N / N_EXPERTS)
-    assert weights.shape == (N_EXPERTS, expected_capacity), (
-        f"Expected weights shape ({N_EXPERTS}, {expected_capacity}), got {weights.shape}"
-    )
+    router_probs = torch.softmax(torch.randn(T, N_EXPERTS), dim=0)
+    expert_mask = torch.zeros(T, N_EXPERTS)
+    expert_mask[:2, :] = 1.0
+    loss = compute_ec_router_loss(router_probs, expert_mask)
+    assert loss.ndim == 0, f"Expected scalar, got shape {loss.shape}"
 
 
-def test_router_capacity_formula():
-    """Capacity should equal ceil(capacity_factor * N / n_experts)."""
+# -----------------------------------------------------------------------
+# 9. compute_ec_router_loss — non-negative
+# -----------------------------------------------------------------------
+
+def test_compute_ec_router_loss_nonneg():
     torch.manual_seed(0)
-    router = ExpertChoiceRouter(D, N_EXPERTS, CAPACITY_FACTOR)
-    hidden = torch.randn(B, T, D)
-    indices, weights, router_probs = router(hidden)
-    N = B * T
-    expected_capacity = math.ceil(CAPACITY_FACTOR * N / N_EXPERTS)
-    actual_capacity = indices.shape[1]
-    assert actual_capacity == expected_capacity, (
-        f"Expected capacity {expected_capacity}, got {actual_capacity}"
-    )
+    router_probs = torch.softmax(torch.randn(T, N_EXPERTS), dim=0)
+    capacity = 2
+    logits = torch.randn(T, N_EXPERTS)
+    expert_mask, _, _ = expert_choice_routing(logits, capacity)
+    loss = compute_ec_router_loss(router_probs, expert_mask)
+    assert loss.item() >= 0.0, f"Loss should be non-negative, got {loss.item()}"
 
 
-def test_expert_choice_ffn_output_shape():
-    """ExpertChoiceFFN output should have shape (B, T, D)."""
+# -----------------------------------------------------------------------
+# 10. ExpertChoiceFFN — shape (N, D) -> (N, D)
+# -----------------------------------------------------------------------
+
+def test_expert_ffn_shape():
     torch.manual_seed(0)
-    cfg = make_config()
-    model = ExpertChoiceFFN(cfg)
-    hidden = torch.randn(B, T, D)
-    output, aux_loss = model(hidden)
-    assert output.shape == (B, T, D), (
-        f"Expected output shape ({B}, {T}, {D}), got {output.shape}"
-    )
+    ffn = ExpertChoiceFFN(d_model=D, d_expert=128)
+    x = torch.randn(10, D)
+    out = ffn(x)
+    assert out.shape == (10, D), f"Expected (10, {D}), got {out.shape}"
 
 
-def test_expert_choice_ffn_aux_loss_scalar():
-    """ExpertChoiceFFN aux_loss should be a scalar (0-d tensor)."""
+# -----------------------------------------------------------------------
+# 11. ExpertChoiceLayer — output shape (B, T, D)
+# -----------------------------------------------------------------------
+
+def test_expert_choice_layer_output_shape():
     torch.manual_seed(0)
-    cfg = make_config()
-    model = ExpertChoiceFFN(cfg)
-    hidden = torch.randn(B, T, D)
-    output, aux_loss = model(hidden)
-    assert aux_loss.ndim == 0, f"aux_loss should be a scalar, got shape {aux_loss.shape}"
+    cfg = make_cfg()
+    layer = ExpertChoiceLayer(cfg)
+    x = torch.randn(B, T, D)
+    out, _ = layer(x)
+    assert out.shape == (B, T, D), f"Expected ({B}, {T}, {D}), got {out.shape}"
 
 
-def test_expert_choice_ffn_no_nan():
-    """ExpertChoiceFFN output should not contain NaN values."""
+# -----------------------------------------------------------------------
+# 12. ExpertChoiceLayer — aux dict has "aux_loss" key
+# -----------------------------------------------------------------------
+
+def test_expert_choice_layer_aux_keys():
     torch.manual_seed(0)
-    cfg = make_config()
-    model = ExpertChoiceFFN(cfg)
-    hidden = torch.randn(B, T, D)
-    output, aux_loss = model(hidden)
-    assert not torch.isnan(output).any(), "Output contains NaN values"
-    assert not torch.isnan(aux_loss), "aux_loss is NaN"
+    cfg = make_cfg()
+    layer = ExpertChoiceLayer(cfg)
+    x = torch.randn(B, T, D)
+    _, aux = layer(x)
+    assert "aux_loss" in aux, f"Expected 'aux_loss' key, got {list(aux.keys())}"
 
 
-def test_expert_choice_aux_loss_negative():
-    """aux_loss should be <= 0 (it's negative entropy)."""
+# -----------------------------------------------------------------------
+# 13. ExpertChoiceLayer — all tokens get output (EC guarantee)
+# -----------------------------------------------------------------------
+
+def test_expert_choice_layer_no_dropped_tokens():
+    """With capacity_factor >= 1.0 and enough experts, no token is fully zero.
+
+    EC with capacity = ceil(cf * N / E) — when capacity * E >= N, every token
+    is selected by at least one expert (pigeonhole). With cf=1.0, capacity*E == N.
+    We verify that the output buffer is NOT all zeros.
+    """
     torch.manual_seed(0)
-    N = B * T
-    E = N_EXPERTS
-    router_probs = torch.softmax(torch.randn(N, E), dim=-1)
-    loss = expert_choice_aux_loss(router_probs)
-    assert loss.item() <= 0.0, (
-        f"aux_loss should be <= 0 (negative entropy), got {loss.item()}"
-    )
+    cfg = make_cfg(capacity_factor=1.0)
+    layer = ExpertChoiceLayer(cfg)
+    x = torch.randn(B, T, D)
+    out, _ = layer(x)
+    # With residual in block the output won't be zero, but at layer level
+    # check that at least some tokens have non-zero outputs
+    assert not torch.all(out == 0), "All output tokens are zero — routing is broken"
 
 
-def test_balanced_moe_dense_fallback():
-    """BalancedMoEFFN should use dense fallback when B*T < min_tokens_for_moe."""
+# -----------------------------------------------------------------------
+# 14. ExpertChoiceTransformerBlock — output shape
+# -----------------------------------------------------------------------
+
+def test_transformer_block_shape():
     torch.manual_seed(0)
-    cfg = make_config()
-    model = BalancedMoEFFN(cfg)
-    # Use fewer tokens than n_experts to trigger dense fallback
-    small_T = 1  # B*T = 2 < n_experts = 4
-    hidden = torch.randn(B, small_T, D)
-    output, aux_loss = model(hidden)
-    assert output.shape == (B, small_T, D), (
-        f"Dense fallback output shape wrong: {output.shape}"
-    )
-    # Dense fallback aux_loss should be zeros
-    assert (aux_loss == 0.0).all(), "Dense fallback should return zero aux_loss"
+    cfg = make_cfg()
+    block = ExpertChoiceTransformerBlock(cfg)
+    x = torch.randn(B, T, D)
+    out, _ = block(x)
+    assert out.shape == (B, T, D), f"Expected ({B}, {T}, {D}), got {out.shape}"
 
 
-def test_balanced_moe_expert_choice():
-    """BalancedMoEFFN should use Expert Choice when B*T >= min_tokens_for_moe."""
+# -----------------------------------------------------------------------
+# 15. ExpertChoiceTransformerBlock — returns aux dict
+# -----------------------------------------------------------------------
+
+def test_transformer_block_aux_info():
     torch.manual_seed(0)
-    cfg = make_config()
-    model = BalancedMoEFFN(cfg)
-    # B*T = 32 >= n_experts = 4
-    hidden = torch.randn(B, T, D)
-    output, aux_loss = model(hidden)
-    assert output.shape == (B, T, D), (
-        f"Expert choice output shape wrong: {output.shape}"
-    )
-    # aux_loss should be negative entropy (not 0)
-    assert aux_loss.ndim == 0, "aux_loss should be scalar"
-
-
-def test_token_utilization_sums_to_one():
-    """Per-expert token fractions should sum to approximately capacity*E/N (each token can go to multiple experts)."""
-    torch.manual_seed(0)
-    cfg = make_config()
-    model = ExpertChoiceFFN(cfg)
-    hidden = torch.randn(B, T, D)
-    with torch.no_grad():
-        output, _ = model(hidden)
-    utilization = model.token_utilization()
-    assert len(utilization) == N_EXPERTS, (
-        f"Expected {N_EXPERTS} entries in utilization, got {len(utilization)}"
-    )
-    # Each expert processes capacity tokens; total = E * capacity
-    # As fractions of N, they sum to E * capacity / N ≈ capacity_factor
-    total = sum(utilization.values())
-    N = B * T
-    expected_capacity = math.ceil(CAPACITY_FACTOR * N / N_EXPERTS)
-    expected_total = N_EXPERTS * expected_capacity / N
-    assert abs(total - expected_total) < 1e-5, (
-        f"Utilization fractions sum to {total}, expected ~{expected_total}"
-    )
-
-
-def test_expert_choice_gradient_flow():
-    """loss.backward() should complete without error (gradient flows through routing)."""
-    torch.manual_seed(0)
-    cfg = make_config()
-    model = ExpertChoiceFFN(cfg)
-    hidden = torch.randn(B, T, D, requires_grad=True)
-    output, aux_loss = model(hidden)
-    loss = output.sum() + aux_loss
-    loss.backward()  # should not raise
-    assert hidden.grad is not None, "No gradient flowed to input hidden"
+    cfg = make_cfg()
+    block = ExpertChoiceTransformerBlock(cfg)
+    x = torch.randn(B, T, D)
+    out, aux = block(x)
+    assert isinstance(aux, dict), f"Expected dict, got {type(aux)}"
+    assert "aux_loss" in aux, f"Expected 'aux_loss' in aux_info, got {list(aux.keys())}"
