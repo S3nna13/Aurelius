@@ -218,3 +218,75 @@ def test_scale_compute_override_n_samples(small_model):
     assert isinstance(result, str)
     # Ensure original config is restored
     assert config.n_samples == 2
+
+
+# ---------------------------------------------------------------------------
+# 13. test_majority_vote_empty_returns_empty_string
+# ---------------------------------------------------------------------------
+
+def test_majority_vote_empty_returns_empty_string():
+    assert majority_vote([]) == ""
+
+
+# ---------------------------------------------------------------------------
+# 14. test_self_consistency_unnormalized_counts
+# ---------------------------------------------------------------------------
+
+def test_self_consistency_unnormalized_counts():
+    answers = ["X", "X", "Y"]
+    counts = self_consistency_vote(answers, normalize=False)
+    assert counts["X"] == 2.0
+    assert counts["Y"] == 1.0
+
+
+# ---------------------------------------------------------------------------
+# 15. test_beam_mcts_search_returns_nonempty_list
+# ---------------------------------------------------------------------------
+
+def test_beam_mcts_search_returns_nonempty_list(small_model, small_cfg):
+    cfg = ScalingConfig(n_samples=2, max_new_tokens=8, temperature=1.0)
+    scorer = StepLevelScorer(small_model, dummy_encode)
+    mcts = BeamMCTS(small_model, scorer, cfg)
+    prompt = torch.randint(0, small_cfg.vocab_size, (1, 3))
+    result = mcts.search(prompt, n_steps=1)
+    assert isinstance(result, list)
+    assert len(result) > 0
+
+
+# ---------------------------------------------------------------------------
+# 16. test_scale_compute_no_override
+# ---------------------------------------------------------------------------
+
+def test_scale_compute_no_override(small_model):
+    config = ScalingConfig(n_samples=2, max_new_tokens=4, voting_method="self_consistency")
+    scaler = TestTimeScaler(
+        model=small_model,
+        tokenizer_encode=dummy_encode,
+        tokenizer_decode=dummy_decode,
+        config=config,
+    )
+    result = scaler.scale_compute("Scale without override")
+    assert isinstance(result, str)
+
+
+# ---------------------------------------------------------------------------
+# 17. test_step_level_scorer_score_steps_length
+# ---------------------------------------------------------------------------
+
+def test_step_level_scorer_score_steps_length(small_model):
+    scorer = StepLevelScorer(small_model, dummy_encode)
+    steps = ["first step", "second step", "third step"]
+    scores = scorer.score_steps("context text", steps)
+    assert len(scores) == 3
+    assert all(isinstance(s, float) for s in scores)
+
+
+# ---------------------------------------------------------------------------
+# 18. test_generate_samples_token_ids_in_range
+# ---------------------------------------------------------------------------
+
+def test_generate_samples_token_ids_in_range(small_model, prompt_tensor, fast_config):
+    samples = generate_samples(small_model, prompt_tensor, fast_config)
+    for s in samples:
+        for tok in s:
+            assert 0 <= tok < VOCAB_SIZE
