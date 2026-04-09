@@ -1,149 +1,202 @@
-"""Tests for Expert Choice MoE routing (ExpertChoiceFFN)."""
+"""Tests for Expert Choice MoE routing (Zhou et al., 2022)."""
 import math
 
-import torch
 import pytest
+import torch
 
-from src.model.expert_choice import ExpertChoiceFFN
-from src.model.moe import SparseMoEFFN, MoEConfig
-from src.model.config import AureliusConfig
-
+from src.model.expert_choice import (
+    BalancedMoEFFN,
+    ExpertChoiceConfig,
+    ExpertChoiceFFN,
+    ExpertChoiceRouter,
+    expert_choice_aux_loss,
+)
 
 # ---------------------------------------------------------------------------
-# Fixtures
+# Common test parameters
 # ---------------------------------------------------------------------------
+B = 2
+T = 16
+D = 64
+D_FF = 128
+N_EXPERTS = 4
+CAPACITY_FACTOR = 1.5
 
-@pytest.fixture
-def small_config():
-    """Small AureliusConfig suitable for fast unit tests."""
-    return AureliusConfig(
-        n_layers=2,
-        d_model=64,
-        n_heads=2,
-        n_kv_heads=2,
-        head_dim=32,
-        d_ff=128,
-        vocab_size=256,
-        max_seq_len=32,
+
+def make_config(**kwargs) -> ExpertChoiceConfig:
+    defaults = dict(
+        n_experts=N_EXPERTS,
+        capacity_factor=CAPACITY_FACTOR,
+        d_model=D,
+        d_ff=D_FF,
+        use_bias=False,
     )
-
-
-@pytest.fixture
-def moe_cfg():
-    return MoEConfig(n_experts=4, top_k=2)
+    defaults.update(kwargs)
+    return ExpertChoiceConfig(**defaults)
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
-def test_output_shape(small_config, moe_cfg):
-    """ExpertChoiceFFN must return (B, S, D) output and a scalar aux_loss."""
-    model = ExpertChoiceFFN(small_config, moe_cfg)
-    # Use the exact shape stated in the task spec for documentation purposes;
-    # we use a smaller tensor here to keep the test fast.
-    B, S, D = 2, 16, small_config.d_model
-    x = torch.randn(B, S, D)
-    out, aux = model(x)
-    assert out.shape == (B, S, D), f"Expected ({B}, {S}, {D}), got {out.shape}"
-    assert aux.ndim == 0, "aux_loss must be a scalar (0-d tensor)"
+
+def test_expert_choice_config_defaults():
+    """ExpertChoiceConfig should have the correct default values."""
+    cfg = ExpertChoiceConfig()
+    assert cfg.n_experts == 8
+    assert cfg.capacity_factor == 1.25
+    assert cfg.d_model == 64
+    assert cfg.d_ff == 128
+    assert cfg.use_bias is False
 
 
-def test_aux_loss_is_zero(small_config, moe_cfg):
-    """Expert-choice routing requires no load-balancing loss; aux_loss == 0.0."""
-    model = ExpertChoiceFFN(small_config, moe_cfg)
-    x = torch.randn(2, 16, small_config.d_model)
-    _, aux = model(x)
-    assert aux.item() == 0.0, f"Expected aux_loss=0.0, got {aux.item()}"
-
-
-def test_each_expert_processes_capacity_tokens(small_config, moe_cfg):
-    """Every expert must process exactly capacity = ceil(N*top_k/n_experts) tokens."""
-    n_experts = moe_cfg.n_experts
-    top_k = moe_cfg.top_k
-    B, S = 2, 16
-    N = B * S
-    expected_capacity = math.ceil(N * top_k / n_experts)
-
-    model = ExpertChoiceFFN(small_config, moe_cfg)
-    x = torch.randn(B, S, small_config.d_model)
-
-    # Instrument by counting tokens per expert via token_coverage internals
-    # We re-run the forward tracking manually using the router weights directly.
-    with torch.no_grad():
-        x_flat = x.view(-1, small_config.d_model)
-        router_logits = model.router(x_flat)   # (N, n_experts)
-        scores = router_logits.T               # (n_experts, N)
-        capacity = min(math.ceil(N * top_k / n_experts), N)
-
-        for i in range(n_experts):
-            _, top_indices = torch.topk(scores[i], capacity)
-            # Each expert should select exactly `capacity` unique token indices
-            assert top_indices.shape[0] == capacity, (
-                f"Expert {i} processed {top_indices.shape[0]} tokens, "
-                f"expected {capacity}"
-            )
-
-
-def test_expert_choice_different_from_token_choice(small_config, moe_cfg):
-    """ExpertChoiceFFN and SparseMoEFFN must produce different outputs (different routing)."""
+def test_router_indices_shape():
+    """Router indices should have shape (E, capacity)."""
     torch.manual_seed(0)
-    ec = ExpertChoiceFFN(small_config, moe_cfg)
+    cfg = make_config()
+    router = ExpertChoiceRouter(D, N_EXPERTS, CAPACITY_FACTOR)
+    hidden = torch.randn(B, T, D)
+    indices, weights, router_probs = router(hidden)
+    N = B * T
+    expected_capacity = math.ceil(CAPACITY_FACTOR * N / N_EXPERTS)
+    assert indices.shape == (N_EXPERTS, expected_capacity), (
+        f"Expected indices shape ({N_EXPERTS}, {expected_capacity}), got {indices.shape}"
+    )
+
+
+def test_router_weights_shape():
+    """Router weights should have shape (E, capacity)."""
     torch.manual_seed(0)
-    tc = SparseMoEFFN(small_config, moe_cfg)
+    router = ExpertChoiceRouter(D, N_EXPERTS, CAPACITY_FACTOR)
+    hidden = torch.randn(B, T, D)
+    indices, weights, router_probs = router(hidden)
+    N = B * T
+    expected_capacity = math.ceil(CAPACITY_FACTOR * N / N_EXPERTS)
+    assert weights.shape == (N_EXPERTS, expected_capacity), (
+        f"Expected weights shape ({N_EXPERTS}, {expected_capacity}), got {weights.shape}"
+    )
 
-    x = torch.randn(2, 8, small_config.d_model)
+
+def test_router_capacity_formula():
+    """Capacity should equal ceil(capacity_factor * N / n_experts)."""
+    torch.manual_seed(0)
+    router = ExpertChoiceRouter(D, N_EXPERTS, CAPACITY_FACTOR)
+    hidden = torch.randn(B, T, D)
+    indices, weights, router_probs = router(hidden)
+    N = B * T
+    expected_capacity = math.ceil(CAPACITY_FACTOR * N / N_EXPERTS)
+    actual_capacity = indices.shape[1]
+    assert actual_capacity == expected_capacity, (
+        f"Expected capacity {expected_capacity}, got {actual_capacity}"
+    )
+
+
+def test_expert_choice_ffn_output_shape():
+    """ExpertChoiceFFN output should have shape (B, T, D)."""
+    torch.manual_seed(0)
+    cfg = make_config()
+    model = ExpertChoiceFFN(cfg)
+    hidden = torch.randn(B, T, D)
+    output, aux_loss = model(hidden)
+    assert output.shape == (B, T, D), (
+        f"Expected output shape ({B}, {T}, {D}), got {output.shape}"
+    )
+
+
+def test_expert_choice_ffn_aux_loss_scalar():
+    """ExpertChoiceFFN aux_loss should be a scalar (0-d tensor)."""
+    torch.manual_seed(0)
+    cfg = make_config()
+    model = ExpertChoiceFFN(cfg)
+    hidden = torch.randn(B, T, D)
+    output, aux_loss = model(hidden)
+    assert aux_loss.ndim == 0, f"aux_loss should be a scalar, got shape {aux_loss.shape}"
+
+
+def test_expert_choice_ffn_no_nan():
+    """ExpertChoiceFFN output should not contain NaN values."""
+    torch.manual_seed(0)
+    cfg = make_config()
+    model = ExpertChoiceFFN(cfg)
+    hidden = torch.randn(B, T, D)
+    output, aux_loss = model(hidden)
+    assert not torch.isnan(output).any(), "Output contains NaN values"
+    assert not torch.isnan(aux_loss), "aux_loss is NaN"
+
+
+def test_expert_choice_aux_loss_negative():
+    """aux_loss should be <= 0 (it's negative entropy)."""
+    torch.manual_seed(0)
+    N = B * T
+    E = N_EXPERTS
+    router_probs = torch.softmax(torch.randn(N, E), dim=-1)
+    loss = expert_choice_aux_loss(router_probs)
+    assert loss.item() <= 0.0, (
+        f"aux_loss should be <= 0 (negative entropy), got {loss.item()}"
+    )
+
+
+def test_balanced_moe_dense_fallback():
+    """BalancedMoEFFN should use dense fallback when B*T < min_tokens_for_moe."""
+    torch.manual_seed(0)
+    cfg = make_config()
+    model = BalancedMoEFFN(cfg)
+    # Use fewer tokens than n_experts to trigger dense fallback
+    small_T = 1  # B*T = 2 < n_experts = 4
+    hidden = torch.randn(B, small_T, D)
+    output, aux_loss = model(hidden)
+    assert output.shape == (B, small_T, D), (
+        f"Dense fallback output shape wrong: {output.shape}"
+    )
+    # Dense fallback aux_loss should be zeros
+    assert (aux_loss == 0.0).all(), "Dense fallback should return zero aux_loss"
+
+
+def test_balanced_moe_expert_choice():
+    """BalancedMoEFFN should use Expert Choice when B*T >= min_tokens_for_moe."""
+    torch.manual_seed(0)
+    cfg = make_config()
+    model = BalancedMoEFFN(cfg)
+    # B*T = 32 >= n_experts = 4
+    hidden = torch.randn(B, T, D)
+    output, aux_loss = model(hidden)
+    assert output.shape == (B, T, D), (
+        f"Expert choice output shape wrong: {output.shape}"
+    )
+    # aux_loss should be negative entropy (not 0)
+    assert aux_loss.ndim == 0, "aux_loss should be scalar"
+
+
+def test_token_utilization_sums_to_one():
+    """Per-expert token fractions should sum to approximately capacity*E/N (each token can go to multiple experts)."""
+    torch.manual_seed(0)
+    cfg = make_config()
+    model = ExpertChoiceFFN(cfg)
+    hidden = torch.randn(B, T, D)
     with torch.no_grad():
-        ec_out, _ = ec(x)
-        tc_out, _ = tc(x)
-
-    # The outputs should not be identical (routing strategies are fundamentally different)
-    assert not torch.allclose(ec_out, tc_out, atol=1e-6), (
-        "ExpertChoiceFFN and SparseMoEFFN produced identical outputs — "
-        "their routing is expected to differ."
+        output, _ = model(hidden)
+    utilization = model.token_utilization()
+    assert len(utilization) == N_EXPERTS, (
+        f"Expected {N_EXPERTS} entries in utilization, got {len(utilization)}"
+    )
+    # Each expert processes capacity tokens; total = E * capacity
+    # As fractions of N, they sum to E * capacity / N ≈ capacity_factor
+    total = sum(utilization.values())
+    N = B * T
+    expected_capacity = math.ceil(CAPACITY_FACTOR * N / N_EXPERTS)
+    expected_total = N_EXPERTS * expected_capacity / N
+    assert abs(total - expected_total) < 1e-5, (
+        f"Utilization fractions sum to {total}, expected ~{expected_total}"
     )
 
 
-def test_token_coverage_shape(small_config, moe_cfg):
-    """token_coverage() must return an integer tensor of shape (B*seq_len,)."""
-    B, S = 2, 16
-    model = ExpertChoiceFFN(small_config, moe_cfg)
-    x = torch.randn(B, S, small_config.d_model)
-    with torch.no_grad():
-        coverage = model.token_coverage(x)
-    assert coverage.shape == (B * S,), (
-        f"Expected coverage shape ({B * S},), got {coverage.shape}"
-    )
-    assert coverage.dtype in (torch.int32, torch.int64, torch.long), (
-        f"Expected integer dtype, got {coverage.dtype}"
-    )
-
-
-def test_no_load_balancing_needed(small_config, moe_cfg):
-    """Variance of expert load must be 0: all experts process exactly capacity tokens."""
-    n_experts = moe_cfg.n_experts
-    top_k = moe_cfg.top_k
-    B, S = 2, 16
-    N = B * S
-    expected_capacity = min(math.ceil(N * top_k / n_experts), N)
-
-    model = ExpertChoiceFFN(small_config, moe_cfg)
-    x = torch.randn(B, S, small_config.d_model)
-
-    with torch.no_grad():
-        x_flat = x.view(-1, small_config.d_model)
-        router_logits = model.router(x_flat)
-        scores = router_logits.T   # (n_experts, N)
-        capacity = min(math.ceil(N * top_k / n_experts), N)
-
-        loads = []
-        for i in range(n_experts):
-            _, top_indices = torch.topk(scores[i], capacity)
-            loads.append(top_indices.shape[0])
-
-    loads_tensor = torch.tensor(loads, dtype=torch.float)
-    variance = loads_tensor.var().item()
-    assert variance == 0.0, (
-        f"Expert loads have non-zero variance {variance}; loads={loads}. "
-        "All experts should process exactly {expected_capacity} tokens."
-    )
+def test_expert_choice_gradient_flow():
+    """loss.backward() should complete without error (gradient flows through routing)."""
+    torch.manual_seed(0)
+    cfg = make_config()
+    model = ExpertChoiceFFN(cfg)
+    hidden = torch.randn(B, T, D, requires_grad=True)
+    output, aux_loss = model(hidden)
+    loss = output.sum() + aux_loss
+    loss.backward()  # should not raise
+    assert hidden.grad is not None, "No gradient flowed to input hidden"

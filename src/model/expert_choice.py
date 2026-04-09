@@ -1,142 +1,201 @@
-"""Expert Choice routing for Mixture of Experts (Zhou et al., 2022 - arXiv:2202.09368).
-
-Drop-in replacement for SparseMoEFFN. Unlike token-choice routing (each token
-picks top-k experts), expert-choice routing lets each expert pick its top-k
-tokens. This guarantees perfect load balance by construction — no auxiliary
-load balancing loss is needed.
-
-Key properties:
-- Every expert processes exactly `capacity` tokens per forward pass.
-- No token dropping: auxiliary loss is 0.0 always.
-- Some tokens may be chosen by fewer or more than `top_k` experts
-  (popular tokens may be picked by many, unpopular by none).
-
-Usage:
-    # Same interface as SparseMoEFFN:
-    ffn = ExpertChoiceFFN(config, moe_cfg)
-    output, aux_loss = ffn(x)   # aux_loss is always 0.0
-"""
+"""Expert Choice routing for MoE (Zhou et al., 2022) — experts select top-k tokens."""
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
-from .moe import MoEConfig
+
+@dataclass
+class ExpertChoiceConfig:
+    n_experts: int = 8
+    capacity_factor: float = 1.25  # each expert processes capacity = capacity_factor * T/n_experts tokens
+    d_model: int = 64
+    d_ff: int = 128
+    use_bias: bool = False
+
+
+class ExpertChoiceRouter(nn.Module):
+    """Router for Expert Choice: each expert selects its top-capacity tokens.
+
+    Args:
+        d_model: Hidden dimension.
+        n_experts: Number of experts.
+    """
+
+    def __init__(self, d_model: int, n_experts: int, capacity_factor: float = 1.25) -> None:
+        super().__init__()
+        self.n_experts = n_experts
+        self.capacity_factor = capacity_factor
+        self.weight = nn.Linear(d_model, n_experts, bias=False)
+        nn.init.normal_(self.weight.weight, std=0.01)
+
+    def forward(self, hidden: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+        """Compute expert-choice routing.
+
+        Args:
+            hidden: (B, T, D)
+
+        Returns:
+            indices: (E, capacity) — which N-indices each expert processes
+            weights: (E, capacity) — router weights for selected tokens
+            router_probs: (N, E) — full softmax (for aux loss)
+        """
+        B, T, D = hidden.shape
+        N = B * T
+        hidden_flat = hidden.reshape(N, D)
+
+        # Router logits and softmax
+        router_logits = self.weight(hidden_flat)          # (N, E)
+        router_probs = F.softmax(router_logits, dim=-1)   # (N, E)
+
+        # Each expert selects top-capacity tokens
+        capacity = math.ceil(self.capacity_factor * N / self.n_experts)
+        capacity = min(capacity, N)
+
+        # Transpose: (E, N) — each row is one expert's scores over all tokens
+        scores = router_probs.T  # (E, N)
+
+        # Top-capacity for each expert
+        weights, indices = torch.topk(scores, capacity, dim=-1)  # both (E, capacity)
+
+        return indices, weights, router_probs
 
 
 class ExpertChoiceFFN(nn.Module):
-    """MoE with expert-choice routing.
+    """Full MoE FFN using Expert Choice routing.
 
-    Each expert selects exactly `capacity` tokens from the sequence, where:
-        capacity = ceil(N * top_k / n_experts)   (N = batch * seq_len)
-
-    This guarantees:
-    - Every expert processes exactly `capacity` tokens.
-    - No load balancing loss needed (aux_loss is always 0.0).
-    - Some tokens may be processed by fewer or more experts than `top_k`
-      because selection is per-expert, not per-token.
+    Each expert selects exactly capacity = ceil(capacity_factor * N / n_experts) tokens.
+    Load balance is guaranteed by construction; aux loss encourages routing entropy.
 
     Args:
-        config: AureliusConfig (uses d_model).
-        moe_cfg: MoEConfig (uses n_experts, top_k).
+        config: ExpertChoiceConfig
     """
 
-    def __init__(self, config, moe_cfg: MoEConfig | None = None) -> None:
+    def __init__(self, config: ExpertChoiceConfig) -> None:
         super().__init__()
-        from .ffn import SwiGLUFFN
+        self.config = config
+        self.n_experts = config.n_experts
 
-        self.moe_cfg = moe_cfg or MoEConfig()
-        self.n_experts = self.moe_cfg.n_experts
-        self.top_k = self.moe_cfg.top_k
+        self.router = ExpertChoiceRouter(
+            d_model=config.d_model,
+            n_experts=config.n_experts,
+            capacity_factor=config.capacity_factor,
+        )
 
-        # Expert networks — each is a full SwiGLUFFN (same as SparseMoEFFN)
+        # Each expert: Linear(d_model, d_ff) -> GELU -> Linear(d_ff, d_model)
         self.experts = nn.ModuleList([
-            SwiGLUFFN(config) for _ in range(self.n_experts)
+            nn.Sequential(
+                nn.Linear(config.d_model, config.d_ff, bias=config.use_bias),
+                nn.GELU(),
+                nn.Linear(config.d_ff, config.d_model, bias=config.use_bias),
+            )
+            for _ in range(config.n_experts)
         ])
 
-        # Router: token hidden state → per-expert logit
-        self.router = nn.Linear(config.d_model, self.n_experts, bias=False)
-        nn.init.normal_(self.router.weight, std=0.01)
+        # Store last routing info for token_utilization
+        self._last_indices: Tensor | None = None
+        self._last_N: int = 0
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Route using expert-choice: each expert picks its top tokens.
+    def forward(self, hidden: Tensor) -> tuple[Tensor, Tensor]:
+        """Route tokens via Expert Choice and compute weighted output.
 
         Args:
-            x: (batch, seq_len, d_model)
+            hidden: (B, T, D)
 
         Returns:
-            (output, aux_loss):
-            - output: (batch, seq_len, d_model) — positions not chosen by any
-              expert remain zero; the residual connection in the transformer
-              passes the original token representation through.
-            - aux_loss: scalar 0.0 (load balance is perfect by construction).
+            output: (B, T, D)
+            aux_loss: scalar auxiliary loss (negative entropy to minimize)
         """
-        B, S, D = x.shape
-        x_flat = x.view(-1, D)           # (N, D)
-        N = x_flat.shape[0]
+        B, T, D = hidden.shape
+        N = B * T
+        hidden_flat = hidden.reshape(N, D)
 
-        # Router scores: (N, n_experts)
-        router_logits = self.router(x_flat)
+        indices, weights, router_probs = self.router(hidden_flat.reshape(B, T, D))
 
-        # Expert-choice transpose: each expert scores all N tokens
-        # scores[i, j] = affinity of expert i for token j
-        scores = router_logits.T        # (n_experts, N)
+        # Store for token_utilization
+        self._last_indices = indices
+        self._last_N = N
 
-        # Each expert selects exactly `capacity` tokens
-        capacity = math.ceil(N * self.top_k / self.n_experts)
-        # Clamp to N so we never request more tokens than exist
-        capacity = min(capacity, N)
+        output = torch.zeros_like(hidden_flat)  # (N, D)
 
-        output = torch.zeros_like(x_flat)   # (N, D)
+        for e, expert in enumerate(self.experts):
+            expert_indices = indices[e]                         # (capacity,)
+            expert_weights = weights[e]                         # (capacity,)
+            expert_input = hidden_flat[expert_indices]          # (capacity, D)
+            expert_out = expert(expert_input)                   # (capacity, D)
+            # Weighted scatter back
+            output[expert_indices] += expert_weights.unsqueeze(-1) * expert_out
 
-        for i, expert in enumerate(self.experts):
-            # Top-`capacity` tokens for expert i
-            expert_scores = scores[i]                                   # (N,)
-            top_vals, top_indices = torch.topk(expert_scores, capacity) # both (capacity,)
+        output = output.reshape(B, T, D)
+        aux_loss = expert_choice_aux_loss(router_probs)
 
-            # Softmax over selected tokens (normalize the selection weights)
-            expert_weights = F.softmax(top_vals, dim=0)                 # (capacity,)
-
-            # Run expert on chosen tokens
-            chosen_tokens = x_flat[top_indices]                         # (capacity, D)
-            expert_out = expert(chosen_tokens)                          # (capacity, D)
-
-            # Weighted accumulate into output
-            output.index_add_(
-                0,
-                top_indices,
-                expert_weights.unsqueeze(1) * expert_out,
-            )
-
-        output = output.view(B, S, D)
-        aux_loss = torch.tensor(0.0, device=x.device, dtype=x.dtype)
         return output, aux_loss
 
-    def token_coverage(self, x: torch.Tensor) -> torch.Tensor:
-        """Count how many experts chose each token.
+    def token_utilization(self) -> dict[str, float]:
+        """Returns per-expert token count as fraction of N.
+
+        Must be called after a forward pass.
+        """
+        if self._last_indices is None:
+            return {}
+        N = self._last_N
+        result = {}
+        for e in range(self.n_experts):
+            count = self._last_indices[e].numel()
+            result[f"expert_{e}"] = count / N
+        return result
+
+
+def expert_choice_aux_loss(router_probs: Tensor) -> Tensor:
+    """Entropy regularization on router_probs to encourage token spread.
+
+    Computes negative mean entropy over per-token routing distributions.
+    Minimizing this loss maximizes routing entropy (diverse expert usage).
+
+    Args:
+        router_probs: (N, E) — softmax probabilities
+
+    Returns:
+        scalar: -mean_entropy (minimize to maximize entropy)
+    """
+    eps = 1e-8
+    entropy = -(router_probs * torch.log(router_probs + eps)).sum(dim=-1)  # (N,)
+    mean_entropy = entropy.mean()
+    return -mean_entropy
+
+
+class BalancedMoEFFN(nn.Module):
+    """Drop-in replacement combining Expert Choice with fallback to dense for short sequences.
+
+    Args:
+        config: ExpertChoiceConfig
+    """
+
+    def __init__(self, config: ExpertChoiceConfig) -> None:
+        super().__init__()
+        self.expert_choice = ExpertChoiceFFN(config)
+        self.dense_fallback = nn.Linear(config.d_model, config.d_model)
+        self.min_tokens_for_moe: int = config.n_experts
+
+    def forward(self, hidden: Tensor) -> tuple[Tensor, Tensor]:
+        """Forward pass with fallback to dense for short sequences.
 
         Args:
-            x: (batch, seq_len, d_model)
+            hidden: (B, T, D)
 
         Returns:
-            coverage: (batch * seq_len,) integer tensor.
+            output: (B, T, D)
+            aux_loss: scalar (0.0 for dense path)
         """
-        B, S, D = x.shape
-        x_flat = x.view(-1, D)
-        N = x_flat.shape[0]
+        B, T, D = hidden.shape
+        N = B * T
 
-        router_logits = self.router(x_flat)   # (N, n_experts)
-        scores = router_logits.T              # (n_experts, N)
+        if N < self.min_tokens_for_moe:
+            return self.dense_fallback(hidden), torch.zeros(1, device=hidden.device, dtype=hidden.dtype)
 
-        capacity = math.ceil(N * self.top_k / self.n_experts)
-        capacity = min(capacity, N)
-
-        coverage = torch.zeros(N, dtype=torch.long, device=x.device)
-        for i in range(self.n_experts):
-            _, top_indices = torch.topk(scores[i], capacity)
-            coverage.index_add_(0, top_indices, torch.ones(capacity, dtype=torch.long, device=x.device))
-
-        return coverage
+        return self.expert_choice(hidden)
