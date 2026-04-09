@@ -1,178 +1,318 @@
-"""Neural Architecture Search via DARTS (Differentiable Architecture Search).
+"""Neural Architecture Search primitives (DARTS/ENAS-style for transformers).
 
 Implements DARTS-style differentiable architecture search where architecture
-choices are represented as continuous weights optimized by gradient descent.
+choices are represented as continuous weights learned via Gumbel-Softmax.
 
 Key idea: Instead of discrete architecture choices, represent the architecture
-as a weighted mixture of all candidate operations. Architecture weights (α) are
-learned alongside model weights via bilevel optimization.
+as a weighted mixture of all candidate operations. Architecture weights (alpha)
+are learned alongside model weights via bilevel optimization.
 
 Reference: Liu et al. 2019 "DARTS: Differentiable Architecture Search"
            arXiv:1806.09055
 """
 from __future__ import annotations
 
+import math
+from dataclasses import dataclass
+from typing import Callable
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
 
-class MixedOperation(nn.Module):
-    """A mixture of operations for differentiable architecture search.
+@dataclass
+class NASConfig:
+    """Configuration for NAS primitives."""
 
-    At each position, compute: output = sum_i (softmax(α)[i] * op_i(x))
+    n_candidates: int = 4       # number of candidate operations per cell
+    d_model: int = 64
+    temperature: float = 1.0    # Gumbel softmax temperature
+    hard: bool = False          # hard vs soft Gumbel-Softmax
+    arch_lr: float = 3e-4
+
+
+@dataclass
+class ArchitectureStats:
+    """Statistics over the current architecture weight distributions."""
+
+    selected_ops: list[int]   # argmax of arch weights per cell
+    entropy: float            # mean entropy of arch weight distributions
+    dominance: float          # max arch weight minus mean (how peaked)
+
+
+# ---------------------------------------------------------------------------
+# Gumbel-Softmax
+# ---------------------------------------------------------------------------
+
+def gumbel_softmax(logits: Tensor, temperature: float, hard: bool = False) -> Tensor:
+    """Gumbel-Softmax relaxation.
 
     Args:
-        operations: dict of {name: nn.Module}
+        logits: shape (n,) unnormalized log-probabilities.
+        temperature: temperature for Gumbel-Softmax (>0, lower = sharper).
+        hard: if True use straight-through estimator (one-hot forward, soft backward).
+
+    Returns:
+        Tensor of shape (n,) summing to 1.
+    """
+    # Sample Gumbel noise: -log(-log(U)) where U ~ Uniform(0, 1)
+    gumbel_noise = -torch.log(-torch.log(torch.rand_like(logits) + 1e-20) + 1e-20)
+    y = (logits + gumbel_noise) / temperature
+    y_soft = F.softmax(y, dim=-1)
+
+    if hard:
+        # Straight-through: one-hot forward, soft backward
+        index = y_soft.argmax(dim=-1, keepdim=True)
+        y_hard = torch.zeros_like(y_soft).scatter_(-1, index, 1.0)
+        # Straight-through gradient trick
+        return y_hard - y_soft.detach() + y_soft
+
+    return y_soft
+
+
+# ---------------------------------------------------------------------------
+# Architecture weight statistics
+# ---------------------------------------------------------------------------
+
+def compute_arch_entropy(arch_weights: Tensor) -> float:
+    """Compute mean Shannon entropy over rows of arch_weights.
+
+    Args:
+        arch_weights: Tensor of shape (K, n_candidates) — rows must sum to 1.
+
+    Returns:
+        Mean entropy (float) across the K cells.
+    """
+    # Clamp to avoid log(0)
+    w = arch_weights.clamp(min=1e-20)
+    entropy_per_cell = -(w * w.log()).sum(dim=-1)  # (K,)
+    return float(entropy_per_cell.mean().item())
+
+
+def compute_arch_dominance(arch_weights: Tensor) -> float:
+    """Mean over cells of (max_weight - mean_weight). Higher = more decisive.
+
+    Args:
+        arch_weights: Tensor of shape (K, n_candidates) — rows must sum to 1.
+
+    Returns:
+        Dominance score (float).
+    """
+    max_w = arch_weights.max(dim=-1).values   # (K,)
+    mean_w = arch_weights.mean(dim=-1)        # (K,)
+    dominance_per_cell = max_w - mean_w       # (K,)
+    return float(dominance_per_cell.mean().item())
+
+
+# ---------------------------------------------------------------------------
+# MixedOp
+# ---------------------------------------------------------------------------
+
+class MixedOp(nn.Module):
+    """Weighted mixture of candidate operations.
+
+    Each candidate op has the same input and output shape.
+    The forward pass returns the weighted sum of all ops applied to x,
+    where weights are provided externally (from arch logits / Gumbel-Softmax).
     """
 
-    def __init__(self, operations: dict[str, nn.Module]) -> None:
+    def __init__(self, ops: list[nn.Module]) -> None:
         super().__init__()
-        self.ops = nn.ModuleDict(operations)
-        # Architecture weights (unnormalized)
-        self.arch_weights = nn.Parameter(torch.zeros(len(operations)))
-        self._op_names = list(operations.keys())
+        self.ops = nn.ModuleList(ops)
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        """Compute weighted mixture of all operations.
+    def forward(self, x: Tensor, weights: Tensor) -> Tensor:
+        """Compute weighted sum of candidate ops.
 
-        weights = softmax(arch_weights)
-        output = sum_i weights[i] * ops[i](x)
+        Args:
+            x: input tensor (any shape).
+            weights: shape (n_ops,) — must sum to 1.
+
+        Returns:
+            Weighted sum of op(x) outputs, same shape as x.
         """
-        weights = F.softmax(self.arch_weights, dim=0)
         out = None
-        for i, name in enumerate(self._op_names):
-            op_out = self.ops[name](x, *args, **kwargs)
+        for i, op in enumerate(self.ops):
+            op_out = op(x)
             if out is None:
                 out = weights[i] * op_out
             else:
                 out = out + weights[i] * op_out
         return out
 
-    def best_operation(self) -> str:
-        """Return name of operation with highest arch weight."""
-        with torch.no_grad():
-            idx = int(self.arch_weights.argmax().item())
-        return self._op_names[idx]
 
-    def architecture_weights(self) -> dict[str, float]:
-        """Return dict {op_name: weight} with softmax applied."""
-        with torch.no_grad():
-            weights = F.softmax(self.arch_weights, dim=0)
-        return {name: float(weights[i].item()) for i, name in enumerate(self._op_names)}
-
+# ---------------------------------------------------------------------------
+# DARTSCell
+# ---------------------------------------------------------------------------
 
 class DARTSCell(nn.Module):
-    """A DARTS-searchable transformer layer.
+    """A single NAS cell with learnable architecture weights.
 
-    Searches over:
-    - Attention type: standard GQA vs sliding window (simplified here as two linear ops)
-    - FFN type: SwiGLU vs simple linear
-
-    For testability, operations are simplified to nn.Linear layers with different configs.
-    In production, these would be full attention + FFN modules.
+    Creates n_candidates Linear(d_model, d_model) ops with optional
+    ReLU/identity variants and learns architecture weights via Gumbel-Softmax.
     """
 
-    def __init__(self, d_model: int, n_candidates: int = 3) -> None:
+    def __init__(self, cfg: NASConfig) -> None:
         super().__init__()
-        # n_candidates linear operations as proxy for different architectures
-        ops = {
-            f'op_{i}': nn.Linear(d_model, d_model, bias=(i % 2 == 0))
-            for i in range(n_candidates)
-        }
-        self.mixed_op = MixedOperation(ops)
-        self.norm = nn.LayerNorm(d_model)
+        self.cfg = cfg
+        n = cfg.n_candidates
+        d = cfg.d_model
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x + self.mixed_op(self.norm(x))
+        # Build candidate ops: alternate between plain linear, linear+ReLU,
+        # identity-like (bias-only via zero-weight init), and linear with bias.
+        ops: list[nn.Module] = []
+        for i in range(n):
+            if i % 4 == 0:
+                ops.append(nn.Linear(d, d, bias=False))
+            elif i % 4 == 1:
+                ops.append(nn.Sequential(nn.Linear(d, d, bias=True), nn.ReLU()))
+            elif i % 4 == 2:
+                ops.append(nn.Linear(d, d, bias=True))
+            else:
+                # Identity-like: linear initialized near identity
+                lin = nn.Linear(d, d, bias=False)
+                with torch.no_grad():
+                    nn.init.eye_(lin.weight)
+                ops.append(lin)
 
-    def best_op(self) -> str:
-        return self.mixed_op.best_operation()
+        self.mixed_op = MixedOp(ops)
+        # Learnable architecture logits — one per candidate
+        self.arch_logits = nn.Parameter(torch.zeros(n))
 
+    def get_weights(self) -> Tensor:
+        """Return Gumbel-Softmax weights from arch_logits.
+
+        Returns:
+            Tensor of shape (n_candidates,) summing to ~1.
+        """
+        return gumbel_softmax(self.arch_logits, self.cfg.temperature, self.cfg.hard)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute weighted mix of candidate ops applied to x.
+
+        Args:
+            x: input tensor of shape (..., d_model).
+
+        Returns:
+            Output of same shape as x.
+        """
+        weights = self.get_weights()
+        return self.mixed_op(x, weights)
+
+
+# ---------------------------------------------------------------------------
+# DARTSSearcher
+# ---------------------------------------------------------------------------
 
 class DARTSSearcher:
-    """DARTS architecture search trainer.
+    """Bi-level optimization manager: model weights + architecture weights.
 
-    Maintains two optimizers:
-    - model_optimizer: updates model weights (W) on training data
-    - arch_optimizer: updates architecture weights (α) on validation data
-
-    Bilevel optimization:
-    - Inner loop: minimize train_loss wrt W (model weights)
-    - Outer loop: minimize val_loss wrt α (architecture weights)
+    Maintains separate parameter groups so that architecture parameters
+    (arch_logits from cells) can be updated independently of model weights.
     """
 
     def __init__(
         self,
         model: nn.Module,
-        arch_lr: float = 3e-4,
-        model_lr: float = 1e-3,
-        arch_weight_decay: float = 1e-3,
+        cells: list[DARTSCell],
+        cfg: NASConfig,
     ) -> None:
-        # Separate model weights from arch weights
-        arch_params = [p for n, p in model.named_parameters() if 'arch_weights' in n]
-        model_params = [p for n, p in model.named_parameters() if 'arch_weights' not in n]
+        self.model = model
+        self.cells = cells
+        self.cfg = cfg
 
-        self.arch_optimizer = torch.optim.Adam(
-            arch_params, lr=arch_lr, weight_decay=arch_weight_decay
+    def arch_parameters(self) -> list[nn.Parameter]:
+        """Return list of arch_logits from all cells (one per cell)."""
+        return [cell.arch_logits for cell in self.cells]
+
+    def model_parameters(self) -> list[nn.Parameter]:
+        """Return model parameters, excluding architecture parameters."""
+        arch_param_ids = {id(cell.arch_logits) for cell in self.cells}
+        return [p for p in self.model.parameters() if id(p) not in arch_param_ids]
+
+    def get_architecture_stats(self) -> ArchitectureStats:
+        """Compute statistics over all cells' architecture weight distributions.
+
+        Returns:
+            ArchitectureStats with selected_ops, entropy, and dominance.
+        """
+        with torch.no_grad():
+            # Collect softmax weights (not Gumbel — deterministic for stats)
+            weight_rows = []
+            selected_ops = []
+            for cell in self.cells:
+                w = F.softmax(cell.arch_logits, dim=0)
+                weight_rows.append(w)
+                selected_ops.append(int(w.argmax().item()))
+
+            arch_weights = torch.stack(weight_rows, dim=0)  # (K, n_candidates)
+            entropy = compute_arch_entropy(arch_weights)
+            dominance = compute_arch_dominance(arch_weights)
+
+        return ArchitectureStats(
+            selected_ops=selected_ops,
+            entropy=entropy,
+            dominance=dominance,
         )
-        self.model_optimizer = torch.optim.Adam(model_params, lr=model_lr)
 
-    def model_step(self, train_loss: torch.Tensor) -> float:
-        """Update model weights on train loss. Returns loss float."""
-        self.model_optimizer.zero_grad()
-        train_loss.backward()
-        self.model_optimizer.step()
-        return float(train_loss.item())
+    def discretize(self) -> list[int]:
+        """Return argmax of arch_logits for each cell (final discrete architecture).
 
-    def arch_step(self, val_loss: torch.Tensor) -> float:
-        """Update architecture weights on val loss. Returns loss float."""
-        self.arch_optimizer.zero_grad()
-        val_loss.backward()
-        self.arch_optimizer.step()
-        return float(val_loss.item())
-
-    def get_best_architecture(self, model: nn.Module) -> dict[str, str]:
-        """Return best operation for each MixedOperation in model.
-
-        Walk model.named_modules(), find MixedOperation instances.
-        Return {module_name: best_op_name}
+        Returns:
+            List of int indices, one per cell.
         """
-        result: dict[str, str] = {}
-        for name, module in model.named_modules():
-            if isinstance(module, MixedOperation):
-                result[name] = module.best_operation()
-        return result
+        with torch.no_grad():
+            return [int(cell.arch_logits.argmax().item()) for cell in self.cells]
 
 
-class ArchitectureStats:
-    """Track architecture weight evolution during search."""
+# ---------------------------------------------------------------------------
+# Random Architecture Search
+# ---------------------------------------------------------------------------
 
-    def __init__(self) -> None:
-        self.history: list[dict] = []  # list of {step: n, weights: {name: float}}
+def random_architecture_search(
+    model: nn.Module,
+    cells: list[DARTSCell],
+    n_trials: int,
+    eval_fn: Callable[[nn.Module], float],
+) -> tuple[list[int], float]:
+    """Random search baseline over architecture choices.
 
-    def record(self, step: int, mixed_op: MixedOperation) -> None:
-        self.history.append({
-            'step': step,
-            'weights': mixed_op.architecture_weights(),
-        })
+    For each trial, randomly perturbs arch_logits (uniform random) and
+    evaluates the model using eval_fn. Returns the architecture (as list
+    of argmax indices) and the best score achieved.
 
-    def dominant_op_over_time(self) -> list[str]:
-        """Return list of best_operation at each recorded step."""
-        result = []
-        for entry in self.history:
-            weights = entry['weights']
-            best = max(weights, key=lambda k: weights[k])
-            result.append(best)
-        return result
+    Args:
+        model: the nn.Module to evaluate.
+        cells: list of DARTSCells whose arch_logits will be randomized.
+        n_trials: number of random architectures to sample.
+        eval_fn: callable taking the model and returning a float score
+                 (higher is better).
 
-    def convergence_step(self, threshold: float = 0.8) -> int | None:
-        """Return first step where one operation has weight >= threshold.
+    Returns:
+        Tuple of (best_arch: list[int], best_score: float).
+    """
+    best_arch: list[int] = []
+    best_score = float("-inf")
 
-        Returns None if never converged.
-        """
-        for entry in self.history:
-            weights = entry['weights']
-            if any(w >= threshold for w in weights.values()):
-                return entry['step']
-        return None
+    # Save original logits so we can restore them
+    orig_logits = [cell.arch_logits.data.clone() for cell in cells]
+
+    for _ in range(n_trials):
+        # Randomize arch logits
+        with torch.no_grad():
+            for cell in cells:
+                cell.arch_logits.data.uniform_(-1.0, 1.0)
+
+        score = eval_fn(model)
+
+        if score > best_score:
+            best_score = score
+            best_arch = [int(cell.arch_logits.argmax().item()) for cell in cells]
+
+    # Restore original logits
+    with torch.no_grad():
+        for cell, orig in zip(cells, orig_logits):
+            cell.arch_logits.data.copy_(orig)
+
+    return best_arch, best_score
