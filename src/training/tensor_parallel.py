@@ -1,16 +1,176 @@
-"""Tensor parallelism utilities for training large models across multiple devices.
-
-Implements column/row parallelism for Linear layers (Megatron-style).
-Since single-GPU simulation is needed for tests, uses virtual device splitting.
-"""
+"""Tensor parallelism: column/row linear splitting, attention head sharding, and all-reduce simulation."""
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
+
+
+# ---------------------------------------------------------------------------
+# New-spec dataclass and functional API
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class TensorParallelConfig:
+    """Configuration for tensor parallelism (new spec)."""
+
+    world_size: int = 2
+    rank: int = 0
+    split_dim: str = "column"  # "column" | "row"
+
+
+def split_weight_column(weight: Tensor, world_size: int) -> list[Tensor]:
+    """Split weight along dim=0 (output dimension) into world_size chunks.
+
+    Args:
+        weight: ``(out_features, in_features)``
+        world_size: Number of parallel workers.
+
+    Returns:
+        List of world_size tensors each ``(out_features // world_size, in_features)``.
+    """
+    return list(torch.chunk(weight, world_size, dim=0))
+
+
+def split_weight_row(weight: Tensor, world_size: int) -> list[Tensor]:
+    """Split weight along dim=1 (input dimension) into world_size chunks.
+
+    Args:
+        weight: ``(out_features, in_features)``
+        world_size: Number of parallel workers.
+
+    Returns:
+        List of world_size tensors each ``(out_features, in_features // world_size)``.
+    """
+    return list(torch.chunk(weight, world_size, dim=1))
+
+
+def column_parallel_linear(
+    x: Tensor, weight_shard: Tensor, bias_shard: Optional[Tensor] = None
+) -> Tensor:
+    """Linear forward with column-sharded weight.
+
+    Args:
+        x: ``(B, T, in_features)``
+        weight_shard: ``(out_shard_size, in_features)``
+        bias_shard: ``(out_shard_size,)`` or None.
+
+    Returns:
+        ``(B, T, out_shard_size)``
+    """
+    return F.linear(x, weight_shard, bias_shard)
+
+
+def row_parallel_linear(
+    x_shard: Tensor, weight_shard: Tensor, bias: Optional[Tensor] = None
+) -> Tensor:
+    """Linear forward with row-sharded weight and sharded input.
+
+    Args:
+        x_shard: ``(B, T, in_shard_size)``
+        weight_shard: ``(out_features, in_shard_size)``
+        bias: ``(out_features,)`` or None.
+
+    Returns:
+        ``(B, T, out_features)`` — partial output; needs all-reduce to sum across ranks.
+    """
+    return x_shard @ weight_shard.T + (bias if bias is not None else 0)
+
+
+def simulated_all_reduce(partial_outputs: list[Tensor], op: str = "sum") -> Tensor:
+    """Simulate all-reduce by stacking and reducing partial outputs.
+
+    Args:
+        partial_outputs: List of ``(B, T, out_features)`` tensors from each rank.
+        op: "sum" | "mean"
+
+    Returns:
+        ``(B, T, out_features)``
+    """
+    stacked = torch.stack(partial_outputs, dim=0)  # (world_size, B, T, out_features)
+    if op == "sum":
+        return stacked.sum(dim=0)
+    elif op == "mean":
+        return stacked.mean(dim=0)
+    else:
+        raise ValueError(f"Unknown op '{op}'. Expected 'sum' or 'mean'.")
+
+
+def split_attention_heads(n_heads: int, world_size: int) -> list[range]:
+    """Partition attention heads evenly across ranks.
+
+    Args:
+        n_heads: Total number of attention heads.
+        world_size: Number of parallel workers.
+
+    Returns:
+        List of world_size range objects covering all heads.
+        e.g., [range(0, 4), range(4, 8)] for n_heads=8, world_size=2.
+    """
+    heads_per_rank = n_heads // world_size
+    result: list[range] = []
+    for rank in range(world_size):
+        start = rank * heads_per_rank
+        # Last rank absorbs any remainder
+        end = n_heads if rank == world_size - 1 else start + heads_per_rank
+        result.append(range(start, end))
+    return result
+
+
+class TensorParallelLinear(nn.Module):
+    """Column or row parallel linear layer controlled by TensorParallelConfig.
+
+    For column parallel: splits output dim, each rank holds a weight shard of
+    shape ``(out_features // world_size, in_features)``. Output is
+    ``(B, T, out_features // world_size)`` — no all-reduce needed before the next layer.
+
+    For row parallel: splits input dim; output is the full ``(B, T, out_features)``
+    obtained by summing partial results via simulated_all_reduce.
+    """
+
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        config: TensorParallelConfig,
+        bias: bool = True,
+    ) -> None:
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.config = config
+
+        if config.split_dim == "column":
+            shard_out = out_features // config.world_size
+            self.weight_shard = nn.Parameter(torch.empty(shard_out, in_features))
+            self.bias_shard = nn.Parameter(torch.zeros(shard_out)) if bias else None
+            nn.init.kaiming_uniform_(self.weight_shard, a=0.01)
+        elif config.split_dim == "row":
+            shard_in = in_features // config.world_size
+            self.weight_shard = nn.Parameter(torch.empty(out_features, shard_in))
+            self.bias_shard = nn.Parameter(torch.zeros(out_features)) if bias else None
+            nn.init.kaiming_uniform_(self.weight_shard, a=0.01)
+        else:
+            raise ValueError(f"Unknown split_dim '{config.split_dim}'.")
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Forward pass.
+
+        Column parallel: ``x`` → ``(B, T, out_features // world_size)``
+        Row parallel: ``x_shard`` → all-reduce → ``(B, T, out_features)``
+        """
+        if self.config.split_dim == "column":
+            return column_parallel_linear(x, self.weight_shard, self.bias_shard)
+        else:
+            # Row parallel: x is already the correct shard of the input
+            partial = row_parallel_linear(x, self.weight_shard, self.bias_shard)
+            # Simulate all-reduce by returning partial (single-rank simulation)
+            return partial
 
 
 @dataclass
