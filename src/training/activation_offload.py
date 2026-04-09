@@ -1,218 +1,278 @@
-"""Selective activation offloading to CPU RAM during the forward pass.
-
-Unlike gradient checkpointing (which recomputes activations), offloading
-*saves* activations to CPU memory. This avoids recomputation overhead but
-still reduces GPU memory usage. Best for models too large for GPU VRAM but
-where fast CPU-GPU transfers are available (e.g. PCIe 4.0+).
-
-Usage::
-
-    from src.training.activation_offload import wrap_model_with_offloading
-
-    model = AureliusTransformer(config)
-    # Offload all transformer layers to CPU during training
-    wrap_model_with_offloading(model)
-
-    # Or selectively offload only specific layers
-    wrap_model_with_offloading(model, layer_indices=[0, 4, 8, 12])
-"""
+"""Activation offloading and memory-efficient training: CPU offload, selective checkpointing, and peak memory tracking."""
 from __future__ import annotations
+
+from dataclasses import dataclass, field
 
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 
 # ---------------------------------------------------------------------------
-# Low-level storage
+# Configuration
 # ---------------------------------------------------------------------------
 
-class OffloadedActivation:
-    """Stores a tensor on CPU, moves it back to the original device on demand."""
+@dataclass
+class OffloadConfig:
+    """Configuration for activation offloading and memory-efficient training."""
 
-    def __init__(self, tensor: torch.Tensor) -> None:
-        self.cpu_data = tensor.detach().cpu()
-        self.device = tensor.device
-        self.dtype = tensor.dtype
-        self.shape = tensor.shape
+    offload_to_cpu: bool = True
+    """Offload activations to CPU during forward pass."""
 
-    def restore(self) -> torch.Tensor:
-        """Move data back to the original device with the original dtype."""
-        return self.cpu_data.to(device=self.device, dtype=self.dtype)
+    pin_memory: bool = True
+    """Pin CPU tensors for faster H2D transfer."""
+
+    checkpoint_layers: list[int] = field(default_factory=list)
+    """Which layers to checkpoint. Empty list uses checkpoint_ratio instead."""
+
+    checkpoint_ratio: float = 0.5
+    """Fraction of layers to checkpoint when checkpoint_layers is empty."""
+
+    profile_memory: bool = False
+    """Enable memory profiling."""
+
+    dtype: str = "float32"
+    """Dtype string: 'float32' | 'float16' | 'bfloat16'."""
 
 
 # ---------------------------------------------------------------------------
-# Custom autograd Function
+# dtype helper
 # ---------------------------------------------------------------------------
 
-class OffloadFunction(torch.autograd.Function):
-    """Custom autograd function that offloads a tensor to CPU in the forward
-    pass and moves the gradient back to the original device in the backward
-    pass.
-
-    The function inserts itself into the autograd graph so that:
-    - During the forward pass the activation is moved to CPU RAM.
-    - During the backward pass the gradient is moved back to the original
-      device before being passed to the upstream operation.
-    """
-
-    @staticmethod
-    def forward(ctx, x: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
-        ctx.save_for_backward(x.detach().cpu())
-        ctx.device = x.device
-        ctx.dtype = x.dtype
-        cpu_tensor = x.detach().cpu()
-        if x.requires_grad:
-            cpu_tensor = cpu_tensor.requires_grad_(True)
-        return cpu_tensor
-
-    @staticmethod
-    def backward(ctx, grad_output: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
-        (saved,) = ctx.saved_tensors  # noqa: F841 — kept for completeness
-        return grad_output.to(device=ctx.device, dtype=ctx.dtype)
-
-
-def offload_activation(x: torch.Tensor) -> torch.Tensor:
-    """Apply :class:`OffloadFunction` to *x*.
-
-    Moves the tensor to CPU for storage and restores the gradient to the
-    original device during backprop.  Gradients flow through transparently.
+def get_dtype(dtype_str: str) -> torch.dtype:
+    """Map a dtype string to a torch.dtype.
 
     Args:
-        x: Input tensor (any device).
+        dtype_str: One of "float32", "float16", "bfloat16".
 
     Returns:
-        Equivalent tensor on CPU with the autograd graph intact.
-    """
-    return OffloadFunction.apply(x)
-
-
-# ---------------------------------------------------------------------------
-# Hook helper (kept for API completeness / future extension)
-# ---------------------------------------------------------------------------
-
-class ActivationOffloadHook:
-    """Hook that offloads activations to CPU after each forward pass and
-    reloads them for the backward pass.
-
-    Works by replacing tensors in the autograd graph using
-    :class:`OffloadFunction`.
-    """
-
-    def __init__(self) -> None:
-        self._offloaded: dict[int, OffloadedActivation] = {}
-
-    @staticmethod
-    def offload_tensor(tensor: torch.Tensor) -> torch.Tensor:
-        """Offload *tensor* to CPU while keeping it in the computation graph.
-
-        Returns a CPU tensor that participates in the autograd graph.
-        During backward, gradients are automatically moved back to the
-        original device.
-        """
-        return offload_activation(tensor)
-
-
-# ---------------------------------------------------------------------------
-# Module wrapper
-# ---------------------------------------------------------------------------
-
-class SelectiveOffloadWrapper(nn.Module):
-    """Wraps a module and applies activation offloading to its output.
-
-    Used to selectively offload only large intermediate tensors (e.g. the
-    hidden states produced by a transformer block) rather than every tensor
-    in the model.
-
-    Args:
-        module: The module whose output should be offloaded.
-        offload: If *False*, the wrapper is a no-op (useful for toggling
-            offloading without rewrapping).
-    """
-
-    def __init__(self, module: nn.Module, offload: bool = True) -> None:
-        super().__init__()
-        self.module = module
-        self.offload = offload
-
-    def forward(self, *args, **kwargs):
-        out = self.module(*args, **kwargs)
-        if self.offload and self.training:
-            if isinstance(out, torch.Tensor):
-                return offload_activation(out)
-            elif isinstance(out, tuple):
-                # Offload the first element (typically hidden states); pass
-                # the remaining elements (e.g. KV cache) through unchanged.
-                return (offload_activation(out[0]),) + out[1:]
-        return out
-
-
-# ---------------------------------------------------------------------------
-# Model-level helper
-# ---------------------------------------------------------------------------
-
-def wrap_model_with_offloading(
-    model: nn.Module,
-    layer_indices: list[int] | None = None,
-) -> nn.Module:
-    """Wrap transformer layers with :class:`SelectiveOffloadWrapper`.
-
-    Modifies *model* **in place** by replacing selected entries in
-    ``model.layers`` with wrapped versions.
-
-    Args:
-        model: An :class:`~src.model.transformer.AureliusTransformer` (or any
-            ``nn.Module`` that exposes a ``layers`` attribute which is an
-            ``nn.ModuleList``).
-        layer_indices: Indices of layers to offload.  ``None`` (default) means
-            *all* layers.
-
-    Returns:
-        The same *model* object with offloading wrappers applied.
+        Corresponding torch.dtype.
 
     Raises:
-        AttributeError: If *model* does not have a ``layers`` attribute.
+        ValueError: If the string is not recognised.
     """
-    if not hasattr(model, "layers"):
-        raise AttributeError(
-            f"{type(model).__name__} does not have a 'layers' attribute. "
-            "wrap_model_with_offloading expects a model with model.layers "
-            "(nn.ModuleList of transformer blocks)."
+    _map: dict[str, torch.dtype] = {
+        "float32": torch.float32,
+        "float16": torch.float16,
+        "bfloat16": torch.bfloat16,
+    }
+    if dtype_str not in _map:
+        raise ValueError(
+            f"Unknown dtype '{dtype_str}'. Choose from {list(_map.keys())}."
         )
-
-    layers: nn.ModuleList = model.layers  # type: ignore[assignment]
-    indices_to_wrap = (
-        set(layer_indices) if layer_indices is not None else set(range(len(layers)))
-    )
-
-    for i in indices_to_wrap:
-        layers[i] = SelectiveOffloadWrapper(layers[i], offload=True)
-
-    return model
+    return _map[dtype_str]
 
 
 # ---------------------------------------------------------------------------
-# Statistics tracker
+# CPU offload wrapper
 # ---------------------------------------------------------------------------
 
-class OffloadingStats:
-    """Track memory savings from activation offloading.
+class CPUOffloadTensor:
+    """Wraps a tensor, stores it on CPU, and restores it to the original device on demand.
 
-    Attributes:
-        offloaded_bytes: Running total of bytes moved to CPU RAM.
-        restore_count: Number of times a tensor has been restored to GPU.
+    Args:
+        tensor: Tensor to offload.
+        pin_memory: If True, pin the CPU copy for faster H2D transfers.
     """
+
+    def __init__(self, tensor: Tensor, pin_memory: bool = True) -> None:
+        cpu_tensor = tensor.detach().cpu()
+        if pin_memory and cpu_tensor.is_floating_point():
+            try:
+                cpu_tensor = cpu_tensor.pin_memory()
+            except Exception:
+                pass  # silently fall back if pinning not supported
+        self._cpu_tensor = cpu_tensor
+        self._device = tensor.device
+        self._requires_grad = tensor.requires_grad
+
+    def restore(self) -> Tensor:
+        """Move the stored CPU tensor back to the original device.
+
+        Returns:
+            Tensor on the original device.
+        """
+        t = self._cpu_tensor.to(self._device)
+        if self._requires_grad:
+            t = t.requires_grad_(True)
+        return t
+
+
+# ---------------------------------------------------------------------------
+# Selective checkpointing helpers
+# ---------------------------------------------------------------------------
+
+def selective_checkpoint_layers(n_layers: int, config: OffloadConfig) -> list[int]:
+    """Determine which layer indices to checkpoint.
+
+    Args:
+        n_layers: Total number of transformer layers.
+        config: OffloadConfig controlling checkpoint behaviour.
+
+    Returns:
+        Sorted list of layer indices to apply gradient checkpointing to.
+    """
+    if config.checkpoint_layers:
+        return sorted(config.checkpoint_layers)
+
+    ratio = config.checkpoint_ratio
+    if ratio <= 0.0:
+        return []
+    step = round(1 / ratio)
+    return [i for i in range(n_layers) if i % step == 0]
+
+
+# ---------------------------------------------------------------------------
+# Memory tracker
+# ---------------------------------------------------------------------------
+
+class MemoryTracker:
+    """Track peak GPU memory usage across training steps."""
 
     def __init__(self) -> None:
-        self.offloaded_bytes: int = 0
-        self.restore_count: int = 0
+        self.peak_mb: float = 0.0
+        self.snapshots: list[float] = []
 
-    def record_offload(self, tensor: torch.Tensor) -> None:
-        """Record that *tensor* was offloaded to CPU.
+    def snapshot(self) -> float:
+        """Record current GPU memory and update peak.
 
-        Updates :attr:`offloaded_bytes` by the byte size of *tensor*.
+        Returns:
+            Current allocated GPU memory in MB.
         """
-        self.offloaded_bytes += tensor.numel() * tensor.element_size()
+        if torch.cuda.is_available():
+            current_mb = torch.cuda.memory_allocated() / 1e6
+        else:
+            current_mb = 0.0
 
-    def offloaded_mb(self) -> float:
-        """Return the total offloaded memory in megabytes."""
-        return self.offloaded_bytes / (1024 ** 2)
+        if current_mb > self.peak_mb:
+            self.peak_mb = current_mb
+        self.snapshots.append(current_mb)
+        return current_mb
+
+    def reset(self) -> None:
+        """Clear all recorded history."""
+        self.peak_mb = 0.0
+        self.snapshots = []
+
+    def summary(self) -> dict[str, float]:
+        """Return a summary of recorded memory statistics.
+
+        Returns:
+            Dict with keys: peak_mb, mean_mb, n_snapshots.
+        """
+        n = len(self.snapshots)
+        mean_mb = sum(self.snapshots) / n if n > 0 else 0.0
+        return {
+            "peak_mb": self.peak_mb,
+            "mean_mb": mean_mb,
+            "n_snapshots": float(n),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Gradient checkpoint wrapper
+# ---------------------------------------------------------------------------
+
+class GradientCheckpointWrapper(nn.Module):
+    """Wraps a module to apply gradient checkpointing during training.
+
+    Args:
+        module: The module to wrap.
+        enabled: If False the wrapper is a no-op.
+    """
+
+    def __init__(self, module: nn.Module, enabled: bool = True) -> None:
+        super().__init__()
+        self.module = module
+        self.enabled = enabled
+
+    def forward(self, *args, **kwargs):
+        if self.enabled and self.training:
+            return torch.utils.checkpoint.checkpoint(
+                self.module, *args, **kwargs, use_reentrant=False
+            )
+        return self.module(*args, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Apply selective checkpointing to a ModuleList
+# ---------------------------------------------------------------------------
+
+def apply_selective_checkpointing(
+    model_layers: nn.ModuleList, config: OffloadConfig
+) -> nn.ModuleList:
+    """Wrap selected layers with GradientCheckpointWrapper.
+
+    Args:
+        model_layers: ModuleList of transformer layers.
+        config: OffloadConfig specifying which layers to checkpoint.
+
+    Returns:
+        New ModuleList with selected layers wrapped.
+    """
+    n_layers = len(model_layers)
+    checkpoint_indices = set(selective_checkpoint_layers(n_layers, config))
+
+    new_layers: list[nn.Module] = []
+    for i, layer in enumerate(model_layers):
+        if i in checkpoint_indices:
+            new_layers.append(GradientCheckpointWrapper(layer, enabled=True))
+        else:
+            new_layers.append(layer)
+
+    return nn.ModuleList(new_layers)
+
+
+# ---------------------------------------------------------------------------
+# Memory-efficient trainer
+# ---------------------------------------------------------------------------
+
+class MemoryEfficientTrainer:
+    """Trainer with memory optimisations (offloading, checkpointing, tracking).
+
+    Args:
+        model: The neural network to train.
+        optimizer: A PyTorch optimizer.
+        config: OffloadConfig with training options.
+    """
+
+    def __init__(self, model: nn.Module, optimizer, config: OffloadConfig) -> None:
+        self.model = model
+        self.optimizer = optimizer
+        self.config = config
+        self.tracker = MemoryTracker()
+
+    def train_step(self, input_ids: Tensor, labels: Tensor) -> dict[str, float]:
+        """Perform a single training step.
+
+        Args:
+            input_ids: Token id tensor of shape (batch, seq_len).
+            labels: Target token id tensor of shape (batch, seq_len).
+
+        Returns:
+            Dict with keys: loss (float), memory_mb (float).
+        """
+        self.model.train()
+        self.optimizer.zero_grad()
+
+        self.tracker.snapshot()  # before forward
+
+        loss, _logits, _pkv = self.model(input_ids, labels=labels)
+
+        self.tracker.snapshot()  # after forward
+
+        loss.backward()
+        self.optimizer.step()
+
+        return {
+            "loss": loss.item(),
+            "memory_mb": self.tracker.peak_mb,
+        }
+
+    def get_memory_stats(self) -> dict[str, float]:
+        """Return memory statistics from the tracker.
+
+        Returns:
+            Dict from MemoryTracker.summary().
+        """
+        return self.tracker.summary()
