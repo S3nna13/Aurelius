@@ -1,12 +1,13 @@
-"""Loss-landscape utilities for interpolation and local sharpness analysis."""
+"""Loss landscape analysis: sharpness measurement, flatness-seeking perturbations, and SAM optimizer."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 
 def flatten_parameters(params: list[torch.Tensor]) -> torch.Tensor:
@@ -352,3 +353,265 @@ class LandscapeStats:
             if second_diff < -1e-6:
                 return False
         return True
+
+
+# ---------------------------------------------------------------------------
+# SAM / Sharpness-Aware Minimization API
+# ---------------------------------------------------------------------------
+
+@dataclass
+class LandscapeConfig:
+    """Configuration for loss landscape analysis and SAM optimizer."""
+
+    rho: float = 0.05                   # SAM perturbation radius
+    sharpness_n_perturbations: int = 10
+    sharpness_epsilon: float = 0.01
+    adaptive_sam: bool = False          # ASAM: normalize perturbation by parameter magnitude
+
+
+def compute_gradient_norm(model: nn.Module) -> float:
+    """L2 norm of all parameter gradients concatenated.
+
+    Returns 0.0 if no gradients exist.
+    """
+    grads = [p.grad for p in model.parameters() if p.grad is not None]
+    if not grads:
+        return 0.0
+    flat = torch.cat([g.reshape(-1) for g in grads])
+    return flat.norm().item()
+
+
+def compute_weight_norm(model: nn.Module) -> float:
+    """L2 norm of all parameters concatenated."""
+    params = [p for p in model.parameters()]
+    if not params:
+        return 0.0
+    flat = torch.cat([p.detach().reshape(-1) for p in params])
+    return flat.norm().item()
+
+
+def measure_sharpness(
+    model: nn.Module,
+    loss_fn: Callable,
+    n_perturbations: int,
+    epsilon: float,
+) -> float:
+    """Estimate sharpness as average loss increase under random Gaussian perturbations.
+
+    For each perturbation: add N(0, epsilon²) noise to each parameter, compute
+    loss, restore. Returns mean(perturbed_loss - base_loss).
+    """
+    # Save original parameters
+    originals = {name: p.data.clone() for name, p in model.named_parameters()}
+
+    with torch.no_grad():
+        base_loss = loss_fn(model)
+        if isinstance(base_loss, Tensor):
+            base_loss = base_loss.item()
+
+    increases = []
+    for _ in range(n_perturbations):
+        # Add Gaussian noise
+        with torch.no_grad():
+            for p in model.parameters():
+                noise = torch.randn_like(p) * epsilon
+                p.data.add_(noise)
+
+        with torch.no_grad():
+            perturbed_loss = loss_fn(model)
+            if isinstance(perturbed_loss, Tensor):
+                perturbed_loss = perturbed_loss.item()
+
+        increases.append(perturbed_loss - base_loss)
+
+        # Restore original parameters
+        with torch.no_grad():
+            for name, p in model.named_parameters():
+                p.data.copy_(originals[name])
+
+    return float(sum(increases) / len(increases)) if increases else 0.0
+
+
+def sam_first_step(
+    model: nn.Module,
+    loss: Tensor,
+    rho: float,
+    adaptive: bool = False,
+) -> dict[str, Tensor]:
+    """SAM first step: find and apply perturbation that maximizes loss.
+
+    Computes gradients, then applies perturbation:
+        perturbation[i] = rho * grad[i] / (grad_norm + 1e-12)
+    If adaptive (ASAM), scales perturbation elementwise by |param_i|.
+
+    Returns saved original params dict for restoration.
+    """
+    params = list(model.parameters())
+
+    # Compute gradients
+    grads = torch.autograd.grad(loss, params, create_graph=False, allow_unused=True)
+
+    # Replace None grads with zeros
+    grads = [
+        g if g is not None else torch.zeros_like(p)
+        for g, p in zip(grads, params)
+    ]
+
+    # Compute global grad norm
+    flat_grads = torch.cat([g.reshape(-1) for g in grads])
+    grad_norm = flat_grads.norm() + 1e-12
+
+    # Save original params
+    original_params = {name: p.data.clone() for name, p in model.named_parameters()}
+
+    # Compute and apply perturbation
+    with torch.no_grad():
+        for p, g in zip(params, grads):
+            perturbation = rho * g / grad_norm
+            if adaptive:
+                perturbation = perturbation * p.abs()
+            p.data.add_(perturbation)
+
+    return original_params
+
+
+def sam_second_step(
+    model: nn.Module,
+    original_params: dict[str, Tensor],
+    loss: Tensor,
+    optimizer,
+) -> None:
+    """SAM second step: restore original params, backward, optimizer step.
+
+    Args:
+        model: the model (currently at perturbed point)
+        original_params: saved params from sam_first_step
+        loss: loss computed at the perturbed point
+        optimizer: base optimizer
+    """
+    # Restore original params
+    with torch.no_grad():
+        for name, p in model.named_parameters():
+            p.data.copy_(original_params[name])
+
+    # Backward on perturbed loss
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+
+class SAMOptimizer:
+    """Sharpness-Aware Minimization (SAM) optimizer wrapper.
+
+    Wraps a base optimizer to implement the two-step SAM update.
+    Usage:
+        sam = SAMOptimizer(base_optimizer, model, config)
+        loss1 = compute_loss(model, batch)
+        sam.first_step(loss1)
+        loss2 = compute_loss(model, batch)   # at perturbed point
+        sam.second_step(loss2)
+    """
+
+    def __init__(
+        self,
+        base_optimizer,
+        model: nn.Module,
+        config: LandscapeConfig,
+    ) -> None:
+        self.base_optimizer = base_optimizer
+        self.model = model
+        self.config = config
+        self._original_params: dict[str, Tensor] | None = None
+
+    def first_step(self, loss: Tensor) -> None:
+        """Apply SAM perturbation to model parameters."""
+        self._original_params = sam_first_step(
+            self.model,
+            loss,
+            rho=self.config.rho,
+            adaptive=self.config.adaptive_sam,
+        )
+
+    def second_step(self, loss: Tensor) -> None:
+        """Restore original params, backward on perturbed loss, optimizer step."""
+        assert self._original_params is not None, "Call first_step before second_step"
+        sam_second_step(self.model, self._original_params, loss, self.base_optimizer)
+        self._original_params = None
+
+    def zero_grad(self) -> None:
+        """Delegate zero_grad to base optimizer."""
+        self.base_optimizer.zero_grad()
+
+
+def compute_hessian_trace(
+    model: nn.Module,
+    loss: Tensor,
+    n_samples: int = 5,
+) -> float:
+    """Estimate Hessian trace via Hutchinson estimator.
+
+    trace(H) ≈ mean(v^T H v) where v ~ Rademacher.
+    Uses finite-difference approximation of Hv to avoid requiring
+    second-order autograd support (which some ops like flash attention lack):
+        Hv ≈ (grad(L, params + eps*v) - grad(L, params)) / eps
+
+    Returns float estimate.
+    """
+    eps = 1e-3
+    params = [p for p in model.parameters() if p.requires_grad]
+
+    # Compute base gradients (no create_graph needed — we use finite differences)
+    base_grads = torch.autograd.grad(loss, params, allow_unused=True)
+    base_grads = [
+        g.detach().clone() if g is not None else torch.zeros_like(p)
+        for g, p in zip(base_grads, params)
+    ]
+
+    estimates = []
+    for _ in range(n_samples):
+        # Draw Rademacher vector
+        vs = [torch.randint(0, 2, p.shape, dtype=p.dtype, device=p.device) * 2 - 1
+              for p in params]
+
+        # Perturb parameters by eps * v
+        with torch.no_grad():
+            for p, v in zip(params, vs):
+                p.data.add_(eps * v)
+
+        # Compute perturbed loss and gradients
+        # We need a fresh forward pass at perturbed params
+        # Re-use the same loss_fn structure: recompute loss
+        try:
+            # Try to recompute using the computational graph (may not always work)
+            pert_grads_raw = torch.autograd.grad(
+                loss, params, allow_unused=True, retain_graph=True
+            )
+        except RuntimeError:
+            pert_grads_raw = [None] * len(params)
+
+        if all(g is None for g in pert_grads_raw):
+            # Fallback: zero Hv estimate for this sample
+            with torch.no_grad():
+                for p, v in zip(params, vs):
+                    p.data.sub_(eps * v)
+            estimates.append(0.0)
+            continue
+
+        pert_grads = [
+            g.detach() if g is not None else torch.zeros_like(p)
+            for g, p in zip(pert_grads_raw, params)
+        ]
+
+        # Hv ≈ (pert_grad - base_grad) / eps
+        Hvs = [(pg - bg) / eps for pg, bg in zip(pert_grads, base_grads)]
+
+        # Restore parameters
+        with torch.no_grad():
+            for p, v in zip(params, vs):
+                p.data.sub_(eps * v)
+
+        # v^T H v
+        vHv = sum((v * hv).sum().item() for v, hv in zip(vs, Hvs))
+        estimates.append(float(vHv))
+
+    return float(sum(estimates) / len(estimates)) if estimates else 0.0

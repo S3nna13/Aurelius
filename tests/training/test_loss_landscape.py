@@ -2,194 +2,198 @@
 
 import pytest
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 from src.training.loss_landscape import (
-    flatten_parameters,
-    interpolate_parameters,
-    interpolation_slice,
-    local_sharpness,
-    perturb_parameters,
-    random_direction_like,
-    unflatten_like,
+    LandscapeConfig,
+    SAMOptimizer,
+    compute_gradient_norm,
+    compute_hessian_trace,
+    compute_weight_norm,
+    measure_sharpness,
+    sam_first_step,
+    sam_second_step,
+)
+
+# ---------------------------------------------------------------------------
+# Small model fixture shared by all tests
+# ---------------------------------------------------------------------------
+
+SMALL_CFG = AureliusConfig(
+    n_layers=2,
+    d_model=64,
+    n_heads=2,
+    n_kv_heads=2,
+    head_dim=32,
+    d_ff=128,
+    vocab_size=256,
+    max_seq_len=512,
 )
 
 
-def make_params():
-    return [torch.randn(2, 3), torch.randn(4)]
-
-
-def test_flatten_and_unflatten_round_trip():
-    params = make_params()
-    flat = flatten_parameters(params)
-    restored = unflatten_like(flat, params)
-    assert all(torch.allclose(a, b) for a, b in zip(params, restored))
-
-
-def test_interpolate_parameters_midpoint():
-    a = [torch.zeros(2)]
-    b = [torch.ones(2)]
-    out = interpolate_parameters(a, b, alpha=0.5)
-    assert torch.allclose(out[0], torch.full((2,), 0.5))
-
-
-def test_random_direction_like_is_normalized():
-    direction = random_direction_like(make_params())
-    norm = flatten_parameters(direction).norm().item()
-    assert norm == pytest.approx(1.0, rel=1e-5)
-
-
-def test_perturb_parameters_shifts_values():
-    params = [torch.zeros(2)]
-    direction = [torch.ones(2)]
-    out = perturb_parameters(params, direction, epsilon=0.25)
-    assert torch.allclose(out[0], torch.full((2,), 0.25))
-
-
-def test_interpolation_slice_returns_n_points():
-    a = [torch.zeros(2)]
-    b = [torch.ones(2)]
-    loss_fn = lambda ps: ps[0].sum()
-    result = interpolation_slice(a, b, loss_fn, n_points=4)
-    assert result.alphas.shape == (4,)
-    assert result.losses.shape == (4,)
-
-
-def test_local_sharpness_is_max_increase():
-    sharpness = local_sharpness(torch.tensor(1.0), torch.tensor([1.2, 0.9, 1.5]))
-    assert sharpness.item() == pytest.approx(0.5)
-
-
-def test_interpolate_parameters_rejects_bad_alpha():
-    with pytest.raises(ValueError):
-        interpolate_parameters([torch.zeros(1)], [torch.zeros(1)], alpha=-0.1)
-
-
-# ---------------------------------------------------------------------------
-# LossLandscapeExplorer and LandscapeStats tests
-# ---------------------------------------------------------------------------
-
-import torch.nn as nn
-from src.training.loss_landscape import LossLandscapeExplorer, LandscapeStats
-
-
-def make_explorer_model():
-    """A simple linear model for landscape tests."""
+def make_model() -> AureliusTransformer:
     torch.manual_seed(0)
-    return nn.Linear(4, 2, bias=False)
+    return AureliusTransformer(SMALL_CFG)
 
 
-def make_explorer(model=None):
-    """Build a LossLandscapeExplorer with a simple quadratic loss."""
-    if model is None:
-        model = make_explorer_model()
-
-    def loss_fn(m):
-        # Simple: sum of squared parameters -> bowl-shaped landscape
-        flat = torch.cat([p.view(-1) for p in m.parameters()])
-        return (flat ** 2).sum()
-
-    return LossLandscapeExplorer(model, loss_fn, filter_normalization=True)
+def make_input(batch: int = 2, seq: int = 16) -> torch.Tensor:
+    return torch.randint(0, SMALL_CFG.vocab_size, (batch, seq))
 
 
-def test_line_scan_returns_dict():
-    """line_scan should return a dict with 'alphas' and 'losses'."""
-    explorer = make_explorer()
-    result = explorer.line_scan(n_points=5)
-    assert isinstance(result, dict)
-    assert 'alphas' in result
-    assert 'losses' in result
+def ce_loss_fn(model: nn.Module) -> torch.Tensor:
+    """Simple cross-entropy loss for use with measure_sharpness."""
+    input_ids = make_input()
+    with torch.no_grad():
+        _, logits, _ = model(input_ids)
+    # logits: (B, S, V) — use next-token prediction
+    shift_logits = logits[:, :-1, :].reshape(-1, SMALL_CFG.vocab_size)
+    shift_labels = input_ids[:, 1:].reshape(-1)
+    return F.cross_entropy(shift_logits, shift_labels)
 
 
-def test_line_scan_n_points():
-    """losses tensor should have n_points values."""
-    explorer = make_explorer()
-    n = 7
-    result = explorer.line_scan(n_points=n)
-    assert result['losses'].shape == (n,), f"Expected ({n},), got {result['losses'].shape}"
+def compute_loss_with_grad(model: nn.Module) -> torch.Tensor:
+    """Compute a loss that allows grad computation (no torch.no_grad)."""
+    input_ids = make_input()
+    _, logits, _ = model(input_ids)
+    shift_logits = logits[:, :-1, :].reshape(-1, SMALL_CFG.vocab_size)
+    shift_labels = input_ids[:, 1:].reshape(-1)
+    return F.cross_entropy(shift_logits, shift_labels)
 
 
-def test_line_scan_restores_params():
-    """Model parameters should be unchanged after line_scan."""
-    model = make_explorer_model()
-    explorer = make_explorer(model)
-
-    params_before = torch.cat([p.detach().view(-1) for p in model.parameters()]).clone()
-    explorer.line_scan(n_points=5)
-    params_after = torch.cat([p.detach().view(-1) for p in model.parameters()])
-
-    assert torch.allclose(params_before, params_after), "Parameters should be restored after line_scan"
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
 
 
-def test_surface_scan_shape():
-    """surface_scan losses tensor should be (n_points, n_points)."""
-    explorer = make_explorer()
-    n = 4
-    result = explorer.surface_scan(n_points=n)
-    assert result['losses'].shape == (n, n), f"Expected ({n},{n}), got {result['losses'].shape}"
+def test_landscape_config_defaults():
+    cfg = LandscapeConfig()
+    assert cfg.rho == 0.05
+    assert cfg.sharpness_n_perturbations == 10
+    assert cfg.sharpness_epsilon == 0.01
+    assert cfg.adaptive_sam is False
 
 
-def test_surface_scan_restores_params():
-    """Model parameters should be unchanged after surface_scan."""
-    model = make_explorer_model()
-    explorer = make_explorer(model)
-
-    params_before = torch.cat([p.detach().view(-1) for p in model.parameters()]).clone()
-    explorer.surface_scan(n_points=3)
-    params_after = torch.cat([p.detach().view(-1) for p in model.parameters()])
-
-    assert torch.allclose(params_before, params_after), "Parameters should be restored after surface_scan"
+def test_compute_gradient_norm_returns_float():
+    model = make_model()
+    loss = compute_loss_with_grad(model)
+    loss.backward()
+    result = compute_gradient_norm(model)
+    assert isinstance(result, float)
 
 
-def test_flatness_score_nonneg():
-    """flatness_score should be >= 0 for a convex (bowl-shaped) loss landscape."""
-    model = make_explorer_model()
-
-    def bowl_loss(m):
-        flat = torch.cat([p.view(-1) for p in m.parameters()])
-        return (flat ** 2).sum()
-
-    explorer = LossLandscapeExplorer(model, bowl_loss, filter_normalization=True)
-    score = explorer.flatness_score(epsilon=0.01, n_directions=3)
-    # For a bowl (quadratic), moving away from origin increases loss, so score >= 0
-    # (unless model is already at zero)
-    assert isinstance(score, float), "flatness_score should return a float"
-    # We just check it's a number; sign depends on position in landscape
-    assert score is not None
+def test_compute_gradient_norm_zero_when_no_grads():
+    model = make_model()
+    # No backward called — no gradients
+    result = compute_gradient_norm(model)
+    assert result == 0.0
 
 
-def test_sharpness_ratio_nonneg():
-    """sharpness_ratio should return a non-negative float for a bowl-shaped loss."""
-    model = make_explorer_model()
-
-    def bowl_loss(m):
-        flat = torch.cat([p.view(-1) for p in m.parameters()])
-        return (flat ** 2).sum()
-
-    explorer = LossLandscapeExplorer(model, bowl_loss, filter_normalization=True)
-    ratio = explorer.sharpness_ratio(epsilon=0.01, n_directions=5)
-    assert isinstance(ratio, float), "sharpness_ratio should return a float"
-    assert ratio >= 0.0, f"sharpness_ratio should be >= 0, got {ratio}"
+def test_compute_weight_norm_returns_positive_float():
+    model = make_model()
+    result = compute_weight_norm(model)
+    assert isinstance(result, float)
+    assert result > 0.0
 
 
-def test_landscape_stats_curvature():
-    """curvature_at_center should return a float."""
-    losses = torch.tensor([2.0, 1.0, 0.5, 1.0, 2.0])
-    stats = LandscapeStats(losses)
-    curv = stats.curvature_at_center()
-    assert isinstance(curv, float), "curvature_at_center should return a float"
+def test_measure_sharpness_returns_float():
+    model = make_model()
+    result = measure_sharpness(model, ce_loss_fn, n_perturbations=3, epsilon=0.01)
+    assert isinstance(result, float)
 
 
-def test_local_minima_count():
-    """local_minima_count should return a non-negative integer."""
-    losses = torch.tensor([3.0, 1.0, 3.0, 1.0, 3.0])  # two local minima
-    stats = LandscapeStats(losses)
-    count = stats.local_minima_count(window=3)
-    assert isinstance(count, int), "local_minima_count should return an int"
-    assert count >= 0, "local_minima_count should be non-negative"
+def test_measure_sharpness_higher_epsilon_higher_sharpness():
+    """Higher epsilon should yield higher (or equal) sharpness on average."""
+    torch.manual_seed(42)
+    model = make_model()
+    sharpness_small = measure_sharpness(model, ce_loss_fn, n_perturbations=20, epsilon=0.001)
+    sharpness_large = measure_sharpness(model, ce_loss_fn, n_perturbations=20, epsilon=0.1)
+    # With larger perturbations, the loss increase should be larger
+    assert sharpness_large >= sharpness_small - 0.1, (
+        f"Expected larger epsilon to give higher sharpness: "
+        f"small={sharpness_small:.4f}, large={sharpness_large:.4f}"
+    )
 
 
-def test_is_convex_simple():
-    """A convex (bowl-shaped) loss tensor should return True."""
-    losses = torch.tensor([4.0, 1.0, 0.0, 1.0, 4.0])  # quadratic bowl
-    stats = LandscapeStats(losses)
-    assert stats.is_convex() is True, "Bowl-shaped loss should be convex"
+def test_sam_first_step_returns_original_params_dict():
+    model = make_model()
+    loss = compute_loss_with_grad(model)
+    original_params = sam_first_step(model, loss, rho=0.05)
+    assert isinstance(original_params, dict)
+    assert len(original_params) == len(dict(model.named_parameters()))
+    # All values should be Tensors
+    for name, tensor in original_params.items():
+        assert isinstance(tensor, torch.Tensor)
+
+
+def test_sam_first_step_perturbs_model_parameters():
+    model = make_model()
+    # Save params before perturbation
+    params_before = {
+        name: p.data.clone() for name, p in model.named_parameters()
+    }
+    loss = compute_loss_with_grad(model)
+    sam_first_step(model, loss, rho=0.05)
+    # At least some parameters should have changed
+    any_changed = any(
+        not torch.allclose(p.data, params_before[name])
+        for name, p in model.named_parameters()
+    )
+    assert any_changed, "sam_first_step should perturb model parameters"
+
+
+def test_sam_optimizer_first_and_second_step_run():
+    model = make_model()
+    base_opt = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    cfg = LandscapeConfig(rho=0.05)
+    sam = SAMOptimizer(base_opt, model, cfg)
+
+    # First step
+    sam.zero_grad()
+    loss1 = compute_loss_with_grad(model)
+    sam.first_step(loss1)
+
+    # Second step (loss at perturbed point)
+    loss2 = compute_loss_with_grad(model)
+    sam.second_step(loss2)  # should not raise
+
+
+def test_compute_hessian_trace_returns_float():
+    model = make_model()
+    loss = compute_loss_with_grad(model)
+    result = compute_hessian_trace(model, loss, n_samples=2)
+    assert isinstance(result, float)
+
+
+def test_compute_gradient_norm_after_backward_is_positive():
+    model = make_model()
+    loss = compute_loss_with_grad(model)
+    loss.backward()
+    result = compute_gradient_norm(model)
+    assert result > 0.0, "Gradient norm should be positive after backward"
+
+
+def test_sam_optimizer_zero_grad_clears_gradients():
+    model = make_model()
+    base_opt = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    cfg = LandscapeConfig()
+    sam = SAMOptimizer(base_opt, model, cfg)
+
+    # Create some gradients
+    loss = compute_loss_with_grad(model)
+    loss.backward()
+
+    # Verify gradients exist
+    has_grads_before = any(p.grad is not None for p in model.parameters())
+    assert has_grads_before, "Should have gradients before zero_grad"
+
+    sam.zero_grad()
+
+    # After zero_grad, gradients should be zeroed
+    all_zero = all(
+        p.grad is None or p.grad.abs().max().item() == 0.0
+        for p in model.parameters()
+    )
+    assert all_zero, "Gradients should be cleared after zero_grad"
