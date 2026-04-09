@@ -1,8 +1,9 @@
-"""Tests for src/training/federated.py — 11 tests."""
+"""Tests for src/training/federated.py — FedAvg + DP-SGD federated learning simulation."""
 
 from __future__ import annotations
 
 import copy
+import random
 
 import pytest
 import torch
@@ -11,17 +12,18 @@ import torch.nn as nn
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.federated import (
-    FedConfig,
-    FederatedClient,
-    FederatedServer,
+    FederatedConfig,
+    ClientSimulator,
+    FederatedTrainer,
+    add_dp_noise,
+    clip_gradients_dp,
     fedavg_aggregate,
     fedprox_loss,
-    simulate_data_heterogeneity,
 )
 
 
 # ---------------------------------------------------------------------------
-# Fixtures
+# Shared fixtures
 # ---------------------------------------------------------------------------
 
 TINY_CFG = AureliusConfig(
@@ -35,226 +37,315 @@ TINY_CFG = AureliusConfig(
     max_seq_len=512,
 )
 
-N_CLIENTS = 2
 SEQ_LEN = 8
-N_BATCHES = 2
-LOCAL_EPOCHS = 1
+BATCH_SIZE = 2
 
 
 def tiny_model() -> AureliusTransformer:
     return AureliusTransformer(TINY_CFG)
 
 
-def tiny_fed_config(**kwargs) -> FedConfig:
+def tiny_config(**kwargs) -> FederatedConfig:
     defaults = dict(
-        n_clients=N_CLIENTS,
-        local_epochs=LOCAL_EPOCHS,
+        n_clients=10,
+        fraction_clients=0.3,
+        local_steps=2,
         local_lr=1e-3,
+        noise_multiplier=1.0,
+        clip_norm=1.0,
+        aggregation="fedavg",
+        mu=0.01,
     )
     defaults.update(kwargs)
-    return FedConfig(**defaults)
+    return FederatedConfig(**defaults)
 
 
-def make_batch(vocab_size: int = 256, seq_len: int = SEQ_LEN) -> tuple[torch.Tensor, torch.Tensor]:
-    input_ids = torch.randint(0, vocab_size, (1, seq_len))
-    labels = torch.randint(0, vocab_size, (1, seq_len))
-    return input_ids, labels
+def random_input(batch: int = BATCH_SIZE, seq: int = SEQ_LEN) -> torch.Tensor:
+    return torch.randint(0, 256, (batch, seq))
 
 
-def make_data_loader(n_batches: int = N_BATCHES) -> list[tuple[torch.Tensor, torch.Tensor]]:
-    return [make_batch() for _ in range(n_batches)]
+def make_client_data(n_clients: int, batch: int = BATCH_SIZE) -> dict[int, torch.Tensor]:
+    return {i: random_input(batch) for i in range(n_clients)}
 
 
 # ---------------------------------------------------------------------------
-# Tests
+# Test 1: FederatedConfig defaults
 # ---------------------------------------------------------------------------
 
-def test_fed_config_defaults():
-    """FedConfig has correct default values."""
-    cfg = FedConfig()
-    assert cfg.n_clients == 4
-    assert cfg.local_epochs == 2
+def test_federated_config_defaults():
+    """FederatedConfig has the correct default values."""
+    cfg = FederatedConfig()
+    assert cfg.n_clients == 10
+    assert cfg.fraction_clients == 0.3
+    assert cfg.local_steps == 5
     assert cfg.local_lr == 1e-3
-    assert cfg.mu == 0.01
+    assert cfg.noise_multiplier == 1.0
+    assert cfg.clip_norm == 1.0
     assert cfg.aggregation == "fedavg"
-    assert cfg.clip_norm is None
+    assert cfg.mu == 0.01
 
 
-def test_fedavg_aggregate_uniform():
-    """Averaging two identical state dicts with uniform weights returns the same values."""
+# ---------------------------------------------------------------------------
+# Test 2: clip_gradients_dp clips grad norm
+# ---------------------------------------------------------------------------
+
+def test_clip_gradients_dp_clips_norm():
+    """clip_gradients_dp ensures the total gradient norm is <= clip_norm."""
     model = tiny_model()
-    sd = model.state_dict()
-    sd_copy = copy.deepcopy(sd)
+    # Set all gradients to large values
+    for param in model.parameters():
+        param.grad = torch.ones_like(param) * 100.0
 
-    result = fedavg_aggregate([sd, sd_copy])
+    clip_norm = 1.0
+    clip_gradients_dp(model, clip_norm)
 
-    for key in sd:
-        assert torch.allclose(result[key].float(), sd[key].float(), atol=1e-6), (
-            f"Mismatch at key {key}"
+    total_norm = 0.0
+    for param in model.parameters():
+        if param.grad is not None:
+            total_norm += param.grad.data.norm(2).item() ** 2
+    total_norm = total_norm ** 0.5
+
+    assert total_norm <= clip_norm + 1e-5, (
+        f"Expected grad norm <= {clip_norm}, got {total_norm}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Test 3: add_dp_noise changes parameter gradients
+# ---------------------------------------------------------------------------
+
+def test_add_dp_noise_changes_gradients():
+    """add_dp_noise modifies the gradients in-place by adding Gaussian noise."""
+    model = tiny_model()
+    for param in model.parameters():
+        param.grad = torch.zeros_like(param)
+
+    # Record original grad values (all zeros)
+    original_grads = {
+        name: param.grad.clone()
+        for name, param in model.named_parameters()
+        if param.grad is not None
+    }
+
+    add_dp_noise(model, noise_multiplier=1.0, clip_norm=1.0, n_samples=10)
+
+    changed = False
+    for name, param in model.named_parameters():
+        if param.grad is not None and name in original_grads:
+            if not torch.allclose(param.grad, original_grads[name]):
+                changed = True
+                break
+
+    assert changed, "add_dp_noise should modify at least one gradient"
+
+
+# ---------------------------------------------------------------------------
+# Test 4: fedavg_aggregate returns correct mean
+# ---------------------------------------------------------------------------
+
+def test_fedavg_aggregate_returns_mean():
+    """fedavg_aggregate with uniform weights returns the element-wise mean."""
+    model = tiny_model()
+    global_params = {k: v.detach().clone() for k, v in model.named_parameters()}
+
+    params_a = {k: torch.zeros_like(v) for k, v in global_params.items()}
+    params_b = {k: torch.ones_like(v) * 2.0 for k, v in global_params.items()}
+
+    result = fedavg_aggregate(global_params, [params_a, params_b])
+
+    for key in global_params:
+        expected = (params_a[key].float() + params_b[key].float()) / 2.0
+        assert torch.allclose(result[key].float(), expected, atol=1e-5), (
+            f"Mean mismatch at {key}"
         )
 
 
-def test_fedavg_aggregate_weighted():
-    """Weighted aggregation shifts result toward the higher-weight client."""
-    model_a = tiny_model()
-    model_b = tiny_model()
+# ---------------------------------------------------------------------------
+# Test 5: fedavg_aggregate with weights upweights specified client
+# ---------------------------------------------------------------------------
 
-    # Reinitialize model_b with different weights
-    with torch.no_grad():
-        for p in model_b.parameters():
-            p.fill_(1.0)
+def test_fedavg_aggregate_weighted_upweights_client():
+    """fedavg_aggregate with custom weights shifts result toward the higher-weight client."""
+    model = tiny_model()
+    global_params = {k: v.detach().clone() for k, v in model.named_parameters()}
 
-    sd_a = model_a.state_dict()
-    sd_b = model_b.state_dict()
+    params_a = {k: torch.zeros_like(v) for k, v in global_params.items()}
+    params_b = {k: torch.ones_like(v) * 10.0 for k, v in global_params.items()}
 
-    # Weight heavily toward model_b (weight=9 vs 1)
-    result = fedavg_aggregate([sd_a, sd_b], weights=[1.0, 9.0])
+    # Weight 9:1 toward params_b
+    result = fedavg_aggregate(global_params, [params_a, params_b], weights=[1.0, 9.0])
 
-    # Pick a parameter key that is a float tensor and not tied
-    key = "embed.weight"
-    # Result should be closer to sd_b (1.0) than sd_a
-    dist_to_b = (result[key].float() - sd_b[key].float()).abs().mean().item()
-    dist_to_a = (result[key].float() - sd_a[key].float()).abs().mean().item()
+    # Result should be closer to params_b (10.0) than params_a (0.0)
+    key = list(global_params.keys())[0]
+    dist_to_a = (result[key].float() - params_a[key].float()).abs().mean().item()
+    dist_to_b = (result[key].float() - params_b[key].float()).abs().mean().item()
     assert dist_to_b < dist_to_a, (
-        "Weighted average should be closer to the higher-weight client"
+        "Weighted avg should be closer to the high-weight client"
     )
 
 
-def test_fedprox_loss_zero_same_model():
-    """FedProx loss is zero when local and global models are identical."""
-    model = tiny_model()
-    global_model = copy.deepcopy(model)
+# ---------------------------------------------------------------------------
+# Test 6: fedprox_loss is zero when params are identical
+# ---------------------------------------------------------------------------
 
-    loss = fedprox_loss(model, global_model, mu=0.01)
+def test_fedprox_loss_zero_identical_params():
+    """fedprox_loss returns 0 when model_params equals global_params."""
+    model = tiny_model()
+    params = {k: v.detach().clone() for k, v in model.named_parameters()}
+
+    loss = fedprox_loss(params, params, mu=0.01)
     assert loss.item() == pytest.approx(0.0, abs=1e-6)
 
 
-def test_fedprox_loss_positive_different():
-    """FedProx loss is positive when local and global models differ."""
-    local_model = tiny_model()
-    global_model = copy.deepcopy(local_model)
+# ---------------------------------------------------------------------------
+# Test 7: fedprox_loss > 0 when params differ
+# ---------------------------------------------------------------------------
 
-    # Perturb local model parameters
-    with torch.no_grad():
-        for p in local_model.parameters():
-            p.add_(torch.randn_like(p) * 0.5)
-
-    loss = fedprox_loss(local_model, global_model, mu=0.01)
-    assert loss.item() > 0.0
-
-
-def test_federated_client_local_train_keys():
-    """local_train returns a dict with 'train_loss' and 'n_samples'."""
+def test_fedprox_loss_positive_when_params_differ():
+    """fedprox_loss is positive when model_params differ from global_params."""
     model = tiny_model()
-    cfg = tiny_fed_config()
-    client = FederatedClient(client_id=0, model=model, config=cfg)
+    global_p = {k: v.detach().clone() for k, v in model.named_parameters()}
+    local_p = {k: v.detach().clone() + 1.0 for k, v in model.named_parameters()}
 
-    data = make_data_loader()
-    result = client.local_train(data)
-
-    assert "train_loss" in result
-    assert "n_samples" in result
-    assert isinstance(result["train_loss"], float)
-    assert isinstance(result["n_samples"], int)
-    assert result["n_samples"] > 0
+    loss = fedprox_loss(local_p, global_p, mu=0.01)
+    assert loss.item() > 0.0, "fedprox_loss should be positive when params differ"
 
 
-def test_federated_client_state_dict_sync():
-    """set_state_dict / get_state_dict roundtrip preserves weights exactly."""
+# ---------------------------------------------------------------------------
+# Test 8: ClientSimulator local_train returns param dict
+# ---------------------------------------------------------------------------
+
+def test_client_simulator_local_train_returns_param_dict():
+    """local_train returns a dict of parameter tensors."""
     model = tiny_model()
-    cfg = tiny_fed_config()
-    client = FederatedClient(client_id=0, model=model, config=cfg)
+    cfg = tiny_config(local_steps=1)
+    client = ClientSimulator(client_id=0, model=model, config=cfg)
 
-    # Create a reference model with different init
-    ref_model = tiny_model()
-    with torch.no_grad():
-        for p in ref_model.parameters():
-            p.fill_(0.42)
+    data = random_input()
+    global_params = {k: v.detach().clone() for k, v in model.named_parameters()}
+    result = client.local_train(data, global_params)
 
-    ref_sd = ref_model.state_dict()
-    client.set_state_dict(ref_sd)
-    retrieved_sd = client.get_state_dict()
-
-    for key in ref_sd:
-        assert torch.allclose(
-            retrieved_sd[key].float(), ref_sd[key].float(), atol=1e-6
-        ), f"Mismatch at key {key}"
+    assert isinstance(result, dict), "local_train must return a dict"
+    assert len(result) > 0, "Returned param dict must not be empty"
+    for key, val in result.items():
+        assert isinstance(val, torch.Tensor), f"Value for {key} must be a Tensor"
 
 
-def test_federated_server_register():
-    """Server correctly tracks the number of registered clients."""
+# ---------------------------------------------------------------------------
+# Test 9: ClientSimulator get/set params round-trips correctly
+# ---------------------------------------------------------------------------
+
+def test_client_simulator_get_set_params_roundtrip():
+    """set_params followed by get_params returns the same parameter values."""
     model = tiny_model()
-    cfg = tiny_fed_config()
-    server = FederatedServer(global_model=model, config=cfg)
+    cfg = tiny_config()
+    client = ClientSimulator(client_id=0, model=model, config=cfg)
 
-    for i in range(N_CLIENTS):
-        client = FederatedClient(client_id=i, model=tiny_model(), config=cfg)
-        server.register_client(client)
+    # Build reference params with a known constant
+    ref_params = {k: torch.full_like(v, 0.42) for k, v in model.named_parameters()}
 
-    assert len(server.clients) == N_CLIENTS
+    client.set_params(ref_params)
+    retrieved = client.get_params()
 
-
-def test_federated_server_broadcast():
-    """After broadcast, all clients share the same weights as the global model."""
-    global_model = tiny_model()
-    # Set global model to a known constant
-    with torch.no_grad():
-        for p in global_model.parameters():
-            p.fill_(0.7)
-
-    cfg = tiny_fed_config()
-    server = FederatedServer(global_model=global_model, config=cfg)
-
-    for i in range(N_CLIENTS):
-        client = FederatedClient(client_id=i, model=tiny_model(), config=cfg)
-        server.register_client(client)
-
-    server.broadcast()
-
-    global_sd = global_model.state_dict()
-    for client in server.clients:
-        client_sd = client.get_state_dict()
-        for key in global_sd:
-            assert torch.allclose(
-                client_sd[key].float(), global_sd[key].float(), atol=1e-6
-            ), f"Client {client.client_id} mismatch at key {key}"
+    for key in ref_params:
+        assert torch.allclose(retrieved[key].float(), ref_params[key].float(), atol=1e-6), (
+            f"Round-trip mismatch at {key}"
+        )
 
 
-def test_federated_round_keys():
-    """federated_round returns dict with 'round', 'mean_client_loss', 'n_clients'."""
-    global_model = tiny_model()
-    cfg = tiny_fed_config()
-    server = FederatedServer(global_model=global_model, config=cfg)
+# ---------------------------------------------------------------------------
+# Test 10: FederatedTrainer select_clients returns correct count
+# ---------------------------------------------------------------------------
 
-    for i in range(N_CLIENTS):
-        client = FederatedClient(client_id=i, model=tiny_model(), config=cfg)
-        server.register_client(client)
+def test_federated_trainer_select_clients_count():
+    """select_clients returns floor(fraction_clients * n_clients) >= 1 clients."""
+    cfg = tiny_config(n_clients=10, fraction_clients=0.3)
+    model = tiny_model()
+    trainer = FederatedTrainer(global_model=model, config=cfg)
 
-    client_data = [make_data_loader() for _ in range(N_CLIENTS)]
-    result = server.federated_round(client_data)
+    rng = random.Random(42)
+    selected = trainer.select_clients(rng)
 
-    assert "round" in result
-    assert "mean_client_loss" in result
-    assert "n_clients" in result
-    assert result["round"] == 1
-    assert result["n_clients"] == N_CLIENTS
-    assert isinstance(result["mean_client_loss"], float)
-
-
-def test_simulate_data_heterogeneity_shape():
-    """simulate_data_heterogeneity returns correct number of clients and batch shapes."""
-    data = simulate_data_heterogeneity(
-        n_clients=N_CLIENTS,
-        vocab_size=256,
-        seq_len=SEQ_LEN,
-        n_batches=N_BATCHES,
-        seed=42,
+    expected_count = max(1, int(cfg.fraction_clients * cfg.n_clients))
+    assert len(selected) == expected_count, (
+        f"Expected {expected_count} clients, got {len(selected)}"
     )
+    # All IDs in valid range
+    for cid in selected:
+        assert 0 <= cid < cfg.n_clients
 
-    assert len(data) == N_CLIENTS
 
-    for client_batches in data:
-        assert len(client_batches) == N_BATCHES
-        for input_ids, labels in client_batches:
-            assert input_ids.shape == (1, SEQ_LEN), f"Expected (1, {SEQ_LEN}), got {input_ids.shape}"
-            assert labels.shape == (1, SEQ_LEN), f"Expected (1, {SEQ_LEN}), got {labels.shape}"
+# ---------------------------------------------------------------------------
+# Test 11: FederatedTrainer train_round returns correct keys
+# ---------------------------------------------------------------------------
+
+def test_federated_trainer_train_round_returns_correct_keys():
+    """train_round returns a dict with 'round_loss', 'n_clients_selected', 'noise_scale'."""
+    cfg = tiny_config(n_clients=5, fraction_clients=0.4, local_steps=1)
+    model = tiny_model()
+    trainer = FederatedTrainer(global_model=model, config=cfg)
+
+    client_data = make_client_data(cfg.n_clients)
+    rng = random.Random(0)
+    result = trainer.train_round(client_data, rng)
+
+    assert "round_loss" in result, "Missing 'round_loss'"
+    assert "n_clients_selected" in result, "Missing 'n_clients_selected'"
+    assert "noise_scale" in result, "Missing 'noise_scale'"
+    assert isinstance(result["round_loss"], float)
+    assert isinstance(result["n_clients_selected"], int)
+    assert isinstance(result["noise_scale"], float)
+
+
+# ---------------------------------------------------------------------------
+# Test 12: FederatedTrainer train_round updates global model params
+# ---------------------------------------------------------------------------
+
+def test_federated_trainer_train_round_updates_global_model():
+    """train_round modifies the global model parameters."""
+    cfg = tiny_config(n_clients=5, fraction_clients=0.4, local_steps=2)
+    model = tiny_model()
+    trainer = FederatedTrainer(global_model=model, config=cfg)
+
+    # Capture original params
+    original_params = {
+        k: v.detach().clone() for k, v in model.named_parameters()
+    }
+
+    client_data = make_client_data(cfg.n_clients)
+    rng = random.Random(7)
+    trainer.train_round(client_data, rng)
+
+    # At least some parameters should have changed
+    changed = False
+    for name, param in model.named_parameters():
+        if not torch.allclose(param.data, original_params[name], atol=1e-8):
+            changed = True
+            break
+
+    assert changed, "train_round should update global model parameters"
+
+
+# ---------------------------------------------------------------------------
+# Test 13: fedavg_aggregate uniform weights gives exactly the mean
+# ---------------------------------------------------------------------------
+
+def test_fedavg_aggregate_uniform_exact_mean():
+    """fedavg_aggregate with uniform weights produces the exact arithmetic mean."""
+    model = tiny_model()
+    global_params = {k: v.detach().clone() for k, v in model.named_parameters()}
+
+    values = [0.0, 2.0, 4.0, 6.0]
+    client_param_list = [
+        {k: torch.full_like(v, val) for k, v in global_params.items()}
+        for val in values
+    ]
+
+    result = fedavg_aggregate(global_params, client_param_list)
+    expected_mean = sum(values) / len(values)  # 3.0
+
+    for key in global_params:
+        actual = result[key].float().mean().item()
+        assert abs(actual - expected_mean) < 1e-5, (
+            f"Expected mean {expected_mean}, got {actual} at {key}"
+        )
