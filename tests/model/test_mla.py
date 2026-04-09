@@ -4,127 +4,199 @@ from __future__ import annotations
 import torch
 import pytest
 
-from src.model.config import AureliusConfig
-from src.model.mla import MLAConfig, MultiHeadLatentAttention
-from src.model.attention import precompute_rope_frequencies
-
-
-# ---------------------------------------------------------------------------
-# Small test fixtures
-# ---------------------------------------------------------------------------
-
-SMALL_CFG = AureliusConfig(
-    n_layers=2,
-    d_model=64,
-    n_heads=4,
-    n_kv_heads=2,
-    head_dim=16,
-    d_ff=128,
-    vocab_size=256,
-    max_seq_len=32,
+from src.model.mla import (
+    MLAConfig,
+    DownProjectKV,
+    UpProjectKV,
+    MultiHeadLatentAttention,
+    MLABlock,
+    compute_kv_cache_savings,
 )
 
-SMALL_MLA_CFG = MLAConfig(
-    kv_lora_rank=32,
-    q_lora_rank=48,
-    rope_head_dim=8,
-)
+# ---------------------------------------------------------------------------
+# Test constants
+# ---------------------------------------------------------------------------
+B = 2
+T = 8
+D_MODEL = 64
+N_HEADS = 4
+HEAD_DIM = 16
+KV_LORA_RANK = 16
+D_FF = 128
 
-B, S = 2, 8  # batch size and sequence length
 
-
-def make_mla() -> MultiHeadLatentAttention:
-    return MultiHeadLatentAttention(SMALL_CFG, SMALL_MLA_CFG)
-
-
-def make_inputs(seq_len: int = S):
-    x = torch.randn(B, seq_len, SMALL_CFG.d_model)
-    freqs = precompute_rope_frequencies(SMALL_CFG.head_dim, seq_len)
-    return x, freqs
+def make_config(**overrides) -> MLAConfig:
+    defaults = dict(
+        d_model=D_MODEL,
+        n_heads=N_HEADS,
+        head_dim=HEAD_DIM,
+        kv_lora_rank=KV_LORA_RANK,
+    )
+    defaults.update(overrides)
+    return MLAConfig(**defaults)
 
 
 # ---------------------------------------------------------------------------
-# Tests
+# 1. MLAConfig defaults
 # ---------------------------------------------------------------------------
-
-def test_mla_forward_shape():
-    """Output tensor has shape (B, S, D)."""
-    mla = make_mla()
-    x, freqs = make_inputs()
-    out, _ = mla(x, freqs)
-    assert out.shape == (B, S, SMALL_CFG.d_model), f"Expected {(B, S, SMALL_CFG.d_model)}, got {out.shape}"
-
-
-def test_mla_kv_cache_shape():
-    """Returned c_KV has shape (B, S, kv_lora_rank)."""
-    mla = make_mla()
-    x, freqs = make_inputs()
-    _, c_KV = mla(x, freqs)
-    assert c_KV.shape == (B, S, SMALL_MLA_CFG.kv_lora_rank), (
-        f"Expected {(B, S, SMALL_MLA_CFG.kv_lora_rank)}, got {c_KV.shape}"
-    )
+def test_mla_config_defaults():
+    cfg = MLAConfig()
+    assert cfg.d_model == 512
+    assert cfg.n_heads == 8
+    assert cfg.head_dim == 64
+    assert cfg.kv_lora_rank == 64
+    assert cfg.q_lora_rank == 0
+    assert cfg.rope_dim == 32
+    assert cfg.dropout == 0.0
 
 
-def test_mla_kv_cache_compression_ratio():
-    """kv_cache_memory_ratio() > 1.0 — MLA is more memory-efficient than GQA."""
-    mla = make_mla()
-    ratio = mla.kv_cache_memory_ratio()
-    assert ratio > 1.0, f"Expected ratio > 1.0, got {ratio}"
+# ---------------------------------------------------------------------------
+# 2. DownProjectKV output shape
+# ---------------------------------------------------------------------------
+def test_down_project_kv_shape():
+    down = DownProjectKV(D_MODEL, KV_LORA_RANK)
+    x = torch.randn(B, T, D_MODEL)
+    out = down(x)
+    assert out.shape == (B, T, KV_LORA_RANK)
 
 
-def test_mla_with_past_kv():
-    """forward() with past_kv_latent doesn't crash and output shape is correct."""
-    mla = make_mla()
-    x, freqs = make_inputs()
-    # First forward to get initial cache
-    _, past_cache = mla(x, freqs)
-
-    # Second forward: single new token with past cache
-    x_new = torch.randn(B, 1, SMALL_CFG.d_model)
-    freqs_new = precompute_rope_frequencies(SMALL_CFG.head_dim, 1)
-    out, new_cache = mla(x_new, freqs_new, past_kv_latent=past_cache)
-
-    assert out.shape == (B, 1, SMALL_CFG.d_model)
-    assert new_cache.shape == (B, S + 1, SMALL_MLA_CFG.kv_lora_rank)
+# ---------------------------------------------------------------------------
+# 3. UpProjectKV output shapes
+# ---------------------------------------------------------------------------
+def test_up_project_kv_shapes():
+    up = UpProjectKV(KV_LORA_RANK, N_HEADS, HEAD_DIM)
+    c = torch.randn(B, T, KV_LORA_RANK)
+    K, V = up(c)
+    assert K.shape == (B, N_HEADS, T, HEAD_DIM)
+    assert V.shape == (B, N_HEADS, T, HEAD_DIM)
 
 
-def test_mla_past_kv_cache_grows():
-    """Cache shape increases from (B, S, r) to (B, 2S, r) after two full-sequence passes."""
-    mla = make_mla()
-    x, freqs = make_inputs()
-
-    _, cache1 = mla(x, freqs)
-    assert cache1.shape == (B, S, SMALL_MLA_CFG.kv_lora_rank)
-
-    # Pass the whole sequence again with the cache (mask to avoid is_causal conflict)
-    mask = torch.zeros(B, 1, S, S + S, dtype=torch.float32)  # allow all attention
-    _, cache2 = mla(x, freqs, mask=mask, past_kv_latent=cache1)
-    assert cache2.shape == (B, S + S, SMALL_MLA_CFG.kv_lora_rank), (
-        f"Expected {(B, S + S, SMALL_MLA_CFG.kv_lora_rank)}, got {cache2.shape}"
-    )
+# ---------------------------------------------------------------------------
+# 4. MultiHeadLatentAttention output shape
+# ---------------------------------------------------------------------------
+def test_mla_output_shape():
+    cfg = make_config()
+    mla = MultiHeadLatentAttention(cfg)
+    x = torch.randn(B, T, D_MODEL)
+    out, _ = mla(x)
+    assert out.shape == (B, T, D_MODEL)
 
 
-def test_mla_no_bias_in_projections():
-    """All projection linear layers have bias=False."""
-    mla = make_mla()
-    proj_names = ["W_DKV", "W_UK", "W_UV", "q_proj", "o_proj"]
-    for name in proj_names:
-        layer = getattr(mla, name)
-        assert layer.bias is None, f"{name} should have bias=False"
+# ---------------------------------------------------------------------------
+# 5. MultiHeadLatentAttention returns latent cache of correct shape
+# ---------------------------------------------------------------------------
+def test_mla_latent_cache_shape():
+    cfg = make_config()
+    mla = MultiHeadLatentAttention(cfg)
+    x = torch.randn(B, T, D_MODEL)
+    _, latent = mla(x)
+    assert latent.shape == (B, T, KV_LORA_RANK)
 
 
-def test_mla_output_dtype():
-    """Output tensor has the same dtype as input."""
-    mla = make_mla()
-    x, freqs = make_inputs()
-    out, _ = mla(x, freqs)
-    assert out.dtype == x.dtype, f"Expected dtype {x.dtype}, got {out.dtype}"
+# ---------------------------------------------------------------------------
+# 6. MultiHeadLatentAttention with past_kv extends sequence length
+# ---------------------------------------------------------------------------
+def test_mla_past_kv_extends_seq():
+    cfg = make_config()
+    mla = MultiHeadLatentAttention(cfg)
+    x = torch.randn(B, T, D_MODEL)
+    _, past_cache = mla(x)
+
+    # Single new token with past cache
+    x_new = torch.randn(B, 1, D_MODEL)
+    # Need mask since we have past_kv and T>1 total
+    out, new_cache = mla(x_new, past_kv=past_cache)
+    assert out.shape == (B, 1, D_MODEL)
+    assert new_cache.shape == (B, T + 1, KV_LORA_RANK)
 
 
-def test_mla_kv_ratio_formula():
-    """kv_cache_memory_ratio() == 2 * n_kv_heads * head_dim / kv_lora_rank."""
-    mla = make_mla()
-    expected = (2 * SMALL_CFG.n_kv_heads * SMALL_CFG.head_dim) / SMALL_MLA_CFG.kv_lora_rank
-    assert mla.kv_cache_memory_ratio() == pytest.approx(expected), (
-        f"Expected {expected}, got {mla.kv_cache_memory_ratio()}"
-    )
+# ---------------------------------------------------------------------------
+# 7. MultiHeadLatentAttention with causal mask doesn't error
+# ---------------------------------------------------------------------------
+def test_mla_with_causal_mask():
+    cfg = make_config()
+    mla = MultiHeadLatentAttention(cfg)
+    x = torch.randn(B, T, D_MODEL)
+    # Create a causal mask: (1, 1, T, T)
+    mask = torch.triu(torch.full((T, T), float("-inf")), diagonal=1)
+    mask = mask.unsqueeze(0).unsqueeze(0)
+    out, _ = mla(x, mask=mask)
+    assert out.shape == (B, T, D_MODEL)
+
+
+# ---------------------------------------------------------------------------
+# 8. MLABlock output shape
+# ---------------------------------------------------------------------------
+def test_mla_block_output_shape():
+    cfg = make_config()
+    block = MLABlock(cfg, d_ff=D_FF)
+    x = torch.randn(B, T, D_MODEL)
+    out, _ = block(x)
+    assert out.shape == (B, T, D_MODEL)
+
+
+# ---------------------------------------------------------------------------
+# 9. MLABlock residual connection (output != 0)
+# ---------------------------------------------------------------------------
+def test_mla_block_residual_nonzero():
+    cfg = make_config()
+    block = MLABlock(cfg, d_ff=D_FF)
+    x = torch.randn(B, T, D_MODEL)
+    out, _ = block(x)
+    assert out.abs().sum().item() > 0.0
+
+
+# ---------------------------------------------------------------------------
+# 10. compute_kv_cache_savings correct compression ratio
+# ---------------------------------------------------------------------------
+def test_kv_cache_savings_compression_ratio():
+    cfg = make_config()
+    savings = compute_kv_cache_savings(cfg)
+    expected_standard = 2 * N_HEADS * HEAD_DIM  # 2 * 4 * 16 = 128
+    expected_mla = KV_LORA_RANK  # 16
+    expected_ratio = expected_standard / expected_mla  # 8.0
+    assert savings["standard_per_token"] == expected_standard
+    assert savings["mla_per_token"] == expected_mla
+    assert savings["compression_ratio"] == pytest.approx(expected_ratio)
+
+
+# ---------------------------------------------------------------------------
+# 11. compute_kv_cache_savings MLA < standard per token
+# ---------------------------------------------------------------------------
+def test_kv_cache_savings_mla_smaller():
+    cfg = make_config()
+    savings = compute_kv_cache_savings(cfg)
+    assert savings["mla_per_token"] < savings["standard_per_token"]
+
+
+# ---------------------------------------------------------------------------
+# 12. MultiHeadLatentAttention gradients flow
+# ---------------------------------------------------------------------------
+def test_mla_gradients_flow():
+    cfg = make_config()
+    mla = MultiHeadLatentAttention(cfg)
+    x = torch.randn(B, T, D_MODEL, requires_grad=True)
+    out, _ = mla(x)
+    loss = out.sum()
+    loss.backward()
+    assert x.grad is not None
+    assert x.grad.abs().sum().item() > 0.0
+
+
+# ---------------------------------------------------------------------------
+# 13. MLABlock with past_kv caching works across two steps
+# ---------------------------------------------------------------------------
+def test_mla_block_past_kv_two_steps():
+    cfg = make_config()
+    block = MLABlock(cfg, d_ff=D_FF)
+
+    # Step 1: full sequence
+    x1 = torch.randn(B, T, D_MODEL)
+    out1, cache1 = block(x1)
+    assert cache1.shape == (B, T, KV_LORA_RANK)
+
+    # Step 2: single token with past cache
+    x2 = torch.randn(B, 1, D_MODEL)
+    out2, cache2 = block(x2, past_kv=cache1)
+    assert out2.shape == (B, 1, D_MODEL)
+    assert cache2.shape == (B, T + 1, KV_LORA_RANK)
