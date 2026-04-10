@@ -1,16 +1,16 @@
-"""Tests for Mixture-of-Agents inference."""
+"""Tests for logit-fusion Mixture-of-Agents (MoA) inference."""
 from __future__ import annotations
 
 import pytest
 import torch
 
 from src.inference.mixture_of_agents import (
-    AgentResponse,
-    MixtureOfAgents,
     MoAConfig,
-    compute_response_confidence,
-    greedy_generate_text,
-    sample_generate_text,
+    MixtureOfAgents,
+    MoADecoder,
+    aggregate_logits_mean,
+    aggregate_logits_weighted,
+    aggregate_logits_max_prob,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -35,197 +35,244 @@ def small_cfg():
 
 
 @pytest.fixture(scope="module")
-def small_model(small_cfg):
-    torch.manual_seed(42)
-    model = AureliusTransformer(small_cfg)
-    model.eval()
-    return model
+def model_a(small_cfg):
+    torch.manual_seed(0)
+    m = AureliusTransformer(small_cfg)
+    m.eval()
+    return m
 
 
-def _encode(text):
-    """Trivial tokenizer: map each char to its ord value (clamped to 0-255)."""
-    return [min(ord(c), 255) for c in str(text)]
+@pytest.fixture(scope="module")
+def model_b(small_cfg):
+    torch.manual_seed(99)
+    m = AureliusTransformer(small_cfg)
+    m.eval()
+    return m
 
 
-def _decode(ids):
-    """Trivial detokenizer: map ints back to chars."""
-    return "".join(chr(min(max(i, 0), 127)) for i in ids)
+@pytest.fixture(scope="module")
+def input_ids():
+    """(2, 5) random token tensor — batch=2, seq_len=5."""
+    torch.manual_seed(7)
+    return torch.randint(0, 256, (2, 5))
 
 
-def _make_moa(model, n_agents=2, max_new_tokens=4):
-    cfg = MoAConfig(
-        n_proposers=n_agents,
-        n_aggregation_rounds=1,
-        max_new_tokens=max_new_tokens,
-        temperature=0.7,
-    )
-    return MixtureOfAgents(
-        models=[model] * n_agents,
-        config=cfg,
-        tokenizer_encode=_encode,
-        tokenizer_decode=_decode,
-    )
+# Helpers
+B, T, V = 2, 5, 256
+
+
+def _random_logits(seed: int) -> torch.Tensor:
+    torch.manual_seed(seed)
+    return torch.randn(B, T, V)
 
 
 # ---------------------------------------------------------------------------
 # 1. MoAConfig defaults
 # ---------------------------------------------------------------------------
 
-def test_moa_config_defaults():
+def test_moa_config_default_aggregation():
     cfg = MoAConfig()
-    assert cfg.n_proposers == 3
-    assert cfg.n_aggregation_rounds == 1
-    assert cfg.max_new_tokens == 128
-    assert cfg.temperature == 0.7
-    assert cfg.aggregation_prompt == "Synthesize these responses into a single best answer:\n"
+    assert cfg.aggregation == "mean"
+
+
+def test_moa_config_default_temperature():
+    cfg = MoAConfig()
+    assert cfg.temperature == 1.0
+
+
+def test_moa_config_default_weights_none():
+    cfg = MoAConfig()
+    assert cfg.weights is None
 
 
 # ---------------------------------------------------------------------------
-# 2. AgentResponse fields
+# 4. aggregate_logits_mean shape and correctness
 # ---------------------------------------------------------------------------
 
-def test_agent_response_fields():
-    ar = AgentResponse(agent_id=0, response="hello")
-    assert ar.agent_id == 0
-    assert ar.response == "hello"
-    assert ar.confidence == 1.0
-    assert ar.tokens_generated == 0
+def test_aggregate_logits_mean_shape():
+    logits = [_random_logits(i) for i in range(3)]
+    out = aggregate_logits_mean(logits)
+    assert out.shape == (B, T, V)
 
 
-# ---------------------------------------------------------------------------
-# 3. greedy_generate_text returns string
-# ---------------------------------------------------------------------------
-
-def test_greedy_generate_text_returns_string(small_model):
-    prompt_ids = _encode("hi")
-    result = greedy_generate_text(small_model, prompt_ids, max_new_tokens=4, tokenizer_decode=_decode)
-    assert isinstance(result, str)
+def test_aggregate_logits_mean_single():
+    """Mean of a single tensor is that tensor."""
+    l = _random_logits(42)
+    out = aggregate_logits_mean([l])
+    assert torch.allclose(out, l)
 
 
-# ---------------------------------------------------------------------------
-# 4. sample_generate_text returns string
-# ---------------------------------------------------------------------------
-
-def test_sample_generate_text_returns_string(small_model):
-    prompt_ids = _encode("hi")
-    result = sample_generate_text(
-        small_model, prompt_ids, max_new_tokens=4, temperature=0.7, tokenizer_decode=_decode
-    )
-    assert isinstance(result, str)
+def test_aggregate_logits_mean_correctness():
+    """Mean of two tensors equals element-wise average."""
+    l1 = _random_logits(1)
+    l2 = _random_logits(2)
+    out = aggregate_logits_mean([l1, l2])
+    expected = (l1 + l2) / 2.0
+    assert torch.allclose(out, expected)
 
 
 # ---------------------------------------------------------------------------
-# 5. compute_response_confidence returns float
+# 5. aggregate_logits_weighted
 # ---------------------------------------------------------------------------
 
-def test_compute_response_confidence_returns_float(small_model):
-    prompt_ids = _encode("hi")
-    response_ids = _encode("world")
-    conf = compute_response_confidence(small_model, prompt_ids, response_ids)
-    assert isinstance(conf, float)
+def test_aggregate_logits_weighted_shape():
+    logits = [_random_logits(i) for i in range(2)]
+    out = aggregate_logits_weighted(logits, [0.3, 0.7])
+    assert out.shape == (B, T, V)
 
 
-# ---------------------------------------------------------------------------
-# 6. compute_response_confidence returns negative (log prob)
-# ---------------------------------------------------------------------------
-
-def test_compute_response_confidence_is_negative(small_model):
-    prompt_ids = _encode("hello")
-    response_ids = _encode("world")
-    conf = compute_response_confidence(small_model, prompt_ids, response_ids)
-    assert conf <= 0.0
+def test_aggregate_logits_weighted_equal_weights_equals_mean():
+    """Equal weights should give the same result as mean."""
+    l1 = _random_logits(10)
+    l2 = _random_logits(11)
+    weighted = aggregate_logits_weighted([l1, l2], [1.0, 1.0])
+    mean = aggregate_logits_mean([l1, l2])
+    assert torch.allclose(weighted, mean, atol=1e-5)
 
 
-# ---------------------------------------------------------------------------
-# 7. MixtureOfAgents.propose returns list of AgentResponse
-# ---------------------------------------------------------------------------
-
-def test_propose_returns_list_of_agent_response(small_model):
-    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
-    responses = moa.propose("hello")
-    assert isinstance(responses, list)
-    for r in responses:
-        assert isinstance(r, AgentResponse)
+def test_aggregate_logits_weighted_single_model():
+    """Single model with any non-zero weight returns that model's logits."""
+    l = _random_logits(20)
+    out = aggregate_logits_weighted([l], [5.0])
+    assert torch.allclose(out, l, atol=1e-5)
 
 
-# ---------------------------------------------------------------------------
-# 8. MixtureOfAgents.propose length = n_proposers
-# ---------------------------------------------------------------------------
-
-def test_propose_length_equals_n_proposers(small_model):
-    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
-    responses = moa.propose("hello")
-    assert len(responses) == 2
+def test_aggregate_logits_weighted_correctness():
+    """Manually verify weighted average formula."""
+    l1 = _random_logits(3)
+    l2 = _random_logits(4)
+    w = [0.25, 0.75]
+    out = aggregate_logits_weighted([l1, l2], w)
+    expected = (0.25 * l1 + 0.75 * l2) / (0.25 + 0.75)
+    assert torch.allclose(out, expected, atol=1e-5)
 
 
 # ---------------------------------------------------------------------------
-# 9. MixtureOfAgents.propose each response non-empty string
+# 6. aggregate_logits_max_prob
 # ---------------------------------------------------------------------------
 
-def test_propose_responses_are_strings(small_model):
-    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
-    responses = moa.propose("hi")
-    for r in responses:
-        assert isinstance(r.response, str)
+def test_aggregate_logits_max_prob_shape():
+    logits = [_random_logits(i) for i in range(3)]
+    out = aggregate_logits_max_prob(logits)
+    assert out.shape == (B, T, V)
 
 
-# ---------------------------------------------------------------------------
-# 10. MixtureOfAgents.aggregate returns string
-# ---------------------------------------------------------------------------
-
-def test_aggregate_returns_string(small_model):
-    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
-    fake_responses = [
-        AgentResponse(agent_id=0, response="answer one"),
-        AgentResponse(agent_id=1, response="answer two"),
-    ]
-    result = moa.aggregate("question", fake_responses)
-    assert isinstance(result, str)
+def test_aggregate_logits_max_prob_single():
+    """With a single model, output equals that model's logits."""
+    l = _random_logits(55)
+    out = aggregate_logits_max_prob([l])
+    assert torch.allclose(out, l)
 
 
-# ---------------------------------------------------------------------------
-# 11. MixtureOfAgents.run returns dict with required keys
-# ---------------------------------------------------------------------------
-
-def test_run_returns_dict_with_required_keys(small_model):
-    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
-    result = moa.run("hello")
-    assert isinstance(result, dict)
-    for key in ("answer", "n_responses", "responses", "mean_confidence"):
-        assert key in result, f"Missing key: {key}"
+def test_aggregate_logits_max_prob_selects_highest_prob():
+    """Winning model at each position has highest max probability."""
+    torch.manual_seed(77)
+    l1 = torch.zeros(1, 1, 4)
+    l2 = torch.zeros(1, 1, 4)
+    # Make model 2 clearly dominant: very large logit at position 0
+    l2[0, 0, 0] = 100.0
+    out = aggregate_logits_max_prob([l1, l2])
+    # Output should equal l2 at this single (B=0, T=0) position
+    assert torch.allclose(out, l2, atol=1e-5)
 
 
 # ---------------------------------------------------------------------------
-# 12. MixtureOfAgents.run answer is string
+# 7. MixtureOfAgents.forward shape
 # ---------------------------------------------------------------------------
 
-def test_run_answer_is_string(small_model):
-    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
-    result = moa.run("hello")
-    assert isinstance(result["answer"], str)
-
-
-# ---------------------------------------------------------------------------
-# 13. MixtureOfAgents.rank_responses sorted by confidence desc
-# ---------------------------------------------------------------------------
-
-def test_rank_responses_sorted_by_confidence_desc(small_model):
-    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
-    responses = [
-        AgentResponse(agent_id=0, response="a", confidence=-2.0),
-        AgentResponse(agent_id=1, response="b", confidence=-0.5),
-        AgentResponse(agent_id=2, response="c", confidence=-1.0),
-    ]
-    ranked = moa.rank_responses(responses)
-    confidences = [r.confidence for r in ranked]
-    assert confidences == sorted(confidences, reverse=True)
+def test_mixture_forward_shape(model_a, model_b, input_ids):
+    cfg = MoAConfig(aggregation="mean")
+    moa = MixtureOfAgents([model_a, model_b], cfg)
+    out = moa.forward(input_ids)
+    B_in, T_in = input_ids.shape
+    assert out.shape == (B_in, T_in, 256)
 
 
 # ---------------------------------------------------------------------------
-# 14. MixtureOfAgents.run n_responses = n_proposers
+# 8. MixtureOfAgents with single model returns same logits
 # ---------------------------------------------------------------------------
 
-def test_run_n_responses_equals_n_proposers(small_model):
-    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
-    result = moa.run("hello")
-    assert result["n_responses"] == 2
+def test_mixture_single_model_equals_direct(model_a, input_ids):
+    cfg = MoAConfig(aggregation="mean", temperature=1.0)
+    moa = MixtureOfAgents([model_a], cfg)
+    fused = moa.forward(input_ids)
+    _, direct, _ = model_a(input_ids)
+    assert torch.allclose(fused, direct, atol=1e-5)
+
+
+# ---------------------------------------------------------------------------
+# 9. MixtureOfAgents with all three aggregation modes
+# ---------------------------------------------------------------------------
+
+def test_mixture_mode_mean(model_a, model_b, input_ids):
+    cfg = MoAConfig(aggregation="mean")
+    moa = MixtureOfAgents([model_a, model_b], cfg)
+    out = moa.forward(input_ids)
+    assert out.shape[0] == input_ids.shape[0]
+
+
+def test_mixture_mode_weighted(model_a, model_b, input_ids):
+    cfg = MoAConfig(aggregation="weighted", weights=[0.4, 0.6])
+    moa = MixtureOfAgents([model_a, model_b], cfg)
+    out = moa.forward(input_ids)
+    assert out.shape[0] == input_ids.shape[0]
+
+
+def test_mixture_mode_max_prob(model_a, model_b, input_ids):
+    cfg = MoAConfig(aggregation="max_prob")
+    moa = MixtureOfAgents([model_a, model_b], cfg)
+    out = moa.forward(input_ids)
+    assert out.shape[0] == input_ids.shape[0]
+
+
+# ---------------------------------------------------------------------------
+# 10. MoADecoder.generate returns token tensor of correct length
+# ---------------------------------------------------------------------------
+
+def test_decoder_generate_length(model_a, input_ids):
+    cfg = MoAConfig(aggregation="mean")
+    decoder = MoADecoder([model_a], cfg)
+    max_new = 6
+    out = decoder.generate(input_ids, max_new_tokens=max_new)
+    B_in, T_in = input_ids.shape
+    assert out.shape == (B_in, T_in + max_new)
+
+
+def test_decoder_generate_returns_integer_tensor(model_a, input_ids):
+    cfg = MoAConfig(aggregation="mean")
+    decoder = MoADecoder([model_a], cfg)
+    out = decoder.generate(input_ids, max_new_tokens=3)
+    assert out.dtype in (torch.int64, torch.int32, torch.long)
+
+
+def test_decoder_generate_preserves_prompt(model_a, input_ids):
+    """The first T tokens of the output should equal the prompt."""
+    cfg = MoAConfig(aggregation="mean")
+    decoder = MoADecoder([model_a], cfg)
+    out = decoder.generate(input_ids, max_new_tokens=4)
+    assert torch.equal(out[:, :input_ids.shape[1]], input_ids)
+
+
+# ---------------------------------------------------------------------------
+# 11. Temperature scaling effect
+# ---------------------------------------------------------------------------
+
+def test_temperature_scaling_changes_logits(model_a, input_ids):
+    """Logits with temperature=0.5 should differ from temperature=1.0."""
+    cfg_1 = MoAConfig(aggregation="mean", temperature=1.0)
+    cfg_hot = MoAConfig(aggregation="mean", temperature=0.5)
+    moa_1 = MixtureOfAgents([model_a], cfg_1)
+    moa_hot = MixtureOfAgents([model_a], cfg_hot)
+    out_1 = moa_1.forward(input_ids)
+    out_hot = moa_hot.forward(input_ids)
+    # Divided by 0.5 means values should be approximately doubled
+    assert torch.allclose(out_hot, out_1 * 2.0, atol=1e-4)
+
+
+def test_temperature_1_leaves_logits_unchanged(model_a, input_ids):
+    """Temperature=1.0 should return raw aggregated logits."""
+    cfg = MoAConfig(aggregation="mean", temperature=1.0)
+    moa = MixtureOfAgents([model_a], cfg)
+    out = moa.forward(input_ids)
+    _, direct, _ = model_a(input_ids)
+    assert torch.allclose(out, direct, atol=1e-5)
