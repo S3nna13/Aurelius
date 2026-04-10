@@ -1,4 +1,7 @@
-"""Tests for src/alignment/ppo_trainer.py."""
+"""Tests for src/alignment/ppo_trainer.py — PPO RLHF trainer."""
+from __future__ import annotations
+
+import math
 
 import pytest
 import torch
@@ -9,16 +12,16 @@ from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.alignment.ppo_trainer import (
     PPOConfig,
+    ValueHead,
     PPOTrainer,
-    Rollout,
-    compute_entropy_bonus,
-    compute_gae_advantages,
+    compute_gae,
     ppo_policy_loss,
     ppo_value_loss,
+    entropy_bonus,
 )
 
 # ---------------------------------------------------------------------------
-# Shared tiny config
+# Shared tiny model config (fast for tests)
 # ---------------------------------------------------------------------------
 
 TINY_CFG = AureliusConfig(
@@ -33,40 +36,28 @@ TINY_CFG = AureliusConfig(
 )
 
 PROMPT_LEN = 4
-MAX_NEW_TOKENS = 4
 
 
-def _make_model():
+def _make_model() -> AureliusTransformer:
     return AureliusTransformer(TINY_CFG)
 
 
-def _make_value_fn():
-    """Simple value function: nn.Linear(vocab_size, 1) on mean-pooled logits."""
-    return nn.Linear(TINY_CFG.vocab_size, 1)
-
-
-def _make_prompt(B=1):
+def _make_prompt(B: int = 1) -> torch.Tensor:
     return torch.randint(0, TINY_CFG.vocab_size, (B, PROMPT_LEN))
 
 
-def _make_trainer():
+def _make_trainer(B: int = 1, n_epochs: int = 1) -> PPOTrainer:
     policy = _make_model()
-    ref_policy = _make_model()
-    for p in ref_policy.parameters():
-        p.requires_grad_(False)
-    value_fn = _make_value_fn()
-    reward_fn = lambda tokens: 1.0
-    policy_opt = optim.SGD(policy.parameters(), lr=1e-3)
-    value_opt = optim.SGD(value_fn.parameters(), lr=1e-3)
-    cfg = PPOConfig(n_epochs=1, minibatch_size=4)
+    ref_model = _make_model()
+    reward_fn = lambda tokens: 1.0  # constant reward
+    cfg = PPOConfig(n_epochs=n_epochs, n_rollout_steps=4)
+    optimizer = optim.SGD(policy.parameters(), lr=1e-3)
     return PPOTrainer(
         policy=policy,
-        ref_policy=ref_policy,
-        value_fn=value_fn,
+        ref_model=ref_model,
         reward_fn=reward_fn,
-        policy_optimizer=policy_opt,
-        value_optimizer=value_opt,
         config=cfg,
+        optimizer=optimizer,
     )
 
 
@@ -74,225 +65,262 @@ def _make_trainer():
 # 1. PPOConfig defaults
 # ---------------------------------------------------------------------------
 
-def test_ppo_config_defaults():
+def test_ppoconfig_defaults():
     cfg = PPOConfig()
-    assert cfg.clip_epsilon == 0.2
-    assert cfg.value_clip == 0.2
+    assert cfg.clip_ratio == 0.2
+    assert cfg.vf_coeff == 0.5
     assert cfg.entropy_coeff == 0.01
-    assert cfg.value_coeff == 0.5
-    assert cfg.gamma == 0.99
-    assert cfg.gae_lambda == 0.95
     assert cfg.n_epochs == 4
-    assert cfg.minibatch_size == 4
-    assert cfg.max_grad_norm == 0.5
-    assert cfg.normalize_advantages is True
-    assert cfg.kl_target == 0.01
+    assert cfg.n_rollout_steps == 8
+    assert cfg.gamma == 1.0
+    assert cfg.gae_lambda == 0.95
+    assert cfg.temperature == 1.0
+    assert cfg.max_grad_norm == 1.0
 
 
 # ---------------------------------------------------------------------------
-# 2. compute_gae_advantages output shapes (T,) for both
+# 2. ValueHead output shape (B, T)
 # ---------------------------------------------------------------------------
 
-def test_gae_advantages_shapes():
+def test_value_head_output_shape():
+    B, T, d_model = 3, 7, 64
+    vh = ValueHead(d_model)
+    hidden = torch.randn(B, T, d_model)
+    out = vh(hidden)
+    assert out.shape == (B, T), f"Expected ({B}, {T}), got {out.shape}"
+
+
+# ---------------------------------------------------------------------------
+# 3. ValueHead is differentiable
+# ---------------------------------------------------------------------------
+
+def test_value_head_differentiable():
+    B, T, d_model = 2, 5, 64
+    vh = ValueHead(d_model)
+    hidden = torch.randn(B, T, d_model, requires_grad=True)
+    out = vh(hidden)
+    loss = out.sum()
+    loss.backward()
+    assert hidden.grad is not None, "Expected gradient to flow through ValueHead"
+    assert vh.linear.weight.grad is not None, "Expected weight gradient in ValueHead"
+
+
+# ---------------------------------------------------------------------------
+# 4. compute_gae output shapes are (T,) for both outputs
+# ---------------------------------------------------------------------------
+
+def test_compute_gae_output_shapes():
     T = 10
-    cfg = PPOConfig()
     rewards = torch.ones(T)
     values = torch.zeros(T)
-    dones = torch.zeros(T)
-    adv, ret = compute_gae_advantages(rewards, values, dones, cfg)
-    assert adv.shape == (T,), f"Expected ({T},), got {adv.shape}"
-    assert ret.shape == (T,), f"Expected ({T},), got {ret.shape}"
+    adv, ret = compute_gae(rewards, values, gamma=1.0, gae_lambda=0.95)
+    assert adv.shape == (T,), f"advantages shape should be ({T},), got {adv.shape}"
+    assert ret.shape == (T,), f"returns shape should be ({T},), got {ret.shape}"
 
 
 # ---------------------------------------------------------------------------
-# 3. compute_gae_advantages with zero rewards gives negative advantages (value baseline)
+# 5. compute_gae advantages and returns shapes match rewards
 # ---------------------------------------------------------------------------
 
-def test_gae_zero_rewards_negative_advantages():
-    T = 5
-    cfg = PPOConfig()
-    rewards = torch.zeros(T)
-    # Positive value estimates with no rewards -> advantages should be <= 0
-    values = torch.ones(T) * 2.0
-    dones = torch.zeros(T)
-    adv, ret = compute_gae_advantages(rewards, values, dones, cfg)
-    # With zero rewards and positive values, delta_t = 0 + gamma*V(t+1) - V(t)
-    # At last step: delta = 0 + 0 - 2.0 = -2.0, which is negative
-    # Earlier steps: delta = gamma * 2.0 - 2.0 = (0.99 - 1) * 2 = -0.02, also negative
-    assert adv[-1].item() < 0, "Expected negative advantage at last timestep with zero rewards and positive values"
-
-
-# ---------------------------------------------------------------------------
-# 4. compute_gae_advantages terminal state (done=1) cuts off future
-# ---------------------------------------------------------------------------
-
-def test_gae_terminal_done_cuts_future():
-    cfg = PPOConfig(gamma=0.99, gae_lambda=1.0)
-    rewards = torch.tensor([1.0, 1.0, 1.0])
-    values = torch.zeros(3)
-    # Done at t=1 means future after t=1 is cut off
-    dones = torch.tensor([0.0, 1.0, 0.0])
-
-    adv, ret = compute_gae_advantages(rewards, values, dones, cfg)
-    # ret[2] = 1.0 (last step, no future, done[2]=0 but no t+1)
-    assert ret[2].item() == pytest.approx(1.0)
-    # ret[1] = reward[1] + gamma * values[2] * (1 - done[1]) = 1 + 0 = 1.0 (done cuts future)
-    assert ret[1].item() == pytest.approx(1.0)
-    # ret[0] = reward[0] + gamma * values[1] * (1 - done[0]) = 1 + gamma * 0 = 1
-    # but with lam=1.0, gae carries forward, so ret[0] = adv[0] + values[0]
-    # adv[0] = delta[0] + gamma * lam * (1 - done[0]) * adv[1]
-    #        = (1 + gamma * 0 - 0) + gamma * 1.0 * 1.0 * adv[1]
-    #        = 1 + 0.99 * adv[1]
-    # adv[1] = delta[1] + gamma * lam * (1-done[1]) * adv[2] = 1 + 0 = 1.0
-    # adv[0] = 1 + 0.99 * 1.0 = 1.99
-    assert ret[0].item() == pytest.approx(1.99, rel=1e-3)
-
-
-# ---------------------------------------------------------------------------
-# 5. ppo_policy_loss returns scalar
-# ---------------------------------------------------------------------------
-
-def test_ppo_policy_loss_scalar():
-    T = 8
-    log_probs = torch.randn(T)
-    old_log_probs = torch.randn(T)
-    advantages = torch.randn(T)
-    loss = ppo_policy_loss(log_probs, old_log_probs, advantages, clip_epsilon=0.2)
-    assert loss.shape == torch.Size([]), f"Expected scalar, got shape {loss.shape}"
-
-
-# ---------------------------------------------------------------------------
-# 6. ppo_policy_loss clipping: large ratio gets clipped
-# ---------------------------------------------------------------------------
-
-def test_ppo_policy_loss_clipping():
-    T = 4
-    # Force large positive ratio (log_probs >> old_log_probs) with positive advantages
-    # so clipping is active
-    log_probs = torch.ones(T) * 5.0
-    old_log_probs = torch.zeros(T)
-    advantages = torch.ones(T)  # positive advantages -> unclipped would use large ratio
-
-    loss_clipped = ppo_policy_loss(log_probs, old_log_probs, advantages, clip_epsilon=0.2)
-
-    # Compute unclipped manually: r = exp(5), loss_unclipped = -mean(r * A)
-    r = (log_probs - old_log_probs).exp()
-    loss_unclipped_manual = -(r * advantages).mean()
-
-    # Clipped loss should differ (be less negative / closer to 0)
-    assert not torch.isclose(loss_clipped, loss_unclipped_manual, atol=1e-3), (
-        "Expected clipped loss to differ from unclipped loss for large ratio"
-    )
-    # Clipped loss magnitude should be smaller (less negative reward for policy)
-    assert loss_clipped.item() > loss_unclipped_manual.item()
-
-
-# ---------------------------------------------------------------------------
-# 7. ppo_value_loss returns scalar
-# ---------------------------------------------------------------------------
-
-def test_ppo_value_loss_scalar():
-    T = 8
+def test_compute_gae_shapes_match_rewards():
+    T = 15
+    rewards = torch.randn(T)
     values = torch.randn(T)
-    old_values = torch.randn(T)
-    returns = torch.randn(T)
-    loss = ppo_value_loss(values, old_values, returns, value_clip=0.2)
-    assert loss.shape == torch.Size([]), f"Expected scalar, got shape {loss.shape}"
+    adv, ret = compute_gae(rewards, values, gamma=0.99, gae_lambda=0.95)
+    assert adv.shape == rewards.shape
+    assert ret.shape == rewards.shape
 
 
 # ---------------------------------------------------------------------------
-# 8. compute_entropy_bonus returns scalar
+# 6. compute_gae with all-zero rewards and values: advantages ~0
 # ---------------------------------------------------------------------------
 
-def test_compute_entropy_bonus_scalar():
-    log_probs = torch.randn(16)
-    entropy = compute_entropy_bonus(log_probs)
-    assert entropy.shape == torch.Size([]), f"Expected scalar, got shape {entropy.shape}"
-
-
-# ---------------------------------------------------------------------------
-# 9. Rollout dataclass stores all fields
-# ---------------------------------------------------------------------------
-
-def test_rollout_dataclass_fields():
-    B, T = 2, 8
-    rollout = Rollout(
-        input_ids=torch.zeros(B, T, dtype=torch.long),
-        log_probs=torch.zeros(B, T),
-        values=torch.zeros(B, T),
-        rewards=torch.zeros(B),
-        advantages=torch.zeros(B, T),
-        returns=torch.zeros(B, T),
+def test_compute_gae_zero_rewards_zero_values():
+    T = 8
+    rewards = torch.zeros(T)
+    values = torch.zeros(T)
+    adv, ret = compute_gae(rewards, values, gamma=1.0, gae_lambda=0.95)
+    assert torch.allclose(adv, torch.zeros(T), atol=1e-6), (
+        f"Expected advantages ~0 for zero rewards/values, got {adv}"
     )
-    assert rollout.input_ids.shape == (B, T)
-    assert rollout.log_probs.shape == (B, T)
-    assert rollout.values.shape == (B, T)
-    assert rollout.rewards.shape == (B,)
-    assert rollout.advantages.shape == (B, T)
-    assert rollout.returns.shape == (B, T)
+    assert torch.allclose(ret, torch.zeros(T), atol=1e-6), (
+        f"Expected returns ~0 for zero rewards/values, got {ret}"
+    )
 
 
 # ---------------------------------------------------------------------------
-# 10. PPOTrainer collect_rollout returns Rollout with correct shapes
+# 7. ppo_policy_loss returns (Tensor, dict)
+# ---------------------------------------------------------------------------
+
+def test_ppo_policy_loss_return_types():
+    T = 8
+    log_probs = torch.randn(2, T)
+    old_log_probs = torch.randn(2, T)
+    advantages = torch.randn(2, T)
+    result = ppo_policy_loss(log_probs, old_log_probs, advantages, clip_ratio=0.2)
+    assert isinstance(result, tuple), "Expected tuple return"
+    assert len(result) == 2, "Expected (Tensor, dict)"
+    loss, metrics = result
+    assert isinstance(loss, torch.Tensor), "First element should be Tensor"
+    assert isinstance(metrics, dict), "Second element should be dict"
+
+
+# ---------------------------------------------------------------------------
+# 8. ppo_policy_loss dict has correct keys
+# ---------------------------------------------------------------------------
+
+def test_ppo_policy_loss_dict_keys():
+    log_probs = torch.randn(2, 8)
+    old_log_probs = torch.randn(2, 8)
+    advantages = torch.randn(2, 8)
+    _, metrics = ppo_policy_loss(log_probs, old_log_probs, advantages, clip_ratio=0.2)
+    assert "policy_loss" in metrics, f"Missing 'policy_loss' in {metrics.keys()}"
+    assert "clip_fraction" in metrics, f"Missing 'clip_fraction' in {metrics.keys()}"
+    assert "mean_ratio" in metrics, f"Missing 'mean_ratio' in {metrics.keys()}"
+
+
+# ---------------------------------------------------------------------------
+# 9. ppo_policy_loss clip_fraction in [0, 1]
+# ---------------------------------------------------------------------------
+
+def test_ppo_policy_loss_clip_fraction_range():
+    log_probs = torch.randn(4, 16)
+    old_log_probs = torch.randn(4, 16)
+    advantages = torch.randn(4, 16)
+    _, metrics = ppo_policy_loss(log_probs, old_log_probs, advantages, clip_ratio=0.2)
+    cf = metrics["clip_fraction"]
+    assert 0.0 <= cf <= 1.0, f"clip_fraction={cf} out of [0, 1]"
+
+
+# ---------------------------------------------------------------------------
+# 10. ppo_policy_loss with ratio=1 (same policy): no clipping
+# ---------------------------------------------------------------------------
+
+def test_ppo_policy_loss_ratio_one_no_clipping():
+    T = 8
+    log_probs = torch.randn(2, T)
+    # Same log_probs -> ratio = 1 everywhere -> no clipping
+    advantages = torch.randn(2, T)
+    loss, metrics = ppo_policy_loss(log_probs, log_probs, advantages, clip_ratio=0.2)
+    assert metrics["clip_fraction"] == pytest.approx(0.0), (
+        f"Expected no clipping when ratio=1, got clip_fraction={metrics['clip_fraction']}"
+    )
+    # loss should equal -mean(advantages)
+    expected = -advantages.mean()
+    assert torch.isclose(loss, expected, atol=1e-5), (
+        f"Expected loss={expected.item():.6f}, got {loss.item():.6f}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 11. ppo_value_loss returns scalar >= 0
+# ---------------------------------------------------------------------------
+
+def test_ppo_value_loss_scalar_nonneg():
+    values = torch.randn(4, 8)
+    returns = torch.randn(4, 8)
+    loss = ppo_value_loss(values, returns)
+    assert loss.shape == torch.Size([]), f"Expected scalar, got shape {loss.shape}"
+    assert loss.item() >= 0.0, f"MSE loss should be >= 0, got {loss.item()}"
+
+
+# ---------------------------------------------------------------------------
+# 12. entropy_bonus returns scalar >= 0
+# ---------------------------------------------------------------------------
+
+def test_entropy_bonus_scalar_nonneg():
+    # For sampled log probs that are negative (log probs are <= 0),
+    # entropy_bonus = -mean(log_probs) should be >= 0
+    # Use log_softmax output (always <= 0) to get valid log probs
+    logits = torch.randn(4, 16)
+    log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
+    sampled_lp = log_probs[:, :8].reshape(-1)  # sample some
+
+    ent = entropy_bonus(sampled_lp)
+    assert ent.shape == torch.Size([]), f"Expected scalar, got shape {ent.shape}"
+    assert ent.item() >= 0.0, f"entropy_bonus should be >= 0 for valid log probs, got {ent.item()}"
+
+
+# ---------------------------------------------------------------------------
+# 13. PPOTrainer.collect_rollout returns dict with correct keys
+# ---------------------------------------------------------------------------
+
+def test_collect_rollout_keys():
+    trainer = _make_trainer()
+    prompt = _make_prompt(B=2)
+    rollout = trainer.collect_rollout(prompt)
+    required_keys = {"tokens", "log_probs", "values", "rewards"}
+    assert required_keys <= set(rollout.keys()), (
+        f"Missing keys: {required_keys - set(rollout.keys())}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 13b. collect_rollout tensor shapes
 # ---------------------------------------------------------------------------
 
 def test_collect_rollout_shapes():
     trainer = _make_trainer()
     B = 2
+    T = trainer.config.n_rollout_steps
     prompt = _make_prompt(B=B)
-    rollout = trainer.collect_rollout(prompt, max_new_tokens=MAX_NEW_TOKENS)
-    T = MAX_NEW_TOKENS
-    assert isinstance(rollout, Rollout)
-    assert rollout.input_ids.shape == (B, T), f"input_ids shape: {rollout.input_ids.shape}"
-    assert rollout.log_probs.shape == (B, T), f"log_probs shape: {rollout.log_probs.shape}"
-    assert rollout.values.shape == (B, T), f"values shape: {rollout.values.shape}"
-    assert rollout.rewards.shape == (B,), f"rewards shape: {rollout.rewards.shape}"
-    assert rollout.advantages.shape == (B, T), f"advantages shape: {rollout.advantages.shape}"
-    assert rollout.returns.shape == (B, T), f"returns shape: {rollout.returns.shape}"
+    rollout = trainer.collect_rollout(prompt)
+    assert rollout["tokens"].shape == (B, T), f"tokens shape: {rollout['tokens'].shape}"
+    assert rollout["log_probs"].shape == (B, T), f"log_probs shape: {rollout['log_probs'].shape}"
+    assert rollout["values"].shape == (B, T), f"values shape: {rollout['values'].shape}"
+    assert rollout["rewards"].shape == (B,), f"rewards shape: {rollout['rewards'].shape}"
 
 
 # ---------------------------------------------------------------------------
-# 11. PPOTrainer ppo_step returns correct keys
+# 14. PPOTrainer.train_step returns dict with correct keys
 # ---------------------------------------------------------------------------
 
-def test_ppo_step_returns_correct_keys():
+def test_train_step_returns_correct_keys():
     trainer = _make_trainer()
-    B = 2
-    prompt = _make_prompt(B=B)
-    rollout = trainer.collect_rollout(prompt, max_new_tokens=MAX_NEW_TOKENS)
-    metrics = trainer.ppo_step(rollout)
-    assert "policy_loss" in metrics, f"Missing policy_loss in {metrics.keys()}"
-    assert "value_loss" in metrics, f"Missing value_loss in {metrics.keys()}"
-    assert "entropy" in metrics, f"Missing entropy in {metrics.keys()}"
-    assert "kl" in metrics, f"Missing kl in {metrics.keys()}"
+    prompt = _make_prompt(B=1)
+    metrics = trainer.train_step(prompt)
+    required_keys = {"policy_loss", "value_loss", "entropy", "total_loss"}
+    assert required_keys <= set(metrics.keys()), (
+        f"Missing keys: {required_keys - set(metrics.keys())}"
+    )
 
 
 # ---------------------------------------------------------------------------
-# 12. PPOTrainer train_step returns finite metrics
+# 15. PPOTrainer.train_step losses are finite
 # ---------------------------------------------------------------------------
 
-def test_train_step_finite_metrics():
+def test_train_step_losses_finite():
     trainer = _make_trainer()
     prompt = _make_prompt(B=2)
     metrics = trainer.train_step(prompt)
     for key, val in metrics.items():
-        assert isinstance(val, float), f"{key} is not float: {type(val)}"
-        assert not (val != val), f"{key} is NaN"  # NaN check without math.isnan
-        assert abs(val) < 1e9, f"{key}={val} is unexpectedly large (possibly Inf)"
+        assert isinstance(val, float), f"{key} should be float, got {type(val)}"
+        assert math.isfinite(val), f"{key}={val} is not finite (NaN or Inf)"
 
 
 # ---------------------------------------------------------------------------
-# 13. ppo_policy_loss same old/new log_probs -> ratio=1, loss depends only on advantages
+# Bonus: ref_model is frozen
 # ---------------------------------------------------------------------------
 
-def test_ppo_policy_loss_ratio_one():
-    T = 8
-    log_probs = torch.randn(T)
-    # Same log_probs -> ratio = exp(0) = 1.0 everywhere
-    # loss = -mean(1 * A) = -mean(A) since ratio is 1 and clamp(1, 0.8, 1.2) = 1
-    advantages = torch.randn(T)
-    loss = ppo_policy_loss(log_probs, log_probs, advantages, clip_epsilon=0.2)
-    expected = -advantages.mean()
-    assert torch.isclose(loss, expected, atol=1e-5), (
-        f"Expected {expected.item():.6f}, got {loss.item():.6f}"
+def test_ref_model_frozen():
+    trainer = _make_trainer()
+    for p in trainer.ref_model.parameters():
+        assert not p.requires_grad, "ref_model parameters should be frozen"
+
+
+# ---------------------------------------------------------------------------
+# Bonus: ValueHead params added to optimizer
+# ---------------------------------------------------------------------------
+
+def test_value_head_params_in_optimizer():
+    trainer = _make_trainer()
+    # Collect all params registered in optimizer
+    all_opt_params = set()
+    for pg in trainer.optimizer.param_groups:
+        for p in pg["params"]:
+            all_opt_params.add(id(p))
+    # At least one value head param should be in the optimizer
+    vh_params = list(trainer.value_head.parameters())
+    assert any(id(p) in all_opt_params for p in vh_params), (
+        "ValueHead parameters should be added to the optimizer"
     )

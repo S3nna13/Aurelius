@@ -1,19 +1,25 @@
-"""Tests for model_soup.py: weight-space ensembling and model soups."""
+"""Tests for model_soup.py: weight-space ensembling and model soups.
+
+Covers ModelSoupConfig, uniform_soup_module, weighted_soup_module,
+greedy_soup_module, interpolate_models_module, compute_weight_distance,
+task_vector, apply_task_vector, and ModelSoupBuilder.
+"""
 from __future__ import annotations
 
 import torch
+import torch.nn as nn
 import pytest
 
 from src.training.model_soup import (
     ModelSoupConfig,
-    ModelSoupEnsemble,
-    LearnedSoupMixer,
-    compute_loss_barrier,
-    compute_weight_divergence,
-    greedy_soup,
-    interpolate_models,
-    uniform_soup,
-    weighted_soup,
+    ModelSoupBuilder,
+    uniform_soup_module,
+    weighted_soup_module,
+    greedy_soup_module,
+    interpolate_models_module,
+    compute_weight_distance,
+    task_vector,
+    apply_task_vector,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -46,9 +52,10 @@ _MODEL_B = _make_model(1)
 _MODEL_C = _make_model(2)
 
 
-def _random_eval_fn(model) -> float:
-    """Deterministic-ish eval: returns random scalar (just tests structure)."""
-    return torch.randn(1).item()
+# Simple deterministic val_fn: negative L1 norm of first param (stable).
+def _val_fn_stable(model: nn.Module) -> float:
+    first_param = next(model.parameters())
+    return -float(first_param.float().abs().sum().item())
 
 
 # ---------------------------------------------------------------------------
@@ -56,202 +63,220 @@ def _random_eval_fn(model) -> float:
 # ---------------------------------------------------------------------------
 
 def test_config_defaults():
+    """ModelSoupConfig should have correct defaults."""
     cfg = ModelSoupConfig()
     assert cfg.method == "uniform"
-    assert cfg.n_models == 3
+    assert cfg.normalize_weights is True
 
 
 # ---------------------------------------------------------------------------
-# 2. test_uniform_soup_keys
+# 2. test_uniform_soup_returns_module
 # ---------------------------------------------------------------------------
 
-def test_uniform_soup_keys():
-    result = uniform_soup([_MODEL_A, _MODEL_B])
-    assert set(result.keys()) == set(_MODEL_A.state_dict().keys())
+def test_uniform_soup_returns_module():
+    """uniform_soup_module should return an nn.Module."""
+    result = uniform_soup_module([_MODEL_A, _MODEL_B])
+    assert isinstance(result, nn.Module)
 
 
 # ---------------------------------------------------------------------------
-# 3. test_uniform_soup_is_average
+# 3. test_uniform_soup_identical_models
 # ---------------------------------------------------------------------------
 
-def test_uniform_soup_is_average():
-    """Two models with known weights → verify average."""
-    result = uniform_soup([_MODEL_A, _MODEL_B])
+def test_uniform_soup_identical_models():
+    """Averaging identical models should produce identical weights."""
+    # Make a copy with the same weights as _MODEL_A
+    model_copy = _make_model(0)  # same seed → same weights
+    result = uniform_soup_module([_MODEL_A, model_copy])
+    sd_a = _MODEL_A.state_dict()
+    sd_r = result.state_dict()
+    for key in sd_a:
+        assert torch.allclose(sd_r[key].float(), sd_a[key].float(), atol=1e-5), (
+            f"Key {key}: uniform soup of identical models should be unchanged"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 4. test_uniform_soup_two_different_models
+# ---------------------------------------------------------------------------
+
+def test_uniform_soup_two_different_models():
+    """uniform_soup_module with 2 different models should produce exact midpoint."""
+    result = uniform_soup_module([_MODEL_A, _MODEL_B])
     sd_a = _MODEL_A.state_dict()
     sd_b = _MODEL_B.state_dict()
+    sd_r = result.state_dict()
     for key in sd_a:
         expected = (sd_a[key].float() + sd_b[key].float()) / 2.0
-        assert torch.allclose(result[key].float(), expected, atol=1e-5), (
+        assert torch.allclose(sd_r[key].float(), expected, atol=1e-5), (
             f"Key {key}: uniform soup should be exact midpoint"
         )
 
 
 # ---------------------------------------------------------------------------
-# 4. test_weighted_soup_weights_sum_to_one
+# 5. test_weighted_soup_output_shape_correct
 # ---------------------------------------------------------------------------
 
-def test_weighted_soup_weights_sum_to_one():
-    """Weights that don't sum to 1 should be normalised; zero weights raise."""
-    # Non-unit weights normalised → same as [0.5, 0.5]
-    result_unnorm = weighted_soup([_MODEL_A, _MODEL_B], weights=[2.0, 2.0])
-    result_norm = weighted_soup([_MODEL_A, _MODEL_B], weights=[0.5, 0.5])
-    for key in _MODEL_A.state_dict():
-        assert torch.allclose(
-            result_unnorm[key].float(), result_norm[key].float(), atol=1e-5
-        ), f"Key {key}: normalised weights should match explicit 0.5/0.5"
-
-    # All-zero weights should raise
-    with pytest.raises((ValueError, ZeroDivisionError)):
-        weighted_soup([_MODEL_A, _MODEL_B], weights=[0.0, 0.0])
-
-
-# ---------------------------------------------------------------------------
-# 5. test_weighted_soup_extreme_alpha
-# ---------------------------------------------------------------------------
-
-def test_weighted_soup_extreme_alpha():
-    """alpha=1.0 on model_b → same as model_b's weights."""
-    result = weighted_soup([_MODEL_A, _MODEL_B], weights=[0.0, 1.0])
-    sd_b = _MODEL_B.state_dict()
-    for key in sd_b:
-        assert torch.allclose(result[key].float(), sd_b[key].float(), atol=1e-5), (
-            f"Key {key}: weight=1 on model_b should return model_b"
-        )
-
-
-# ---------------------------------------------------------------------------
-# 6. test_interpolate_models_alpha0
-# ---------------------------------------------------------------------------
-
-def test_interpolate_models_alpha0():
-    result = interpolate_models(_MODEL_A, _MODEL_B, alpha=0.0)
+def test_weighted_soup_output_shape_correct():
+    """weighted_soup_module output should have same parameter shapes as inputs."""
+    result = weighted_soup_module([_MODEL_A, _MODEL_B], weights=[0.3, 0.7])
+    assert isinstance(result, nn.Module)
     sd_a = _MODEL_A.state_dict()
+    sd_r = result.state_dict()
     for key in sd_a:
-        assert torch.allclose(result[key].float(), sd_a[key].float(), atol=1e-5), (
-            f"Key {key}: alpha=0 should return model_a"
+        assert sd_r[key].shape == sd_a[key].shape, (
+            f"Key {key}: shape mismatch in weighted_soup output"
         )
 
 
 # ---------------------------------------------------------------------------
-# 7. test_interpolate_models_alpha1
+# 6. test_weighted_soup_weight_1_0_equals_first_model
 # ---------------------------------------------------------------------------
 
-def test_interpolate_models_alpha1():
-    result = interpolate_models(_MODEL_A, _MODEL_B, alpha=1.0)
-    sd_b = _MODEL_B.state_dict()
-    for key in sd_b:
-        assert torch.allclose(result[key].float(), sd_b[key].float(), atol=1e-5), (
-            f"Key {key}: alpha=1 should return model_b"
-        )
-
-
-# ---------------------------------------------------------------------------
-# 8. test_interpolate_models_midpoint
-# ---------------------------------------------------------------------------
-
-def test_interpolate_models_midpoint():
-    result = interpolate_models(_MODEL_A, _MODEL_B, alpha=0.5)
+def test_weighted_soup_weight_1_0_equals_first_model():
+    """weighted_soup_module with weights=[1.0, 0.0] should equal first model."""
+    result = weighted_soup_module([_MODEL_A, _MODEL_B], weights=[1.0, 0.0])
     sd_a = _MODEL_A.state_dict()
-    sd_b = _MODEL_B.state_dict()
+    sd_r = result.state_dict()
     for key in sd_a:
-        expected = (sd_a[key].float() + sd_b[key].float()) / 2.0
-        assert torch.allclose(result[key].float(), expected, atol=1e-5), (
-            f"Key {key}: alpha=0.5 should be exact midpoint"
+        assert torch.allclose(sd_r[key].float(), sd_a[key].float(), atol=1e-5), (
+            f"Key {key}: weight=1.0 on first model should give first model's params"
         )
 
 
 # ---------------------------------------------------------------------------
-# 9. test_compute_weight_divergence_same
+# 7. test_greedy_soup_returns_module_and_list
 # ---------------------------------------------------------------------------
 
-def test_compute_weight_divergence_same():
-    """Identical models → cosine_sim ≈ 1.0, l2 ≈ 0."""
-    div = compute_weight_divergence(_MODEL_A, _MODEL_A)
-    assert div["mean_l2"] == pytest.approx(0.0, abs=1e-4)
-    assert div["max_l2"] == pytest.approx(0.0, abs=1e-4)
-    assert div["mean_cosine_sim"] == pytest.approx(1.0, abs=1e-4)
-
-
-# ---------------------------------------------------------------------------
-# 10. test_compute_weight_divergence_keys
-# ---------------------------------------------------------------------------
-
-def test_compute_weight_divergence_keys():
-    div = compute_weight_divergence(_MODEL_A, _MODEL_B)
-    assert "mean_l2" in div
-    assert "max_l2" in div
-    assert "mean_cosine_sim" in div
-
-
-# ---------------------------------------------------------------------------
-# 11. test_learned_soup_weights_sum_to_one
-# ---------------------------------------------------------------------------
-
-def test_learned_soup_weights_sum_to_one():
-    mixer = LearnedSoupMixer(n_models=4)
-    weights = mixer.get_weights()
-    assert weights.shape == (4,)
-    assert weights.sum().item() == pytest.approx(1.0, abs=1e-6)
-
-
-# ---------------------------------------------------------------------------
-# 12. test_learned_soup_forward_shape
-# ---------------------------------------------------------------------------
-
-def test_learned_soup_forward_shape():
-    B, T, V = 2, 8, 256
-    mixer = LearnedSoupMixer(n_models=3)
-    outputs = [torch.randn(B, T, V) for _ in range(3)]
-    result = mixer(outputs)
-    assert result.shape == (B, T, V)
-
-
-# ---------------------------------------------------------------------------
-# 13. test_ensemble_predict_shape
-# ---------------------------------------------------------------------------
-
-def test_ensemble_predict_shape():
-    cfg = ModelSoupConfig()
-    ensemble = ModelSoupEnsemble(_MODEL_A, cfg)
-    B, T = 2, 8
-    input_ids = torch.randint(0, TINY_CFG.vocab_size, (B, T))
-    result = ensemble.ensemble_predict([_MODEL_A, _MODEL_B, _MODEL_C], input_ids)
-    assert result.shape == (B, T, TINY_CFG.vocab_size)
-
-
-# ---------------------------------------------------------------------------
-# 14. test_greedy_soup_returns_state_dict
-# ---------------------------------------------------------------------------
-
-def test_greedy_soup_returns_state_dict():
-    result = greedy_soup([_MODEL_A, _MODEL_B, _MODEL_C], eval_fn=_random_eval_fn)
-    assert isinstance(result, dict)
-    for key, val in result.items():
-        assert isinstance(val, torch.Tensor), f"Key {key}: expected Tensor"
-
-
-# ---------------------------------------------------------------------------
-# 15. test_model_soup_create_uniform
-# ---------------------------------------------------------------------------
-
-def test_model_soup_create_uniform():
-    cfg = ModelSoupConfig(method="uniform")
-    ensemble = ModelSoupEnsemble(_MODEL_A, cfg)
-    soup_model = ensemble.create_soup([_MODEL_A, _MODEL_B, _MODEL_C])
-    assert isinstance(soup_model, torch.nn.Module)
-    # Verify it has the same keys
-    assert set(soup_model.state_dict().keys()) == set(_MODEL_A.state_dict().keys())
-
-
-# ---------------------------------------------------------------------------
-# 16. test_find_best_interpolation_returns_alpha
-# ---------------------------------------------------------------------------
-
-def test_find_best_interpolation_returns_alpha():
-    cfg = ModelSoupConfig(eval_metric="loss")
-    ensemble = ModelSoupEnsemble(_MODEL_A, cfg)
-    best_alpha, best_score = ensemble.find_best_interpolation(
-        _MODEL_A, _MODEL_B, eval_fn=_random_eval_fn, n_trials=5
+def test_greedy_soup_returns_module_and_list():
+    """greedy_soup_module should return (nn.Module, list)."""
+    soup, indices = greedy_soup_module(
+        [_MODEL_A, _MODEL_B, _MODEL_C], val_fn=_val_fn_stable
     )
-    assert 0.0 <= best_alpha <= 1.0, f"best_alpha {best_alpha} out of [0, 1]"
-    assert isinstance(best_score, float)
+    assert isinstance(soup, nn.Module)
+    assert isinstance(indices, list)
+
+
+# ---------------------------------------------------------------------------
+# 8. test_greedy_soup_included_indices_starts_with_zero
+# ---------------------------------------------------------------------------
+
+def test_greedy_soup_included_indices_starts_with_zero():
+    """greedy_soup_module included_indices must always contain index 0."""
+    _, indices = greedy_soup_module(
+        [_MODEL_A, _MODEL_B, _MODEL_C], val_fn=_val_fn_stable
+    )
+    assert len(indices) >= 1
+    assert indices[0] == 0
+
+
+# ---------------------------------------------------------------------------
+# 9. test_interpolate_models_alpha_1_equals_model_a
+# ---------------------------------------------------------------------------
+
+def test_interpolate_models_alpha_1_equals_model_a():
+    """interpolate_models_module with alpha=1.0 should equal model_a."""
+    result = interpolate_models_module(_MODEL_A, _MODEL_B, alpha=1.0)
+    assert isinstance(result, nn.Module)
+    sd_a = _MODEL_A.state_dict()
+    sd_r = result.state_dict()
+    for key in sd_a:
+        assert torch.allclose(sd_r[key].float(), sd_a[key].float(), atol=1e-5), (
+            f"Key {key}: alpha=1.0 should return model_a parameters"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 10. test_interpolate_models_alpha_0_equals_model_b
+# ---------------------------------------------------------------------------
+
+def test_interpolate_models_alpha_0_equals_model_b():
+    """interpolate_models_module with alpha=0.0 should equal model_b."""
+    result = interpolate_models_module(_MODEL_A, _MODEL_B, alpha=0.0)
+    assert isinstance(result, nn.Module)
+    sd_b = _MODEL_B.state_dict()
+    sd_r = result.state_dict()
+    for key in sd_b:
+        assert torch.allclose(sd_r[key].float(), sd_b[key].float(), atol=1e-5), (
+            f"Key {key}: alpha=0.0 should return model_b parameters"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 11. test_compute_weight_distance_identical_models
+# ---------------------------------------------------------------------------
+
+def test_compute_weight_distance_identical_models():
+    """compute_weight_distance should return 0 for identical models."""
+    dist = compute_weight_distance(_MODEL_A, _MODEL_A)
+    assert dist == pytest.approx(0.0, abs=1e-5)
+
+
+# ---------------------------------------------------------------------------
+# 12. test_compute_weight_distance_different_models
+# ---------------------------------------------------------------------------
+
+def test_compute_weight_distance_different_models():
+    """compute_weight_distance should return positive value for different models."""
+    dist = compute_weight_distance(_MODEL_A, _MODEL_B)
+    assert isinstance(dist, float)
+    assert dist > 0.0
+
+
+# ---------------------------------------------------------------------------
+# 13. test_task_vector_returns_dict_with_correct_keys
+# ---------------------------------------------------------------------------
+
+def test_task_vector_returns_dict_with_correct_keys():
+    """task_vector should return a dict with the same keys as the model."""
+    tv = task_vector(_MODEL_A, _MODEL_B)
+    assert isinstance(tv, dict)
+    expected_keys = set(_MODEL_A.state_dict().keys())
+    assert set(tv.keys()) == expected_keys
+
+
+# ---------------------------------------------------------------------------
+# 14. test_apply_task_vector_scale_zero_equals_base
+# ---------------------------------------------------------------------------
+
+def test_apply_task_vector_scale_zero_equals_base():
+    """apply_task_vector with scale=0 should return a model equal to base."""
+    tv = task_vector(_MODEL_A, _MODEL_B)
+    result = apply_task_vector(_MODEL_A, tv, scale=0.0)
+    assert isinstance(result, nn.Module)
+    sd_base = _MODEL_A.state_dict()
+    sd_result = result.state_dict()
+    for key in sd_base:
+        assert torch.allclose(sd_result[key].float(), sd_base[key].float(), atol=1e-5), (
+            f"Key {key}: scale=0 should leave base unchanged"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 15. test_model_soup_builder_add_increases_length
+# ---------------------------------------------------------------------------
+
+def test_model_soup_builder_add_increases_length():
+    """ModelSoupBuilder.add should increase __len__ by 1 each call."""
+    builder = ModelSoupBuilder(ModelSoupConfig(method="uniform"))
+    assert len(builder) == 0
+    builder.add(_MODEL_A, score=0.9)
+    assert len(builder) == 1
+    builder.add(_MODEL_B, score=0.85)
+    assert len(builder) == 2
+
+
+# ---------------------------------------------------------------------------
+# 16. test_model_soup_builder_build_uniform_returns_module
+# ---------------------------------------------------------------------------
+
+def test_model_soup_builder_build_uniform_returns_module():
+    """ModelSoupBuilder.build with uniform method should return an nn.Module."""
+    builder = ModelSoupBuilder(ModelSoupConfig(method="uniform"))
+    builder.add(_MODEL_A, score=0.9)
+    builder.add(_MODEL_B, score=0.85)
+    builder.add(_MODEL_C, score=0.88)
+    soup = builder.build()
+    assert isinstance(soup, nn.Module)
+    # Verify parameter keys match
+    assert set(soup.state_dict().keys()) == set(_MODEL_A.state_dict().keys())

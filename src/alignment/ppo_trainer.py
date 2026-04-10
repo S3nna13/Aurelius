@@ -1,5 +1,4 @@
-"""Complete PPO training loop for RLHF: rollout collection, GAE advantages, clipped policy gradient."""
-
+"""PPO trainer for RLHF: clip-ratio policy gradient with value function baseline."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,55 +18,59 @@ from torch import Tensor
 class PPOConfig:
     """Hyperparameters for PPO training."""
 
-    clip_epsilon: float = 0.2          # PPO policy clipping parameter
-    value_clip: float = 0.2            # value function clipping parameter
-    entropy_coeff: float = 0.01        # entropy bonus coefficient
-    value_coeff: float = 0.5           # value loss coefficient
-    gamma: float = 0.99                # discount factor
-    gae_lambda: float = 0.95           # GAE lambda
-    n_epochs: int = 4                  # PPO epochs per rollout
-    minibatch_size: int = 4            # minibatch size for PPO updates
-    max_grad_norm: float = 0.5         # gradient clipping norm
-    normalize_advantages: bool = True  # whether to normalize advantages
-    kl_target: float = 0.01           # adaptive KL penalty target
+    clip_ratio: float = 0.2         # epsilon for clipping ratio
+    vf_coeff: float = 0.5           # value function loss coefficient
+    entropy_coeff: float = 0.01     # entropy bonus coefficient
+    n_epochs: int = 4               # PPO epochs per rollout
+    n_rollout_steps: int = 8        # tokens to sample per prompt
+    gamma: float = 1.0              # discount factor
+    gae_lambda: float = 0.95        # GAE lambda
+    temperature: float = 1.0
+    max_grad_norm: float = 1.0
+
+
+# ---------------------------------------------------------------------------
+# Value head
+# ---------------------------------------------------------------------------
+
+class ValueHead(nn.Module):
+    """Scalar value function head on top of backbone hidden states."""
+
+    def __init__(self, d_model: int) -> None:
+        super().__init__()
+        self.linear = nn.Linear(d_model, 1, bias=True)
+
+    def forward(self, hidden: Tensor) -> Tensor:
+        """hidden (B, T, d_model) -> values (B, T)"""
+        return self.linear(hidden).squeeze(-1)
 
 
 # ---------------------------------------------------------------------------
 # GAE advantages
 # ---------------------------------------------------------------------------
 
-def compute_gae_advantages(
-    rewards: Tensor,
-    values: Tensor,
-    dones: Tensor,
-    config: PPOConfig,
+def compute_gae(
+    rewards: Tensor,    # (T,)
+    values: Tensor,     # (T,)
+    gamma: float,
+    gae_lambda: float,
 ) -> tuple[Tensor, Tensor]:
-    """Compute Generalized Advantage Estimation (GAE) advantages and returns.
+    """Compute GAE advantages and returns.
 
-    Args:
-        rewards: (T,) rewards at each timestep
-        values:  (T,) value estimates V(s_t)
-        dones:   (T,) float/bool, 1.0 if episode ended at t
-        config:  PPOConfig with gamma and gae_lambda
-
-    Returns:
-        (advantages, returns) both (T,)
-        advantages[t] = delta_t + gamma * lambda * advantages[t+1]
-        delta_t = rewards[t] + gamma * values[t+1] * (1-dones[t]) - values[t]
+    Returns (advantages (T,), returns (T,)).
     """
     T = rewards.shape[0]
     advantages = torch.zeros(T, device=rewards.device, dtype=rewards.dtype)
-    dones_float = dones.float()
 
     gae = 0.0
     for t in reversed(range(T)):
         if t == T - 1:
             next_val = 0.0
         else:
-            next_val = values[t + 1] * (1.0 - dones_float[t])
+            next_val = values[t + 1].item()
 
-        delta = rewards[t] + config.gamma * next_val - values[t]
-        gae = delta + config.gamma * config.gae_lambda * (1.0 - dones_float[t]) * gae
+        delta = rewards[t].item() + gamma * next_val - values[t].item()
+        gae = delta + gamma * gae_lambda * gae
         advantages[t] = gae
 
     returns = advantages + values
@@ -79,79 +82,52 @@ def compute_gae_advantages(
 # ---------------------------------------------------------------------------
 
 def ppo_policy_loss(
-    log_probs: Tensor,
-    old_log_probs: Tensor,
-    advantages: Tensor,
-    clip_epsilon: float,
-) -> Tensor:
+    log_probs: Tensor,       # (B, T) — current policy log probs
+    old_log_probs: Tensor,   # (B, T) — old policy log probs (from rollout)
+    advantages: Tensor,      # (B, T)
+    clip_ratio: float,
+) -> tuple[Tensor, dict]:
     """Clipped PPO policy loss.
 
-    Args:
-        log_probs:     log probs under current policy
-        old_log_probs: log probs under old policy (from rollout)
-        advantages:    same shape as log_probs
-        clip_epsilon:  clipping parameter epsilon
+    ratio = exp(log_probs - old_log_probs)
+    surr1 = ratio * advantages
+    surr2 = clamp(ratio, 1-clip_ratio, 1+clip_ratio) * advantages
+    loss = -mean(min(surr1, surr2))
 
-    Returns:
-        Scalar loss = -mean(min(r * A, clip(r, 1-eps, 1+eps) * A))
+    Returns (loss, metrics) where metrics has:
+        'policy_loss': float
+        'clip_fraction': float — fraction of ratios clipped
+        'mean_ratio': float
     """
-    r = (log_probs - old_log_probs).exp()
-    loss_unclipped = r * advantages
-    loss_clipped = r.clamp(1.0 - clip_epsilon, 1.0 + clip_epsilon) * advantages
-    loss = -torch.min(loss_unclipped, loss_clipped).mean()
-    return loss
+    ratio = (log_probs - old_log_probs).exp()
+    surr1 = ratio * advantages
+    surr2 = ratio.clamp(1.0 - clip_ratio, 1.0 + clip_ratio) * advantages
+    loss = -torch.min(surr1, surr2).mean()
+
+    # Metrics
+    clipped = (ratio < (1.0 - clip_ratio)) | (ratio > (1.0 + clip_ratio))
+    clip_fraction = clipped.float().mean().item()
+    mean_ratio = ratio.mean().item()
+
+    metrics = {
+        "policy_loss": loss.item(),
+        "clip_fraction": clip_fraction,
+        "mean_ratio": mean_ratio,
+    }
+    return loss, metrics
 
 
-def ppo_value_loss(
-    values: Tensor,
-    old_values: Tensor,
-    returns: Tensor,
-    value_clip: float,
-) -> Tensor:
-    """Clipped value function loss.
-
-    Args:
-        values:     current value estimates
-        old_values: value estimates from rollout collection
-        returns:    discounted returns (targets)
-        value_clip: clipping range epsilon
-
-    Returns:
-        Scalar loss = mean(max(mse(v, ret), mse(clip(v, old_v-eps, old_v+eps), ret)))
-    """
-    v_clipped = old_values + (values - old_values).clamp(-value_clip, value_clip)
-    loss_unclipped = (values - returns) ** 2
-    loss_clipped = (v_clipped - returns) ** 2
-    loss = torch.max(loss_unclipped, loss_clipped).mean()
-    return loss
+def ppo_value_loss(values: Tensor, returns: Tensor) -> Tensor:
+    """MSE value function loss. Returns scalar."""
+    return F.mse_loss(values, returns)
 
 
-def compute_entropy_bonus(log_probs: Tensor) -> Tensor:
-    """Entropy proxy: mean negative log probability.
+def entropy_bonus(log_probs: Tensor) -> Tensor:
+    """Entropy of categorical distribution. Returns scalar.
 
-    Args:
-        log_probs: log probabilities
-
-    Returns:
-        Scalar = -mean(log_probs)
+    H = -mean(sum_a pi(a) log pi(a)) ~= -mean(log_probs) for sampled actions.
     """
     return -log_probs.mean()
-
-
-# ---------------------------------------------------------------------------
-# Rollout dataclass
-# ---------------------------------------------------------------------------
-
-@dataclass
-class Rollout:
-    """Data collected during a policy rollout."""
-
-    input_ids: Tensor    # (B, T) generated tokens
-    log_probs: Tensor    # (B, T) log probs from policy at rollout time
-    values: Tensor       # (B, T) value estimates at rollout time
-    rewards: Tensor      # (B,) scalar rewards per sample
-    advantages: Tensor   # (B, T) computed GAE advantages
-    returns: Tensor      # (B, T) discounted returns
 
 
 # ---------------------------------------------------------------------------
@@ -159,254 +135,236 @@ class Rollout:
 # ---------------------------------------------------------------------------
 
 class PPOTrainer:
-    """Complete PPO training loop for RLHF.
-
-    Collects rollouts from a policy, computes GAE advantages, and performs
-    multiple epochs of clipped policy gradient updates.
-    """
+    """RLHF PPO trainer."""
 
     def __init__(
         self,
         policy: nn.Module,
-        ref_policy: nn.Module,
-        value_fn: nn.Module,
-        reward_fn: Callable,
-        policy_optimizer,
-        value_optimizer,
+        ref_model: nn.Module,
+        reward_fn: Callable[[Tensor], float],
         config: PPOConfig,
+        optimizer: torch.optim.Optimizer,
     ) -> None:
         self.policy = policy
-        self.ref_policy = ref_policy
-        self.value_fn = value_fn
+        self.ref_model = ref_model
         self.reward_fn = reward_fn
-        self.policy_optimizer = policy_optimizer
-        self.value_optimizer = value_optimizer
         self.config = config
+        self.optimizer = optimizer
 
-    def collect_rollout(self, prompt_ids: Tensor, max_new_tokens: int) -> Rollout:
-        """Collect a rollout by generating responses from the policy.
+        # Freeze reference model
+        for p in ref_model.parameters():
+            p.requires_grad_(False)
 
-        Args:
-            prompt_ids:     (B, prompt_len) prompt token ids
-            max_new_tokens: number of new tokens to generate per sample
+        # Value head — trained alongside policy
+        self.value_head = ValueHead(policy.config.d_model)
 
-        Returns:
-            Rollout with (B, T) sequence fields and (B,) rewards
+        # Add value head params to optimizer
+        optimizer.add_param_group({"params": list(self.value_head.parameters())})
+
+        # Storage for hidden states captured via forward hook
+        self._hidden_states: list[Tensor] = []
+        self._hook_handle = None
+
+    def _register_hidden_hook(self) -> None:
+        """Register a forward hook on the policy's final norm to capture hidden states."""
+        if self._hook_handle is not None:
+            return
+
+        # Find the final norm layer (named 'norm')
+        norm_module = getattr(self.policy, "norm", None)
+        if norm_module is None:
+            # Fallback: look for any RMSNorm or LayerNorm
+            for name, module in self.policy.named_modules():
+                if "norm" in name.lower() and not "." in name:
+                    norm_module = module
+                    break
+
+        if norm_module is not None:
+            def hook_fn(module, input, output):
+                self._hidden_states.append(output.detach())
+
+            self._hook_handle = norm_module.register_forward_hook(hook_fn)
+
+    def _remove_hidden_hook(self) -> None:
+        if self._hook_handle is not None:
+            self._hook_handle.remove()
+            self._hook_handle = None
+
+    def _get_hidden_states_and_logits(
+        self, input_ids: Tensor, past_key_values=None
+    ) -> tuple[Tensor, Tensor, list]:
+        """Run policy forward, capturing hidden states via hook.
+
+        Returns (hidden_states, logits, present_key_values).
+        """
+        self._hidden_states.clear()
+        self._register_hidden_hook()
+        _, logits, pkv = self.policy(input_ids, past_key_values=past_key_values)
+        if self._hidden_states:
+            hidden = self._hidden_states[-1]
+        else:
+            # Fallback: use embedding-dim slice of logits (shouldn't happen normally)
+            hidden = logits
+        return hidden, logits, pkv
+
+    def collect_rollout(self, prompt_ids: Tensor) -> dict:
+        """Sample n_rollout_steps tokens from policy.
+
+        Returns rollout dict with: 'tokens', 'log_probs', 'values', 'rewards'
         """
         cfg = self.config
         B = prompt_ids.shape[0]
-        T = max_new_tokens
+        T = cfg.n_rollout_steps
 
         self.policy.eval()
-        self.value_fn.eval()
+        self.value_head.eval()
 
-        all_input_ids = []
-        all_log_probs = []
-        all_rewards = []
+        all_tokens = []      # list of (B, 1) tensors
+        all_log_probs = []   # list of (B,) tensors
+        all_values = []      # list of (B,) tensors
 
         with torch.no_grad():
-            for b in range(B):
-                prompt = prompt_ids[b:b+1]  # (1, prompt_len)
+            cur_ids = prompt_ids
+            past_key_values = None
 
-                # Generate tokens autoregressively (greedy)
-                generated_ids_list = []
-                log_probs_list = []
-                cur_ids = prompt
-                past_key_values = None
+            for step in range(T):
+                hidden, logits, past_key_values = self._get_hidden_states_and_logits(
+                    cur_ids, past_key_values
+                )
+                # logits: (B, seq_len, vocab_size) — use last token's logits
+                last_logits = logits[:, -1, :]           # (B, vocab_size)
+                last_hidden = hidden[:, -1:, :]          # (B, 1, d_model)
 
-                for _ in range(T):
-                    _, logits, past_key_values = self.policy(
-                        cur_ids, past_key_values=past_key_values
-                    )
-                    next_logits = logits[:, -1, :]  # (1, vocab_size)
-                    log_probs_step = F.log_softmax(next_logits, dim=-1)
+                # Scale by temperature
+                scaled_logits = last_logits / cfg.temperature
+                log_probs_all = F.log_softmax(scaled_logits, dim=-1)  # (B, vocab_size)
 
-                    # Greedy decoding
-                    next_token = next_logits.argmax(dim=-1, keepdim=True)  # (1, 1)
-                    token_log_prob = log_probs_step.gather(1, next_token)   # (1, 1)
+                # Sample next token
+                probs = log_probs_all.exp()
+                next_token = torch.multinomial(probs, num_samples=1)   # (B, 1)
+                token_log_prob = log_probs_all.gather(1, next_token).squeeze(1)  # (B,)
 
-                    generated_ids_list.append(next_token)
-                    log_probs_list.append(token_log_prob)
-                    cur_ids = next_token
+                # Value estimate from last hidden state
+                # value_head: (B, 1, d_model) -> (B, 1) -> (B,)
+                val = self.value_head(last_hidden).squeeze(1)  # (B,)
 
-                gen_ids = torch.cat(generated_ids_list, dim=1)  # (1, T)
-                gen_lp = torch.cat(log_probs_list, dim=1)        # (1, T)
+                all_tokens.append(next_token)
+                all_log_probs.append(token_log_prob)
+                all_values.append(val)
 
-                reward = self.reward_fn(gen_ids[0].tolist())
+                cur_ids = next_token  # next step input is just the new token
 
-                all_input_ids.append(gen_ids)
-                all_log_probs.append(gen_lp)
-                all_rewards.append(float(reward))
+        # Stack: (B, T)
+        tokens = torch.cat(all_tokens, dim=1)         # (B, T)
+        log_probs = torch.stack(all_log_probs, dim=1)  # (B, T)
+        values = torch.stack(all_values, dim=1)        # (B, T)
 
-        # Stack across batch dimension
-        input_ids = torch.cat(all_input_ids, dim=0)  # (B, T)
-        log_probs = torch.cat(all_log_probs, dim=0)  # (B, T)
-        rewards_tensor = torch.tensor(
-            all_rewards, dtype=torch.float32, device=prompt_ids.device
-        )  # (B,)
+        # Compute rewards for each sequence
+        rewards_list = []
+        for b in range(B):
+            r = self.reward_fn(tokens[b])  # pass (T,) tensor
+            rewards_list.append(float(r))
+        rewards = torch.tensor(rewards_list, dtype=torch.float32, device=prompt_ids.device)  # (B,)
 
-        # Estimate values: get policy logits then apply value_fn linear head
-        # Spec: "forward -> mean-pool logits -> Linear head"
-        with torch.no_grad():
-            _, policy_logits, _ = self.policy(input_ids)
-            # policy_logits: (B, T, vocab_size)
-            # Mean-pool over vocab dim: (B, T, vocab_size) -> (B, T, vocab_size)
-            # Then apply value_fn (nn.Linear(vocab_size, 1)) -> (B, T, 1) -> squeeze -> (B, T)
-            val_out = self.value_fn(policy_logits)
-            if isinstance(val_out, tuple):
-                val_logits = val_out[1] if len(val_out) >= 2 else val_out[0]
-            else:
-                val_logits = val_out
-            # val_logits: (B, T, 1) -> squeeze last dim -> (B, T)
-            if val_logits.dim() == 3 and val_logits.shape[-1] == 1:
-                values = val_logits.squeeze(-1)
-            else:
-                values = val_logits.mean(dim=-1)
+        return {
+            "tokens": tokens,
+            "log_probs": log_probs,
+            "values": values,
+            "rewards": rewards,
+        }
 
-        # Compute GAE advantages per sample
+    def ppo_update(self, rollout: dict) -> dict:
+        """Run n_epochs of PPO updates on the rollout.
+
+        Returns dict with: 'policy_loss', 'value_loss', 'entropy', 'total_loss'
+        """
+        cfg = self.config
+        tokens = rollout["tokens"]          # (B, T)
+        old_log_probs = rollout["log_probs"].detach()  # (B, T)
+        old_values = rollout["values"].detach()         # (B, T)
+        rewards = rollout["rewards"]                    # (B,)
+
+        B, T = tokens.shape
+
+        # Compute GAE per sequence
         all_advantages = []
         all_returns = []
         for b in range(B):
-            # Scalar reward broadcast to last token only
-            seq_rewards = torch.zeros(T, device=prompt_ids.device)
-            seq_rewards[-1] = rewards_tensor[b]
+            # Broadcast scalar reward to last timestep only
+            seq_rewards = torch.zeros(T, device=rewards.device)
+            seq_rewards[-1] = rewards[b]
 
-            dones = torch.zeros(T, device=prompt_ids.device)
-            dones[-1] = 1.0
+            adv, ret = compute_gae(seq_rewards, old_values[b], cfg.gamma, cfg.gae_lambda)
+            all_advantages.append(adv)
+            all_returns.append(ret)
 
-            adv, ret = compute_gae_advantages(seq_rewards, values[b], dones, cfg)
-            all_advantages.append(adv.unsqueeze(0))
-            all_returns.append(ret.unsqueeze(0))
+        advantages = torch.stack(all_advantages, dim=0)  # (B, T)
+        returns = torch.stack(all_returns, dim=0)         # (B, T)
 
-        advantages = torch.cat(all_advantages, dim=0)  # (B, T)
-        returns = torch.cat(all_returns, dim=0)         # (B, T)
-
-        if cfg.normalize_advantages:
-            mean = advantages.mean()
-            std = advantages.std() + 1e-8
-            advantages = (advantages - mean) / std
-
-        return Rollout(
-            input_ids=input_ids,
-            log_probs=log_probs,
-            values=values,
-            rewards=rewards_tensor,
-            advantages=advantages,
-            returns=returns,
-        )
-
-    def ppo_step(self, rollout: Rollout) -> dict[str, float]:
-        """Perform PPO update epochs over collected rollout data.
-
-        Args:
-            rollout: Rollout collected by collect_rollout
-
-        Returns:
-            Dict with keys "policy_loss", "value_loss", "entropy", "kl"
-        """
-        cfg = self.config
-        B, T = rollout.input_ids.shape
-
-        # Flatten for minibatch processing
-        flat_input_ids = rollout.input_ids.reshape(B * T)
-        old_log_probs = rollout.log_probs.reshape(B * T).detach()
-        old_values = rollout.values.reshape(B * T).detach()
-        advantages = rollout.advantages.reshape(B * T).detach()
-        returns = rollout.returns.reshape(B * T).detach()
+        # Normalize advantages
+        adv_mean = advantages.mean()
+        adv_std = advantages.std() + 1e-8
+        advantages = (advantages - adv_mean) / adv_std
 
         total_policy_loss = 0.0
         total_value_loss = 0.0
         total_entropy = 0.0
-        total_kl = 0.0
-        n_updates = 0
+        total_total_loss = 0.0
 
         self.policy.train()
-        self.value_fn.train()
-
-        N = B * T
-        indices = torch.arange(N)
+        self.value_head.train()
 
         for _ in range(cfg.n_epochs):
-            perm = torch.randperm(N)
-            shuffled = indices[perm]
+            # Forward pass: run policy over generated tokens to get current log probs + values
+            self._hidden_states.clear()
+            self._register_hidden_hook()
+            _, logits, _ = self.policy(tokens)
+            hidden = self._hidden_states[-1] if self._hidden_states else logits
 
-            for start in range(0, N, cfg.minibatch_size):
-                mb_idx = shuffled[start: start + cfg.minibatch_size]
-                if len(mb_idx) == 0:
-                    continue
+            # logits: (B, T, vocab_size)
+            log_probs_all = F.log_softmax(logits, dim=-1)  # (B, T, vocab_size)
 
-                mb_input_ids = flat_input_ids[mb_idx].unsqueeze(0)  # (1, mb_size)
-                mb_old_lp = old_log_probs[mb_idx]
-                mb_old_val = old_values[mb_idx]
-                mb_adv = advantages[mb_idx]
-                mb_ret = returns[mb_idx]
+            # Gather log probs for the sampled tokens
+            curr_log_probs = log_probs_all.gather(
+                2, tokens.unsqueeze(-1)
+            ).squeeze(-1)  # (B, T)
 
-                # Policy forward
-                _, logits, _ = self.policy(mb_input_ids)
-                # logits: (1, mb_size, vocab_size)
-                log_probs_all = F.log_softmax(logits, dim=-1)
+            # Value head over all hidden states
+            curr_values = self.value_head(hidden)  # (B, T)
 
-                mb_tokens = flat_input_ids[mb_idx]  # (mb_size,)
-                mb_lp = log_probs_all[0].gather(
-                    1, mb_tokens.unsqueeze(-1)
-                ).squeeze(-1)  # (mb_size,)
+            p_loss, _ = ppo_policy_loss(curr_log_probs, old_log_probs, advantages, cfg.clip_ratio)
+            v_loss = ppo_value_loss(curr_values, returns)
+            ent = entropy_bonus(curr_log_probs)
 
-                p_loss = ppo_policy_loss(mb_lp, mb_old_lp, mb_adv, cfg.clip_epsilon)
-                entropy = compute_entropy_bonus(mb_lp)
+            total_loss = p_loss + cfg.vf_coeff * v_loss - cfg.entropy_coeff * ent
 
-                # Value forward: logits already computed above, apply value_fn linear head
-                # value_fn is nn.Linear(vocab_size, 1); logits: (1, mb_size, vocab_size)
-                val_out = self.value_fn(logits)
-                if isinstance(val_out, tuple):
-                    val_logits = val_out[1] if len(val_out) >= 2 else val_out[0]
-                else:
-                    val_logits = val_out
-                # val_logits: (1, mb_size, 1) -> squeeze -> (mb_size,)
-                if val_logits.dim() == 3 and val_logits.shape[-1] == 1:
-                    curr_values = val_logits.squeeze(-1).squeeze(0)  # (mb_size,)
-                else:
-                    curr_values = val_logits.mean(dim=-1).squeeze(0)  # (mb_size,)
+            self.optimizer.zero_grad()
+            total_loss.backward()
+            nn.utils.clip_grad_norm_(
+                list(self.policy.parameters()) + list(self.value_head.parameters()),
+                cfg.max_grad_norm,
+            )
+            self.optimizer.step()
 
-                v_loss = ppo_value_loss(curr_values, mb_old_val, mb_ret, cfg.value_clip)
+            total_policy_loss += p_loss.item()
+            total_value_loss += v_loss.item()
+            total_entropy += ent.item()
+            total_total_loss += total_loss.item()
 
-                total_loss = p_loss + cfg.value_coeff * v_loss - cfg.entropy_coeff * entropy
-
-                with torch.no_grad():
-                    kl = (mb_old_lp - mb_lp).mean()
-
-                self.policy_optimizer.zero_grad()
-                self.value_optimizer.zero_grad()
-                total_loss.backward()
-                nn.utils.clip_grad_norm_(self.policy.parameters(), cfg.max_grad_norm)
-                nn.utils.clip_grad_norm_(self.value_fn.parameters(), cfg.max_grad_norm)
-                self.policy_optimizer.step()
-                self.value_optimizer.step()
-
-                total_policy_loss += p_loss.item()
-                total_value_loss += v_loss.item()
-                total_entropy += entropy.item()
-                total_kl += kl.item()
-                n_updates += 1
-
-        if n_updates == 0:
-            n_updates = 1
-
+        n = cfg.n_epochs
         return {
-            "policy_loss": total_policy_loss / n_updates,
-            "value_loss": total_value_loss / n_updates,
-            "entropy": total_entropy / n_updates,
-            "kl": total_kl / n_updates,
+            "policy_loss": total_policy_loss / n,
+            "value_loss": total_value_loss / n,
+            "entropy": total_entropy / n,
+            "total_loss": total_total_loss / n,
         }
 
-    def train_step(self, prompt_ids: Tensor) -> dict[str, float]:
-        """Perform a full PPO train step: collect rollout + PPO update.
+    def train_step(self, prompt_ids: Tensor) -> dict:
+        """collect_rollout + ppo_update.
 
-        Args:
-            prompt_ids: (B, prompt_len) prompt token ids
-
-        Returns:
-            Combined metrics dict from ppo_step
+        Returns combined metrics dict.
         """
-        rollout = self.collect_rollout(prompt_ids, max_new_tokens=8)
-        metrics = self.ppo_step(rollout)
+        rollout = self.collect_rollout(prompt_ids)
+        metrics = self.ppo_update(rollout)
+        metrics["mean_reward"] = rollout["rewards"].mean().item()
         return metrics

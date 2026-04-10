@@ -1,254 +1,265 @@
-"""Position interpolation techniques for extending RoPE context length.
+"""Position interpolation: extend RoPE context length at inference time.
 
-Implements linear, NTK-aware, YaRN, and dynamic NTK position scaling,
-distinct from the NTK-only approach in ntk_rope.py.
+Implements linear position interpolation and NTK-aware scaling for extending
+RoPE to longer contexts at inference time, complementary to YaRN (yarn_rope.py).
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
 
 @dataclass
-class PIConfig:
-    """Configuration for position interpolation methods."""
+class PositionInterpolationConfig:
+    """Configuration for position interpolation context extension."""
 
-    method: str = "linear"          # "linear" | "ntk" | "yarn" | "dynamic"
-    scale_factor: float = 4.0       # context extension factor
-    base_theta: float = 10000.0     # RoPE base frequency
-    original_max_len: int = 2048    # original training context length
-    extended_max_len: int = 8192    # target extended context length
-
-
-def compute_rope_freqs(head_dim: int, theta: float = 10000.0) -> Tensor:
-    """Compute standard RoPE frequencies.
-
-    Formula: freq_i = 1 / theta^(2i / D) for i in range(D // 2).
-
-    Args:
-        head_dim: Head dimension D (must be even).
-        theta:    Base frequency (default 10000.0).
-
-    Returns:
-        Frequency tensor of shape (D // 2,).
-    """
-    half_dim = head_dim // 2
-    i = torch.arange(0, half_dim, dtype=torch.float32)
-    freqs = 1.0 / (theta ** (2.0 * i / head_dim))
-    return freqs  # (D//2,)
+    original_max_len: int = 8192
+    target_max_len: int = 32768
+    method: str = "linear"   # "linear" | "ntk" | "dynamic_ntk"
+    ntk_alpha: float = 1.0   # NTK scaling factor
 
 
-def linear_position_interpolation(freqs: Tensor, scale_factor: float) -> Tensor:
-    """Linear position interpolation: scale down frequencies to extend context.
-
-    Equivalent to dividing positional indices by scale_factor, which maps
-    extended positions into the original training range.
-
-    Args:
-        freqs:        Standard RoPE frequencies, shape (D//2,).
-        scale_factor: Context extension ratio (e.g. 4.0 for 4x context).
-
-    Returns:
-        Scaled frequencies of the same shape (D//2,).
-    """
-    return freqs / scale_factor
-
-
-def ntk_aware_interpolation(
-    head_dim: int,
-    scale_factor: float,
-    base_theta: float,
-) -> Tensor:
-    """NTK-aware position interpolation via scaled base theta.
-
-    Scales the RoPE base: theta' = theta * scale_factor^(D / (D - 2)).
-    This avoids high-frequency collapse by redistributing the extension
-    across all frequency dimensions.
-
-    Args:
-        head_dim:     Head dimension D (must be even).
-        scale_factor: Context extension ratio.
-        base_theta:   Original RoPE base frequency.
-
-    Returns:
-        Frequency tensor of shape (D//2,).
-    """
-    scaled_theta = base_theta * (scale_factor ** (head_dim / (head_dim - 2)))
-    return compute_rope_freqs(head_dim, theta=scaled_theta)
-
-
-def yarn_interpolation(
-    head_dim: int,
-    scale_factor: float,
-    base_theta: float,
-    alpha: float = 1.0,
-    beta: float = 32.0,
-    original_max_len: int = 2048,
-) -> Tensor:
-    """YaRN interpolation: blend linear and NTK per frequency dimension.
-
-    For each frequency component i, the wavelength determines the blend:
-      - wavelength > original_max_len / beta → low-frequency: use NTK (no scaling)
-      - wavelength < original_max_len / alpha → high-frequency: use linear (scale down)
-      - otherwise: smooth interpolation between the two
-
-    Args:
-        head_dim:         Head dimension D (must be even).
-        scale_factor:     Context extension ratio.
-        base_theta:       Original RoPE base frequency.
-        alpha:            High-frequency threshold parameter.
-        beta:             Low-frequency threshold parameter.
-        original_max_len: Original maximum sequence length.
-
-    Returns:
-        Blended frequency tensor of shape (D//2,).
-    """
-    standard_freqs = compute_rope_freqs(head_dim, theta=base_theta)
-    linear_freqs = linear_position_interpolation(standard_freqs, scale_factor)
-    ntk_freqs = ntk_aware_interpolation(head_dim, scale_factor, base_theta)
-
-    half_dim = head_dim // 2
-    blended = torch.empty(half_dim, dtype=torch.float32)
-
-    low_thresh = original_max_len / beta   # wavelength above this → use NTK (original)
-    high_thresh = original_max_len / alpha  # wavelength below this → use linear
-
-    for idx in range(half_dim):
-        freq = standard_freqs[idx].item()
-        # wavelength = 2π / freq  (freq > 0 always)
-        wavelength = (2.0 * math.pi) / freq if freq != 0.0 else float("inf")
-
-        if wavelength > low_thresh:
-            # Low frequency: preserve original NTK freq (no scaling)
-            blended[idx] = ntk_freqs[idx]
-        elif wavelength < high_thresh:
-            # High frequency: apply linear scaling
-            blended[idx] = linear_freqs[idx]
-        else:
-            # Middle: smooth linear interpolation between linear and NTK
-            # t=0 → low_thresh (NTK), t=1 → high_thresh (linear)
-            t = (low_thresh - wavelength) / (low_thresh - high_thresh + 1e-8)
-            t = max(0.0, min(1.0, t))
-            blended[idx] = (1.0 - t) * ntk_freqs[idx] + t * linear_freqs[idx]
-
-    return blended
-
-
-def dynamic_ntk_interpolation(
-    head_dim: int,
+def linear_interpolate_positions(
     seq_len: int,
     original_max_len: int,
-    base_theta: float,
+    target_max_len: int,
 ) -> Tensor:
-    """Dynamic NTK interpolation: compute scale_factor at runtime from seq_len.
+    """Scale positions so they fit within original_max_len.
 
-    scale_factor = max(1, seq_len / original_max_len).
-    When seq_len <= original_max_len, no scaling is applied (standard RoPE).
+    interpolated_pos[i] = i * (original_max_len / target_max_len)
 
     Args:
-        head_dim:         Head dimension D (must be even).
-        seq_len:          Current sequence length.
+        seq_len: Number of positions to generate.
         original_max_len: Original training context length.
-        base_theta:       Original RoPE base frequency.
+        target_max_len: Target extended context length.
 
     Returns:
-        Frequency tensor of shape (D//2,).
+        (seq_len,) float tensor of interpolated positions.
     """
-    scale_factor = max(1.0, seq_len / original_max_len)
-    return ntk_aware_interpolation(head_dim, scale_factor, base_theta)
+    scale = original_max_len / target_max_len
+    positions = torch.arange(seq_len, dtype=torch.float32) * scale
+    return positions
 
 
-def apply_rope_with_freqs(x: Tensor, freqs: Tensor) -> Tensor:
-    """Apply RoPE rotations using precomputed frequencies.
+def ntk_rope_base(
+    base: float,
+    head_dim: int,
+    original_max_len: int,
+    target_max_len: int,
+    alpha: float = 1.0,
+) -> float:
+    """Compute NTK-aware RoPE base frequency.
 
-    For each position t and each frequency pair, rotates x by angle t * freq.
+    new_base = base * (alpha * target_max_len / original_max_len) ^ (head_dim / (head_dim - 2))
 
     Args:
-        x:     Input tensor of shape (B, H, T, D).
-        freqs: Frequency tensor of shape (D//2,).
+        base: Original RoPE base frequency (e.g., 10000.0).
+        head_dim: Attention head dimension.
+        original_max_len: Original training context length.
+        target_max_len: Target extended context length.
+        alpha: NTK scaling factor.
 
     Returns:
-        Rotated tensor of the same shape (B, H, T, D).
+        New base frequency as float.
+    """
+    scale_ratio = alpha * target_max_len / original_max_len
+    exponent = head_dim / (head_dim - 2)
+    return base * (scale_ratio ** exponent)
+
+
+def build_rope_freqs(
+    head_dim: int,
+    seq_len: int,
+    base: float = 10000.0,
+    positions: Tensor | None = None,
+) -> Tensor:
+    """Build RoPE frequency matrix.
+
+    theta_i = base^(-2i/head_dim) for i in [0, head_dim/2)
+    freqs = outer(positions, theta)  — (seq_len, head_dim/2)
+
+    Returns a real tensor of shape (seq_len, head_dim) where
+    element [t, 2k] = cos(positions[t] * theta_k) and
+    element [t, 2k+1] = sin(positions[t] * theta_k).
+
+    Args:
+        head_dim: Attention head dimension (must be even).
+        seq_len: Number of positions.
+        base: RoPE base frequency.
+        positions: Optional custom positions of shape (seq_len,). If None,
+                   uses 0, 1, 2, ..., seq_len-1.
+
+    Returns:
+        Real tensor of shape (seq_len, head_dim).
+    """
+    half_dim = head_dim // 2
+    # theta_i = base^(-2i/head_dim)
+    i = torch.arange(0, half_dim, dtype=torch.float32)
+    theta = base ** (-2.0 * i / head_dim)  # (half_dim,)
+
+    if positions is None:
+        positions = torch.arange(seq_len, dtype=torch.float32)
+
+    # angles: (seq_len, half_dim)
+    angles = torch.outer(positions, theta)
+
+    cos_vals = angles.cos()  # (seq_len, half_dim)
+    sin_vals = angles.sin()  # (seq_len, half_dim)
+
+    # Interleave cos/sin into (seq_len, head_dim)
+    freqs = torch.zeros(seq_len, head_dim, dtype=torch.float32)
+    freqs[:, 0::2] = cos_vals
+    freqs[:, 1::2] = sin_vals
+
+    return freqs
+
+
+def apply_rope(x: Tensor, freqs: Tensor) -> Tensor:
+    """Apply rotary position embeddings to x.
+
+    Args:
+        x: (B, H, T, head_dim)
+        freqs: (T, head_dim) real tensor where [:, 2k] = cos, [:, 2k+1] = sin
+
+    Returns:
+        (B, H, T, head_dim) with RoPE applied.
     """
     B, H, T, D = x.shape
     half_dim = D // 2
 
-    # Build angles: (T, D//2), then cos/sin
-    positions = torch.arange(T, device=x.device, dtype=x.dtype)
-    angles = torch.outer(positions, freqs.to(x.device, x.dtype))  # (T, D//2)
+    # Extract cos and sin from interleaved freqs
+    cos = freqs[:, 0::2]  # (T, half_dim)
+    sin = freqs[:, 1::2]  # (T, half_dim)
 
-    cos = angles.cos()  # (T, D//2)
-    sin = angles.sin()  # (T, D//2)
+    # Reshape for broadcasting: (1, 1, T, half_dim)
+    cos = cos.unsqueeze(0).unsqueeze(0).to(x.device, x.dtype)
+    sin = sin.unsqueeze(0).unsqueeze(0).to(x.device, x.dtype)
 
-    # Reshape for broadcasting: (1, 1, T, D//2)
-    cos = cos.unsqueeze(0).unsqueeze(0)
-    sin = sin.unsqueeze(0).unsqueeze(0)
+    # Split x into first and second halves along head_dim
+    x1 = x[..., :half_dim]   # (B, H, T, half_dim)
+    x2 = x[..., half_dim:]   # (B, H, T, half_dim)
 
-    # Split into pairs
-    x1 = x[..., :half_dim]   # (B, H, T, D//2)
-    x2 = x[..., half_dim:]   # (B, H, T, D//2)
-
-    # Rotate: [x1, x2] → [x1*cos - x2*sin, x1*sin + x2*cos]
+    # 2D rotation: [x1, x2] → [x1*cos - x2*sin, x1*sin + x2*cos]
     out1 = x1 * cos - x2 * sin
     out2 = x1 * sin + x2 * cos
 
     return torch.cat([out1, out2], dim=-1)
 
 
-class PositionInterpolator:
-    """Applies position interpolation to attention head tensors.
+class ContextLengthExtender:
+    """Extends a model's context length via position interpolation.
 
-    Supports linear, NTK, YaRN, and dynamic NTK methods as configured by PIConfig.
+    Patches model.freqs_cis with an interpolated version for the target
+    context length, then restores the original after use.
     """
 
-    def __init__(self, config: PIConfig, head_dim: int) -> None:
+    def __init__(self, model, config: PositionInterpolationConfig) -> None:
+        self.model = model
         self.config = config
-        self.head_dim = head_dim
+        self._original_freqs = None
 
-    def get_freqs(self, seq_len: int) -> Tensor:
-        """Return interpolated frequencies for the given sequence length.
+    def patch_rope(self) -> None:
+        """Replace model.freqs_cis with interpolated version for target_max_len."""
+        # Save original
+        self._original_freqs = self.model.freqs_cis
 
-        Args:
-            seq_len: Current sequence length.
-
-        Returns:
-            Frequency tensor of shape (head_dim // 2,).
-        """
         cfg = self.config
-        method = cfg.method
-
-        if method == "linear":
-            base_freqs = compute_rope_freqs(self.head_dim, theta=cfg.base_theta)
-            return linear_position_interpolation(base_freqs, cfg.scale_factor)
-        elif method == "ntk":
-            return ntk_aware_interpolation(self.head_dim, cfg.scale_factor, cfg.base_theta)
-        elif method == "yarn":
-            return yarn_interpolation(
-                self.head_dim,
-                cfg.scale_factor,
-                cfg.base_theta,
-                original_max_len=cfg.original_max_len,
-            )
-        elif method == "dynamic":
-            return dynamic_ntk_interpolation(
-                self.head_dim, seq_len, cfg.original_max_len, cfg.base_theta
-            )
+        head_dim = self._original_freqs.shape[-1]
+        # freqs_cis is complex: shape (seq_len, head_dim//2)
+        # We need to figure out real head_dim from complex tensor
+        if self._original_freqs.is_complex():
+            real_head_dim = head_dim * 2
         else:
-            raise ValueError(f"Unknown position interpolation method: {method!r}")
+            real_head_dim = head_dim
 
-    def apply(self, x: Tensor) -> Tensor:
-        """Apply position encoding to input tensor.
+        target_len = cfg.target_max_len
+
+        if cfg.method == "linear":
+            positions = linear_interpolate_positions(
+                target_len, cfg.original_max_len, cfg.target_max_len
+            )
+            new_freqs = self._build_complex_freqs(real_head_dim, target_len, positions=positions)
+        elif cfg.method == "ntk":
+            new_base = ntk_rope_base(
+                10000.0, real_head_dim, cfg.original_max_len, cfg.target_max_len, cfg.ntk_alpha
+            )
+            new_freqs = self._build_complex_freqs(real_head_dim, target_len, base=new_base)
+        elif cfg.method == "dynamic_ntk":
+            scale = dynamic_ntk_scale(target_len, cfg.original_max_len, real_head_dim)
+            new_base = 10000.0 * scale
+            new_freqs = self._build_complex_freqs(real_head_dim, target_len, base=new_base)
+        else:
+            raise ValueError(f"Unknown method: {cfg.method!r}")
+
+        # Move to same device as model
+        new_freqs = new_freqs.to(self._original_freqs.device)
+        self.model.freqs_cis = new_freqs
+
+    def _build_complex_freqs(
+        self,
+        head_dim: int,
+        seq_len: int,
+        base: float = 10000.0,
+        positions: Tensor | None = None,
+    ) -> Tensor:
+        """Build complex freqs_cis tensor matching model's expected format."""
+        half_dim = head_dim // 2
+        i = torch.arange(0, half_dim, dtype=torch.float32)
+        theta = base ** (-2.0 * i / head_dim)
+
+        if positions is None:
+            positions = torch.arange(seq_len, dtype=torch.float32)
+
+        angles = torch.outer(positions, theta)  # (seq_len, half_dim)
+        return torch.polar(torch.ones_like(angles), angles)  # complex64
+
+    def restore_rope(self) -> None:
+        """Restore original freqs_cis."""
+        if self._original_freqs is not None:
+            self.model.freqs_cis = self._original_freqs
+            self._original_freqs = None
+
+    def generate_extended(self, input_ids: Tensor) -> Tensor:
+        """Generate with patched RoPE for extended context.
 
         Args:
-            x: Input tensor of shape (B, H, T, D).
+            input_ids: (B, T) token ids.
 
         Returns:
-            Position-encoded tensor of the same shape.
+            logits (B, T, vocab_size).
         """
-        _B, _H, T, _D = x.shape
-        freqs = self.get_freqs(T)
-        return apply_rope_with_freqs(x, freqs)
+        self.patch_rope()
+        try:
+            with torch.no_grad():
+                loss, logits, past_key_values = self.model(input_ids)
+        finally:
+            self.restore_rope()
+        return logits
+
+
+def dynamic_ntk_scale(
+    seq_len: int,
+    original_max_len: int,
+    head_dim: int,
+    base: float = 10000.0,
+) -> float:
+    """Dynamic NTK scaling factor based on current sequence length.
+
+    scale = max(1.0, (seq_len / original_max_len)^(head_dim/(head_dim-2)))
+
+    Args:
+        seq_len: Current sequence length.
+        original_max_len: Original training context length.
+        head_dim: Attention head dimension.
+        base: RoPE base frequency (unused, kept for API consistency).
+
+    Returns:
+        Scaling factor as float (>= 1.0).
+    """
+    ratio = seq_len / original_max_len
+    exponent = head_dim / (head_dim - 2)
+    return max(1.0, ratio ** exponent)
