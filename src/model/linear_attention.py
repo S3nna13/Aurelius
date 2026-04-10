@@ -7,10 +7,12 @@ Supported feature maps:
   - ELU+1  (always positive, simple, no extra parameters)
   - ReLU+ε (always non-negative, very cheap)
   - Random Fourier Features (approximates RBF kernel, requires stored ω/b)
+  - FAVOR+ (exp-based orthogonal random features, Performer)
 
 References:
   Katharopoulos et al. (2020) "Transformers are RNNs"
   Rahimi & Recht (2007) "Random Features for Large-Scale Kernel Machines"
+  Choromanski et al. (2021) "Rethinking Attention with Performers"
 """
 
 from __future__ import annotations
@@ -34,7 +36,8 @@ class LinearAttnConfig:
     n_heads: int = 2
     head_dim: int = 32
     feature_map: str = "elu"      # "elu" | "relu" | "random_fourier"
-    n_features: int = 64          # used only for random_fourier
+    n_features: int = 64          # used only for random_fourier / orf / rff
+    method: str = "orf"           # "orf" | "rff" — for random_features()
     causal: bool = True
     eps: float = 1e-6
 
@@ -213,6 +216,160 @@ class LinearAttention(nn.Module):
         # y: (B, H, T, hd) -> (B, T, H*hd)
         y = y.permute(0, 2, 1, 3).contiguous().view(B, T, H * hd)
         return self.out_proj(y)   # (B, T, D)
+
+
+# ---------------------------------------------------------------------------
+# FAVOR+ / Performer random feature maps
+# ---------------------------------------------------------------------------
+
+def random_features(
+    query: Tensor,          # (B, H, T, head_dim)
+    key: Tensor,            # (B, H, T, head_dim)
+    n_features: int,
+    method: str = "orf",
+) -> tuple[Tensor, Tensor]:
+    """Map Q and K to random feature space for kernel approximation (FAVOR+).
+
+    Supports two sampling strategies:
+      "orf"  — Orthogonal Random Features (QR-orthogonalized)
+      "rff"  — IID Random Fourier Features (standard Gaussian)
+
+    Feature map (exp-based, FAVOR+):
+        phi(x) = exp(x · w - ||x||² / 2) / sqrt(n_features)
+
+    Args:
+        query: (B, H, T, head_dim)
+        key:   (B, H, T, head_dim)
+        n_features: number of random features
+        method: "orf" or "rff"
+
+    Returns:
+        q_prime, k_prime — each (B, H, T, n_features), non-negative
+    """
+    head_dim = query.shape[-1]
+    device = query.device
+    dtype = query.dtype
+
+    torch.manual_seed(0)
+
+    if method == "orf":
+        # Build an orthogonal projection matrix via QR on a random Gaussian matrix.
+        # To support n_features > head_dim we stack multiple orthogonal blocks.
+        n_blocks = math.ceil(n_features / head_dim)
+        blocks = []
+        for _ in range(n_blocks):
+            g = torch.randn(head_dim, head_dim, device=device, dtype=dtype)
+            q_mat, _ = torch.linalg.qr(g)
+            blocks.append(q_mat)
+        W = torch.cat(blocks, dim=1)[:, :n_features]  # (head_dim, n_features)
+        # Scale rows so that each feature has unit norm in expectation
+        W = W * math.sqrt(head_dim)
+    elif method == "rff":
+        # IID samples from N(0, I)
+        W = torch.randn(head_dim, n_features, device=device, dtype=dtype)
+    else:
+        raise ValueError(f"Unknown random feature method: {method!r}. Use 'orf' or 'rff'.")
+
+    def _favor_plus(x: Tensor) -> Tensor:
+        """x: (B, H, T, head_dim) -> (B, H, T, n_features), non-negative."""
+        # ||x||² / 2  — shape (B, H, T, 1)
+        sq_norm = (x * x).sum(dim=-1, keepdim=True) / 2.0
+        # x @ W  — shape (B, H, T, n_features)
+        proj = x @ W
+        # FAVOR+ map: exp(proj - sq_norm) / sqrt(n_features)
+        return torch.exp(proj - sq_norm) / math.sqrt(n_features)
+
+    q_prime = _favor_plus(query)
+    k_prime = _favor_plus(key)
+    return q_prime, k_prime
+
+
+def linear_attention(
+    q_prime: Tensor,    # (B, H, T, n_features)
+    k_prime: Tensor,    # (B, H, T, n_features)
+    v: Tensor,          # (B, H, T, head_dim)
+    causal: bool = True,
+    eps: float = 1e-6,
+) -> Tensor:
+    """Compute linear attention using pre-mapped random features.
+
+    causal=True  — prefix-sum O(n) sequential scan
+    causal=False — global outer product then contract, also O(n)
+
+    Returns (B, H, T, head_dim).
+    """
+    if causal:
+        return linear_attention_causal(q_prime, k_prime, v, eps=eps)
+    else:
+        return linear_attention_noncausal(q_prime, k_prime, v, eps=eps)
+
+
+# ---------------------------------------------------------------------------
+# LinearAttentionLayer — drop-in replacement using FAVOR+ random features
+# ---------------------------------------------------------------------------
+
+class LinearAttentionLayer(nn.Module):
+    """Drop-in linear attention layer using FAVOR+ random feature maps.
+
+    Uses the `random_features` + `linear_attention` pipeline for explicit
+    kernel approximation (Performer-style), rather than the deterministic
+    feature maps in `LinearAttention`.
+    """
+
+    def __init__(self, config: LinearAttnConfig) -> None:
+        super().__init__()
+        self.config = config
+        head_dim = config.d_model // config.n_heads
+        self._head_dim = head_dim
+        inner_dim = config.n_heads * head_dim
+
+        self.q_proj = nn.Linear(config.d_model, inner_dim, bias=False)
+        self.k_proj = nn.Linear(config.d_model, inner_dim, bias=False)
+        self.v_proj = nn.Linear(config.d_model, inner_dim, bias=False)
+        self.out_proj = nn.Linear(inner_dim, config.d_model, bias=False)
+
+    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
+        """x: (B, T, d_model) -> (B, T, d_model)."""
+        B, T, _ = x.shape
+        H = self.config.n_heads
+        hd = self._head_dim
+
+        def _reshape(proj: nn.Linear) -> Tensor:
+            out = proj(x)                    # (B, T, H*hd)
+            out = out.view(B, T, H, hd)      # (B, T, H, hd)
+            return out.permute(0, 2, 1, 3)   # (B, H, T, hd)
+
+        q = _reshape(self.q_proj)
+        k = _reshape(self.k_proj)
+        v = _reshape(self.v_proj)
+
+        q_prime, k_prime = random_features(
+            q, k, self.config.n_features, method=self.config.method
+        )
+
+        y = linear_attention(q_prime, k_prime, v, causal=self.config.causal)
+        # y: (B, H, T, hd) -> (B, T, H*hd)
+        y = y.permute(0, 2, 1, 3).contiguous().view(B, T, H * hd)
+        return self.out_proj(y)   # (B, T, d_model)
+
+
+# ---------------------------------------------------------------------------
+# Approximation error helper
+# ---------------------------------------------------------------------------
+
+def attention_approximation_error(
+    exact_attn: Tensor,
+    linear_attn: Tensor,
+) -> float:
+    """Relative Frobenius norm error: ||exact - linear|| / ||exact||.
+
+    Returns a non-negative float.  Returns 0.0 when the inputs are identical.
+    """
+    diff_norm = torch.linalg.norm(exact_attn - linear_attn)
+    base_norm = torch.linalg.norm(exact_attn)
+    if base_norm == 0:
+        return 0.0 if diff_norm == 0 else float("inf")
+    return (diff_norm / base_norm).item()
 
 
 # ---------------------------------------------------------------------------
