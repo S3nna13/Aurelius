@@ -1,5 +1,11 @@
-"""Tests for structured pruning module."""
+"""Tests for structured_pruning module.
+
+Covers StructuredPruningConfig, HeadImportanceScorer, FFNImportanceScorer,
+apply_head_mask, apply_ffn_mask, count_active_parameters, and StructuredPruner.
+"""
 from __future__ import annotations
+
+import math
 
 import pytest
 import torch
@@ -7,19 +13,18 @@ import torch
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.structured_pruning import (
-    IterativePruner,
+    FFNImportanceScorer,
+    HeadImportanceScorer,
+    StructuredPruner,
     StructuredPruningConfig,
-    compute_layer_importance,
-    compute_neuron_importance,
-    compute_sparsity_schedule,
-    prune_attention_heads,
-    prune_neurons,
-    regrow_neurons,
+    apply_ffn_mask,
+    apply_head_mask,
+    count_active_parameters,
 )
 
 
 # ---------------------------------------------------------------------------
-# Shared fixture
+# Fixtures
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
@@ -39,9 +44,9 @@ def small_model():
 
 
 @pytest.fixture
-def calibration_ids():
+def calibration_data():
     torch.manual_seed(0)
-    return torch.randint(0, 256, (2, 16))
+    return [torch.randint(0, 256, (2, 16)) for _ in range(4)]
 
 
 # ---------------------------------------------------------------------------
@@ -50,181 +55,220 @@ def calibration_ids():
 
 def test_structured_pruning_config_defaults():
     cfg = StructuredPruningConfig()
-    assert cfg.target_sparsity == 0.5
-    assert cfg.pruning_schedule == "linear"
-    assert cfg.n_pruning_steps == 10
-    assert cfg.regrowth_fraction == 0.0
-    assert cfg.min_neurons_per_layer == 1
+    assert cfg.head_pruning_ratio == 0.25
+    assert cfg.ffn_pruning_ratio == 0.25
+    assert cfg.importance_metric == "magnitude"
+    assert cfg.n_calibration_steps == 10
 
 
 # ---------------------------------------------------------------------------
-# Test 2: compute_sparsity_schedule linear length
+# Test 2: HeadImportanceScorer.compute_head_importance returns dict with layer keys
 # ---------------------------------------------------------------------------
 
-def test_sparsity_schedule_linear_length():
-    schedule = compute_sparsity_schedule(0.5, 10, "linear")
-    assert len(schedule) == 10
-
-
-# ---------------------------------------------------------------------------
-# Test 3: compute_sparsity_schedule linear ends at target
-# ---------------------------------------------------------------------------
-
-def test_sparsity_schedule_linear_ends_at_target():
-    target = 0.6
-    schedule = compute_sparsity_schedule(target, 8, "linear")
-    assert abs(schedule[-1] - target) < 1e-6
-
-
-# ---------------------------------------------------------------------------
-# Test 4: compute_sparsity_schedule cubic ends at target
-# ---------------------------------------------------------------------------
-
-def test_sparsity_schedule_cubic_ends_at_target():
-    target = 0.4
-    schedule = compute_sparsity_schedule(target, 5, "cubic")
-    assert len(schedule) == 5
-    assert abs(schedule[-1] - target) < 1e-6
-
-
-# ---------------------------------------------------------------------------
-# Test 5: compute_sparsity_schedule one_shot
-# ---------------------------------------------------------------------------
-
-def test_sparsity_schedule_one_shot():
-    target = 0.7
-    n_steps = 6
-    schedule = compute_sparsity_schedule(target, n_steps, "one_shot")
-    assert len(schedule) == n_steps
-    # All zeros except last
-    for val in schedule[:-1]:
-        assert val == 0.0
-    assert abs(schedule[-1] - target) < 1e-6
-
-
-# ---------------------------------------------------------------------------
-# Test 6: compute_neuron_importance shape (out,)
-# ---------------------------------------------------------------------------
-
-def test_compute_neuron_importance_shape():
-    weight = torch.randn(32, 64)
-    scores = compute_neuron_importance(weight, method="magnitude")
-    assert scores.shape == (32,)
-    assert (scores >= 0).all()
-
-
-# ---------------------------------------------------------------------------
-# Test 7: prune_neurons output shapes
-# ---------------------------------------------------------------------------
-
-def test_prune_neurons_output_shapes():
-    weight = torch.randn(20, 10)
-    bias = torch.randn(20)
-    pruned_w, pruned_b, kept_idx = prune_neurons(weight, bias, sparsity=0.5)
-    # Should keep at least 1 and at most 20 neurons
-    assert pruned_w.ndim == 2
-    assert pruned_w.shape[1] == 10
-    assert pruned_b is not None
-    assert pruned_b.shape[0] == pruned_w.shape[0]
-    assert kept_idx.shape[0] == pruned_w.shape[0]
-
-
-# ---------------------------------------------------------------------------
-# Test 8: prune_neurons sparsity respected
-# ---------------------------------------------------------------------------
-
-def test_prune_neurons_sparsity_respected():
-    torch.manual_seed(1)
-    weight = torch.randn(40, 16)
-    sparsity = 0.25
-    pruned_w, _, kept_idx = prune_neurons(weight, None, sparsity=sparsity)
-    expected_keep = max(1, 40 - int(40 * sparsity))
-    assert pruned_w.shape[0] == expected_keep
-    assert kept_idx.shape[0] == expected_keep
-
-
-# ---------------------------------------------------------------------------
-# Test 9: prune_attention_heads output shapes
-# ---------------------------------------------------------------------------
-
-def test_prune_attention_heads_output_shapes():
-    torch.manual_seed(7)
-    n_heads = 4
-    n_kv_heads = 2
-    head_dim = 16
-    d_model = n_heads * head_dim  # 64
-    sparsity = 0.5
-
-    q_weight = torch.randn(n_heads * head_dim, d_model)
-    k_weight = torch.randn(n_kv_heads * head_dim, d_model)
-    v_weight = torch.randn(n_kv_heads * head_dim, d_model)
-    o_weight = torch.randn(d_model, n_heads * head_dim)
-
-    pq, pk, pv, po, kept = prune_attention_heads(
-        q_weight, k_weight, v_weight, o_weight, head_dim, sparsity
-    )
-
-    n_keep = max(1, n_heads - int(n_heads * sparsity))
-    assert pq.shape == (n_keep * head_dim, d_model)
-    assert po.shape == (d_model, n_keep * head_dim)
-    assert pq.ndim == 2
-    assert po.ndim == 2
-
-
-# ---------------------------------------------------------------------------
-# Test 10: prune_attention_heads kept_head_indices correct count
-# ---------------------------------------------------------------------------
-
-def test_prune_attention_heads_kept_count():
-    torch.manual_seed(3)
-    n_heads = 4
-    n_kv_heads = 2
-    head_dim = 16
-    d_model = n_heads * head_dim
-    sparsity = 0.5
-
-    q_weight = torch.randn(n_heads * head_dim, d_model)
-    k_weight = torch.randn(n_kv_heads * head_dim, d_model)
-    v_weight = torch.randn(n_kv_heads * head_dim, d_model)
-    o_weight = torch.randn(d_model, n_heads * head_dim)
-
-    _, _, _, _, kept = prune_attention_heads(
-        q_weight, k_weight, v_weight, o_weight, head_dim, sparsity
-    )
-
-    n_keep = max(1, n_heads - int(n_heads * sparsity))
-    assert len(kept) == n_keep
-    # All indices within valid range
-    assert all(0 <= h < n_heads for h in kept)
-
-
-# ---------------------------------------------------------------------------
-# Test 11: compute_layer_importance shape (n_layers,)
-# ---------------------------------------------------------------------------
-
-def test_compute_layer_importance_shape(small_model, calibration_ids):
-    scores = compute_layer_importance(small_model, calibration_ids)
+def test_head_importance_scorer_returns_dict_with_layer_keys(small_model, calibration_data):
+    cfg = StructuredPruningConfig(importance_metric="magnitude")
+    scorer = HeadImportanceScorer(small_model, cfg)
+    result = scorer.compute_head_importance(calibration_data)
+    assert isinstance(result, dict)
     n_layers = len(small_model.layers)
-    assert scores.shape == (n_layers,)
-    assert torch.isfinite(scores).all()
+    for i in range(n_layers):
+        assert i in result, f"Layer {i} missing from head importance dict"
 
 
 # ---------------------------------------------------------------------------
-# Test 12: IterativePruner.prune_step returns correct keys
+# Test 3: HeadImportanceScorer importance shape matches n_heads
 # ---------------------------------------------------------------------------
 
-def test_iterative_pruner_prune_step_keys(small_model, calibration_ids):
-    cfg = StructuredPruningConfig(
-        target_sparsity=0.3,
-        n_pruning_steps=5,
-        pruning_schedule="linear",
+def test_head_importance_shape_matches_n_heads(small_model, calibration_data):
+    cfg = StructuredPruningConfig(importance_metric="magnitude")
+    scorer = HeadImportanceScorer(small_model, cfg)
+    result = scorer.compute_head_importance(calibration_data)
+    n_heads = small_model.layers[0].attn.n_heads
+    for layer_idx, scores in result.items():
+        assert scores.shape == (n_heads,), (
+            f"Layer {layer_idx}: expected shape ({n_heads},), got {scores.shape}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 4: HeadImportanceScorer.get_heads_to_prune returns correct fraction
+# ---------------------------------------------------------------------------
+
+def test_get_heads_to_prune_correct_fraction(small_model, calibration_data):
+    ratio = 0.5
+    cfg = StructuredPruningConfig(importance_metric="magnitude", head_pruning_ratio=ratio)
+    scorer = HeadImportanceScorer(small_model, cfg)
+    importance = scorer.compute_head_importance(calibration_data)
+    to_prune = scorer.get_heads_to_prune(importance)
+
+    n_heads = small_model.layers[0].attn.n_heads
+    n_layers = len(small_model.layers)
+    total_heads = n_heads * n_layers
+    expected_prune = int(total_heads * ratio)
+    actual_prune = sum(len(v) for v in to_prune.values())
+    assert actual_prune == expected_prune, (
+        f"Expected {expected_prune} heads pruned, got {actual_prune}"
     )
-    pruner = IterativePruner(small_model, cfg)
-    result = pruner.prune_step(0, calibration_ids)
 
-    assert "step" in result
+
+# ---------------------------------------------------------------------------
+# Test 5: FFNImportanceScorer.compute_neuron_importance returns dict with correct shapes
+# ---------------------------------------------------------------------------
+
+def test_ffn_importance_scorer_shapes(small_model, calibration_data):
+    cfg = StructuredPruningConfig(importance_metric="magnitude")
+    scorer = FFNImportanceScorer(small_model, cfg)
+    result = scorer.compute_neuron_importance(calibration_data)
+    assert isinstance(result, dict)
+    n_layers = len(small_model.layers)
+    for i in range(n_layers):
+        assert i in result, f"Layer {i} missing from FFN importance dict"
+        d_ff = small_model.layers[i].ffn.gate_proj.out_features
+        assert result[i].shape == (d_ff,), (
+            f"Layer {i}: expected shape ({d_ff},), got {result[i].shape}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 6: FFNImportanceScorer.get_neurons_to_prune returns correct fraction
+# ---------------------------------------------------------------------------
+
+def test_get_neurons_to_prune_correct_fraction(small_model, calibration_data):
+    ratio = 0.25
+    cfg = StructuredPruningConfig(importance_metric="magnitude", ffn_pruning_ratio=ratio)
+    scorer = FFNImportanceScorer(small_model, cfg)
+    importance = scorer.compute_neuron_importance(calibration_data)
+    to_prune = scorer.get_neurons_to_prune(importance)
+
+    for layer_idx, neuron_ids in to_prune.items():
+        d_ff = importance[layer_idx].shape[0]
+        expected = int(d_ff * ratio)
+        assert len(neuron_ids) == expected, (
+            f"Layer {layer_idx}: expected {expected} neurons, got {len(neuron_ids)}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 7: apply_ffn_mask zeroes out specified neuron weights
+# ---------------------------------------------------------------------------
+
+def test_apply_ffn_mask_zeroes_neuron_weights(small_model):
+    # Pick neurons 0 and 1 in layer 0
+    neurons_to_prune = {0: [0, 1]}
+    apply_ffn_mask(small_model, neurons_to_prune)
+
+    ffn = small_model.layers[0].ffn
+    # gate_proj rows 0 and 1 should be all zeros
+    assert ffn.gate_proj.weight[0].abs().sum().item() == 0.0
+    assert ffn.gate_proj.weight[1].abs().sum().item() == 0.0
+    # up_proj rows 0 and 1 should be all zeros
+    assert ffn.up_proj.weight[0].abs().sum().item() == 0.0
+    assert ffn.up_proj.weight[1].abs().sum().item() == 0.0
+    # down_proj columns 0 and 1 should be all zeros
+    assert ffn.down_proj.weight[:, 0].abs().sum().item() == 0.0
+    assert ffn.down_proj.weight[:, 1].abs().sum().item() == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Test 8: apply_ffn_mask doesn't affect unmasked neurons
+# ---------------------------------------------------------------------------
+
+def test_apply_ffn_mask_does_not_affect_unmasked(small_model):
+    # Record weight of neuron 5 before
+    ffn = small_model.layers[0].ffn
+    before = ffn.gate_proj.weight[5].clone()
+
+    # Prune only neurons 0 and 1
+    neurons_to_prune = {0: [0, 1]}
+    apply_ffn_mask(small_model, neurons_to_prune)
+
+    # Neuron 5 should be unchanged
+    after = ffn.gate_proj.weight[5]
+    assert torch.allclose(before, after), "Unmasked neuron was modified"
+
+
+# ---------------------------------------------------------------------------
+# Test 9: count_active_parameters returns required keys
+# ---------------------------------------------------------------------------
+
+def test_count_active_parameters_keys(small_model):
+    result = count_active_parameters(small_model)
+    assert "total" in result
+    assert "nonzero" in result
     assert "sparsity" in result
-    assert "n_pruned" in result
-    assert result["step"] == 0
-    assert isinstance(result["sparsity"], float)
-    assert isinstance(result["n_pruned"], int)
+
+
+# ---------------------------------------------------------------------------
+# Test 10: count_active_parameters sparsity in [0, 1]
+# ---------------------------------------------------------------------------
+
+def test_count_active_parameters_sparsity_range(small_model):
+    result = count_active_parameters(small_model)
+    assert 0.0 <= result["sparsity"] <= 1.0
+    assert result["total"] > 0
+    assert result["nonzero"] <= result["total"]
+
+
+# ---------------------------------------------------------------------------
+# Test 11: StructuredPruner.calibrate returns required keys
+# ---------------------------------------------------------------------------
+
+def test_structured_pruner_calibrate_keys(small_model, calibration_data):
+    cfg = StructuredPruningConfig()
+    pruner = StructuredPruner(small_model, cfg)
+    result = pruner.calibrate(calibration_data)
+    assert "head_importance" in result
+    assert "ffn_importance" in result
+    assert isinstance(result["head_importance"], dict)
+    assert isinstance(result["ffn_importance"], dict)
+
+
+# ---------------------------------------------------------------------------
+# Test 12: StructuredPruner.prune returns required keys
+# ---------------------------------------------------------------------------
+
+def test_structured_pruner_prune_keys(small_model, calibration_data):
+    cfg = StructuredPruningConfig(head_pruning_ratio=0.25, ffn_pruning_ratio=0.25)
+    pruner = StructuredPruner(small_model, cfg)
+    result = pruner.prune(calibration_data)
+    assert "heads_pruned" in result
+    assert "neurons_pruned" in result
+    assert "sparsity" in result
+
+
+# ---------------------------------------------------------------------------
+# Test 13: StructuredPruner.prune sparsity > 0 after pruning
+# ---------------------------------------------------------------------------
+
+def test_structured_pruner_prune_increases_sparsity(small_model, calibration_data):
+    cfg = StructuredPruningConfig(head_pruning_ratio=0.5, ffn_pruning_ratio=0.5)
+    pruner = StructuredPruner(small_model, cfg)
+    result = pruner.prune(calibration_data)
+    assert result["sparsity"] > 0.0, "Sparsity should be > 0 after pruning"
+
+
+# ---------------------------------------------------------------------------
+# Test 14: StructuredPruner.recover_accuracy returns finite float
+# ---------------------------------------------------------------------------
+
+def test_structured_pruner_recover_accuracy_returns_finite(small_model, calibration_data):
+    cfg = StructuredPruningConfig(head_pruning_ratio=0.25, ffn_pruning_ratio=0.25)
+    pruner = StructuredPruner(small_model, cfg)
+    pruner.prune(calibration_data)
+
+    optimizer = torch.optim.Adam(small_model.parameters(), lr=1e-4)
+    loss = pruner.recover_accuracy(small_model, optimizer, calibration_data, n_steps=3)
+    assert math.isfinite(loss), f"Expected finite loss, got {loss}"
+
+
+# ---------------------------------------------------------------------------
+# Test 15: count_active_parameters sparsity increases after pruning
+# ---------------------------------------------------------------------------
+
+def test_sparsity_increases_after_pruning(small_model, calibration_data):
+    before = count_active_parameters(small_model)["sparsity"]
+    cfg = StructuredPruningConfig(head_pruning_ratio=0.5, ffn_pruning_ratio=0.5)
+    pruner = StructuredPruner(small_model, cfg)
+    pruner.prune(calibration_data)
+    after = count_active_parameters(small_model)["sparsity"]
+    assert after > before, f"Sparsity should increase after pruning: {before} -> {after}"
