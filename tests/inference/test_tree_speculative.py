@@ -1,244 +1,305 @@
-"""Tests for tree-structured speculative decoding (tree_speculative.py)."""
+"""Tests for tree-structured speculative decoding (tree_speculative.py).
+
+Covers TreeConfig, DraftNode, build_draft_tree, tree_to_sequences,
+verify_tree, and TreeSpeculativeDecoder — 14+ tests in total.
+"""
 from __future__ import annotations
 
 import torch
 import pytest
 
 from src.inference.tree_speculative import (
+    TreeConfig,
     DraftNode,
-    DraftTree,
     build_draft_tree,
+    tree_to_sequences,
     verify_tree,
     TreeSpeculativeDecoder,
 )
 
 # ---------------------------------------------------------------------------
-# Shared mock model
+# Shared mock model — matches (loss, logits, kv) tuple API
 # ---------------------------------------------------------------------------
 
 VOCAB_SIZE = 256
 
 
 class MockModel:
-    """Tiny mock that returns random logits; matches the (loss, logits, kv) API."""
+    """Tiny mock that returns deterministic-ish random logits."""
 
     def __call__(self, input_ids: torch.Tensor):
         B, S = input_ids.shape
+        torch.manual_seed(42)
         logits = torch.randn(B, S, VOCAB_SIZE)
         return (torch.tensor(0.0), logits, None)
 
 
 # ---------------------------------------------------------------------------
-# DraftTree unit tests
+# Helpers
 # ---------------------------------------------------------------------------
 
-class TestDraftTreeAddAndPaths:
-    """test_draft_tree_add_and_paths: root + 2 children → 2 paths."""
-
-    def test_paths_count(self):
-        tree = DraftTree()
-        root0 = tree.add_node(token_id=10, parent_idx=-1, log_prob=-0.5)
-        root1 = tree.add_node(token_id=20, parent_idx=-1, log_prob=-0.7)
-        # Both nodes have parent_idx=-1, so they are both roots (treated as
-        # independent root-level nodes); each is also a leaf.
-        p = tree.paths()
-        assert len(p) == 2
-
-    def test_paths_with_root_and_two_children(self):
-        """Explicit tree: one root node, two child nodes → 2 leaf paths."""
-        tree = DraftTree()
-        root = tree.add_node(token_id=1, parent_idx=-1, log_prob=-0.1)
-        child0 = tree.add_node(token_id=2, parent_idx=root, log_prob=-0.2)
-        child1 = tree.add_node(token_id=3, parent_idx=root, log_prob=-0.3)
-        paths = tree.paths()
-        assert len(paths) == 2
-        # Each path should start with the root token
-        for path in paths:
-            assert path[0] == 1
-        # Leaf tokens should be 2 and 3 (in some order)
-        leaf_tokens = sorted(path[-1] for path in paths)
-        assert leaf_tokens == [2, 3]
+def _make_config(**kwargs) -> TreeConfig:
+    defaults = dict(
+        branching_factor=2,
+        tree_depth=2,
+        max_new_tokens=4,
+        temperature=1.0,
+        typical_acceptance_rate=0.8,
+    )
+    defaults.update(kwargs)
+    return TreeConfig(**defaults)
 
 
-class TestDraftTreeDepth:
-    """test_draft_tree_depth: tree with depth 3 returns depth() == 3."""
-
-    def test_depth_three(self):
-        tree = DraftTree()
-        n0 = tree.add_node(token_id=1, parent_idx=-1, log_prob=-0.1)
-        n1 = tree.add_node(token_id=2, parent_idx=n0, log_prob=-0.2)
-        n2 = tree.add_node(token_id=3, parent_idx=n1, log_prob=-0.3)
-        assert tree.depth() == 3
-
-    def test_depth_one(self):
-        tree = DraftTree()
-        tree.add_node(token_id=5, parent_idx=-1, log_prob=-0.1)
-        assert tree.depth() == 1
-
-    def test_depth_empty(self):
-        tree = DraftTree()
-        assert tree.depth() == 0
+def _dummy_encode(text: str) -> list[int]:
+    return [ord(c) % VOCAB_SIZE for c in text] or [0]
 
 
-class TestDraftTreeGetPathTo:
-    """test_draft_tree_get_path_to: correct token sequence root-to-node."""
-
-    def test_root_to_leaf(self):
-        tree = DraftTree()
-        n0 = tree.add_node(token_id=10, parent_idx=-1, log_prob=-0.1)
-        n1 = tree.add_node(token_id=20, parent_idx=n0, log_prob=-0.2)
-        n2 = tree.add_node(token_id=30, parent_idx=n1, log_prob=-0.3)
-        path = tree.get_path_to(n2)
-        assert path == [10, 20, 30]
-
-    def test_get_path_to_root(self):
-        tree = DraftTree()
-        n0 = tree.add_node(token_id=42, parent_idx=-1, log_prob=-0.5)
-        assert tree.get_path_to(n0) == [42]
+def _dummy_decode(ids: list[int]) -> str:
+    return "".join(chr(max(32, i % 128)) for i in ids)
 
 
 # ---------------------------------------------------------------------------
-# build_draft_tree tests
+# 1. TreeConfig defaults
 # ---------------------------------------------------------------------------
 
-class TestBuildDraftTreeStructure:
-    """test_build_draft_tree_structure: n_branches=2, depth=2 → correct shape."""
-
-    def test_tree_has_nodes(self):
-        model = MockModel()
-        input_ids = torch.zeros(1, 4, dtype=torch.long)
-        tree = build_draft_tree(model, input_ids, n_branches=2, depth=2)
-        # Level 1: 2 nodes; Level 2: 2 nodes (one per branch) → 4 total
-        assert tree.size() == 4
-
-    def test_tree_has_two_paths(self):
-        model = MockModel()
-        input_ids = torch.zeros(1, 4, dtype=torch.long)
-        tree = build_draft_tree(model, input_ids, n_branches=2, depth=2)
-        paths = tree.paths()
-        assert len(paths) == 2
-
-    def test_each_path_has_correct_depth(self):
-        model = MockModel()
-        input_ids = torch.zeros(1, 4, dtype=torch.long)
-        tree = build_draft_tree(model, input_ids, n_branches=2, depth=2)
-        for path in tree.paths():
-            assert len(path) == 2
-
-    def test_depth_matches_requested(self):
-        model = MockModel()
-        input_ids = torch.zeros(1, 3, dtype=torch.long)
-        tree = build_draft_tree(model, input_ids, n_branches=3, depth=3)
-        assert tree.depth() == 3
-
-    def test_single_branch_single_depth(self):
-        model = MockModel()
-        input_ids = torch.zeros(1, 2, dtype=torch.long)
-        tree = build_draft_tree(model, input_ids, n_branches=1, depth=1)
-        assert tree.size() == 1
-        assert len(tree.paths()) == 1
+def test_tree_config_defaults():
+    cfg = TreeConfig()
+    assert cfg.branching_factor == 2
+    assert cfg.tree_depth == 4
+    assert cfg.max_new_tokens == 128
+    assert cfg.temperature == 1.0
+    assert cfg.typical_acceptance_rate == 0.8
 
 
 # ---------------------------------------------------------------------------
-# verify_tree tests
+# 2. DraftNode fields
 # ---------------------------------------------------------------------------
 
-class TestVerifyTreeReturnsTokens:
-    """test_verify_tree_returns_tokens: result is list[int]."""
-
-    def test_return_type(self):
-        model = MockModel()
-        input_ids = torch.zeros(1, 4, dtype=torch.long)
-        tree = build_draft_tree(model, input_ids, n_branches=2, depth=2)
-        result = verify_tree(model, input_ids, tree)
-        assert isinstance(result, list)
-        assert all(isinstance(t, int) for t in result)
-
-
-class TestVerifyTreeAtLeastOneToken:
-    """test_verify_tree_at_least_one_token: always returns ≥1 token."""
-
-    def test_at_least_one_with_normal_tree(self):
-        model = MockModel()
-        input_ids = torch.zeros(1, 4, dtype=torch.long)
-        tree = build_draft_tree(model, input_ids, n_branches=2, depth=3)
-        result = verify_tree(model, input_ids, tree)
-        assert len(result) >= 1
-
-    def test_at_least_one_with_empty_tree(self):
-        model = MockModel()
-        input_ids = torch.zeros(1, 4, dtype=torch.long)
-        tree = DraftTree()   # deliberately empty
-        result = verify_tree(model, input_ids, tree)
-        assert len(result) >= 1
-
-    def test_at_least_one_multiple_runs(self):
-        """Stochastic test: run many times to be confident about the guarantee."""
-        torch.manual_seed(0)
-        model = MockModel()
-        input_ids = torch.zeros(1, 3, dtype=torch.long)
-        for _ in range(20):
-            tree = build_draft_tree(model, input_ids, n_branches=2, depth=2)
-            result = verify_tree(model, input_ids, tree)
-            assert len(result) >= 1
+def test_draft_node_fields():
+    node = DraftNode(token_id=7, log_prob=-0.3, depth=1)
+    assert node.token_id == 7
+    assert node.log_prob == pytest.approx(-0.3)
+    assert node.depth == 1
+    assert node.children == []
+    assert node.parent is None
 
 
 # ---------------------------------------------------------------------------
-# TreeSpeculativeDecoder tests
+# 3. DraftNode.path_to_root for leaf node
 # ---------------------------------------------------------------------------
 
-class TestTreeSpeculativeGenerates:
-    """test_tree_speculative_generates: generate returns tensor of correct shape."""
+def test_draft_node_path_to_root_leaf():
+    root = DraftNode(token_id=1, log_prob=0.0, depth=0)
+    child = DraftNode(token_id=2, log_prob=-0.5, depth=1, parent=root)
+    leaf = DraftNode(token_id=3, log_prob=-0.8, depth=2, parent=child)
+    root.children.append(child)
+    child.children.append(leaf)
 
-    def test_output_shape(self):
-        draft = MockModel()
-        target = MockModel()
-        decoder = TreeSpeculativeDecoder(
-            target_model=target,
-            draft_model=draft,
-            n_branches=2,
-            depth=2,
-            temperature=1.0,
-        )
-        input_ids = torch.zeros(1, 5, dtype=torch.long)
-        out = decoder.generate(input_ids, max_new_tokens=4)
-        assert out.shape == (1, 9)
-
-    def test_output_is_tensor(self):
-        draft = MockModel()
-        target = MockModel()
-        decoder = TreeSpeculativeDecoder(target_model=target, draft_model=draft)
-        input_ids = torch.zeros(1, 3, dtype=torch.long)
-        out = decoder.generate(input_ids, max_new_tokens=2)
-        assert isinstance(out, torch.Tensor)
+    assert leaf.path_to_root() == [1, 2, 3]
 
 
-class TestTreeSpeculativeLongerThanInput:
-    """test_tree_speculative_longer_than_input: output is longer than input."""
+# ---------------------------------------------------------------------------
+# 4. DraftNode.path_to_root for root node
+# ---------------------------------------------------------------------------
 
-    def test_output_longer(self):
-        draft = MockModel()
-        target = MockModel()
-        decoder = TreeSpeculativeDecoder(
-            target_model=target,
-            draft_model=draft,
-            n_branches=2,
-            depth=2,
-        )
-        input_ids = torch.zeros(1, 5, dtype=torch.long)
-        out = decoder.generate(input_ids, max_new_tokens=6)
-        assert out.shape[1] > input_ids.shape[1]
+def test_draft_node_path_to_root_root():
+    root = DraftNode(token_id=42, log_prob=0.0, depth=0)
+    assert root.path_to_root() == [42]
 
-    def test_output_prefix_matches_input(self):
-        """The first seq_len tokens of output should equal input_ids."""
-        draft = MockModel()
-        target = MockModel()
-        decoder = TreeSpeculativeDecoder(
-            target_model=target,
-            draft_model=draft,
-            n_branches=2,
-            depth=2,
-        )
-        input_ids = torch.arange(5, dtype=torch.long).unsqueeze(0)  # [[0,1,2,3,4]]
-        out = decoder.generate(input_ids, max_new_tokens=3)
-        assert torch.equal(out[:, : input_ids.shape[1]], input_ids)
+
+# ---------------------------------------------------------------------------
+# 5. build_draft_tree returns DraftNode
+# ---------------------------------------------------------------------------
+
+def test_build_draft_tree_returns_draft_node():
+    model = MockModel()
+    cfg = _make_config()
+    result = build_draft_tree(model, [1, 2, 3], cfg)
+    assert isinstance(result, DraftNode)
+
+
+# ---------------------------------------------------------------------------
+# 6. build_draft_tree correct tree depth
+# ---------------------------------------------------------------------------
+
+def test_build_draft_tree_correct_depth():
+    model = MockModel()
+    cfg = _make_config(branching_factor=2, tree_depth=2)
+    root = build_draft_tree(model, [0, 1, 2], cfg)
+
+    # Gather max depth across all nodes reachable from root
+    def max_depth(node: DraftNode) -> int:
+        if not node.children:
+            return node.depth
+        return max(max_depth(c) for c in node.children)
+
+    assert max_depth(root) == cfg.tree_depth
+
+
+# ---------------------------------------------------------------------------
+# 7. build_draft_tree branching factor correct
+# ---------------------------------------------------------------------------
+
+def test_build_draft_tree_branching_factor():
+    model = MockModel()
+    cfg = _make_config(branching_factor=2, tree_depth=2)
+    root = build_draft_tree(model, [0, 1], cfg)
+    # Root's immediate children == branching_factor
+    assert len(root.children) == cfg.branching_factor
+
+
+# ---------------------------------------------------------------------------
+# 8. tree_to_sequences returns list of lists
+# ---------------------------------------------------------------------------
+
+def test_tree_to_sequences_returns_list_of_lists():
+    model = MockModel()
+    cfg = _make_config(branching_factor=2, tree_depth=2)
+    root = build_draft_tree(model, [0, 1, 2], cfg)
+    seqs = tree_to_sequences(root)
+    assert isinstance(seqs, list)
+    assert all(isinstance(s, list) for s in seqs)
+
+
+# ---------------------------------------------------------------------------
+# 9. tree_to_sequences count = branching_factor^tree_depth
+# ---------------------------------------------------------------------------
+
+def test_tree_to_sequences_count():
+    model = MockModel()
+    bf = 2
+    td = 2
+    cfg = _make_config(branching_factor=bf, tree_depth=td)
+    root = build_draft_tree(model, [0, 1], cfg)
+    seqs = tree_to_sequences(root)
+    expected = bf ** td
+    assert len(seqs) == expected
+
+
+# ---------------------------------------------------------------------------
+# 10. verify_tree returns (list, int)
+# ---------------------------------------------------------------------------
+
+def test_verify_tree_return_type():
+    model = MockModel()
+    cfg = _make_config(branching_factor=2, tree_depth=2)
+    root = build_draft_tree(model, [0, 1, 2], cfg)
+    seqs = tree_to_sequences(root)
+    result = verify_tree(model, [0, 1, 2], seqs)
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    accepted_seq, n_accepted = result
+    assert isinstance(accepted_seq, list)
+    assert isinstance(n_accepted, int)
+
+
+# ---------------------------------------------------------------------------
+# 11. verify_tree n_accepted <= max draft length
+# ---------------------------------------------------------------------------
+
+def test_verify_tree_accepted_bound():
+    model = MockModel()
+    cfg = _make_config(branching_factor=2, tree_depth=2)
+    root = build_draft_tree(model, [0, 1, 2], cfg)
+    seqs = tree_to_sequences(root)
+    # Max draft tokens per sequence = tree_depth (seq[1:] strips the root)
+    max_draft_len = cfg.tree_depth
+    _, n_accepted = verify_tree(model, [0, 1, 2], seqs)
+    assert n_accepted <= max_draft_len
+
+
+# ---------------------------------------------------------------------------
+# 12. TreeSpeculativeDecoder.decode returns (str, dict)
+# ---------------------------------------------------------------------------
+
+def test_tree_speculative_decoder_decode_return_type():
+    model = MockModel()
+    cfg = _make_config(max_new_tokens=4, branching_factor=2, tree_depth=2)
+    decoder = TreeSpeculativeDecoder(
+        model=model,
+        config=cfg,
+        tokenizer_encode=_dummy_encode,
+        tokenizer_decode=_dummy_decode,
+    )
+    result = decoder.decode("hello")
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    text, stats = result
+    assert isinstance(text, str)
+    assert isinstance(stats, dict)
+
+
+# ---------------------------------------------------------------------------
+# 13. TreeSpeculativeDecoder.decode stats has required keys
+# ---------------------------------------------------------------------------
+
+def test_tree_speculative_decoder_stats_keys():
+    model = MockModel()
+    cfg = _make_config(max_new_tokens=4, branching_factor=2, tree_depth=2)
+    decoder = TreeSpeculativeDecoder(
+        model=model,
+        config=cfg,
+        tokenizer_encode=_dummy_encode,
+        tokenizer_decode=_dummy_decode,
+    )
+    _, stats = decoder.decode("hi")
+    assert "tokens_generated" in stats
+    assert "mean_accepted_per_step" in stats
+    assert "n_steps" in stats
+
+
+# ---------------------------------------------------------------------------
+# 14. TreeSpeculativeDecoder._decode_step returns (list, int)
+# ---------------------------------------------------------------------------
+
+def test_tree_speculative_decoder_decode_step_return_type():
+    model = MockModel()
+    cfg = _make_config(branching_factor=2, tree_depth=2)
+    decoder = TreeSpeculativeDecoder(
+        model=model,
+        config=cfg,
+        tokenizer_encode=_dummy_encode,
+        tokenizer_decode=_dummy_decode,
+    )
+    prefix = [1, 2, 3, 4]
+    result = decoder._decode_step(prefix)
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    tokens, n = result
+    assert isinstance(tokens, list)
+    assert isinstance(n, int)
+
+
+# ---------------------------------------------------------------------------
+# 15. Bonus: stats tokens_generated matches max_new_tokens budget
+# ---------------------------------------------------------------------------
+
+def test_tree_speculative_decoder_tokens_generated_bounded():
+    model = MockModel()
+    max_new = 4
+    cfg = _make_config(max_new_tokens=max_new, branching_factor=2, tree_depth=2)
+    decoder = TreeSpeculativeDecoder(
+        model=model,
+        config=cfg,
+        tokenizer_encode=_dummy_encode,
+        tokenizer_decode=_dummy_decode,
+    )
+    _, stats = decoder.decode("test")
+    assert stats["tokens_generated"] <= max_new
+
+
+# ---------------------------------------------------------------------------
+# 16. Bonus: n_steps is positive after decode
+# ---------------------------------------------------------------------------
+
+def test_tree_speculative_decoder_n_steps_positive():
+    model = MockModel()
+    cfg = _make_config(max_new_tokens=4, branching_factor=2, tree_depth=2)
+    decoder = TreeSpeculativeDecoder(
+        model=model,
+        config=cfg,
+        tokenizer_encode=_dummy_encode,
+        tokenizer_decode=_dummy_decode,
+    )
+    _, stats = decoder.decode("abc")
+    assert stats["n_steps"] >= 1

@@ -1,28 +1,28 @@
-"""Tests for online_learning module — streaming learning with experience replay."""
+"""Tests for online_learning — drift-aware adaptive-LR online learning."""
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.online_learning import (
     OnlineLearningConfig,
-    ReplayBuffer,
-    detect_concept_drift,
-    compute_fisher_diagonal,
-    ewc_penalty,
+    LossWindow,
+    DriftDetector,
+    AdaptiveLRScheduler,
     OnlineLearner,
 )
 
 
 # ---------------------------------------------------------------------------
-# Shared fixtures
+# Fixtures
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
-def small_cfg():
-    return AureliusConfig(
+def small_model():
+    torch.manual_seed(0)
+    cfg = AureliusConfig(
         n_layers=2,
         d_model=64,
         n_heads=2,
@@ -32,12 +32,20 @@ def small_cfg():
         vocab_size=256,
         max_seq_len=512,
     )
+    return AureliusTransformer(cfg)
 
 
-@pytest.fixture(scope="module")
-def small_model(small_cfg):
-    torch.manual_seed(0)
-    return AureliusTransformer(small_cfg)
+@pytest.fixture
+def config():
+    return OnlineLearningConfig(
+        window_size=10,
+        drift_threshold=2.0,
+        base_lr=1e-4,
+        lr_increase_factor=2.0,
+        min_lr=1e-6,
+        max_lr=1e-2,
+        forgetting_factor=0.99,
+    )
 
 
 @pytest.fixture
@@ -46,202 +54,198 @@ def optimizer(small_model):
 
 
 @pytest.fixture
-def online_config():
-    return OnlineLearningConfig()
-
-
-@pytest.fixture
-def learner(small_model, optimizer, online_config):
-    return OnlineLearner(small_model, online_config, optimizer)
-
-
-def _make_batch(batch_size: int = 2, seq_len: int = 8, vocab_size: int = 256) -> tuple:
+def learner(small_model, optimizer, config):
     torch.manual_seed(42)
-    input_ids = torch.randint(0, vocab_size, (batch_size, seq_len))
-    labels = torch.randint(0, vocab_size, (batch_size, seq_len))
-    return input_ids, labels
+    return OnlineLearner(small_model, optimizer, config)
 
 
-def _make_item(batch_size: int = 2, seq_len: int = 8, vocab_size: int = 256) -> dict:
-    ids, lbl = _make_batch(batch_size, seq_len, vocab_size)
-    return {"input_ids": ids, "labels": lbl}
+def _make_input(batch_size: int = 2, seq_len: int = 8, vocab_size: int = 256) -> torch.Tensor:
+    torch.manual_seed(7)
+    return torch.randint(0, vocab_size, (batch_size, seq_len))
 
 
 # ---------------------------------------------------------------------------
-# OnlineLearningConfig tests
+# 1. OnlineLearningConfig defaults
 # ---------------------------------------------------------------------------
 
 def test_online_learning_config_defaults():
-    """Test that OnlineLearningConfig has the correct default values."""
     cfg = OnlineLearningConfig()
-    assert cfg.replay_buffer_size == 1000
-    assert cfg.replay_batch_size == 16
-    assert cfg.ewc_lambda == 1.0
-    assert cfg.drift_detection_window == 50
+    assert cfg.window_size == 100
     assert cfg.drift_threshold == 2.0
-    assert cfg.learning_rate == 1e-4
+    assert cfg.base_lr == 1e-4
+    assert cfg.lr_increase_factor == 2.0
+    assert cfg.min_lr == 1e-6
+    assert cfg.max_lr == 1e-2
+    assert cfg.forgetting_factor == 0.99
 
 
 # ---------------------------------------------------------------------------
-# ReplayBuffer tests
+# 2. LossWindow starts empty
 # ---------------------------------------------------------------------------
 
-def test_replay_buffer_add_and_len():
-    """Test that ReplayBuffer.add increments len correctly."""
-    buf = ReplayBuffer(max_size=10)
-    assert len(buf) == 0
-    buf.add(_make_item())
-    assert len(buf) == 1
-    buf.add(_make_item())
-    assert len(buf) == 2
-
-
-def test_replay_buffer_evicts_oldest_when_full():
-    """Test that oldest items are evicted (FIFO) when buffer is full."""
-    buf = ReplayBuffer(max_size=3)
-    items = [{"input_ids": torch.tensor([[i]]), "labels": torch.tensor([[i]])} for i in range(5)]
-    for item in items:
-        buf.add(item)
-    # Buffer should only have 3 items and the first 2 (index 0,1) should be gone
-    assert len(buf) == 3
-    # The remaining items should be the last 3 added (indices 2,3,4)
-    remaining_ids = [buf._buffer[j]["input_ids"].item() for j in range(3)]
-    assert remaining_ids == [2, 3, 4]
-
-
-def test_replay_buffer_sample_returns_correct_count():
-    """Test that sample returns exactly n items when buffer has enough."""
-    buf = ReplayBuffer(max_size=50)
-    for _ in range(20):
-        buf.add(_make_item())
-    samples = buf.sample(5)
-    assert len(samples) == 5
-
-
-def test_replay_buffer_sample_with_replacement_when_n_gt_len():
-    """Test that sample uses replacement when n > buffer size."""
-    buf = ReplayBuffer(max_size=50)
-    buf.add(_make_item())
-    samples = buf.sample(10)
-    assert len(samples) == 10
+def test_loss_window_starts_empty():
+    w = LossWindow(window_size=10)
+    assert len(w) == 0
 
 
 # ---------------------------------------------------------------------------
-# detect_concept_drift tests
+# 3. LossWindow.add increases length
 # ---------------------------------------------------------------------------
 
-def test_detect_concept_drift_returns_false_when_not_enough_data():
-    """Test that drift detection returns False when history shorter than window."""
-    loss_history = [1.0, 1.1, 1.05]
-    result = detect_concept_drift(loss_history, window=10, threshold=2.0)
-    assert result is False
-
-
-def test_detect_concept_drift_returns_true_on_sharp_increase():
-    """Test that drift detection returns True when loss sharply increases."""
-    # First half: stable low losses, second half: much higher
-    first_half = [0.5] * 25
-    second_half = [5.0] * 25
-    loss_history = first_half + second_half
-    result = detect_concept_drift(loss_history, window=50, threshold=2.0)
-    assert result is True
-
-
-def test_detect_concept_drift_stable_loss_returns_false():
-    """Test that drift detection returns False for stable loss."""
-    loss_history = [1.0] * 60
-    result = detect_concept_drift(loss_history, window=50, threshold=2.0)
-    assert result is False
+def test_loss_window_add_increases_length():
+    w = LossWindow(window_size=10)
+    w.add(1.0)
+    assert len(w) == 1
+    w.add(2.0)
+    assert len(w) == 2
 
 
 # ---------------------------------------------------------------------------
-# compute_fisher_diagonal tests
+# 4. LossWindow.mean correct average
 # ---------------------------------------------------------------------------
 
-def test_compute_fisher_diagonal_keys_match_param_names(small_model):
-    """Test that compute_fisher_diagonal returns dict with same keys as model params."""
-    def loss_fn(model, input_ids, labels):
-        import torch.nn.functional as F
-        _, logits, _ = model(input_ids)
-        shift_logits = logits[:, :-1, :].contiguous()
-        shift_labels = labels[:, 1:].contiguous()
-        return F.cross_entropy(
-            shift_logits.view(-1, logits.size(-1)),
-            shift_labels.view(-1),
-        )
-
-    data_batch = [_make_item(batch_size=1, seq_len=4) for _ in range(3)]
-    fisher = compute_fisher_diagonal(small_model, data_batch, loss_fn)
-
-    expected_keys = {name for name, p in small_model.named_parameters() if p.requires_grad}
-    assert set(fisher.keys()) == expected_keys
+def test_loss_window_mean_correct():
+    w = LossWindow(window_size=10)
+    w.add(1.0)
+    w.add(3.0)
+    assert w.mean() == pytest.approx(2.0)
 
 
 # ---------------------------------------------------------------------------
-# ewc_penalty tests
+# 5. LossWindow.is_full when at capacity
 # ---------------------------------------------------------------------------
 
-def test_ewc_penalty_scalar_output(small_model):
-    """Test that ewc_penalty returns a scalar tensor."""
-    # Build dummy fisher and optimal_params
-    fisher = {
-        name: torch.ones_like(param.data)
-        for name, param in small_model.named_parameters()
-        if param.requires_grad
-    }
-    optimal_params = {
-        name: param.data.clone()
-        for name, param in small_model.named_parameters()
-        if param.requires_grad
-    }
-    # Perturb params slightly
-    with torch.no_grad():
-        for param in small_model.parameters():
-            param.add_(0.01)
-
-    penalty = ewc_penalty(small_model, fisher, optimal_params, ewc_lambda=1.0)
-
-    assert penalty.ndim == 0  # scalar
-    assert penalty.item() > 0.0
-
-    # Restore params
-    with torch.no_grad():
-        for param in small_model.parameters():
-            param.sub_(0.01)
-
-
-def test_ewc_penalty_zero_when_at_optimal_params(small_model):
-    """Test that ewc_penalty is zero when model is at optimal parameters."""
-    fisher = {
-        name: torch.ones_like(param.data)
-        for name, param in small_model.named_parameters()
-        if param.requires_grad
-    }
-    optimal_params = {
-        name: param.data.clone()
-        for name, param in small_model.named_parameters()
-        if param.requires_grad
-    }
-
-    penalty = ewc_penalty(small_model, fisher, optimal_params, ewc_lambda=1.0)
-    assert penalty.item() == pytest.approx(0.0, abs=1e-6)
+def test_loss_window_is_full():
+    w = LossWindow(window_size=3)
+    assert not w.is_full()
+    w.add(1.0)
+    w.add(2.0)
+    assert not w.is_full()
+    w.add(3.0)
+    assert w.is_full()
 
 
 # ---------------------------------------------------------------------------
-# OnlineLearner tests
+# 6. DriftDetector.update returns bool
 # ---------------------------------------------------------------------------
 
-def test_online_learner_update_returns_correct_keys(learner):
-    """Test that OnlineLearner.update returns dict with all required keys."""
-    ids, lbl = _make_batch(batch_size=2, seq_len=8)
-    result = learner.update(ids, lbl)
-    for key in ("task_loss", "replay_loss", "drift_detected", "buffer_size"):
+def test_drift_detector_update_returns_bool(config):
+    detector = DriftDetector(config)
+    result = detector.update(1.0)
+    assert isinstance(result, bool)
+
+
+# ---------------------------------------------------------------------------
+# 7. DriftDetector.update no drift when losses stable
+# ---------------------------------------------------------------------------
+
+def test_drift_detector_no_drift_stable(config):
+    detector = DriftDetector(config)
+    # Feed stable losses — should never trigger drift
+    any_drift = False
+    for _ in range(config.window_size * 2):
+        if detector.update(1.0):
+            any_drift = True
+    assert not any_drift
+
+
+# ---------------------------------------------------------------------------
+# 8. DriftDetector.update detects drift with large loss jump
+# ---------------------------------------------------------------------------
+
+def test_drift_detector_detects_drift_large_jump(config):
+    detector = DriftDetector(config)
+    # Fill reference window with stable low losses
+    for _ in range(config.window_size):
+        detector.update(0.5)
+    # Now feed very high losses to trigger drift
+    drift_found = False
+    for _ in range(config.window_size):
+        if detector.update(100.0):
+            drift_found = True
+            break
+    assert drift_found
+
+
+# ---------------------------------------------------------------------------
+# 9. DriftDetector.drift_score returns float
+# ---------------------------------------------------------------------------
+
+def test_drift_detector_drift_score_returns_float(config):
+    detector = DriftDetector(config)
+    detector.update(1.0)
+    score = detector.drift_score()
+    assert isinstance(score, float)
+
+
+# ---------------------------------------------------------------------------
+# 10. AdaptiveLRScheduler.on_drift_detected increases LR
+# ---------------------------------------------------------------------------
+
+def test_adaptive_lr_on_drift_detected_increases_lr(optimizer, config):
+    scheduler = AdaptiveLRScheduler(optimizer, config)
+    before = scheduler._current_lr
+    scheduler.on_drift_detected()
+    assert scheduler._current_lr > before
+
+
+# ---------------------------------------------------------------------------
+# 11. AdaptiveLRScheduler.on_stable decays LR toward base
+# ---------------------------------------------------------------------------
+
+def test_adaptive_lr_on_stable_decays_toward_base(optimizer, config):
+    scheduler = AdaptiveLRScheduler(optimizer, config)
+    # Boost first so LR > base_lr
+    scheduler.on_drift_detected()
+    boosted = scheduler._current_lr
+    scheduler.on_stable()
+    assert scheduler._current_lr < boosted
+
+
+# ---------------------------------------------------------------------------
+# 12. AdaptiveLRScheduler LR stays within [min_lr, max_lr]
+# ---------------------------------------------------------------------------
+
+def test_adaptive_lr_stays_within_bounds(optimizer, config):
+    scheduler = AdaptiveLRScheduler(optimizer, config)
+    for _ in range(50):
+        scheduler.on_drift_detected()
+    assert scheduler._current_lr <= config.max_lr
+
+    # decay many times — should not go below min_lr
+    for _ in range(1000):
+        scheduler.on_stable()
+    assert scheduler._current_lr >= config.min_lr
+
+
+# ---------------------------------------------------------------------------
+# 13. OnlineLearner.train_step returns required keys
+# ---------------------------------------------------------------------------
+
+def test_online_learner_train_step_required_keys(learner):
+    input_ids = _make_input()
+    result = learner.train_step(input_ids)
+    for key in ("loss", "drift_detected", "current_lr", "drift_score", "step"):
         assert key in result, f"Missing key: {key}"
 
 
-def test_online_learner_update_buffer_size_increases(learner):
-    """Test that buffer_size increases with each update call."""
-    ids, lbl = _make_batch(batch_size=2, seq_len=8)
-    result1 = learner.update(ids, lbl)
-    result2 = learner.update(ids, lbl)
-    assert result2["buffer_size"] > result1["buffer_size"]
+# ---------------------------------------------------------------------------
+# 14. OnlineLearner.train_step loss is positive
+# ---------------------------------------------------------------------------
+
+def test_online_learner_train_step_loss_positive(learner):
+    input_ids = _make_input()
+    result = learner.train_step(input_ids)
+    assert result["loss"] > 0.0
+
+
+# ---------------------------------------------------------------------------
+# 15. OnlineLearner.get_stats returns required keys
+# ---------------------------------------------------------------------------
+
+def test_online_learner_get_stats_required_keys(learner):
+    input_ids = _make_input()
+    learner.train_step(input_ids)
+    stats = learner.get_stats()
+    for key in ("steps", "drift_events", "current_lr", "mean_loss"):
+        assert key in stats, f"Missing key: {key}"

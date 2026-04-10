@@ -1,14 +1,16 @@
-"""Tests for reward_ensemble — uncertainty-weighted ensemble reward model."""
-import torch
+"""Tests for reward_ensemble — uncertainty-aware ensemble reward model."""
+import math
+
 import pytest
+import torch
 
 from src.alignment.reward_ensemble import (
     EnsembleConfig,
     RewardHead,
-    EnsembleRewardModel,
-    aggregate_rewards,
-    detect_ood_samples,
-    EnsembleTrainer,
+    RewardEnsemble,
+    MCDropoutReward,
+    conservative_reward,
+    RewardEnsembleTrainer,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
@@ -18,7 +20,7 @@ from src.model.transformer import AureliusTransformer
 # Constants and shared fixtures
 # ---------------------------------------------------------------------------
 
-N_MEMBERS = 3
+N_MODELS = 2
 D_MODEL = 64
 B = 2
 T = 8
@@ -49,13 +51,13 @@ def tiny_backbone(tiny_cfg):
 
 @pytest.fixture
 def ensemble_cfg():
-    return EnsembleConfig(n_members=N_MEMBERS, aggregation="mean")
+    return EnsembleConfig(n_models=N_MODELS, aggregation="mean")
 
 
 @pytest.fixture
 def ensemble_model(tiny_backbone, ensemble_cfg):
     torch.manual_seed(42)
-    return EnsembleRewardModel(tiny_backbone, ensemble_cfg, D_MODEL)
+    return RewardEnsemble(tiny_backbone, ensemble_cfg)
 
 
 @pytest.fixture
@@ -70,191 +72,228 @@ def input_ids():
 def test_ensemble_config_defaults():
     """EnsembleConfig must expose correct default field values."""
     cfg = EnsembleConfig()
-    assert cfg.n_members == 4
+    assert cfg.n_models == 5
     assert cfg.aggregation == "mean"
-    assert cfg.uncertainty_threshold == 0.5
+    assert cfg.ucb_beta == 1.0
+    assert cfg.dropout_rate == 0.1
+    assert cfg.temperature == 1.0
 
 
 # ---------------------------------------------------------------------------
-# 2. test_reward_head_forward_shape
+# 2. test_reward_head_output_shape
 # ---------------------------------------------------------------------------
 
-def test_reward_head_forward_shape():
+def test_reward_head_output_shape():
     """RewardHead.forward must return shape (B,) for a (B, T, D) input."""
     torch.manual_seed(42)
     head = RewardHead(D_MODEL)
     hidden = torch.randn(B, T, D_MODEL)
     out = head(hidden)
     assert out.shape == (B,), f"Expected ({B},), got {out.shape}"
-    assert torch.isfinite(out).all()
 
 
 # ---------------------------------------------------------------------------
-# 3. test_reward_head_output_scalar
+# 3. test_reward_head_output_is_finite
 # ---------------------------------------------------------------------------
 
-def test_reward_head_output_scalar():
-    """RewardHead with a single sample must return shape (1,)."""
+def test_reward_head_output_is_finite():
+    """RewardHead output must contain only finite values."""
     torch.manual_seed(42)
     head = RewardHead(D_MODEL)
-    hidden = torch.randn(1, T, D_MODEL)
+    hidden = torch.randn(B, T, D_MODEL)
     out = head(hidden)
-    assert out.shape == (1,), f"Expected (1,), got {out.shape}"
+    assert torch.isfinite(out).all(), f"Non-finite values in output: {out}"
 
 
 # ---------------------------------------------------------------------------
-# 4. test_ensemble_reward_model_forward_shapes
+# 4. test_reward_ensemble_forward_returns_tuple
 # ---------------------------------------------------------------------------
 
-def test_ensemble_reward_model_forward_shapes(ensemble_model, input_ids):
-    """EnsembleRewardModel.forward must return (rewards, uncertainty), both (B,)."""
+def test_reward_ensemble_forward_returns_tuple(ensemble_model, input_ids):
+    """RewardEnsemble.forward must return a 2-tuple."""
     ensemble_model.eval()
     with torch.no_grad():
-        rewards, uncertainty = ensemble_model(input_ids)
-    assert rewards.shape == (B,), f"rewards shape: {rewards.shape}"
-    assert uncertainty.shape == (B,), f"uncertainty shape: {uncertainty.shape}"
-    assert torch.isfinite(rewards).all()
-    assert torch.isfinite(uncertainty).all()
+        result = ensemble_model(input_ids)
+    assert isinstance(result, tuple) and len(result) == 2, (
+        f"Expected 2-tuple, got {type(result)} of length {len(result)}"
+    )
 
 
 # ---------------------------------------------------------------------------
-# 5. test_ensemble_reward_model_get_all_rewards_shape
+# 5. test_reward_ensemble_mean_reward_shape
 # ---------------------------------------------------------------------------
 
-def test_ensemble_reward_model_get_all_rewards_shape(ensemble_model, input_ids):
-    """get_all_rewards must return shape (B, n_members)."""
+def test_reward_ensemble_mean_reward_shape(ensemble_model, input_ids):
+    """mean_reward from RewardEnsemble.forward must have shape (B,)."""
     ensemble_model.eval()
     with torch.no_grad():
-        all_rewards = ensemble_model.get_all_rewards(input_ids)
-    assert all_rewards.shape == (B, N_MEMBERS), (
-        f"Expected ({B}, {N_MEMBERS}), got {all_rewards.shape}"
+        mean_reward, _ = ensemble_model(input_ids)
+    assert mean_reward.shape == (B,), f"Expected ({B},), got {mean_reward.shape}"
+
+
+# ---------------------------------------------------------------------------
+# 6. test_reward_ensemble_std_reward_nonneg
+# ---------------------------------------------------------------------------
+
+def test_reward_ensemble_std_reward_nonneg(ensemble_model, input_ids):
+    """std_reward from RewardEnsemble.forward must be >= 0."""
+    ensemble_model.eval()
+    with torch.no_grad():
+        _, std_reward = ensemble_model(input_ids)
+    assert (std_reward >= 0).all(), f"Negative std: {std_reward}"
+    assert std_reward.shape == (B,)
+
+
+# ---------------------------------------------------------------------------
+# 7. test_aggregate_mean
+# ---------------------------------------------------------------------------
+
+def test_aggregate_mean(ensemble_model):
+    """aggregate with 'mean' must return the arithmetic mean across models."""
+    cfg = EnsembleConfig(n_models=3, aggregation="mean")
+    ensemble_model.config = cfg
+    rewards = torch.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])  # (3, 2)
+    result = ensemble_model.aggregate(rewards)
+    expected = torch.tensor([3.0, 4.0])
+    assert torch.allclose(result, expected, atol=1e-5)
+    assert result.shape == (B,)
+
+
+# ---------------------------------------------------------------------------
+# 8. test_aggregate_min_lte_mean
+# ---------------------------------------------------------------------------
+
+def test_aggregate_min_lte_mean(ensemble_model):
+    """aggregate 'min' result must be <= 'mean' result element-wise."""
+    rewards = torch.randn(N_MODELS, B)
+
+    cfg_mean = EnsembleConfig(n_models=N_MODELS, aggregation="mean")
+    ensemble_model.config = cfg_mean
+    mean_agg = ensemble_model.aggregate(rewards)
+
+    cfg_min = EnsembleConfig(n_models=N_MODELS, aggregation="min")
+    ensemble_model.config = cfg_min
+    min_agg = ensemble_model.aggregate(rewards)
+
+    assert (min_agg <= mean_agg + 1e-6).all(), (
+        f"min aggregation exceeds mean: min={min_agg}, mean={mean_agg}"
     )
 
 
 # ---------------------------------------------------------------------------
-# 6. test_aggregate_rewards_mean
+# 9. test_uncertainty_keys
 # ---------------------------------------------------------------------------
 
-def test_aggregate_rewards_mean():
-    """'mean' aggregation must equal arithmetic mean across members."""
-    cfg = EnsembleConfig(n_members=3, aggregation="mean")
-    rewards = torch.tensor([[1.0, 3.0, 5.0], [2.0, 4.0, 6.0]])  # (2, 3)
-    agg, std = aggregate_rewards(rewards, cfg)
-
-    expected_mean = torch.tensor([3.0, 4.0])
-    assert torch.allclose(agg, expected_mean, atol=1e-5), (
-        f"Mean mismatch: {agg} vs {expected_mean}"
+def test_uncertainty_keys(ensemble_model, input_ids):
+    """RewardEnsemble.uncertainty must return dict with required keys."""
+    ensemble_model.eval()
+    with torch.no_grad():
+        result = ensemble_model.uncertainty(input_ids)
+    required = {"mean", "std", "epistemic", "lower_bound"}
+    assert required.issubset(result.keys()), (
+        f"Missing keys: {required - result.keys()}"
     )
-    assert agg.shape == (B,)
-    assert std.shape == (B,)
+    for k in required:
+        assert result[k].shape == (B,), f"Key '{k}' has wrong shape: {result[k].shape}"
 
 
 # ---------------------------------------------------------------------------
-# 7. test_aggregate_rewards_min
+# 10. test_mc_dropout_predict_shapes
 # ---------------------------------------------------------------------------
 
-def test_aggregate_rewards_min():
-    """'min' aggregation must return the minimum across members."""
-    cfg = EnsembleConfig(n_members=3, aggregation="min")
-    rewards = torch.tensor([[1.0, 3.0, 5.0], [6.0, 4.0, 2.0]])  # (2, 3)
-    agg, std = aggregate_rewards(rewards, cfg)
-
-    expected_min = torch.tensor([1.0, 2.0])
-    assert torch.allclose(agg, expected_min, atol=1e-5), (
-        f"Min mismatch: {agg} vs {expected_min}"
-    )
-    assert agg.shape == (B,)
-    assert std.shape == (B,)
-
-
-# ---------------------------------------------------------------------------
-# 8. test_aggregate_rewards_uncertainty_weighted
-# ---------------------------------------------------------------------------
-
-def test_aggregate_rewards_uncertainty_weighted():
-    """'uncertainty_weighted' aggregation must return valid finite rewards."""
-    cfg = EnsembleConfig(n_members=3, aggregation="uncertainty_weighted")
+def test_mc_dropout_predict_shapes():
+    """MCDropoutReward.predict must return (mean, std) with shape (B,)."""
     torch.manual_seed(42)
-    rewards = torch.randn(B, N_MEMBERS)
-    agg, std = aggregate_rewards(rewards, cfg)
-
-    assert agg.shape == (B,), f"Expected ({B},), got {agg.shape}"
-    assert std.shape == (B,)
-    assert torch.isfinite(agg).all(), "uncertainty_weighted produced non-finite rewards"
-
-
-# ---------------------------------------------------------------------------
-# 9. test_detect_ood_samples_mask
-# ---------------------------------------------------------------------------
-
-def test_detect_ood_samples_mask():
-    """detect_ood_samples must return correct boolean mask (True where > threshold)."""
-    uncertainty = torch.tensor([0.1, 0.6, 0.4, 0.9])
-    threshold = 0.5
-    mask = detect_ood_samples(uncertainty, threshold)
-
-    expected = torch.tensor([False, True, False, True])
-    assert mask.dtype == torch.bool, f"Expected bool, got {mask.dtype}"
-    assert mask.shape == (4,)
-    assert torch.equal(mask, expected), f"Mask mismatch: {mask} vs {expected}"
+    head = RewardHead(D_MODEL, dropout=0.2)
+    mc = MCDropoutReward(head, n_forward=5)
+    hidden = torch.randn(B, T, D_MODEL)
+    mean, std = mc.predict(hidden)
+    assert mean.shape == (B,), f"mean shape {mean.shape}"
+    assert std.shape == (B,), f"std shape {std.shape}"
 
 
 # ---------------------------------------------------------------------------
-# 10. test_ensemble_trainer_train_step_keys
+# 11. test_conservative_reward
 # ---------------------------------------------------------------------------
 
-def test_ensemble_trainer_train_step_keys(ensemble_model, input_ids):
-    """train_step must return a dict with 'loss', 'mean_reward_gap', 'mean_uncertainty'."""
-    cfg = EnsembleConfig(n_members=N_MEMBERS)
+def test_conservative_reward():
+    """conservative_reward must equal mean - beta*std."""
+    mean = torch.tensor([2.0, 3.0, 1.0])
+    std = torch.tensor([0.5, 1.0, 0.2])
+    beta = 1.5
+    result = conservative_reward(mean, std, beta)
+    expected = mean - beta * std
+    assert torch.allclose(result, expected, atol=1e-6), (
+        f"conservative_reward mismatch: {result} vs {expected}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 12. test_train_step_returns_required_keys
+# ---------------------------------------------------------------------------
+
+def test_train_step_returns_required_keys(ensemble_model, input_ids):
+    """RewardEnsembleTrainer.train_step must return dict with required keys."""
+    cfg = EnsembleConfig(n_models=N_MODELS)
     optimizer = torch.optim.Adam(ensemble_model.parameters(), lr=1e-3)
-    trainer = EnsembleTrainer(ensemble_model, optimizer, cfg)
+    trainer = RewardEnsembleTrainer(ensemble_model, optimizer, cfg)
 
     rejected_ids = torch.randint(0, VOCAB_SIZE, (B, T))
     result = trainer.train_step(input_ids, rejected_ids)
 
-    assert "loss" in result, "Missing key 'loss'"
-    assert "mean_reward_gap" in result, "Missing key 'mean_reward_gap'"
-    assert "mean_uncertainty" in result, "Missing key 'mean_uncertainty'"
+    required = {"loss", "mean_margin", "agreement"}
+    assert required.issubset(result.keys()), f"Missing keys: {required - result.keys()}"
 
 
 # ---------------------------------------------------------------------------
-# 11. test_ensemble_trainer_loss_positive
+# 13. test_train_step_loss_is_finite
 # ---------------------------------------------------------------------------
 
-def test_ensemble_trainer_loss_positive(ensemble_model, input_ids):
-    """Bradley-Terry loss must be positive (BCE-based)."""
-    cfg = EnsembleConfig(n_members=N_MEMBERS)
+def test_train_step_loss_is_finite(ensemble_model, input_ids):
+    """RewardEnsembleTrainer.train_step loss must be finite."""
+    cfg = EnsembleConfig(n_models=N_MODELS)
     optimizer = torch.optim.Adam(ensemble_model.parameters(), lr=1e-3)
-    trainer = EnsembleTrainer(ensemble_model, optimizer, cfg)
+    trainer = RewardEnsembleTrainer(ensemble_model, optimizer, cfg)
 
     rejected_ids = torch.randint(0, VOCAB_SIZE, (B, T))
     result = trainer.train_step(input_ids, rejected_ids)
 
-    assert result["loss"] > 0, f"Expected loss > 0, got {result['loss']}"
-    import math
-    assert math.isfinite(result["loss"]), "Loss is not finite"
+    assert math.isfinite(result["loss"]), f"Non-finite loss: {result['loss']}"
 
 
 # ---------------------------------------------------------------------------
-# 12. test_ensemble_members_diversity
+# 14. test_evaluate_returns_required_keys
 # ---------------------------------------------------------------------------
 
-def test_ensemble_members_diversity(ensemble_model, input_ids):
-    """Different reward heads must produce different reward values (not all identical)."""
-    ensemble_model.eval()
-    with torch.no_grad():
-        all_rewards = ensemble_model.get_all_rewards(input_ids)  # (B, n_members)
+def test_evaluate_returns_required_keys(ensemble_model, input_ids):
+    """RewardEnsembleTrainer.evaluate must return dict with required keys."""
+    cfg = EnsembleConfig(n_models=N_MODELS)
+    optimizer = torch.optim.Adam(ensemble_model.parameters(), lr=1e-3)
+    trainer = RewardEnsembleTrainer(ensemble_model, optimizer, cfg)
 
-    # Check across members for at least one sample
-    for b in range(B):
-        member_rewards = all_rewards[b]  # (n_members,)
-        # All values being exactly equal would indicate no diversity
-        if not torch.allclose(
-            member_rewards, member_rewards[0].expand_as(member_rewards), atol=1e-6
-        ):
-            return  # found diversity — test passes
+    rejected_ids = torch.randint(0, VOCAB_SIZE, (B, T))
+    result = trainer.evaluate(input_ids, rejected_ids)
 
-    pytest.fail(
-        f"All {N_MEMBERS} reward heads produced identical rewards for every sample. "
-        f"Rewards: {all_rewards}"
+    required = {"loss", "mean_margin", "agreement"}
+    assert required.issubset(result.keys()), f"Missing keys: {required - result.keys()}"
+
+
+# ---------------------------------------------------------------------------
+# 15. test_aggregate_ucb_ge_mean
+# ---------------------------------------------------------------------------
+
+def test_aggregate_ucb_ge_mean(ensemble_model):
+    """aggregate 'ucb' result must be >= 'mean' result element-wise."""
+    rewards = torch.randn(N_MODELS, B)
+
+    cfg_mean = EnsembleConfig(n_models=N_MODELS, aggregation="mean")
+    ensemble_model.config = cfg_mean
+    mean_agg = ensemble_model.aggregate(rewards)
+
+    cfg_ucb = EnsembleConfig(n_models=N_MODELS, aggregation="ucb", ucb_beta=1.0)
+    ensemble_model.config = cfg_ucb
+    ucb_agg = ensemble_model.aggregate(rewards)
+
+    assert (ucb_agg >= mean_agg - 1e-6).all(), (
+        f"ucb aggregation less than mean: ucb={ucb_agg}, mean={mean_agg}"
     )
