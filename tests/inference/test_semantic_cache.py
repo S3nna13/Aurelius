@@ -1,314 +1,312 @@
-"""Tests for src/inference/semantic_cache.py"""
+"""Tests for src/inference/semantic_cache.py
+
+Tests the new API: SemanticCacheConfig, CacheEntry, TextEmbedder,
+compute_cosine_similarity, SemanticCache, CachedInferenceEngine.
+"""
 
 from __future__ import annotations
 
+import time
+
+import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytest
 
 from src.inference.semantic_cache import (
     CacheEntry,
-    EmbeddingIndex,
+    CachedInferenceEngine,
     SemanticCache,
-    make_mean_pool_embed_fn,
+    SemanticCacheConfig,
+    TextEmbedder,
+    compute_cosine_similarity,
+)
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
+
+
+# ---------------------------------------------------------------------------
+# Tiny model fixture (fast, no GPU required)
+# ---------------------------------------------------------------------------
+
+TINY_CFG = AureliusConfig(
+    n_layers=2,
+    d_model=64,
+    n_heads=2,
+    n_kv_heads=2,
+    head_dim=32,
+    d_ff=128,
+    vocab_size=256,
+    max_seq_len=512,
 )
 
-# ---------------------------------------------------------------------------
-# Mock embed_fn (fast, deterministic, 64-d)
-# ---------------------------------------------------------------------------
 
-D_EMBED = 64
-
-
-def mock_embed_fn(prompt_ids: torch.Tensor) -> torch.Tensor:
-    """Deterministic embedding: mean of token IDs, broadcast to 64-d, normalized."""
-    emb = prompt_ids.float().mean(dim=-1, keepdim=True).expand(D_EMBED)
-    return F.normalize(emb, dim=0)
+@pytest.fixture(scope="module")
+def tiny_model() -> AureliusTransformer:
+    model = AureliusTransformer(TINY_CFG)
+    model.eval()
+    return model
 
 
-def _make_query(value: float) -> torch.Tensor:
-    """Return a unit vector in the direction (value, value, …)."""
-    raw = torch.full((D_EMBED,), value)
-    return F.normalize(raw, dim=0)
+def _tokenizer_encode(text: str) -> list[int]:
+    """Simple byte-level tokenizer, clamped to vocab_size=256."""
+    return [b % 256 for b in text.encode("utf-8")][:64] or [0]
 
 
-# ---------------------------------------------------------------------------
-# EmbeddingIndex tests
-# ---------------------------------------------------------------------------
-
-class TestEmbeddingIndex:
-
-    def test_embedding_index_add_and_search(self):
-        """add 3 embeddings, search returns top-1 with high similarity."""
-        index = EmbeddingIndex(d_embed=D_EMBED)
-
-        e0 = _make_query(1.0)
-        e1 = _make_query(0.5)
-        e2 = _make_query(-1.0)
-
-        index.add(e0, entry_id=0)
-        index.add(e1, entry_id=1)
-        index.add(e2, entry_id=2)
-
-        results = index.search(e0, top_k=1)
-        assert len(results) == 1
-        best_id, best_sim = results[0]
-        assert best_id == 0
-        assert best_sim == pytest.approx(1.0, abs=1e-5)
-
-    def test_embedding_index_empty_search(self):
-        """search on empty index returns []."""
-        index = EmbeddingIndex(d_embed=D_EMBED)
-        q = _make_query(1.0)
-        assert index.search(q, top_k=5) == []
-
-    def test_embedding_index_search_sorted(self):
-        """results are sorted by similarity descending."""
-        index = EmbeddingIndex(d_embed=D_EMBED)
-
-        # Three distinct directions
-        e_high = _make_query(1.0)
-        e_mid = F.normalize(torch.tensor([1.0] * 32 + [0.0] * 32), dim=0)
-        e_low = _make_query(-1.0)
-
-        index.add(e_high, entry_id=10)
-        index.add(e_mid, entry_id=11)
-        index.add(e_low, entry_id=12)
-
-        query = _make_query(1.0)
-        results = index.search(query, top_k=3)
-
-        assert len(results) == 3
-        sims = [sim for _, sim in results]
-        # Must be sorted descending
-        assert sims == sorted(sims, reverse=True)
-        # Best must be id=10 (identical direction)
-        assert results[0][0] == 10
-
-    def test_embedding_index_remove(self):
-        """after remove, entry not returned in search."""
-        index = EmbeddingIndex(d_embed=D_EMBED)
-
-        e0 = _make_query(1.0)
-        e1 = _make_query(-1.0)
-
-        index.add(e0, entry_id=0)
-        index.add(e1, entry_id=1)
-        assert len(index) == 2
-
-        index.remove(entry_id=0)
-        assert len(index) == 1
-
-        results = index.search(e0, top_k=5)
-        returned_ids = [eid for eid, _ in results]
-        assert 0 not in returned_ids
+def _tokenizer_decode(ids) -> str:
+    """Decode byte token IDs back to a string, ignoring errors."""
+    if isinstance(ids, torch.Tensor):
+        ids = ids.tolist()
+    return bytes([i % 256 for i in ids]).decode("utf-8", errors="replace")
 
 
 # ---------------------------------------------------------------------------
-# SemanticCache tests
+# Test 1: SemanticCacheConfig defaults
 # ---------------------------------------------------------------------------
 
-class TestSemanticCache:
-
-    def _make_cache(self, threshold: float = 0.95, max_entries: int = 10) -> SemanticCache:
-        return SemanticCache(
-            embed_fn=mock_embed_fn,
-            similarity_threshold=threshold,
-            max_entries=max_entries,
-            d_embed=D_EMBED,
-        )
-
-    def test_semantic_cache_miss(self):
-        """lookup with dissimilar prompt returns None."""
-        cache = self._make_cache(threshold=0.95)
-
-        positive_ids = torch.tensor([100, 200, 300])
-        negative_ids = torch.tensor([-100, -200, -300])
-
-        cache.store(positive_ids, torch.tensor([1, 2, 3]))
-        result = cache.lookup(negative_ids)
-        assert result is None
-
-    def test_semantic_cache_hit(self):
-        """store then lookup with same prompt returns entry."""
-        cache = self._make_cache(threshold=0.95)
-
-        prompt_ids = torch.tensor([10, 20, 30])
-        response_ids = torch.tensor([1, 2, 3])
-
-        cache.store(prompt_ids, response_ids, response_text="hello")
-        result = cache.lookup(prompt_ids)
-
-        assert result is not None
-        assert isinstance(result, CacheEntry)
-        assert torch.equal(result.response_ids, response_ids)
-        assert result.response_text == "hello"
-
-    def test_semantic_cache_threshold(self):
-        """high threshold (0.9999) misses similar but not identical prompts.
-
-        We use a custom embed_fn that produces genuinely different unit vectors
-        for different prompts by encoding the token values into distinct directions.
-        We then verify that a threshold set just above the cross-prompt similarity
-        causes a miss, while a threshold set just below causes a hit.
-        """
-
-        def _distinct_embed(prompt_ids: torch.Tensor) -> torch.Tensor:
-            """Each unique prompt gets a direction determined by its token values.
-
-            We build a raw vector where position i = sin(i * mean_val), giving
-            different directions for different mean values.
-            """
-            mean_val = prompt_ids.float().mean().item()
-            idx = torch.arange(D_EMBED, dtype=torch.float32)
-            raw = torch.sin(idx * mean_val + 1.0)
-            return F.normalize(raw, dim=0)
-
-        # Prompts with very different means → lower similarity
-        prompt_a = torch.tensor([1])    # mean = 1.0
-        prompt_b = torch.tensor([50])   # mean = 50.0
-
-        emb_a = _distinct_embed(prompt_a)
-        emb_b = _distinct_embed(prompt_b)
-        cross_sim = (emb_a * emb_b).sum().item()  # will be < 1.0
-
-        # Threshold just above cross-sim → lookup(prompt_b) misses after storing prompt_a
-        cache_high = SemanticCache(
-            embed_fn=_distinct_embed,
-            similarity_threshold=min(cross_sim + 0.1, 0.9999),
-            max_entries=10,
-            d_embed=D_EMBED,
-        )
-        cache_high.store(prompt_a, torch.tensor([1]))
-        result_miss = cache_high.lookup(prompt_b)
-        assert result_miss is None
-
-        # Exact same prompt → always a hit (sim == 1.0)
-        result_exact = cache_high.lookup(prompt_a)
-        assert result_exact is not None
-
-        # Threshold just below cross-sim → lookup(prompt_b) hits after storing prompt_a
-        cache_low = SemanticCache(
-            embed_fn=_distinct_embed,
-            similarity_threshold=max(cross_sim - 0.1, 0.0),
-            max_entries=10,
-            d_embed=D_EMBED,
-        )
-        cache_low.store(prompt_a, torch.tensor([1]))
-        result_hit = cache_low.lookup(prompt_b)
-        assert result_hit is not None
-
-    def test_semantic_cache_hit_count(self):
-        """hit_count increments on each successful lookup."""
-        cache = self._make_cache(threshold=0.9)
-        prompt_ids = torch.tensor([5, 5, 5])
-        cache.store(prompt_ids, torch.tensor([99]))
-
-        for expected in range(1, 4):
-            entry = cache.lookup(prompt_ids)
-            assert entry is not None
-            assert entry.hit_count == expected
-
-    def test_semantic_cache_lru_eviction(self):
-        """store max_entries+1 entries; oldest is evicted."""
-        max_entries = 5
-        cache = self._make_cache(max_entries=max_entries)
-
-        # Store max_entries entries with distinct prompts
-        # Use values 1..max_entries so their embeddings differ
-        for i in range(1, max_entries + 1):
-            cache.store(
-                torch.tensor([i * 100]),
-                torch.tensor([i]),
-                response_text=f"resp_{i}",
-            )
-
-        assert len(cache) == max_entries
-
-        # Store one more — should evict the LRU (first one stored, i=1)
-        cache.store(torch.tensor([999]), torch.tensor([999]))
-        assert len(cache) == max_entries
-
-        # The first entry (i=1 → ids=[100]) should be gone
-        evicted_prompt = torch.tensor([100])
-        result = cache.lookup(evicted_prompt)
-        # Because similarity threshold is 0.95 and we only have entries from 200,300,…
-        # the [100] query may or may not match something; verify count, not hit
-        assert len(cache) == max_entries
-
-    def test_semantic_cache_stats(self):
-        """stats() returns dict with correct keys."""
-        cache = self._make_cache()
-        s = cache.stats()
-
-        assert "n_entries" in s
-        assert "total_hits" in s
-        assert "hit_rate" in s
-        assert isinstance(s["n_entries"], int)
-        assert isinstance(s["total_hits"], int)
-        assert isinstance(s["hit_rate"], float)
-
-        # After storing and hitting once
-        prompt_ids = torch.tensor([1, 2, 3])
-        cache.store(prompt_ids, torch.tensor([7, 8]))
-        cache.lookup(prompt_ids)   # should be a hit
-
-        s2 = cache.stats()
-        assert s2["n_entries"] == 1
-        assert s2["total_hits"] == 1
-        assert s2["hit_rate"] == pytest.approx(1.0)
-
-    def test_semantic_cache_clear(self):
-        """after clear(), len == 0."""
-        cache = self._make_cache()
-        for i in range(5):
-            cache.store(torch.tensor([i + 1]), torch.tensor([i]))
-        assert len(cache) == 5
-
-        cache.clear()
-        assert len(cache) == 0
-
-        # Stats reset too
-        s = cache.stats()
-        assert s["n_entries"] == 0
-        assert s["total_hits"] == 0
-        assert s["hit_rate"] == pytest.approx(0.0)
+def test_semantic_cache_config_defaults():
+    cfg = SemanticCacheConfig()
+    assert cfg.max_size == 1000
+    assert cfg.similarity_threshold == 0.85
+    assert cfg.embedding_dim == 64
+    assert cfg.eviction_policy == "lru"
+    assert cfg.ttl_seconds == 3600.0
 
 
 # ---------------------------------------------------------------------------
-# make_mean_pool_embed_fn tests
+# Test 2: CacheEntry fields
 # ---------------------------------------------------------------------------
 
-class TestMakeMeanPoolEmbedFn:
+def test_cache_entry_fields():
+    emb = torch.ones(64)
+    before = time.time()
+    entry = CacheEntry(key_text="hello", key_embedding=emb, value="world")
+    after = time.time()
 
-    def _make_tiny_model(self, d_model: int = 16) -> nn.Module:
-        """A minimal nn.Module that has a `norm` attribute (like AureliusTransformer)."""
+    assert entry.key_text == "hello"
+    assert torch.equal(entry.key_embedding, emb)
+    assert entry.value == "world"
+    assert entry.hits == 0
+    assert before <= entry.created_at <= after + 0.1
+    assert before <= entry.last_accessed <= after + 0.1
 
-        class TinyModel(nn.Module):
-            def __init__(self, d_model: int) -> None:
-                super().__init__()
-                self.embed = nn.Embedding(256, d_model)
-                self.norm = nn.LayerNorm(d_model)
 
-            def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
-                x = self.embed(input_ids)          # (B, S, d_model)
-                return self.norm(x)
+# ---------------------------------------------------------------------------
+# Test 3: compute_cosine_similarity -- identical vectors -> 1.0
+# ---------------------------------------------------------------------------
 
-        return TinyModel(d_model)
+def test_cosine_similarity_identical():
+    v = torch.tensor([1.0, 2.0, 3.0, 4.0])
+    sim = compute_cosine_similarity(v, v)
+    assert sim == pytest.approx(1.0, abs=1e-5)
 
-    def test_make_mean_pool_embed_fn(self):
-        """embed_fn returns normalized (d_model,) tensor."""
-        d_model = 16
-        model = self._make_tiny_model(d_model)
-        embed_fn = make_mean_pool_embed_fn(model)
 
-        prompt_ids = torch.tensor([1, 2, 3, 4])
-        emb = embed_fn(prompt_ids)
+# ---------------------------------------------------------------------------
+# Test 4: compute_cosine_similarity -- orthogonal vectors -> 0.0
+# ---------------------------------------------------------------------------
 
-        assert isinstance(emb, torch.Tensor)
-        assert emb.shape == (d_model,), f"Expected ({d_model},), got {emb.shape}"
+def test_cosine_similarity_orthogonal():
+    a = torch.tensor([1.0, 0.0])
+    b = torch.tensor([0.0, 1.0])
+    sim = compute_cosine_similarity(a, b)
+    assert sim == pytest.approx(0.0, abs=1e-5)
 
-        # Must be (approximately) unit-normalized
-        norm = emb.norm().item()
-        assert norm == pytest.approx(1.0, abs=1e-5), f"Not normalized: norm={norm}"
+
+# ---------------------------------------------------------------------------
+# Test 5: SemanticCache.lookup returns None when empty
+# ---------------------------------------------------------------------------
+
+def test_lookup_returns_none_when_empty():
+    cache = SemanticCache(SemanticCacheConfig())
+    query = F.normalize(torch.ones(64), dim=0)
+    result = cache.lookup(query)
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Test 6: SemanticCache.insert increases size
+# ---------------------------------------------------------------------------
+
+def test_insert_increases_size():
+    cache = SemanticCache(SemanticCacheConfig())
+    assert len(cache) == 0
+    emb = F.normalize(torch.ones(64), dim=0)
+    cache.insert("prompt", emb, "response")
+    assert len(cache) == 1
+
+
+# ---------------------------------------------------------------------------
+# Test 7: SemanticCache.lookup finds inserted entry (same embedding)
+# ---------------------------------------------------------------------------
+
+def test_lookup_finds_inserted_entry():
+    cfg = SemanticCacheConfig(similarity_threshold=0.85)
+    cache = SemanticCache(cfg)
+    emb = F.normalize(torch.ones(64), dim=0)
+    cache.insert("hello world", emb, "cached response")
+
+    result = cache.lookup(emb)
+    assert result is not None
+    assert result.key_text == "hello world"
+    assert result.value == "cached response"
+    assert result.hits == 1
+
+
+# ---------------------------------------------------------------------------
+# Test 8: SemanticCache.lookup returns None for dissimilar query
+# ---------------------------------------------------------------------------
+
+def test_lookup_returns_none_for_dissimilar():
+    cfg = SemanticCacheConfig(similarity_threshold=0.99)
+    cache = SemanticCache(cfg)
+
+    # Insert a vector in the positive direction
+    pos = F.normalize(torch.ones(64), dim=0)
+    cache.insert("positive", pos, "pos_response")
+
+    # Use all-negative to guarantee very low similarity (cosine ~ -1)
+    anti = F.normalize(-torch.ones(64), dim=0)
+    result = cache.lookup(anti)
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Test 9: SemanticCache.insert respects max_size (LRU eviction)
+# ---------------------------------------------------------------------------
+
+def test_insert_respects_max_size_lru():
+    cfg = SemanticCacheConfig(max_size=3, eviction_policy="lru")
+    cache = SemanticCache(cfg)
+
+    # Insert 3 distinct embeddings
+    for i in range(3):
+        direction = torch.zeros(64)
+        direction[i] = 1.0
+        cache.insert(f"prompt_{i}", direction, f"response_{i}")
+
+    assert len(cache) == 3
+
+    # Insert one more -- should evict oldest (prompt_0)
+    direction = torch.zeros(64)
+    direction[3] = 1.0
+    cache.insert("prompt_3", direction, "response_3")
+
+    assert len(cache) == 3
+    # prompt_0 should be gone
+    assert not any(e.key_text == "prompt_0" for e in cache._entries)
+
+
+# ---------------------------------------------------------------------------
+# Test 10: SemanticCache.invalidate removes entry
+# ---------------------------------------------------------------------------
+
+def test_invalidate_removes_entry():
+    cache = SemanticCache(SemanticCacheConfig())
+    emb = F.normalize(torch.ones(64), dim=0)
+    cache.insert("to_remove", emb, "value")
+    assert len(cache) == 1
+
+    removed = cache.invalidate("to_remove")
+    assert removed is True
+    assert len(cache) == 0
+
+
+# ---------------------------------------------------------------------------
+# Test 11: SemanticCache.invalidate returns False for missing key
+# ---------------------------------------------------------------------------
+
+def test_invalidate_returns_false_for_missing():
+    cache = SemanticCache(SemanticCacheConfig())
+    result = cache.invalidate("nonexistent_key")
+    assert result is False
+
+
+# ---------------------------------------------------------------------------
+# Test 12: SemanticCache.stats returns required keys
+# ---------------------------------------------------------------------------
+
+def test_stats_returns_required_keys():
+    cache = SemanticCache(SemanticCacheConfig())
+    s = cache.stats()
+    assert "size" in s
+    assert "hits" in s
+    assert "misses" in s
+    assert "hit_rate" in s
+    assert isinstance(s["size"], int)
+    assert isinstance(s["hits"], int)
+    assert isinstance(s["misses"], int)
+    assert isinstance(s["hit_rate"], float)
+
+
+# ---------------------------------------------------------------------------
+# Test 13: CachedInferenceEngine.generate returns (str, bool)
+# ---------------------------------------------------------------------------
+
+def test_cached_inference_engine_generate_returns_str_bool(tiny_model):
+    embedder = TextEmbedder(tiny_model, d_model=TINY_CFG.d_model)
+    cfg = SemanticCacheConfig(similarity_threshold=0.85, embedding_dim=TINY_CFG.d_model)
+    cache = SemanticCache(cfg)
+    engine = CachedInferenceEngine(
+        model=tiny_model,
+        cache=cache,
+        tokenizer_encode=_tokenizer_encode,
+        tokenizer_decode=_tokenizer_decode,
+        embedder=embedder,
+    )
+    result, is_hit = engine.generate("hello", max_new_tokens=4)
+    assert isinstance(result, str)
+    assert isinstance(is_hit, bool)
+    assert is_hit is False  # first call is always a miss
+
+
+# ---------------------------------------------------------------------------
+# Test 14: CachedInferenceEngine.generate cache hit on repeated query
+# ---------------------------------------------------------------------------
+
+def test_cached_inference_engine_cache_hit_on_repeat(tiny_model):
+    embedder = TextEmbedder(tiny_model, d_model=TINY_CFG.d_model)
+    cfg = SemanticCacheConfig(similarity_threshold=0.85, embedding_dim=TINY_CFG.d_model)
+    cache = SemanticCache(cfg)
+    engine = CachedInferenceEngine(
+        model=tiny_model,
+        cache=cache,
+        tokenizer_encode=_tokenizer_encode,
+        tokenizer_decode=_tokenizer_decode,
+        embedder=embedder,
+    )
+    prompt = "repeated prompt for cache"
+    result1, hit1 = engine.generate(prompt, max_new_tokens=4)
+    result2, hit2 = engine.generate(prompt, max_new_tokens=4)
+
+    assert hit1 is False        # first call: miss
+    assert hit2 is True         # second call: hit
+    assert result1 == result2   # same result
+
+
+# ---------------------------------------------------------------------------
+# Test 15: SemanticCache.stats hit_rate in [0, 1]
+# ---------------------------------------------------------------------------
+
+def test_stats_hit_rate_in_range():
+    cfg = SemanticCacheConfig(similarity_threshold=0.85)
+    cache = SemanticCache(cfg)
+
+    # No lookups yet -- hit_rate should be 0.0
+    s = cache.stats()
+    assert 0.0 <= s["hit_rate"] <= 1.0
+    assert s["hit_rate"] == 0.0
+
+    emb = F.normalize(torch.ones(64), dim=0)
+    cache.insert("test", emb, "response")
+
+    # Hit: same embedding
+    cache.lookup(emb)
+    # Miss: anti-parallel embedding (cosine sim ~ -1)
+    anti = F.normalize(-torch.ones(64), dim=0)
+    cache.lookup(anti)
+
+    s2 = cache.stats()
+    assert 0.0 <= s2["hit_rate"] <= 1.0
+    assert s2["hits"] == 1
+    assert s2["misses"] == 1
+    assert s2["hit_rate"] == pytest.approx(0.5, abs=1e-5)

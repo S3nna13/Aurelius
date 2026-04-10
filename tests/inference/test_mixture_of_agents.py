@@ -1,9 +1,17 @@
-"""Tests for Mixture-of-Agents inference (Wang et al. 2024)."""
+"""Tests for Mixture-of-Agents inference."""
+from __future__ import annotations
+
 import pytest
 import torch
-import torch.nn as nn
 
-from src.inference.mixture_of_agents import MixtureOfAgents, MoAConfig
+from src.inference.mixture_of_agents import (
+    AgentResponse,
+    MixtureOfAgents,
+    MoAConfig,
+    compute_response_confidence,
+    greedy_generate_text,
+    sample_generate_text,
+)
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
@@ -15,14 +23,14 @@ from src.model.transformer import AureliusTransformer
 @pytest.fixture(scope="module")
 def small_cfg():
     return AureliusConfig(
-        d_model=64,
         n_layers=2,
+        d_model=64,
         n_heads=2,
-        n_kv_heads=1,
+        n_kv_heads=2,
         head_dim=32,
         d_ff=128,
         vocab_size=256,
-        max_seq_len=128,
+        max_seq_len=512,
     )
 
 
@@ -34,132 +42,190 @@ def small_model(small_cfg):
     return model
 
 
-def _identity_encode(x):
-    return x
+def _encode(text):
+    """Trivial tokenizer: map each char to its ord value (clamped to 0-255)."""
+    return [min(ord(c), 255) for c in str(text)]
 
 
-def _identity_decode(x):
-    return x
+def _decode(ids):
+    """Trivial detokenizer: map ints back to chars."""
+    return "".join(chr(min(max(i, 0), 127)) for i in ids)
 
 
-def _make_moa(model, n_proposers=3, n_rounds=1, max_new_tokens=4):
-    proposers = [model] * n_proposers
+def _make_moa(model, n_agents=2, max_new_tokens=4):
     cfg = MoAConfig(
-        n_proposers=n_proposers,
-        n_rounds=n_rounds,
+        n_proposers=n_agents,
+        n_aggregation_rounds=1,
         max_new_tokens=max_new_tokens,
-        temperature=1.0,
-        aggregator_temperature=0.0,
+        temperature=0.7,
     )
     return MixtureOfAgents(
-        proposers=proposers,
-        aggregator=model,
-        tokenizer_encode=_identity_encode,
-        tokenizer_decode=_identity_decode,
-        cfg=cfg,
+        models=[model] * n_agents,
+        config=cfg,
+        tokenizer_encode=_encode,
+        tokenizer_decode=_decode,
     )
 
 
 # ---------------------------------------------------------------------------
-# Tests
+# 1. MoAConfig defaults
 # ---------------------------------------------------------------------------
 
 def test_moa_config_defaults():
     cfg = MoAConfig()
     assert cfg.n_proposers == 3
-    assert cfg.n_rounds == 2
+    assert cfg.n_aggregation_rounds == 1
     assert cfg.max_new_tokens == 128
     assert cfg.temperature == 0.7
-    assert cfg.aggregator_temperature == 0.0
+    assert cfg.aggregation_prompt == "Synthesize these responses into a single best answer:\n"
 
 
-def test_generate_proposals_count(small_model):
-    moa = _make_moa(small_model, n_proposers=3, max_new_tokens=4)
-    input_ids = torch.randint(0, 256, (6,))
-    proposals = moa.generate_proposals(input_ids)
-    assert len(proposals) == 3
+# ---------------------------------------------------------------------------
+# 2. AgentResponse fields
+# ---------------------------------------------------------------------------
+
+def test_agent_response_fields():
+    ar = AgentResponse(agent_id=0, response="hello")
+    assert ar.agent_id == 0
+    assert ar.response == "hello"
+    assert ar.confidence == 1.0
+    assert ar.tokens_generated == 0
 
 
-def test_generate_proposals_are_tensors(small_model):
-    moa = _make_moa(small_model, n_proposers=2, max_new_tokens=4)
-    input_ids = torch.randint(0, 256, (6,))
-    proposals = moa.generate_proposals(input_ids)
-    for p in proposals:
-        assert isinstance(p, torch.Tensor)
-        assert p.dim() == 1
+# ---------------------------------------------------------------------------
+# 3. greedy_generate_text returns string
+# ---------------------------------------------------------------------------
+
+def test_greedy_generate_text_returns_string(small_model):
+    prompt_ids = _encode("hi")
+    result = greedy_generate_text(small_model, prompt_ids, max_new_tokens=4, tokenizer_decode=_decode)
+    assert isinstance(result, str)
 
 
-def test_build_aggregator_context_contains_prompt(small_model):
-    moa = _make_moa(small_model, n_proposers=2, max_new_tokens=4)
-    prompt_ids = torch.tensor([10, 20, 30], dtype=torch.long)
-    proposals = [torch.tensor([1, 2, 3], dtype=torch.long),
-                 torch.tensor([4, 5, 6], dtype=torch.long)]
-    context = moa.build_aggregator_context(prompt_ids, proposals)
-    assert isinstance(context, torch.Tensor)
-    assert context.dim() == 1
-    # Prompt tokens must appear at the very start
-    assert context[:3].tolist() == [10, 20, 30]
+# ---------------------------------------------------------------------------
+# 4. sample_generate_text returns string
+# ---------------------------------------------------------------------------
 
-
-def test_build_aggregator_context_contains_sep(small_model):
-    """SEP token (id=2) must appear between proposals."""
-    moa = _make_moa(small_model, n_proposers=2, max_new_tokens=4)
-    prompt_ids = torch.tensor([10, 20], dtype=torch.long)
-    proposals = [torch.tensor([1, 2, 3], dtype=torch.long),
-                 torch.tensor([7, 8, 9], dtype=torch.long)]
-    context = moa.build_aggregator_context(prompt_ids, proposals)
-    # Token 2 (SEP/EOS) must appear somewhere after the prompt
-    tokens_after_prompt = context[len(prompt_ids):].tolist()
-    assert 2 in tokens_after_prompt
-
-
-def test_generate_returns_tensor(small_model):
-    moa = _make_moa(small_model, n_proposers=2, n_rounds=1, max_new_tokens=4)
-    input_ids = torch.randint(0, 256, (5,))
-    out = moa.generate(input_ids)
-    assert isinstance(out, torch.Tensor)
-    assert out.dim() == 1
-
-
-def test_generate_simple_returns_tensor(small_model):
-    moa = _make_moa(small_model, n_proposers=2, n_rounds=1, max_new_tokens=4)
-    input_ids = torch.randint(0, 256, (5,))
-    out = moa.generate_simple(input_ids)
-    assert isinstance(out, torch.Tensor)
-    assert out.dim() == 1
-
-
-def test_moa_single_proposer(small_model):
-    """MoA must work with a single proposer."""
-    moa = _make_moa(small_model, n_proposers=1, max_new_tokens=4)
-    input_ids = torch.randint(0, 256, (5,))
-    out = moa.generate(input_ids)
-    assert isinstance(out, torch.Tensor)
-    assert out.dim() == 1
-
-
-def test_moa_multi_round(small_model):
-    """n_rounds=2 must produce an output tensor."""
-    moa = _make_moa(small_model, n_proposers=2, n_rounds=2, max_new_tokens=4)
-    input_ids = torch.randint(0, 256, (5,))
-    out = moa.generate(input_ids)
-    assert isinstance(out, torch.Tensor)
-    assert out.dim() == 1
-    assert len(out) > 0
-
-
-def test_moa_same_proposer_reused(small_model):
-    """Passing the same model instance for all proposers should work fine."""
-    proposers = [small_model, small_model, small_model]
-    cfg = MoAConfig(n_proposers=3, n_rounds=1, max_new_tokens=4, temperature=0.5)
-    moa = MixtureOfAgents(
-        proposers=proposers,
-        aggregator=small_model,
-        tokenizer_encode=_identity_encode,
-        tokenizer_decode=_identity_decode,
-        cfg=cfg,
+def test_sample_generate_text_returns_string(small_model):
+    prompt_ids = _encode("hi")
+    result = sample_generate_text(
+        small_model, prompt_ids, max_new_tokens=4, temperature=0.7, tokenizer_decode=_decode
     )
-    input_ids = torch.randint(0, 256, (5,))
-    out = moa.generate(input_ids)
-    assert isinstance(out, torch.Tensor)
-    assert out.dim() == 1
+    assert isinstance(result, str)
+
+
+# ---------------------------------------------------------------------------
+# 5. compute_response_confidence returns float
+# ---------------------------------------------------------------------------
+
+def test_compute_response_confidence_returns_float(small_model):
+    prompt_ids = _encode("hi")
+    response_ids = _encode("world")
+    conf = compute_response_confidence(small_model, prompt_ids, response_ids)
+    assert isinstance(conf, float)
+
+
+# ---------------------------------------------------------------------------
+# 6. compute_response_confidence returns negative (log prob)
+# ---------------------------------------------------------------------------
+
+def test_compute_response_confidence_is_negative(small_model):
+    prompt_ids = _encode("hello")
+    response_ids = _encode("world")
+    conf = compute_response_confidence(small_model, prompt_ids, response_ids)
+    assert conf <= 0.0
+
+
+# ---------------------------------------------------------------------------
+# 7. MixtureOfAgents.propose returns list of AgentResponse
+# ---------------------------------------------------------------------------
+
+def test_propose_returns_list_of_agent_response(small_model):
+    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
+    responses = moa.propose("hello")
+    assert isinstance(responses, list)
+    for r in responses:
+        assert isinstance(r, AgentResponse)
+
+
+# ---------------------------------------------------------------------------
+# 8. MixtureOfAgents.propose length = n_proposers
+# ---------------------------------------------------------------------------
+
+def test_propose_length_equals_n_proposers(small_model):
+    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
+    responses = moa.propose("hello")
+    assert len(responses) == 2
+
+
+# ---------------------------------------------------------------------------
+# 9. MixtureOfAgents.propose each response non-empty string
+# ---------------------------------------------------------------------------
+
+def test_propose_responses_are_strings(small_model):
+    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
+    responses = moa.propose("hi")
+    for r in responses:
+        assert isinstance(r.response, str)
+
+
+# ---------------------------------------------------------------------------
+# 10. MixtureOfAgents.aggregate returns string
+# ---------------------------------------------------------------------------
+
+def test_aggregate_returns_string(small_model):
+    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
+    fake_responses = [
+        AgentResponse(agent_id=0, response="answer one"),
+        AgentResponse(agent_id=1, response="answer two"),
+    ]
+    result = moa.aggregate("question", fake_responses)
+    assert isinstance(result, str)
+
+
+# ---------------------------------------------------------------------------
+# 11. MixtureOfAgents.run returns dict with required keys
+# ---------------------------------------------------------------------------
+
+def test_run_returns_dict_with_required_keys(small_model):
+    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
+    result = moa.run("hello")
+    assert isinstance(result, dict)
+    for key in ("answer", "n_responses", "responses", "mean_confidence"):
+        assert key in result, f"Missing key: {key}"
+
+
+# ---------------------------------------------------------------------------
+# 12. MixtureOfAgents.run answer is string
+# ---------------------------------------------------------------------------
+
+def test_run_answer_is_string(small_model):
+    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
+    result = moa.run("hello")
+    assert isinstance(result["answer"], str)
+
+
+# ---------------------------------------------------------------------------
+# 13. MixtureOfAgents.rank_responses sorted by confidence desc
+# ---------------------------------------------------------------------------
+
+def test_rank_responses_sorted_by_confidence_desc(small_model):
+    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
+    responses = [
+        AgentResponse(agent_id=0, response="a", confidence=-2.0),
+        AgentResponse(agent_id=1, response="b", confidence=-0.5),
+        AgentResponse(agent_id=2, response="c", confidence=-1.0),
+    ]
+    ranked = moa.rank_responses(responses)
+    confidences = [r.confidence for r in ranked]
+    assert confidences == sorted(confidences, reverse=True)
+
+
+# ---------------------------------------------------------------------------
+# 14. MixtureOfAgents.run n_responses = n_proposers
+# ---------------------------------------------------------------------------
+
+def test_run_n_responses_equals_n_proposers(small_model):
+    moa = _make_moa(small_model, n_agents=2, max_new_tokens=4)
+    result = moa.run("hello")
+    assert result["n_responses"] == 2
