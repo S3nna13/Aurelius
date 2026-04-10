@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor
 
 
@@ -215,3 +216,195 @@ class GistCompressor(nn.Module):
 
         # Reshape back to (B, n_chunks, d_model)
         return attn_out.reshape(B, n_chunks, d_model)
+
+
+# ---------------------------------------------------------------------------
+# Gradient-based Soft Prompt Optimization (Prompt Tuning / P-Tuning)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PromptConfig:
+    """Configuration for gradient-based soft prompt optimization."""
+
+    n_prompt_tokens: int = 10
+    init_method: str = "random"        # "random" | "vocab"
+    init_vocab_ids: list[int] | None = None
+
+
+def initialize_from_vocab(embed_layer: nn.Embedding, vocab_ids: list[int]) -> Tensor:
+    """Initialize soft prompt embeddings from specific vocabulary embeddings.
+
+    Args:
+        embed_layer: The model's token embedding layer.
+        vocab_ids: List of vocabulary indices to use for initialization.
+
+    Returns:
+        Tensor of shape (len(vocab_ids), d_model) with detached embeddings.
+    """
+    with torch.no_grad():
+        ids = torch.tensor(vocab_ids, dtype=torch.long, device=embed_layer.weight.device)
+        return embed_layer.weight[ids].detach().clone()
+
+
+class SoftPromptV2(nn.Module):
+    """Trainable soft prompt embeddings (new P-Tuning style API).
+
+    Unlike the hook-based SoftPrompt, this module owns the prompt tensor and
+    exposes a no-argument forward() returning shape (1, n_prompt_tokens, d_model).
+    """
+
+    def __init__(self, config: PromptConfig, d_model: int, embed_layer: nn.Embedding | None = None) -> None:
+        super().__init__()
+        n = config.n_prompt_tokens
+
+        if config.init_method == "random":
+            data = torch.empty(n, d_model)
+            nn.init.normal_(data, mean=0.0, std=0.02)
+        elif config.init_method == "vocab":
+            if embed_layer is None:
+                raise ValueError("init_method='vocab' requires embed_layer")
+            vocab_ids = config.init_vocab_ids
+            if vocab_ids is None:
+                # Sample random vocab ids if none given
+                vocab_size = embed_layer.weight.shape[0]
+                vocab_ids = torch.randint(0, vocab_size, (n,)).tolist()
+            data = initialize_from_vocab(embed_layer, vocab_ids)
+        else:
+            raise ValueError(f"Unknown init_method: {config.init_method!r}")
+
+        self.embeddings = nn.Parameter(data)
+
+    def forward(self) -> Tensor:
+        """Return soft prompt embeddings with a leading batch dimension of 1.
+
+        Returns:
+            Tensor of shape (1, n_prompt_tokens, d_model).
+        """
+        return self.embeddings.unsqueeze(0)  # (1, n_prompt_tokens, d_model)
+
+
+class PromptTuner:
+    """Trains only the soft prompt while the backbone model is fully frozen.
+
+    The tuner manually runs the model's forward pass by:
+      1. Embedding the input tokens via model.embed.
+      2. Prepending the soft prompt embeddings.
+      3. Iterating through model.layers.
+      4. Applying model.norm and model.lm_head.
+
+    This avoids triggering model.__call__ with embeddings (which expects
+    input_ids), and gives full control over the soft prompt gradients.
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        config: PromptConfig,
+        optimizer: torch.optim.Optimizer,
+    ) -> None:
+        self.model = model
+        self.config = config
+        self.optimizer = optimizer
+        self.soft_prompt: SoftPromptV2 | None = None
+
+    def setup(self) -> None:
+        """Freeze all model parameters and create the trainable soft prompt.
+
+        The optimizer's param_groups are replaced so it trains only the
+        soft prompt embeddings.
+        """
+        # Freeze every backbone parameter
+        for param in self.model.parameters():
+            param.requires_grad_(False)
+
+        # Build soft prompt
+        d_model = self.model.embed.embedding_dim
+        self.soft_prompt = SoftPromptV2(self.config, d_model, embed_layer=self.model.embed)
+
+        # Replace optimizer param groups with only the prompt parameter
+        self.optimizer.param_groups.clear()
+        self.optimizer.add_param_group({"params": [self.soft_prompt.embeddings]})
+
+    def forward_with_prompt(self, input_ids: Tensor) -> Tensor:
+        """Run the model manually with soft prompt prepended.
+
+        Args:
+            input_ids: (B, T) token indices.
+
+        Returns:
+            logits of shape (B, n_prompt_tokens + T, vocab_size).
+        """
+        assert self.soft_prompt is not None, "Call setup() before forward_with_prompt()"
+
+        B, T = input_ids.shape
+        device = input_ids.device
+
+        # Token embeddings: (B, T, d_model)
+        token_embeds = self.model.embed(input_ids)
+
+        # Soft prompt: (1, n_prompt, d_model) -> (B, n_prompt, d_model)
+        prompt_embeds = self.soft_prompt().expand(B, -1, -1)
+
+        # Concatenate: (B, n_prompt + T, d_model)
+        x = torch.cat([prompt_embeds, token_embeds], dim=1)
+
+        n_prompt = self.config.n_prompt_tokens
+        total_len = n_prompt + T
+
+        # RoPE frequencies for the full sequence
+        freqs_cis = self.model.freqs_cis[:total_len]
+
+        # Run through transformer layers
+        for layer in self.model.layers:
+            x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
+
+        # Final norm + head
+        x = self.model.norm(x)
+        logits = self.model.lm_head(x)  # (B, n_prompt + T, vocab_size)
+        return logits
+
+    def train_step(self, input_ids: Tensor) -> dict:
+        """Perform one gradient step on the soft prompt.
+
+        Loss is computed only on the non-prompt token positions using
+        next-token prediction (labels shifted by 1, prompt positions ignored).
+
+        Args:
+            input_ids: (B, T) token indices.
+
+        Returns:
+            dict with keys "loss" (float) and "n_prompt_tokens" (int).
+        """
+        assert self.soft_prompt is not None, "Call setup() before train_step()"
+
+        logits = self.forward_with_prompt(input_ids)  # (B, n_prompt + T, V)
+
+        n_prompt = self.config.n_prompt_tokens
+        B, T = input_ids.shape
+        V = logits.shape[-1]
+
+        # We want to predict token t from the representation at position (n_prompt + t - 1).
+        # Logits for non-prompt positions: indices n_prompt .. n_prompt+T-1.
+        # Shift: predict token[1..T] from logit[n_prompt..n_prompt+T-2].
+        shift_logits = logits[:, n_prompt:-1, :].contiguous()   # (B, T-1, V)
+        shift_labels = input_ids[:, 1:].contiguous()             # (B, T-1)
+
+        loss = F.cross_entropy(
+            shift_logits.view(-1, V),
+            shift_labels.view(-1),
+        )
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {"loss": loss.item(), "n_prompt_tokens": n_prompt}
+
+    def get_prompt_embeddings(self) -> Tensor:
+        """Return the current soft prompt embeddings detached from the graph.
+
+        Returns:
+            Tensor of shape (n_prompt_tokens, d_model).
+        """
+        assert self.soft_prompt is not None, "Call setup() first"
+        return self.soft_prompt.embeddings.detach()
