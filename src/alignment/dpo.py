@@ -10,7 +10,8 @@ from __future__ import annotations
 import copy
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
@@ -190,38 +191,68 @@ def compute_log_probs(
 
 
 def dpo_loss(
-    policy: nn.Module,
-    reference: nn.Module,
-    chosen_ids: torch.Tensor,
-    rejected_ids: torch.Tensor,
-    chosen_mask: torch.Tensor,
-    rejected_mask: torch.Tensor,
+    policy_or_chosen_logps,
+    reference_or_rejected_logps,
+    chosen_ids_or_ref_chosen_logps=None,
+    rejected_ids_or_ref_rejected_logps=None,
+    chosen_mask_or_config=None,
+    rejected_mask=None,
     beta: float = 0.1,
-) -> torch.Tensor:
-    """Compute the DPO loss (sigmoid variant).
+):
+    """Compute the DPO loss.
 
-    Args:
-        policy: Trainable policy model.
-        reference: Frozen reference model.
-        chosen_ids: Shape (B, seq_len) — chosen sequences.
-        rejected_ids: Shape (B, seq_len) — rejected sequences.
-        chosen_mask: Shape (B, seq_len) — response mask for chosen.
-        rejected_mask: Shape (B, seq_len) — response mask for rejected.
-        beta: DPO temperature parameter.
+    Supports two call signatures:
 
-    Returns:
-        Scalar loss tensor.
+    **Model-based** (legacy):
+        dpo_loss(policy, reference, chosen_ids, rejected_ids, chosen_mask, rejected_mask, beta=0.1)
+        -> scalar loss tensor
+
+    **Logps-based** (new functional API):
+        dpo_loss(policy_chosen_logps, policy_rejected_logps, ref_chosen_logps,
+                 ref_rejected_logps, config: DPOConfig)
+        -> (loss, metrics_dict)
+
+    In the model-based form the first argument is an nn.Module; in the logps-based
+    form the first argument is a torch.Tensor of log probabilities.
     """
-    pi_chosen = compute_log_probs(policy, chosen_ids, chosen_mask)
-    pi_rejected = compute_log_probs(policy, rejected_ids, rejected_mask)
+    # Detect which signature is being used
+    if isinstance(policy_or_chosen_logps, nn.Module):
+        # Legacy model-based call
+        policy = policy_or_chosen_logps
+        reference = reference_or_rejected_logps
+        chosen_ids = chosen_ids_or_ref_chosen_logps
+        rejected_ids = rejected_ids_or_ref_rejected_logps
+        chosen_mask = chosen_mask_or_config
+        # rejected_mask is already the 6th positional arg
 
-    with torch.no_grad():
-        ref_chosen = compute_log_probs(reference, chosen_ids, chosen_mask)
-        ref_rejected = compute_log_probs(reference, rejected_ids, rejected_mask)
+        pi_chosen = compute_log_probs(policy, chosen_ids, chosen_mask)
+        pi_rejected = compute_log_probs(policy, rejected_ids, rejected_mask)
 
-    # DPO objective: maximise the margin between chosen and rejected log-ratio differences
-    logits = beta * ((pi_chosen - ref_chosen) - (pi_rejected - ref_rejected))
-    return -F.logsigmoid(logits).mean()
+        with torch.no_grad():
+            ref_chosen = compute_log_probs(reference, chosen_ids, chosen_mask)
+            ref_rejected = compute_log_probs(reference, rejected_ids, rejected_mask)
+
+        # DPO objective: maximise the margin between chosen and rejected log-ratio differences
+        logits = beta * ((pi_chosen - ref_chosen) - (pi_rejected - ref_rejected))
+        return -F.logsigmoid(logits).mean()
+    else:
+        # New logps-based functional call
+        policy_chosen_logps = policy_or_chosen_logps
+        policy_rejected_logps = reference_or_rejected_logps
+        ref_chosen_logps = chosen_ids_or_ref_chosen_logps
+        ref_rejected_logps = rejected_ids_or_ref_rejected_logps
+        config = chosen_mask_or_config
+
+        if config is None:
+            config = DPOConfig(beta=beta)
+
+        return _dpo_loss_from_logps(
+            policy_chosen_logps,
+            policy_rejected_logps,
+            ref_chosen_logps,
+            ref_rejected_logps,
+            config,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -357,6 +388,172 @@ class NativeDPORunner:
         save_path = os.path.join(self.cfg.output_dir, "dpo_final.pt")
         torch.save(self.policy.state_dict(), save_path)
         logger.info("DPO training complete. Policy saved to %s", save_path)
+
+
+# ---------------------------------------------------------------------------
+# New DPO Components: DPOConfig, functional dpo_loss, DPOTrainer
+# ---------------------------------------------------------------------------
+
+@dataclass
+class DPOConfig:
+    """Configuration for Direct Preference Optimization."""
+
+    beta: float = 0.1
+    label_smoothing: float = 0.0
+    reference_free: bool = False
+    loss_type: str = "sigmoid"  # "sigmoid" | "hinge" | "ipo"
+
+
+def _dpo_loss_from_logps(
+    policy_chosen_logps: torch.Tensor,
+    policy_rejected_logps: torch.Tensor,
+    ref_chosen_logps: torch.Tensor,
+    ref_rejected_logps: torch.Tensor,
+    config: DPOConfig,
+) -> tuple[torch.Tensor, dict]:
+    """Compute DPO loss from pre-computed log probabilities.
+
+    Args:
+        policy_chosen_logps: Shape (B,) — policy log probs for chosen responses.
+        policy_rejected_logps: Shape (B,) — policy log probs for rejected responses.
+        ref_chosen_logps: Shape (B,) — reference log probs for chosen responses.
+        ref_rejected_logps: Shape (B,) — reference log probs for rejected responses.
+        config: DPOConfig instance with loss_type, beta, label_smoothing, reference_free.
+
+    Returns:
+        (loss, metrics_dict) where loss is a scalar tensor and metrics_dict contains
+        chosen_rewards, rejected_rewards, reward_margin.
+    """
+    if config.reference_free:
+        # Reference-free: treat reference log probs as zero
+        chosen_diff = policy_chosen_logps
+        rejected_diff = policy_rejected_logps
+    else:
+        chosen_diff = policy_chosen_logps - ref_chosen_logps
+        rejected_diff = policy_rejected_logps - ref_rejected_logps
+
+    margin = config.beta * (chosen_diff - rejected_diff)
+
+    if config.loss_type == "sigmoid":
+        # Standard DPO: -log sigmoid(beta * (pi_chosen_diff - pi_rejected_diff))
+        # With optional label smoothing
+        ls = config.label_smoothing
+        if ls > 0.0:
+            loss = (
+                -F.logsigmoid(margin) * (1 - ls)
+                - F.logsigmoid(-margin) * ls
+            ).mean()
+        else:
+            loss = -F.logsigmoid(margin).mean()
+    elif config.loss_type == "hinge":
+        # Hinge loss: max(0, 1 - beta * margin)
+        loss = torch.clamp(1.0 - margin, min=0.0).mean()
+    elif config.loss_type == "ipo":
+        # IPO loss: (margin - 1/(2*beta))^2
+        loss = ((margin - 1.0 / (2.0 * config.beta)) ** 2).mean()
+    else:
+        raise ValueError(f"Unknown loss_type: {config.loss_type!r}. Use 'sigmoid', 'hinge', or 'ipo'.")
+
+    chosen_rewards = (config.beta * chosen_diff).detach()
+    rejected_rewards = (config.beta * rejected_diff).detach()
+    reward_margin = (chosen_rewards - rejected_rewards).mean()
+
+    metrics = {
+        "chosen_rewards": chosen_rewards.mean().item(),
+        "rejected_rewards": rejected_rewards.mean().item(),
+        "reward_margin": reward_margin.item(),
+    }
+
+    return loss, metrics
+
+
+def compute_reward_margin(
+    chosen_logps: torch.Tensor,
+    rejected_logps: torch.Tensor,
+    beta: float,
+) -> torch.Tensor:
+    """Compute reward margin between chosen and rejected log probabilities.
+
+    Args:
+        chosen_logps: Shape (B,) or scalar — log probs for chosen responses.
+        rejected_logps: Shape (B,) or scalar — log probs for rejected responses.
+        beta: DPO temperature parameter.
+
+    Returns:
+        Reward margin: beta * (chosen_logps - rejected_logps).
+    """
+    return beta * (chosen_logps - rejected_logps)
+
+
+class DPOTrainer:
+    """Trainer for Direct Preference Optimization (DPO).
+
+    Wraps policy and reference models with a functional DPO loss.
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        ref_model: nn.Module,
+        config: DPOConfig,
+        optimizer: torch.optim.Optimizer,
+    ) -> None:
+        self.model = model
+        self.ref_model = ref_model
+        self.config = config
+        self.optimizer = optimizer
+
+        # Freeze reference model
+        for p in self.ref_model.parameters():
+            p.requires_grad_(False)
+        self.ref_model.eval()
+
+    def train_step(
+        self,
+        chosen_ids: torch.Tensor,
+        rejected_ids: torch.Tensor,
+        response_mask: torch.Tensor,
+    ) -> Dict[str, float]:
+        """Perform a single DPO training step.
+
+        Args:
+            chosen_ids: Shape (B, seq_len) — token ids for chosen sequences.
+            rejected_ids: Shape (B, seq_len) — token ids for rejected sequences.
+            response_mask: Shape (B, seq_len) — 1 for response tokens, 0 for prompt tokens.
+                           Applied to both chosen and rejected sequences.
+
+        Returns:
+            Dict with keys: loss, chosen_rewards, rejected_rewards, reward_margin.
+        """
+        self.model.train()
+
+        # Compute policy log probs
+        policy_chosen_logps = compute_log_probs(self.model, chosen_ids, response_mask)
+        policy_rejected_logps = compute_log_probs(self.model, rejected_ids, response_mask)
+
+        # Compute reference log probs (no grad)
+        with torch.no_grad():
+            ref_chosen_logps = compute_log_probs(self.ref_model, chosen_ids, response_mask)
+            ref_rejected_logps = compute_log_probs(self.ref_model, rejected_ids, response_mask)
+
+        loss, metrics = _dpo_loss_from_logps(
+            policy_chosen_logps,
+            policy_rejected_logps,
+            ref_chosen_logps,
+            ref_rejected_logps,
+            self.config,
+        )
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {
+            "loss": loss.item(),
+            "chosen_rewards": metrics["chosen_rewards"],
+            "rejected_rewards": metrics["rejected_rewards"],
+            "reward_margin": metrics["reward_margin"],
+        }
 
 
 # ---------------------------------------------------------------------------
