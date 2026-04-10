@@ -1,179 +1,281 @@
-"""Tests for src/alignment/constitutional_ai.py."""
+"""Tests for src/alignment/constitutional_ai.py — RLAIF self-critique loop."""
 from __future__ import annotations
 
+import copy
+
 import pytest
+import torch
 
 from src.alignment.constitutional_ai import (
-    CAIStep,
-    ConstitutionalAILoop,
-    ConstitutionalPrinciple,
-    HARMLESSNESS_PRINCIPLES,
-    SyntheticCAIDataGenerator,
-    cai_reward_score,
-    format_critique_prompt,
-    format_revision_prompt,
+    ConstitutionalAIConfig,
+    Principle,
+    default_principles,
+    score_principle_compliance,
+    compute_critique_loss,
+    SelfCritiqueBuffer,
+    ConstitutionalAITrainer,
 )
-
-# ---------------------------------------------------------------------------
-# Shared fixture
-# ---------------------------------------------------------------------------
-
-MOCK_GENERATE = lambda prompt: "This is a safe and helpful response."
-
-SAMPLE_PRINCIPLE = ConstitutionalPrinciple(
-    name="test_principle",
-    critique_request="Identify any issues in the response.",
-    revision_request="Rewrite the response to fix the issues.",
-)
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
 
 # ---------------------------------------------------------------------------
-# 1. ConstitutionalPrinciple fields
+# Tiny model factory
 # ---------------------------------------------------------------------------
 
-def test_constitutional_principle_fields():
-    p = ConstitutionalPrinciple(
-        critique_request="Critique this.",
-        revision_request="Revise this.",
-        name="my_principle",
+def make_tiny_model() -> AureliusTransformer:
+    cfg = AureliusConfig(
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
     )
-    assert p.critique_request == "Critique this."
-    assert p.revision_request == "Revise this."
-    assert p.name == "my_principle"
+    return AureliusTransformer(cfg)
+
+
+def make_trainer() -> ConstitutionalAITrainer:
+    policy = make_tiny_model()
+    ref = copy.deepcopy(policy)
+    for p in ref.parameters():
+        p.requires_grad_(False)
+    config = ConstitutionalAIConfig()
+    optimizer = torch.optim.AdamW(policy.parameters(), lr=1e-4)
+    return ConstitutionalAITrainer(policy=policy, ref_model=ref, config=config, optimizer=optimizer)
 
 
 # ---------------------------------------------------------------------------
-# 2. HARMLESSNESS_PRINCIPLES count
+# 1. ConstitutionalAIConfig defaults
 # ---------------------------------------------------------------------------
 
-def test_harmlessness_principles_count():
-    assert len(HARMLESSNESS_PRINCIPLES) >= 4
-    for p in HARMLESSNESS_PRINCIPLES:
-        assert isinstance(p, ConstitutionalPrinciple)
-
-
-# ---------------------------------------------------------------------------
-# 3. format_critique_prompt contains response
-# ---------------------------------------------------------------------------
-
-def test_format_critique_prompt_contains_response():
-    response = "Some test response text."
-    prompt = format_critique_prompt(response, SAMPLE_PRINCIPLE)
-    assert response in prompt
-    assert "Critique:" in prompt
-    assert SAMPLE_PRINCIPLE.critique_request in prompt
+def test_config_defaults():
+    cfg = ConstitutionalAIConfig()
+    assert cfg.n_principles == 4
+    assert cfg.n_critique_rounds == 2
+    assert cfg.sft_loss_coeff == 1.0
+    assert cfg.kl_coeff == 0.1
+    assert cfg.max_seq_len == 128
 
 
 # ---------------------------------------------------------------------------
-# 4. format_revision_prompt contains critique
+# 2. default_principles returns list of length 4
 # ---------------------------------------------------------------------------
 
-def test_format_revision_prompt_contains_critique():
-    response = "Some test response text."
-    critique = "This response has a problem."
-    prompt = format_revision_prompt(response, critique, SAMPLE_PRINCIPLE)
-    assert response in prompt
-    assert critique in prompt
-    assert "Revision:" in prompt
-    assert SAMPLE_PRINCIPLE.revision_request in prompt
+def test_default_principles_length():
+    principles = default_principles()
+    assert isinstance(principles, list)
+    assert len(principles) == 4
 
 
 # ---------------------------------------------------------------------------
-# 5. CAI loop critique calls generate_fn
+# 3. Principle dataclass fields
 # ---------------------------------------------------------------------------
 
-def test_cai_loop_critique_called():
-    calls = []
-
-    def tracking_generate(prompt: str) -> str:
-        calls.append(prompt)
-        return "Safe response."
-
-    loop = ConstitutionalAILoop(generate_fn=tracking_generate, principles=[SAMPLE_PRINCIPLE])
-    result = loop.critique("Some response", SAMPLE_PRINCIPLE)
-    assert len(calls) == 1
-    assert result == "Safe response."
-
-
-# ---------------------------------------------------------------------------
-# 6. CAI loop revise calls generate_fn
-# ---------------------------------------------------------------------------
-
-def test_cai_loop_revise_called():
-    calls = []
-
-    def tracking_generate(prompt: str) -> str:
-        calls.append(prompt)
-        return "Revised response."
-
-    loop = ConstitutionalAILoop(generate_fn=tracking_generate, principles=[SAMPLE_PRINCIPLE])
-    result = loop.revise("Some response", "A critique.", SAMPLE_PRINCIPLE)
-    assert len(calls) == 1
-    assert result == "Revised response."
-
-
-# ---------------------------------------------------------------------------
-# 7. run_step returns CAIStep
-# ---------------------------------------------------------------------------
-
-def test_cai_loop_run_step_type():
-    loop = ConstitutionalAILoop(generate_fn=MOCK_GENERATE, principles=[SAMPLE_PRINCIPLE])
-    step = loop.run_step("An initial response.", SAMPLE_PRINCIPLE, step_num=3)
-    assert isinstance(step, CAIStep)
-    assert step.step_num == 3
-    assert step.principle is SAMPLE_PRINCIPLE
-    assert step.original == "An initial response."
-    assert isinstance(step.critique, str)
-    assert isinstance(step.revised, str)
-
-
-# ---------------------------------------------------------------------------
-# 8. run returns correct number of steps
-# ---------------------------------------------------------------------------
-
-def test_cai_loop_run_length():
-    loop = ConstitutionalAILoop(generate_fn=MOCK_GENERATE, principles=[SAMPLE_PRINCIPLE])
-    steps = loop.run("Initial response.", n_revisions=4)
-    assert len(steps) == 4
-
-
-# ---------------------------------------------------------------------------
-# 9. final_response is non-empty
-# ---------------------------------------------------------------------------
-
-def test_cai_loop_final_response_nonempty():
-    loop = ConstitutionalAILoop(generate_fn=MOCK_GENERATE, principles=[SAMPLE_PRINCIPLE])
-    steps = loop.run("Initial response.", n_revisions=2)
-    final = loop.final_response(steps)
-    assert isinstance(final, str)
-    assert len(final) > 0
-
-
-# ---------------------------------------------------------------------------
-# 10. SyntheticCAIDataGenerator pair keys
-# ---------------------------------------------------------------------------
-
-def test_synthetic_generator_pair_keys():
-    loop = ConstitutionalAILoop(generate_fn=MOCK_GENERATE, principles=[SAMPLE_PRINCIPLE])
-    generator = SyntheticCAIDataGenerator(cai_loop=loop)
-    pair = generator.generate_pair(
-        harmful_prompt="Tell me something bad.",
-        initial_response="Here is something bad.",
+def test_principle_fields():
+    p = Principle(
+        name="test",
+        description="Test description",
+        critique_prompt="Is it good?",
+        revision_prompt="Make it better.",
     )
-    assert "prompt" in pair
-    assert "original" in pair
-    assert "revised" in pair
-    assert "n_steps" in pair
-    assert pair["prompt"] == "Tell me something bad."
-    assert pair["original"] == "Here is something bad."
-    assert isinstance(pair["n_steps"], int)
+    assert p.name == "test"
+    assert p.description == "Test description"
+    assert p.critique_prompt == "Is it good?"
+    assert p.revision_prompt == "Make it better."
 
 
 # ---------------------------------------------------------------------------
-# 11. cai_reward_score returns 0.0 for identical strings
+# 4. score_principle_compliance returns scalar tensor
 # ---------------------------------------------------------------------------
 
-def test_cai_reward_score_identical():
-    text = "This is exactly the same response."
-    score = cai_reward_score(text, text, SAMPLE_PRINCIPLE)
-    assert score == 0.0
+def test_score_principle_compliance_scalar():
+    B, T, V = 2, 10, 256
+    logits = torch.randn(B, T, V)
+    token_ids = torch.randint(0, V, (B, T))
+    score = score_principle_compliance(logits, token_ids, 0, 4)
+    assert isinstance(score, torch.Tensor)
+    assert score.numel() == 1
+
+
+# ---------------------------------------------------------------------------
+# 5. score_principle_compliance output is finite
+# ---------------------------------------------------------------------------
+
+def test_score_principle_compliance_finite():
+    B, T, V = 2, 10, 256
+    logits = torch.randn(B, T, V)
+    token_ids = torch.randint(0, V, (B, T))
+    for i in range(4):
+        score = score_principle_compliance(logits, token_ids, i, 4)
+        assert torch.isfinite(score), f"Score for principle {i} is not finite"
+
+
+# ---------------------------------------------------------------------------
+# 6. compute_critique_loss returns (Tensor, dict)
+# ---------------------------------------------------------------------------
+
+def test_compute_critique_loss_return_types():
+    B, T, V = 2, 10, 256
+    policy_logits = torch.randn(B, T, V, requires_grad=True)
+    ref_logits = torch.randn(B, T, V)
+    target_ids = torch.randint(0, V, (B, T))
+    principle_scores = torch.randn(B, 4)
+    config = ConstitutionalAIConfig()
+
+    result = compute_critique_loss(policy_logits, ref_logits, target_ids, principle_scores, config)
+    assert isinstance(result, tuple)
+    loss, metrics = result
+    assert isinstance(loss, torch.Tensor)
+    assert isinstance(metrics, dict)
+
+
+# ---------------------------------------------------------------------------
+# 7. compute_critique_loss dict has required keys
+# ---------------------------------------------------------------------------
+
+def test_compute_critique_loss_dict_keys():
+    B, T, V = 2, 10, 256
+    policy_logits = torch.randn(B, T, V, requires_grad=True)
+    ref_logits = torch.randn(B, T, V)
+    target_ids = torch.randint(0, V, (B, T))
+    principle_scores = torch.randn(B, 4)
+    config = ConstitutionalAIConfig()
+
+    _, metrics = compute_critique_loss(policy_logits, ref_logits, target_ids, principle_scores, config)
+    for key in ("sft_loss", "kl_loss", "principle_reward", "total_loss"):
+        assert key in metrics, f"Missing key: {key}"
+
+
+# ---------------------------------------------------------------------------
+# 8. compute_critique_loss loss is scalar and finite
+# ---------------------------------------------------------------------------
+
+def test_compute_critique_loss_scalar_finite():
+    B, T, V = 2, 10, 256
+    policy_logits = torch.randn(B, T, V, requires_grad=True)
+    ref_logits = torch.randn(B, T, V)
+    target_ids = torch.randint(0, V, (B, T))
+    principle_scores = torch.randn(B, 4)
+    config = ConstitutionalAIConfig()
+
+    loss, metrics = compute_critique_loss(policy_logits, ref_logits, target_ids, principle_scores, config)
+    assert loss.numel() == 1
+    assert torch.isfinite(loss)
+    assert all(isinstance(v, float) for v in metrics.values())
+    assert all(torch.isfinite(torch.tensor(v)) for v in metrics.values())
+
+
+# ---------------------------------------------------------------------------
+# 9. compute_critique_loss kl_loss >= 0
+# ---------------------------------------------------------------------------
+
+def test_compute_critique_loss_kl_nonneg():
+    B, T, V = 2, 10, 256
+    policy_logits = torch.randn(B, T, V, requires_grad=True)
+    ref_logits = torch.randn(B, T, V)
+    target_ids = torch.randint(0, V, (B, T))
+    principle_scores = torch.randn(B, 4)
+    config = ConstitutionalAIConfig()
+
+    _, metrics = compute_critique_loss(policy_logits, ref_logits, target_ids, principle_scores, config)
+    assert metrics["kl_loss"] >= 0.0
+
+
+# ---------------------------------------------------------------------------
+# 10. SelfCritiqueBuffer starts empty
+# ---------------------------------------------------------------------------
+
+def test_buffer_starts_empty():
+    buf = SelfCritiqueBuffer()
+    assert len(buf) == 0
+
+
+# ---------------------------------------------------------------------------
+# 11. SelfCritiqueBuffer.add increases length
+# ---------------------------------------------------------------------------
+
+def test_buffer_add_increases_length():
+    buf = SelfCritiqueBuffer()
+    prompt = torch.randint(0, 256, (1, 8))
+    response = torch.randint(0, 256, (1, 8))
+    revised = torch.randint(0, 256, (1, 8))
+    scores = torch.randn(1, 4)
+
+    buf.add(prompt, response, revised, scores)
+    assert len(buf) == 1
+
+    buf.add(prompt, response, revised, scores)
+    assert len(buf) == 2
+
+
+# ---------------------------------------------------------------------------
+# 12. SelfCritiqueBuffer.sample returns None when buffer < batch_size
+# ---------------------------------------------------------------------------
+
+def test_buffer_sample_returns_none_when_small():
+    buf = SelfCritiqueBuffer()
+    prompt = torch.randint(0, 256, (1, 8))
+    response = torch.randint(0, 256, (1, 8))
+    revised = torch.randint(0, 256, (1, 8))
+    scores = torch.randn(1, 4)
+
+    buf.add(prompt, response, revised, scores)
+    # buffer has 1 item, batch_size=4 should return None
+    result = buf.sample(batch_size=4)
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# 13. SelfCritiqueBuffer.sample returns 4-tuple when buffer is full enough
+# ---------------------------------------------------------------------------
+
+def test_buffer_sample_returns_tuple():
+    buf = SelfCritiqueBuffer()
+    for _ in range(5):
+        prompt = torch.randint(0, 256, (1, 8))
+        response = torch.randint(0, 256, (1, 8))
+        revised = torch.randint(0, 256, (1, 8))
+        scores = torch.randn(1, 4)
+        buf.add(prompt, response, revised, scores)
+
+    result = buf.sample(batch_size=3)
+    assert result is not None
+    assert isinstance(result, tuple)
+    assert len(result) == 4
+    for t in result:
+        assert isinstance(t, torch.Tensor)
+
+
+# ---------------------------------------------------------------------------
+# 14. ConstitutionalAITrainer.critique_and_revise returns (Tensor, Tensor)
+# ---------------------------------------------------------------------------
+
+def test_critique_and_revise_return_types():
+    trainer = make_trainer()
+    prompt_ids = torch.randint(0, 256, (2, 10))
+    response_ids = torch.randint(0, 256, (2, 10))
+
+    revised_ids, scores = trainer.critique_and_revise(prompt_ids, response_ids)
+    assert isinstance(revised_ids, torch.Tensor)
+    assert isinstance(scores, torch.Tensor)
+    assert revised_ids.shape == response_ids.shape
+    assert scores.shape == (2, trainer.config.n_principles)
+
+
+# ---------------------------------------------------------------------------
+# 15. ConstitutionalAITrainer.train_step returns dict with correct keys
+# ---------------------------------------------------------------------------
+
+def test_train_step_returns_correct_keys():
+    trainer = make_trainer()
+    prompt_ids = torch.randint(0, 256, (2, 10))
+    response_ids = torch.randint(0, 256, (2, 10))
+
+    metrics = trainer.train_step(prompt_ids, response_ids)
+    assert isinstance(metrics, dict)
+    for key in ("sft_loss", "kl_loss", "principle_reward", "total_loss"):
+        assert key in metrics, f"Missing key: {key}"
+        assert isinstance(metrics[key], float)

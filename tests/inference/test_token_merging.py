@@ -1,4 +1,4 @@
-"""Tests for src/inference/token_merging.py"""
+"""Tests for src/inference/token_merging.py — Token Merging (ToMe)."""
 
 from __future__ import annotations
 
@@ -7,16 +7,26 @@ import pytest
 
 from src.inference.token_merging import (
     ToMeConfig,
-    compute_token_similarity,
-    bipartite_matching,
+    bipartite_soft_matching,
     merge_tokens,
     unmerge_tokens,
     ToMeLayer,
-    apply_tome_to_hidden_states,
+    ToMeWrapper,
 )
+from src.model.config import AureliusConfig
+from src.model.transformer import AureliusTransformer
 
-# Fixed dimensions for all tests
-B, T, D = 2, 16, 32
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def make_tiny_model():
+    cfg = AureliusConfig(
+        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
+        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=512,
+    )
+    return AureliusTransformer(cfg)
 
 
 # ---------------------------------------------------------------------------
@@ -25,179 +35,224 @@ B, T, D = 2, 16, 32
 
 def test_tome_config_defaults():
     cfg = ToMeConfig()
-    assert cfg.r == 8
+    assert cfg.r == 4
     assert cfg.merge_mode == "mean"
-    assert cfg.similarity_threshold == 0.0
+    assert cfg.similarity == "cosine"
 
 
 # ---------------------------------------------------------------------------
-# 2. compute_token_similarity — output shape
+# 2. bipartite_soft_matching returns 3 tensors
 # ---------------------------------------------------------------------------
 
-def test_compute_token_similarity_shape():
-    x = torch.randn(B, T, D)
-    sim = compute_token_similarity(x)
-    assert sim.shape == (B, T - 1), f"Expected ({B}, {T - 1}), got {sim.shape}"
-
-
-# ---------------------------------------------------------------------------
-# 3. compute_token_similarity — identical tokens → similarity ≈ 1.0
-# ---------------------------------------------------------------------------
-
-def test_compute_token_similarity_identical():
-    # All tokens are the same vector → cosim = 1.0
-    vec = torch.randn(D)
-    x = vec.unsqueeze(0).unsqueeze(0).expand(B, T, D).clone()
-    sim = compute_token_similarity(x)
-    assert torch.allclose(sim, torch.ones_like(sim), atol=1e-5), \
-        f"Expected all 1.0, got min={sim.min().item():.4f}"
+def test_bipartite_soft_matching_returns_three_tensors():
+    B, T, d = 2, 10, 32
+    x = torch.randn(B, T, d)
+    result = bipartite_soft_matching(x, r=3)
+    assert isinstance(result, tuple)
+    assert len(result) == 3
+    for item in result:
+        assert isinstance(item, torch.Tensor)
 
 
 # ---------------------------------------------------------------------------
-# 4. compute_token_similarity — orthogonal tokens → similarity ≈ 0.0
+# 3. bipartite_soft_matching src_idx shape is (B, r') where r' <= min(T//2, r)
 # ---------------------------------------------------------------------------
 
-def test_compute_token_similarity_orthogonal():
-    # Alternate between two orthogonal unit vectors
-    e0 = torch.zeros(D)
-    e0[0] = 1.0
-    e1 = torch.zeros(D)
-    e1[1] = 1.0
-
-    tokens = []
-    for i in range(T):
-        tokens.append(e0 if i % 2 == 0 else e1)
-    x = torch.stack(tokens).unsqueeze(0).expand(B, -1, -1).clone()  # (B, T, D)
-    sim = compute_token_similarity(x)
-    # Adjacent pairs (e0,e1) are orthogonal → cosim = 0
-    assert torch.allclose(sim, torch.zeros_like(sim), atol=1e-5), \
-        f"Expected all 0.0, got max={sim.abs().max().item():.4f}"
+def test_bipartite_soft_matching_src_idx_shape():
+    B, T, d = 2, 10, 32
+    r = 3
+    x = torch.randn(B, T, d)
+    src_idx, dst_idx, unmerge_map = bipartite_soft_matching(x, r=r)
+    r_prime = src_idx.shape[1]
+    assert src_idx.shape == (B, r_prime)
+    assert r_prime <= min(T // 2, r)
 
 
 # ---------------------------------------------------------------------------
-# 5. bipartite_matching — output shapes
+# 4. bipartite_soft_matching indices are valid (in range)
 # ---------------------------------------------------------------------------
 
-def test_bipartite_matching_output_shapes():
+def test_bipartite_soft_matching_indices_in_range():
+    B, T, d = 2, 12, 16
     r = 4
-    sim = torch.rand(B, T - 1)
-    merge_idx, keep_idx = bipartite_matching(sim, r=r)
-    r_actual = merge_idx.shape[1]
-    assert merge_idx.shape == (B, r_actual)
-    assert keep_idx.shape == (B, T - r_actual)
+    x = torch.randn(B, T, d)
+    src_idx, dst_idx, unmerge_map = bipartite_soft_matching(x, r=r)
+    assert src_idx.min() >= 0
+    assert src_idx.max() < T
+    assert dst_idx.min() >= 0
+    assert dst_idx.max() < T
 
 
 # ---------------------------------------------------------------------------
-# 6. bipartite_matching — r=0 → empty merge, all kept
+# 5. bipartite_soft_matching with r=0 returns empty indices
 # ---------------------------------------------------------------------------
 
-def test_bipartite_matching_r0():
-    sim = torch.rand(B, T - 1)
-    merge_idx, keep_idx = bipartite_matching(sim, r=0)
-    assert merge_idx.shape == (B, 0)
-    assert keep_idx.shape == (B, T)
-
-
-# ---------------------------------------------------------------------------
-# 7. bipartite_matching — threshold filters low-similarity pairs
-# ---------------------------------------------------------------------------
-
-def test_bipartite_matching_threshold_filters():
-    # All similarities are 0.3 — below threshold of 0.5 → nothing merged
-    sim = torch.full((B, T - 1), 0.3)
-    merge_idx, keep_idx = bipartite_matching(sim, r=4, threshold=0.5)
-    assert merge_idx.shape[1] == 0, "All pairs below threshold should be filtered"
-    assert keep_idx.shape == (B, T)
+def test_bipartite_soft_matching_r_zero():
+    B, T, d = 2, 8, 16
+    x = torch.randn(B, T, d)
+    src_idx, dst_idx, unmerge_map = bipartite_soft_matching(x, r=0)
+    assert src_idx.shape == (B, 0)
+    assert dst_idx.shape == (B, 0)
+    assert unmerge_map.shape == (B, T)
 
 
 # ---------------------------------------------------------------------------
-# 8. merge_tokens — output shape
+# 6. merge_tokens output shape is (B, T-r, d)
 # ---------------------------------------------------------------------------
 
 def test_merge_tokens_output_shape():
-    r = 4
-    x = torch.randn(B, T, D)
-    sim = torch.rand(B, T - 1)
-    merge_idx, keep_idx = bipartite_matching(sim, r=r)
-    r_actual = merge_idx.shape[1]
-    merged = merge_tokens(x, merge_idx, keep_idx, mode="mean")
-    assert merged.shape == (B, T - r_actual, D), \
-        f"Expected ({B}, {T - r_actual}, {D}), got {merged.shape}"
+    B, T, d = 2, 10, 32
+    r = 3
+    x = torch.randn(B, T, d)
+    src_idx, dst_idx, _ = bipartite_soft_matching(x, r=r)
+    r_actual = src_idx.shape[1]
+    merged, size = merge_tokens(x, src_idx, dst_idx, mode="mean")
+    assert merged.shape == (B, T - r_actual, d)
 
 
 # ---------------------------------------------------------------------------
-# 9. merge_tokens — mode="mean" averages correctly
+# 7. merge_tokens size tensor sums to T (conservation of tokens)
 # ---------------------------------------------------------------------------
 
-def test_merge_tokens_mean_averages_correctly():
-    # Simple case: B=1, T=4, D=2, r=1
-    # tokens: [a, b, c, d]; merge pair (b→a), i.e. merge_index=1 (b), kept predecessor=0 (a)
-    # After mean merge: position 0 = (a+b)/2, positions {1,2,3} kept minus 1
-    B1, T1, D1 = 1, 4, 2
-    x = torch.tensor([[[1.0, 1.0],   # token 0: a
-                        [3.0, 3.0],   # token 1: b  ← will be merged into 0
-                        [5.0, 5.0],   # token 2: c
-                        [7.0, 7.0]]], # token 3: d
-                      dtype=torch.float32)
-    # Force merge_indices = [[1]], keep_indices = [[0, 2, 3]]
-    merge_idx = torch.tensor([[1]], dtype=torch.long)
-    keep_idx  = torch.tensor([[0, 2, 3]], dtype=torch.long)
-
-    merged = merge_tokens(x, merge_idx, keep_idx, mode="mean")
-    assert merged.shape == (1, 3, 2)
-    # Token 0 should be average of [1,1] and [3,3] = [2,2]
-    assert torch.allclose(merged[0, 0], torch.tensor([2.0, 2.0])), \
-        f"Expected [2, 2], got {merged[0, 0]}"
-    # Token 1 (original 2) and token 2 (original 3) unchanged
-    assert torch.allclose(merged[0, 1], torch.tensor([5.0, 5.0]))
-    assert torch.allclose(merged[0, 2], torch.tensor([7.0, 7.0]))
+def test_merge_tokens_size_sums_to_T():
+    B, T, d = 2, 10, 32
+    r = 3
+    x = torch.randn(B, T, d)
+    src_idx, dst_idx, _ = bipartite_soft_matching(x, r=r)
+    merged, size = merge_tokens(x, src_idx, dst_idx, mode="mean")
+    for b in range(B):
+        total = size[b].sum().item()
+        assert abs(total - T) < 1e-5, f"Batch {b}: size sum {total} != T={T}"
 
 
 # ---------------------------------------------------------------------------
-# 10. unmerge_tokens — output shape
+# 8. unmerge_tokens restores shape to (B, T_orig, d)
 # ---------------------------------------------------------------------------
 
-def test_unmerge_tokens_output_shape():
-    r = 4
-    x = torch.randn(B, T, D)
-    sim = torch.rand(B, T - 1)
-    merge_idx, keep_idx = bipartite_matching(sim, r=r)
-    merged = merge_tokens(x, merge_idx, keep_idx, mode="mean")
-
-    reconstructed = unmerge_tokens(merged, merge_idx, keep_idx, T_orig=T)
-    assert reconstructed.shape == (B, T, D), \
-        f"Expected ({B}, {T}, {D}), got {reconstructed.shape}"
+def test_unmerge_tokens_restores_shape():
+    B, T, d = 2, 10, 32
+    r = 3
+    x = torch.randn(B, T, d)
+    src_idx, dst_idx, _ = bipartite_soft_matching(x, r=r)
+    merged, size = merge_tokens(x, src_idx, dst_idx)
+    reconstructed = unmerge_tokens(merged, src_idx, dst_idx, size, T_orig=T)
+    assert reconstructed.shape == (B, T, d)
 
 
 # ---------------------------------------------------------------------------
-# 11. ToMeLayer forward — returns tuple with correct keys
+# 9. unmerge_tokens with r=0 is identity
 # ---------------------------------------------------------------------------
 
-def test_tome_layer_forward_keys():
-    cfg = ToMeConfig(r=4)
-    layer = ToMeLayer(cfg)
-    x = torch.randn(B, T, D)
-    merged_x, merge_info = layer(x)
-
-    assert isinstance(merged_x, torch.Tensor)
-    assert isinstance(merge_info, dict)
-    for key in ("merge_indices", "keep_indices", "compression_ratio"):
-        assert key in merge_info, f"Missing key: {key}"
+def test_unmerge_tokens_r_zero_is_identity():
+    B, T, d = 2, 8, 16
+    x = torch.randn(B, T, d)
+    src_idx, dst_idx, _ = bipartite_soft_matching(x, r=0)
+    merged, size = merge_tokens(x, src_idx, dst_idx)
+    reconstructed = unmerge_tokens(merged, src_idx, dst_idx, size, T_orig=T)
+    assert reconstructed.shape == (B, T, d)
+    assert torch.allclose(reconstructed, x, atol=1e-5), \
+        "With r=0, unmerge should return the original sequence unchanged"
 
 
 # ---------------------------------------------------------------------------
-# 12. ToMeLayer — compression_ratio < 1.0 when r > 0
+# 10. ToMeLayer output shape matches input shape
 # ---------------------------------------------------------------------------
 
-def test_tome_layer_compression_ratio():
-    # Use high similarities so that threshold=0.0 causes actual merges
-    cfg = ToMeConfig(r=4, similarity_threshold=0.0)
-    layer = ToMeLayer(cfg)
+def test_tome_layer_output_shape_matches_input():
+    B, T, d = 2, 10, 32
+    cfg = ToMeConfig(r=2)
+    inner = torch.nn.Linear(d, d, bias=False)
+    layer = ToMeLayer(inner, cfg)
+    x = torch.randn(B, T, d)
+    out = layer(x)
+    assert out.shape == (B, T, d), f"Expected ({B}, {T}, {d}), got {out.shape}"
 
-    # Build x with identical adjacent tokens (similarity=1.0) to guarantee merges
-    base = torch.randn(B, 1, D)
-    x = base.expand(B, T, D).clone()  # all tokens identical → similarity=1.0
 
-    merged_x, merge_info = layer(x)
-    ratio = merge_info["compression_ratio"]
-    assert ratio < 1.0, f"Expected compression_ratio < 1.0, got {ratio}"
+# ---------------------------------------------------------------------------
+# 11. ToMeLayer with r > T//2 doesn't crash (caps merging)
+# ---------------------------------------------------------------------------
+
+def test_tome_layer_r_larger_than_half_T_does_not_crash():
+    B, T, d = 2, 6, 16
+    cfg = ToMeConfig(r=100)
+    inner = torch.nn.Linear(d, d, bias=False)
+    layer = ToMeLayer(inner, cfg)
+    x = torch.randn(B, T, d)
+    out = layer(x)
+    assert out.shape == (B, T, d)
+
+
+# ---------------------------------------------------------------------------
+# 12. ToMeWrapper instantiates from AureliusTransformer
+# ---------------------------------------------------------------------------
+
+def test_tome_wrapper_instantiation():
+    model = make_tiny_model()
+    cfg = ToMeConfig(r=2)
+    wrapper = ToMeWrapper(model, cfg)
+    assert isinstance(wrapper, torch.nn.Module)
+    assert hasattr(wrapper, "embed")
+    assert hasattr(wrapper, "norm")
+    assert hasattr(wrapper, "lm_head")
+    assert hasattr(wrapper, "layers")
+    assert len(wrapper.layers) == 2
+
+
+# ---------------------------------------------------------------------------
+# 13. ToMeWrapper.forward returns 3-tuple with logits shape (B, T, vocab)
+# ---------------------------------------------------------------------------
+
+def test_tome_wrapper_forward_shape():
+    model = make_tiny_model()
+    cfg = ToMeConfig(r=2)
+    wrapper = ToMeWrapper(model, cfg)
+    wrapper.eval()
+
+    B, T = 2, 8
+    input_ids = torch.randint(0, 256, (B, T))
+
+    with torch.no_grad():
+        result = wrapper(input_ids)
+
+    assert isinstance(result, tuple)
+    assert len(result) == 3
+    loss, logits, pkv = result
+    assert logits.shape == (B, T, 256), f"Expected ({B}, {T}, 256), got {logits.shape}"
+    assert pkv is None
+
+
+# ---------------------------------------------------------------------------
+# 14. ToMeWrapper.get_compression_ratio returns float in (0, 1]
+# ---------------------------------------------------------------------------
+
+def test_tome_wrapper_get_compression_ratio():
+    model = make_tiny_model()
+    cfg = ToMeConfig(r=2)
+    wrapper = ToMeWrapper(model, cfg)
+    ratio = wrapper.get_compression_ratio()
+    assert isinstance(ratio, float)
+    assert 0.0 < ratio <= 1.0, f"Compression ratio {ratio} not in (0, 1]"
+
+
+# ---------------------------------------------------------------------------
+# 15. ToMeWrapper with r=0 gives same output as base model (no merging)
+# ---------------------------------------------------------------------------
+
+def test_tome_wrapper_r_zero_matches_base_model():
+    model = make_tiny_model()
+    model.eval()
+
+    cfg = ToMeConfig(r=0)
+    wrapper = ToMeWrapper(model, cfg)
+    wrapper.eval()
+
+    B, T = 1, 6
+    input_ids = torch.randint(0, 256, (B, T))
+
+    with torch.no_grad():
+        _loss_base, logits_base, _pkv_base = model(input_ids)
+        _loss_wrap, logits_wrap, _pkv_wrap = wrapper(input_ids)
+
+    assert torch.allclose(logits_base, logits_wrap, atol=1e-5), \
+        f"With r=0, wrapper output should match base model. " \
+        f"Max diff: {(logits_base - logits_wrap).abs().max().item()}"
