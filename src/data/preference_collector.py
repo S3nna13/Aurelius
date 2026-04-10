@@ -1,9 +1,12 @@
-"""Preference data collection: generate, score, and format chosen/rejected pairs for RLHF."""
+"""Preference data collection: generate, score, and format chosen/rejected pairs for RLHF/DPO."""
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Callable
+
+import torch
 
 
 # ---------------------------------------------------------------------------
@@ -15,11 +18,10 @@ class PreferenceConfig:
     """Configuration for preference data collection."""
 
     n_responses: int = 4
-    scoring_method: str = "length"          # "length" | "reward_model" | "rule_based"
-    min_response_len: int = 10
-    max_response_len: int = 500
-    tie_threshold: float = 0.1              # discard pairs with score diff < threshold
-    format: str = "dpo"                     # "dpo" | "rlhf" | "sft_only"
+    temperature: float = 0.8
+    diversity_penalty: float = 0.1
+    min_length: int = 10
+    max_length: int = 256
 
 
 # ---------------------------------------------------------------------------
@@ -33,139 +35,129 @@ class PreferencePair:
     prompt: str
     chosen: str
     rejected: str
-    chosen_score: float
-    rejected_score: float
-    score_diff: float
-    metadata: dict = field(default_factory=dict)
+    score_chosen: float
+    score_rejected: float
+    margin: float  # score_chosen - score_rejected
+    source: str = "auto"
 
 
 # ---------------------------------------------------------------------------
-# Scoring functions
+# Response pool
 # ---------------------------------------------------------------------------
 
-def score_by_length(response: str, target_len: int = 100) -> float:
-    """Score a response based on proximity to *target_len* characters.
+class ResponsePool:
+    """Stores (text, score) response pairs and provides selection utilities."""
 
-    Returns a float in [0, 1] where 1.0 means exact match.
-    """
-    resp_len = len(response)
-    denom = max(resp_len, target_len)
-    if denom == 0:
-        return 1.0
-    score = 1.0 - abs(resp_len - target_len) / denom
-    return float(score)
+    def __init__(self) -> None:
+        self._responses: list[tuple[str, float]] = []
 
+    def add(self, text: str, score: float) -> None:
+        """Add a (text, score) pair to the pool."""
+        self._responses.append((text, score))
 
-def score_by_rules(response: str) -> float:
-    """Rule-based quality scoring.
+    def get_best_worst(self) -> tuple[str, str]:
+        """Return (highest_score_text, lowest_score_text).
 
-    Adjustments applied:
-    - Start at 0.5 baseline
-    - Penalize very short responses (< 20 chars): -0.3
-    - Reward ending with sentence-closing punctuation: +0.2
-    - Penalize excessive 5-gram repetition (any 5-gram appears > 2 times): -0.3
-    - Penalize all-caps text (> 50 % uppercase letters): -0.2
+        If only one item, returns the same text for both.
+        """
+        if not self._responses:
+            raise ValueError("ResponsePool is empty.")
+        sorted_responses = sorted(self._responses, key=lambda x: x[1])
+        worst_text = sorted_responses[0][0]
+        best_text = sorted_responses[-1][0]
+        return (best_text, worst_text)
 
-    Clipped to [0, 1].
-    """
-    score = 0.5
+    def get_diverse_pair(self, diversity_fn: Callable[[str, str], float]) -> tuple[str, str]:
+        """Return (chosen, rejected) pair.
 
-    # Penalize very short responses
-    if len(response) < 20:
-        score -= 0.3
+        chosen  = the response with the highest score.
+        rejected = the response with the lowest score that is most different
+                   (highest diversity_fn value) from chosen.
 
-    # Reward complete sentences (ends with punctuation)
-    stripped = response.rstrip()
-    if stripped and stripped[-1] in ".!?":
-        score += 0.2
+        Greedy: fix the best as chosen, then scan all others and pick the one
+        with the greatest diversity score from chosen as rejected.
+        """
+        if len(self._responses) < 2:
+            raise ValueError("Need at least 2 responses for a diverse pair.")
 
-    # Penalize excessive 5-gram repetition
-    words = response.split()
-    if len(words) >= 5:
-        ngram_counts: dict[tuple, int] = {}
-        for i in range(len(words) - 4):
-            gram = tuple(words[i : i + 5])
-            ngram_counts[gram] = ngram_counts.get(gram, 0) + 1
-        if any(count > 2 for count in ngram_counts.values()):
-            score -= 0.3
+        sorted_responses = sorted(self._responses, key=lambda x: x[1])
+        best_text, best_score = sorted_responses[-1]
+        # Candidates for rejected: all others
+        candidates = sorted_responses[:-1]
+        rejected_text = max(candidates, key=lambda x: diversity_fn(best_text, x[0]))[0]
+        return (best_text, rejected_text)
 
-    # Penalize all-caps
-    letters = [ch for ch in response if ch.isalpha()]
-    if letters and sum(1 for ch in letters if ch.isupper()) / len(letters) > 0.5:
-        score -= 0.2
-
-    return float(max(0.0, min(1.0, score)))
+    def __len__(self) -> int:
+        return len(self._responses)
 
 
 # ---------------------------------------------------------------------------
-# Pair creation and formatting
+# Scoring
 # ---------------------------------------------------------------------------
 
-def create_preference_pair(
-    prompt: str,
-    responses: list[str],
-    scores: list[float],
-    config: PreferenceConfig,
-) -> PreferencePair | None:
-    """Select the best (chosen) and worst (rejected) response by score.
+def score_response_heuristic(prompt: str, response: str) -> float:
+    """Multi-factor heuristic score in [0, 1].
 
-    Returns None if:
-    - The score difference is below *tie_threshold* (tie, discard).
-    - Either response falls outside the configured length bounds.
+    Components:
+    - Length score    (weight 0.3): sigmoid((len(response) - 50) / 100)
+    - Relevance score (weight 0.4): fraction of prompt words appearing in response
+    - Coherence score (weight 0.3): no leading/trailing whitespace + ends with .!?
     """
-    if not responses or not scores or len(responses) != len(scores):
-        return None
+    # Length component
+    length_score = 1.0 / (1.0 + math.exp(-(len(response) - 50) / 100))
 
-    ranked = sorted(zip(scores, responses), key=lambda x: x[0])
-    worst_score, rejected = ranked[0]
-    best_score, chosen = ranked[-1]
+    # Relevance component
+    prompt_words = set(prompt.lower().split())
+    response_lower = response.lower()
+    if prompt_words:
+        matches = sum(1 for w in prompt_words if w in response_lower)
+        relevance_score = min(1.0, matches / len(prompt_words))
+    else:
+        relevance_score = 0.0
 
-    score_diff = best_score - worst_score
+    # Coherence component
+    no_whitespace_edges = response == response.strip()
+    ends_with_punct = bool(response) and response.rstrip()[-1:] in ".!?"
+    coherence_score = float(no_whitespace_edges and ends_with_punct)
 
-    if score_diff < config.tie_threshold:
-        return None
-
-    if not (config.min_response_len <= len(chosen) <= config.max_response_len):
-        return None
-    if not (config.min_response_len <= len(rejected) <= config.max_response_len):
-        return None
-
-    return PreferencePair(
-        prompt=prompt,
-        chosen=chosen,
-        rejected=rejected,
-        chosen_score=best_score,
-        rejected_score=worst_score,
-        score_diff=score_diff,
-    )
+    return 0.3 * length_score + 0.4 * relevance_score + 0.3 * coherence_score
 
 
-def format_for_dpo(pair: PreferencePair) -> dict:
-    """Return a DPO-format dict with prompt, chosen, and rejected keys."""
-    return {
-        "prompt": pair.prompt,
-        "chosen": pair.chosen,
-        "rejected": pair.rejected,
-    }
+# ---------------------------------------------------------------------------
+# Generation
+# ---------------------------------------------------------------------------
 
+def generate_response(
+    model,
+    prompt_ids: list[int],
+    max_new_tokens: int,
+    temperature: float,
+    tokenizer_decode: Callable[[list[int]], str],
+) -> str:
+    """Temperature sampling from model, returns decoded string.
 
-def format_for_rlhf(pair: PreferencePair) -> list[dict]:
-    """Return two RLHF-format dicts: chosen with positive reward, rejected with negative.
-
-    Each entry has keys: prompt, response, reward.
+    The model is called as: loss, logits, pkv = model(input_ids)
+    where input_ids has shape (1, seq_len).
     """
-    return [
-        {
-            "prompt": pair.prompt,
-            "response": pair.chosen,
-            "reward": pair.chosen_score,
-        },
-        {
-            "prompt": pair.prompt,
-            "response": pair.rejected,
-            "reward": -pair.rejected_score,
-        },
-    ]
+    generated: list[int] = list(prompt_ids)
+
+    with torch.no_grad():
+        for _ in range(max_new_tokens):
+            input_tensor = torch.tensor([generated], dtype=torch.long)
+            _loss, logits, _pkv = model(input_tensor)
+            # logits shape: (batch, seq_len, vocab_size) — take last token
+            next_token_logits = logits[0, -1, :]  # (vocab_size,)
+
+            if temperature > 0:
+                next_token_logits = next_token_logits / temperature
+            probs = torch.softmax(next_token_logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1).item()
+
+            generated.append(int(next_token))
+
+    # Return only the newly generated part
+    new_ids = generated[len(prompt_ids):]
+    return tokenizer_decode(new_ids)
 
 
 # ---------------------------------------------------------------------------
@@ -173,78 +165,86 @@ def format_for_rlhf(pair: PreferencePair) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 class PreferenceCollector:
-    """High-level interface for collecting and formatting preference pairs."""
+    """High-level interface for collecting and formatting preference pairs using a model."""
 
     def __init__(
         self,
+        model,
         config: PreferenceConfig,
-        score_fn: Callable[[str], float] | None = None,
+        tokenizer_encode: Callable[[str], list[int]],
+        tokenizer_decode: Callable[[list[int]], str],
+        score_fn: Callable[[str, str], float] | None = None,
     ) -> None:
+        self.model = model
         self.config = config
+        self.tokenizer_encode = tokenizer_encode
+        self.tokenizer_decode = tokenizer_decode
+        self._score_fn = score_fn if score_fn is not None else score_response_heuristic
 
-        if score_fn is not None:
-            self._score_fn = score_fn
-        elif config.scoring_method == "rule_based":
-            self._score_fn = score_by_rules
-        else:
-            # Default: length-based scoring
-            self._score_fn = score_by_length
+    def collect_for_prompt(self, prompt: str) -> PreferencePair | None:
+        """Generate n_responses, score each, create PreferencePair from best/worst.
 
-    # ------------------------------------------------------------------
-    # Core collection
-    # ------------------------------------------------------------------
+        Returns None if all scores are identical (margin == 0).
+        """
+        prompt_ids = self.tokenizer_encode(prompt)
+        pool = ResponsePool()
 
-    def collect(self, prompt: str, responses: list[str]) -> PreferencePair | None:
-        """Score *responses* and return a PreferencePair, or None if ineligible."""
-        scores = [self._score_fn(r) for r in responses]
-        return create_preference_pair(prompt, responses, scores, self.config)
+        for _ in range(self.config.n_responses):
+            text = generate_response(
+                self.model,
+                prompt_ids,
+                max_new_tokens=self.config.max_length,
+                temperature=self.config.temperature,
+                tokenizer_decode=self.tokenizer_decode,
+            )
+            score = self._score_fn(prompt, text)
+            pool.add(text, score)
 
-    def collect_batch(
-        self,
-        prompts: list[str],
-        responses_list: list[list[str]],
-    ) -> list[PreferencePair]:
-        """Batch collection; None pairs are filtered out."""
+        if len(pool) < 2:
+            return None
+
+        chosen, rejected = pool.get_best_worst()
+        score_chosen = max(s for _, s in pool._responses if _ == chosen or True)
+        # Retrieve actual scores
+        scores_dict: dict[str, float] = {}
+        for text, score in pool._responses:
+            # keep best score per text
+            if text not in scores_dict or score > scores_dict[text]:
+                scores_dict[text] = score
+
+        score_chosen_val = max(pool._responses, key=lambda x: x[1])[1]
+        score_rejected_val = min(pool._responses, key=lambda x: x[1])[1]
+        margin = score_chosen_val - score_rejected_val
+
+        if margin == 0:
+            return None
+
+        return PreferencePair(
+            prompt=prompt,
+            chosen=chosen,
+            rejected=rejected,
+            score_chosen=score_chosen_val,
+            score_rejected=score_rejected_val,
+            margin=margin,
+        )
+
+    def collect_dataset(self, prompts: list[str]) -> list[PreferencePair]:
+        """Collect preference pairs for each prompt, filtering out None results."""
         pairs: list[PreferencePair] = []
-        for prompt, responses in zip(prompts, responses_list):
-            pair = self.collect(prompt, responses)
+        for prompt in prompts:
+            pair = self.collect_for_prompt(prompt)
             if pair is not None:
                 pairs.append(pair)
         return pairs
 
-    # ------------------------------------------------------------------
-    # Dataset formatting
-    # ------------------------------------------------------------------
+    def filter_pairs(
+        self,
+        pairs: list[PreferencePair],
+        min_margin: float = 0.1,
+    ) -> list[PreferencePair]:
+        """Keep only pairs with margin >= min_margin."""
+        return [p for p in pairs if p.margin >= min_margin]
 
-    def to_dataset(self, pairs: list[PreferencePair]) -> list[dict]:
-        """Convert pairs to training-format dicts based on *config.format*."""
-        records: list[dict] = []
-        for pair in pairs:
-            if self.config.format == "dpo":
-                records.append(format_for_dpo(pair))
-            elif self.config.format == "rlhf":
-                records.extend(format_for_rlhf(pair))
-            elif self.config.format == "sft_only":
-                records.append({"prompt": pair.prompt, "response": pair.chosen})
-            else:
-                records.append(format_for_dpo(pair))
-        return records
-
-    # ------------------------------------------------------------------
-    # Statistics
-    # ------------------------------------------------------------------
-
-    def statistics(self, pairs: list[PreferencePair]) -> dict[str, float]:
-        """Return summary statistics over a list of preference pairs."""
-        n = len(pairs)
-        if n == 0:
-            return {"mean_score_diff": 0.0, "mean_chosen_score": 0.0, "n_pairs": 0}
-
-        mean_score_diff = sum(p.score_diff for p in pairs) / n
-        mean_chosen_score = sum(p.chosen_score for p in pairs) / n
-
-        return {
-            "mean_score_diff": mean_score_diff,
-            "mean_chosen_score": mean_chosen_score,
-            "n_pairs": n,
-        }
+    def export_dpo_format(self, pairs: list[PreferencePair]) -> list[dict]:
+        """Convert pairs to DPO-format dicts with prompt, chosen, rejected keys."""
+        return [{"prompt": p.prompt, "chosen": p.chosen, "rejected": p.rejected} for p in pairs]

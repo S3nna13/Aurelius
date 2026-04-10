@@ -1,19 +1,58 @@
-"""Tests for src/data/preference_collector.py."""
+"""Tests for src/data/preference_collector.py — preference pair collection for DPO/RLHF."""
 
 from __future__ import annotations
 
+import math
+from unittest.mock import MagicMock
+
 import pytest
+import torch
 
 from src.data.preference_collector import (
     PreferenceConfig,
     PreferencePair,
+    ResponsePool,
     PreferenceCollector,
-    create_preference_pair,
-    format_for_dpo,
-    format_for_rlhf,
-    score_by_length,
-    score_by_rules,
+    score_response_heuristic,
+    generate_response,
 )
+
+
+# ---------------------------------------------------------------------------
+# Helpers / fixtures
+# ---------------------------------------------------------------------------
+
+def _make_model(vocab_size: int = 256, seq_len_ignored: bool = True):
+    """Return a mock model that outputs uniform logits."""
+    model = MagicMock()
+
+    def _forward(input_ids):
+        batch, seq = input_ids.shape
+        logits = torch.ones(batch, seq, vocab_size)
+        return None, logits, None
+
+    model.side_effect = _forward
+    return model
+
+
+def _encode(text: str) -> list[int]:
+    return [ord(c) % 256 for c in text]
+
+
+def _decode(ids: list[int]) -> str:
+    return "".join(chr(i + 32) for i in ids)
+
+
+def _make_collector(score_fn=None, n_responses: int = 2):
+    cfg = PreferenceConfig(n_responses=n_responses, max_length=5)
+    model = _make_model()
+    return PreferenceCollector(
+        model=model,
+        config=cfg,
+        tokenizer_encode=_encode,
+        tokenizer_decode=_decode,
+        score_fn=score_fn,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -23,281 +62,243 @@ from src.data.preference_collector import (
 def test_preference_config_defaults():
     cfg = PreferenceConfig()
     assert cfg.n_responses == 4
-    assert cfg.scoring_method == "length"
-    assert cfg.min_response_len == 10
-    assert cfg.max_response_len == 500
-    assert cfg.tie_threshold == 0.1
-    assert cfg.format == "dpo"
+    assert cfg.temperature == 0.8
+    assert cfg.diversity_penalty == 0.1
+    assert cfg.min_length == 10
+    assert cfg.max_length == 256
 
 
 # ---------------------------------------------------------------------------
-# 2. score_by_length — perfect match returns 1.0
+# 2. PreferencePair fields and margin == score_chosen - score_rejected
 # ---------------------------------------------------------------------------
 
-def test_score_by_length_perfect_match():
-    response = "a" * 100
-    score = score_by_length(response, target_len=100)
-    assert score == pytest.approx(1.0)
-
-
-# ---------------------------------------------------------------------------
-# 3. score_by_length — very long response returns low score
-# ---------------------------------------------------------------------------
-
-def test_score_by_length_very_long():
-    # 10 000 chars vs target 100 → score ≈ 1 - 9900/10000 = 0.01
-    response = "a" * 10_000
-    score = score_by_length(response, target_len=100)
-    assert score < 0.1
-
-
-# ---------------------------------------------------------------------------
-# 4. score_by_rules — penalizes short response
-# ---------------------------------------------------------------------------
-
-def test_score_by_rules_penalizes_short():
-    short = "Hi"  # < 20 chars
-    score = score_by_rules(short)
-    # Baseline 0.5, -0.3 for short → 0.2 (may gain punctuation bonus if ends with .)
-    assert score <= 0.4
-
-
-# ---------------------------------------------------------------------------
-# 5. score_by_rules — rewards punctuated response
-# ---------------------------------------------------------------------------
-
-def test_score_by_rules_rewards_punctuation():
-    # Exactly 20 chars, ends with period — no length penalty, +0.2 punctuation
-    text = "This is a sentence!!"  # 20 chars, ends with !
-    score_with_punct = score_by_rules(text)
-    # Same length but no trailing punctuation
-    text_no_punct = "This is a sentence  "
-    score_no_punct = score_by_rules(text_no_punct)
-    assert score_with_punct > score_no_punct
-
-
-# ---------------------------------------------------------------------------
-# 6. score_by_rules — penalizes repeated n-grams
-# ---------------------------------------------------------------------------
-
-def test_score_by_rules_penalizes_repeated_ngrams():
-    # Repeat the same 5 words > 2 times
-    base = "the cat sat on mat "
-    repetitive = (base * 4).strip()
-    score = score_by_rules(repetitive)
-    # Baseline 0.5 -0.3 (repetition) + 0.0 (no end punct) = 0.2 max
-    assert score <= 0.3
-
-
-# ---------------------------------------------------------------------------
-# 7. create_preference_pair — correct chosen/rejected selection
-# ---------------------------------------------------------------------------
-
-def test_create_preference_pair_correct_selection():
-    cfg = PreferenceConfig(min_response_len=5, tie_threshold=0.05)
-    prompt = "What is 2+2?"
-    responses = ["four exactly.", "no idea", "it is four indeed correct."]
-    scores = [0.9, 0.2, 0.6]
-
-    pair = create_preference_pair(prompt, responses, scores, cfg)
-    assert pair is not None
-    assert pair.chosen == "four exactly."
-    assert pair.rejected == "no idea"
-    assert pair.chosen_score == pytest.approx(0.9)
-    assert pair.rejected_score == pytest.approx(0.2)
-    assert pair.score_diff == pytest.approx(0.7)
-
-
-# ---------------------------------------------------------------------------
-# 8. create_preference_pair — returns None for ties
-# ---------------------------------------------------------------------------
-
-def test_create_preference_pair_none_on_tie():
-    cfg = PreferenceConfig(min_response_len=5, tie_threshold=0.2)
-    prompt = "Hello?"
-    responses = ["response one okay", "response two okay"]
-    scores = [0.5, 0.55]  # diff = 0.05 < 0.2
-
-    pair = create_preference_pair(prompt, responses, scores, cfg)
-    assert pair is None
-
-
-# ---------------------------------------------------------------------------
-# 9. create_preference_pair — returns None if responses too short
-# ---------------------------------------------------------------------------
-
-def test_create_preference_pair_none_on_too_short():
-    cfg = PreferenceConfig(min_response_len=50, tie_threshold=0.1)
-    prompt = "Hello?"
-    responses = ["short", "also short response here"]
-    scores = [0.9, 0.1]  # big diff but both below min_response_len=50
-
-    pair = create_preference_pair(prompt, responses, scores, cfg)
-    assert pair is None
-
-
-# ---------------------------------------------------------------------------
-# 10. format_for_dpo — correct keys
-# ---------------------------------------------------------------------------
-
-def test_format_for_dpo_keys():
+def test_preference_pair_fields_and_margin():
     pair = PreferencePair(
-        prompt="Q?",
-        chosen="Great answer.",
-        rejected="Bad answer.",
-        chosen_score=0.9,
-        rejected_score=0.3,
-        score_diff=0.6,
+        prompt="Hello?",
+        chosen="Great response.",
+        rejected="Bad response.",
+        score_chosen=0.9,
+        score_rejected=0.3,
+        margin=0.6,
     )
-    result = format_for_dpo(pair)
-    assert set(result.keys()) == {"prompt", "chosen", "rejected"}
-    assert result["prompt"] == "Q?"
-    assert result["chosen"] == "Great answer."
-    assert result["rejected"] == "Bad answer."
+    assert pair.prompt == "Hello?"
+    assert pair.chosen == "Great response."
+    assert pair.rejected == "Bad response."
+    assert pair.score_chosen == pytest.approx(0.9)
+    assert pair.score_rejected == pytest.approx(0.3)
+    assert pair.margin == pytest.approx(pair.score_chosen - pair.score_rejected)
+    assert pair.source == "auto"
 
 
 # ---------------------------------------------------------------------------
-# 11. format_for_rlhf — returns two entries (chosen + rejected)
+# 3. ResponsePool.add increases length
 # ---------------------------------------------------------------------------
 
-def test_format_for_rlhf_two_entries():
-    pair = PreferencePair(
-        prompt="Q?",
-        chosen="Great answer.",
-        rejected="Bad answer.",
-        chosen_score=0.9,
-        rejected_score=0.3,
-        score_diff=0.6,
+def test_response_pool_add_increases_length():
+    pool = ResponsePool()
+    assert len(pool) == 0
+    pool.add("text one", 0.5)
+    assert len(pool) == 1
+    pool.add("text two", 0.8)
+    assert len(pool) == 2
+
+
+# ---------------------------------------------------------------------------
+# 4. ResponsePool.get_best_worst returns highest/lowest score texts
+# ---------------------------------------------------------------------------
+
+def test_response_pool_get_best_worst():
+    pool = ResponsePool()
+    pool.add("low", 0.1)
+    pool.add("mid", 0.5)
+    pool.add("high", 0.9)
+
+    best, worst = pool.get_best_worst()
+    assert best == "high"
+    assert worst == "low"
+
+
+# ---------------------------------------------------------------------------
+# 5. ResponsePool.get_best_worst single item returns same for both
+# ---------------------------------------------------------------------------
+
+def test_response_pool_get_best_worst_single_item():
+    pool = ResponsePool()
+    pool.add("only response", 0.7)
+    best, worst = pool.get_best_worst()
+    assert best == worst == "only response"
+
+
+# ---------------------------------------------------------------------------
+# 6. score_response_heuristic — longer response scores higher than very short
+# ---------------------------------------------------------------------------
+
+def test_score_heuristic_longer_response_higher():
+    prompt = "Tell me about Python."
+    short_response = "Python."
+    long_response = (
+        "Python is a high-level, general-purpose programming language. "
+        "It is widely used for web development, data science, and automation. "
+        "Python emphasizes code readability and simplicity."
     )
-    entries = format_for_rlhf(pair)
-    assert len(entries) == 2
-
-    chosen_entry = next(e for e in entries if e["response"] == "Great answer.")
-    rejected_entry = next(e for e in entries if e["response"] == "Bad answer.")
-
-    assert chosen_entry["reward"] > 0
-    assert rejected_entry["reward"] < 0
-    assert all("prompt" in e and "response" in e and "reward" in e for e in entries)
+    short_score = score_response_heuristic(prompt, short_response)
+    long_score = score_response_heuristic(prompt, long_response)
+    assert long_score > short_score
 
 
 # ---------------------------------------------------------------------------
-# 12. PreferenceCollector.collect — returns PreferencePair or None
+# 7. score_response_heuristic — prompt-relevant response scores higher
 # ---------------------------------------------------------------------------
 
-def test_preference_collector_collect_returns_pair_or_none():
-    cfg = PreferenceConfig(min_response_len=5, tie_threshold=0.05)
-    collector = PreferenceCollector(cfg)
+def test_score_heuristic_relevant_response_higher():
+    prompt = "What is Python?"
+    relevant = "Python is a popular programming language used in many domains."
+    irrelevant = "The weather today is sunny and warm outside in the park."
+    assert score_response_heuristic(prompt, relevant) > score_response_heuristic(prompt, irrelevant)
 
-    # Should return a pair
-    pair = collector.collect(
-        "What is Python?",
-        [
-            "Python is a programming language that is widely used.",
-            "idk",  # too short (< 10 default min), also low length score
-        ],
+
+# ---------------------------------------------------------------------------
+# 8. score_response_heuristic — returns value in [0, 1]
+# ---------------------------------------------------------------------------
+
+def test_score_heuristic_in_range():
+    prompt = "Hello world."
+    responses = [
+        "",
+        "Hi.",
+        "This is a moderately long response that covers the topic well!",
+        "x" * 1000,
+    ]
+    for r in responses:
+        s = score_response_heuristic(prompt, r)
+        assert 0.0 <= s <= 1.0, f"Score {s} out of [0,1] for response of length {len(r)}"
+
+
+# ---------------------------------------------------------------------------
+# 9. PreferenceCollector.collect_for_prompt returns PreferencePair or None
+# ---------------------------------------------------------------------------
+
+def test_collector_collect_for_prompt_returns_pair_or_none():
+    call_count = [0]
+    responses = [
+        ("Short.", 0.2),
+        ("A much longer and more relevant response to the prompt here!", 0.8),
+    ]
+
+    def score_fn(prompt, response):
+        idx = call_count[0] % len(responses)
+        call_count[0] += 1
+        return responses[idx][1]
+
+    cfg = PreferenceConfig(n_responses=2, max_length=5)
+    model = _make_model()
+    collector = PreferenceCollector(
+        model=model,
+        config=cfg,
+        tokenizer_encode=_encode,
+        tokenizer_decode=_decode,
+        score_fn=score_fn,
     )
-    # With default min_response_len=10, "idk" is 3 chars → pair is None
-    # Adjust test: use responses both above min_response_len
-    cfg2 = PreferenceConfig(min_response_len=3, tie_threshold=0.05)
-    collector2 = PreferenceCollector(cfg2)
-    pair2 = collector2.collect(
-        "What is Python?",
-        [
-            "x" * 100,   # exactly 100 chars → score ≈ 1.0
-            "x" * 10,    # 10 chars → score lower
-        ],
-    )
-    assert pair2 is not None
-    assert isinstance(pair2, PreferencePair)
+    result = collector.collect_for_prompt("Tell me something.")
+    # Result is either PreferencePair or None
+    assert result is None or isinstance(result, PreferencePair)
 
 
 # ---------------------------------------------------------------------------
-# 13. PreferenceCollector.collect_batch — filters out Nones
+# 10. PreferenceCollector.collect_dataset returns list
 # ---------------------------------------------------------------------------
 
-def test_preference_collector_collect_batch_filters_nones():
-    cfg = PreferenceConfig(min_response_len=3, tie_threshold=0.3)
-    collector = PreferenceCollector(cfg)
-
-    prompts = ["Q1?", "Q2?"]
-    responses_list = [
-        # Pair 1: large score diff (100 chars vs 10 chars → passes threshold)
-        ["x" * 100, "x" * 10],
-        # Pair 2: very similar lengths → near-identical scores → tie → None
-        ["x" * 100, "x" * 101],
-    ]
-
-    pairs = collector.collect_batch(prompts, responses_list)
-    # At least pair 1 should survive; pair 2 may be filtered
-    assert isinstance(pairs, list)
-    for p in pairs:
-        assert isinstance(p, PreferencePair)
+def test_collector_collect_dataset_returns_list():
+    collector = _make_collector()
+    prompts = ["What is AI?", "Explain gravity."]
+    result = collector.collect_dataset(prompts)
+    assert isinstance(result, list)
 
 
 # ---------------------------------------------------------------------------
-# 14. PreferenceCollector.statistics — correct mean_score_diff
+# 11. PreferenceCollector.filter_pairs removes low-margin pairs
 # ---------------------------------------------------------------------------
 
-def test_preference_collector_statistics_mean_score_diff():
-    cfg = PreferenceConfig()
-    collector = PreferenceCollector(cfg)
-
+def test_collector_filter_pairs_removes_low_margin():
     pairs = [
-        PreferencePair("p1", "c", "r", chosen_score=0.9, rejected_score=0.3, score_diff=0.6),
-        PreferencePair("p2", "c", "r", chosen_score=0.8, rejected_score=0.4, score_diff=0.4),
+        PreferencePair("p1", "c1", "r1", 0.9, 0.8, 0.1),   # margin exactly 0.1 — kept
+        PreferencePair("p2", "c2", "r2", 0.9, 0.85, 0.05),  # margin 0.05 — filtered
+        PreferencePair("p3", "c3", "r3", 0.9, 0.5, 0.4),    # margin 0.4 — kept
     ]
-
-    stats = collector.statistics(pairs)
-    assert stats["n_pairs"] == 2
-    assert stats["mean_score_diff"] == pytest.approx(0.5, abs=1e-6)
-    assert stats["mean_chosen_score"] == pytest.approx(0.85, abs=1e-6)
-
-
-# ---------------------------------------------------------------------------
-# Bonus: statistics on empty list
-# ---------------------------------------------------------------------------
-
-def test_preference_collector_statistics_empty():
-    cfg = PreferenceConfig()
-    collector = PreferenceCollector(cfg)
-    stats = collector.statistics([])
-    assert stats["n_pairs"] == 0
-    assert stats["mean_score_diff"] == 0.0
-    assert stats["mean_chosen_score"] == 0.0
+    collector = _make_collector()
+    filtered = collector.filter_pairs(pairs, min_margin=0.1)
+    assert len(filtered) == 2
+    assert all(p.margin >= 0.1 for p in filtered)
 
 
 # ---------------------------------------------------------------------------
-# Bonus: to_dataset respects format
+# 12. PreferenceCollector.export_dpo_format has required keys
 # ---------------------------------------------------------------------------
 
-def test_to_dataset_dpo_format():
-    cfg = PreferenceConfig(format="dpo")
-    collector = PreferenceCollector(cfg)
+def test_collector_export_dpo_format_keys():
     pairs = [
-        PreferencePair("p", "chosen text.", "rejected text.", 0.9, 0.3, 0.6),
+        PreferencePair("prompt A", "chosen A", "rejected A", 0.9, 0.3, 0.6),
+        PreferencePair("prompt B", "chosen B", "rejected B", 0.8, 0.4, 0.4),
     ]
-    dataset = collector.to_dataset(pairs)
-    assert len(dataset) == 1
-    assert set(dataset[0].keys()) == {"prompt", "chosen", "rejected"}
+    collector = _make_collector()
+    records = collector.export_dpo_format(pairs)
+    assert len(records) == 2
+    for rec in records:
+        assert "prompt" in rec
+        assert "chosen" in rec
+        assert "rejected" in rec
 
 
-def test_to_dataset_rlhf_format():
-    cfg = PreferenceConfig(format="rlhf")
-    collector = PreferenceCollector(cfg)
+# ---------------------------------------------------------------------------
+# 13. ResponsePool.get_diverse_pair — chosen has higher score than rejected
+# ---------------------------------------------------------------------------
+
+def test_response_pool_get_diverse_pair_chosen_higher_score():
+    pool = ResponsePool()
+    pool.add("aaaa bbbb cccc dddd eeee", 0.9)
+    pool.add("xxxx yyyy zzzz wwww vvvv", 0.3)
+    pool.add("1111 2222 3333 4444 5555", 0.1)
+
+    def diversity_fn(a: str, b: str) -> float:
+        # Jaccard distance on characters
+        set_a = set(a)
+        set_b = set(b)
+        inter = len(set_a & set_b)
+        union = len(set_a | set_b)
+        return 1.0 - (inter / union if union else 0.0)
+
+    chosen, rejected = pool.get_diverse_pair(diversity_fn)
+
+    # chosen must be the highest-scored response
+    chosen_score = next(s for t, s in pool._responses if t == chosen)
+    rejected_score = next(s for t, s in pool._responses if t == rejected)
+    assert chosen_score > rejected_score
+
+
+# ---------------------------------------------------------------------------
+# 14. PreferenceCollector.collect_dataset length <= len(prompts)
+# ---------------------------------------------------------------------------
+
+def test_collector_collect_dataset_length_le_prompts():
+    collector = _make_collector()
+    prompts = ["Q1?", "Q2?", "Q3?"]
+    result = collector.collect_dataset(prompts)
+    assert len(result) <= len(prompts)
+
+
+# ---------------------------------------------------------------------------
+# 15. export_dpo_format each dict has prompt/chosen/rejected keys
+# ---------------------------------------------------------------------------
+
+def test_export_dpo_format_each_dict_has_all_keys():
+    collector = _make_collector()
     pairs = [
-        PreferencePair("p", "chosen text.", "rejected text.", 0.9, 0.3, 0.6),
+        PreferencePair("p", "c", "r", 0.9, 0.1, 0.8, source="test"),
     ]
-    dataset = collector.to_dataset(pairs)
-    assert len(dataset) == 2  # one chosen + one rejected entry
-
-
-def test_to_dataset_sft_only_format():
-    cfg = PreferenceConfig(format="sft_only")
-    collector = PreferenceCollector(cfg)
-    pairs = [
-        PreferencePair("p", "chosen text.", "rejected text.", 0.9, 0.3, 0.6),
-    ]
-    dataset = collector.to_dataset(pairs)
-    assert len(dataset) == 1
-    assert set(dataset[0].keys()) == {"prompt", "response"}
-    assert dataset[0]["response"] == "chosen text."
+    records = collector.export_dpo_format(pairs)
+    assert len(records) == 1
+    rec = records[0]
+    assert set(rec.keys()) >= {"prompt", "chosen", "rejected"}
+    assert rec["prompt"] == "p"
+    assert rec["chosen"] == "c"
+    assert rec["rejected"] == "r"
