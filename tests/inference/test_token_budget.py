@@ -1,20 +1,21 @@
-"""Tests for adaptive token budget (entropy-based early stopping)."""
+"""Tests for Token Budget & Adaptive Generation."""
 import pytest
 import torch
 
 from src.inference.token_budget import (
-    TokenBudgetConfig,
-    TokenBudgetResult,
-    generate_with_budget,
-    nucleus_sample,
-    token_entropy,
+    BudgetConfig,
+    BudgetedGenerator,
+    TokenBudget,
+    adaptive_max_tokens,
+    budget_aware_generate,
+    estimate_sequence_complexity,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
 
 # ---------------------------------------------------------------------------
-# Tiny model fixture
+# Tiny model helper
 # ---------------------------------------------------------------------------
 
 def _make_model() -> AureliusTransformer:
@@ -27,7 +28,7 @@ def _make_model() -> AureliusTransformer:
         head_dim=32,
         d_ff=128,
         vocab_size=256,
-        max_seq_len=64,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg)
 
@@ -35,136 +36,230 @@ def _make_model() -> AureliusTransformer:
 VOCAB_SIZE = 256
 
 
-# ---------------------------------------------------------------------------
-# token_entropy tests
-# ---------------------------------------------------------------------------
+# ===================================================================
+# BudgetConfig tests
+# ===================================================================
 
-def test_token_entropy_range():
-    """Entropy must be >= 0 for both uniform and peaked distributions."""
-    uniform_logits = torch.zeros(VOCAB_SIZE)
-    peaked_logits = torch.zeros(VOCAB_SIZE)
-    peaked_logits[0] = 100.0
+class TestBudgetConfig:
+    def test_defaults(self):
+        """BudgetConfig defaults match spec."""
+        cfg = BudgetConfig()
+        assert cfg.max_tokens == 512
+        assert cfg.target_efficiency == 0.8
+        assert cfg.adaptive is True
+        assert cfg.eos_token_id == 0
+        assert cfg.pad_token_id == 0
 
-    h_uniform = token_entropy(uniform_logits)
-    h_peaked = token_entropy(peaked_logits)
-
-    assert h_uniform >= 0.0
-    assert h_peaked >= 0.0
-
-
-def test_token_entropy_uniform_is_max():
-    """Uniform distribution has higher entropy than a peaked distribution."""
-    uniform_logits = torch.zeros(VOCAB_SIZE)
-    peaked_logits = torch.zeros(VOCAB_SIZE)
-    peaked_logits[0] = 100.0
-
-    h_uniform = token_entropy(uniform_logits)
-    h_peaked = token_entropy(peaked_logits)
-
-    assert h_uniform > h_peaked
+    def test_custom_values(self):
+        """BudgetConfig accepts custom values."""
+        cfg = BudgetConfig(max_tokens=1024, target_efficiency=0.5, adaptive=False,
+                           eos_token_id=2, pad_token_id=1)
+        assert cfg.max_tokens == 1024
+        assert cfg.target_efficiency == 0.5
+        assert cfg.adaptive is False
+        assert cfg.eos_token_id == 2
+        assert cfg.pad_token_id == 1
 
 
-# ---------------------------------------------------------------------------
-# nucleus_sample tests
-# ---------------------------------------------------------------------------
+# ===================================================================
+# TokenBudget tests
+# ===================================================================
 
-def test_nucleus_sample_returns_int():
-    """nucleus_sample must return a Python int."""
-    logits = torch.randn(VOCAB_SIZE)
-    result = nucleus_sample(logits, top_p=0.9, temperature=1.0)
-    assert isinstance(result, int)
+class TestTokenBudget:
+    def test_initial_state(self):
+        """Fresh budget: consumed=0, remaining=max, not exhausted."""
+        b = TokenBudget(100)
+        assert b.consumed == 0
+        assert b.remaining == 100
+        assert b.is_exhausted is False
 
+    def test_consume(self):
+        """Consuming tokens updates consumed/remaining."""
+        b = TokenBudget(10)
+        b.consume(3)
+        assert b.consumed == 3
+        assert b.remaining == 7
 
-def test_nucleus_sample_valid_token_id():
-    """Sampled token id must be in [0, vocab_size)."""
-    torch.manual_seed(42)
-    for _ in range(20):
-        logits = torch.randn(VOCAB_SIZE)
-        result = nucleus_sample(logits, top_p=0.9, temperature=1.0)
-        assert 0 <= result < VOCAB_SIZE
+    def test_exhaustion(self):
+        """Budget becomes exhausted when consumed >= max."""
+        b = TokenBudget(5)
+        b.consume(5)
+        assert b.is_exhausted is True
+        assert b.remaining == 0
 
+    def test_over_consume(self):
+        """Consuming past the limit still works; remaining clamps to 0."""
+        b = TokenBudget(3)
+        b.consume(10)
+        assert b.is_exhausted is True
+        assert b.remaining == 0
+        assert b.consumed == 10
 
-# ---------------------------------------------------------------------------
-# generate_with_budget tests
-# ---------------------------------------------------------------------------
+    def test_reset(self):
+        """Reset brings consumed back to 0."""
+        b = TokenBudget(10)
+        b.consume(7)
+        b.reset()
+        assert b.consumed == 0
+        assert b.remaining == 10
+        assert b.is_exhausted is False
 
-def test_generate_with_budget_result_type():
-    """generate_with_budget must return a TokenBudgetResult."""
-    model = _make_model()
-    input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
-    cfg = TokenBudgetConfig(max_new_tokens=5, min_new_tokens=1)
-    result = generate_with_budget(model, input_ids, cfg)
-    assert isinstance(result, TokenBudgetResult)
+    def test_consume_negative_raises(self):
+        """Consuming a negative number raises ValueError."""
+        b = TokenBudget(10)
+        with pytest.raises(ValueError):
+            b.consume(-1)
 
-
-def test_generate_with_budget_respects_max():
-    """Never generate more tokens than max_new_tokens."""
-    model = _make_model()
-    input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
-    max_new = 8
-    cfg = TokenBudgetConfig(
-        max_new_tokens=max_new,
-        min_new_tokens=1,
-        low_entropy_threshold=0.5,
-        patience=3,
-    )
-    result = generate_with_budget(model, input_ids, cfg)
-    assert len(result.token_ids) <= max_new
-
-
-def test_generate_with_budget_respects_min():
-    """Always generate at least min_new_tokens tokens."""
-    model = _make_model()
-    input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
-    min_new = 3
-    # Use threshold=0.0 so early stop could trigger immediately, but min guards it
-    cfg = TokenBudgetConfig(
-        max_new_tokens=10,
-        min_new_tokens=min_new,
-        low_entropy_threshold=0.0,
-        patience=1,
-    )
-    result = generate_with_budget(model, input_ids, cfg)
-    assert len(result.token_ids) >= min_new
+    def test_negative_max_raises(self):
+        """Negative max_tokens raises ValueError."""
+        with pytest.raises(ValueError):
+            TokenBudget(-1)
 
 
-def test_generate_with_budget_entropies_length():
-    """len(entropies) must equal len(token_ids)."""
-    model = _make_model()
-    input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
-    cfg = TokenBudgetConfig(max_new_tokens=6, min_new_tokens=1)
-    result = generate_with_budget(model, input_ids, cfg)
-    assert len(result.entropies) == len(result.token_ids)
+# ===================================================================
+# estimate_sequence_complexity tests
+# ===================================================================
+
+class TestEstimateSequenceComplexity:
+    def test_returns_float_in_range(self):
+        """Complexity score must be a float in [0, 1]."""
+        model = _make_model()
+        input_ids = torch.randint(0, VOCAB_SIZE, (1, 8))
+        c = estimate_sequence_complexity(model, input_ids)
+        assert isinstance(c, float)
+        assert 0.0 <= c <= 1.0
+
+    def test_deterministic(self):
+        """Same model + same input -> same complexity."""
+        model = _make_model()
+        ids = torch.randint(0, VOCAB_SIZE, (1, 8))
+        c1 = estimate_sequence_complexity(model, ids)
+        c2 = estimate_sequence_complexity(model, ids)
+        assert c1 == pytest.approx(c2)
 
 
-def test_generate_with_budget_tokens_saved_nonnegative():
-    """tokens_saved must be >= 0."""
-    model = _make_model()
-    input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
-    cfg = TokenBudgetConfig(max_new_tokens=8, min_new_tokens=1)
-    result = generate_with_budget(model, input_ids, cfg)
-    assert result.tokens_saved >= 0
+# ===================================================================
+# adaptive_max_tokens tests
+# ===================================================================
+
+class TestAdaptiveMaxTokens:
+    def test_simple_halves(self):
+        """complexity < 0.3 -> budget halved (times efficiency)."""
+        result = adaptive_max_tokens(100, complexity=0.1, target_efficiency=1.0)
+        assert result == 50
+
+    def test_complex_doubles(self):
+        """complexity > 0.7 -> budget doubled (times efficiency)."""
+        result = adaptive_max_tokens(100, complexity=0.9, target_efficiency=1.0)
+        assert result == 200
+
+    def test_mid_complexity(self):
+        """complexity == 0.5 -> between half and double."""
+        result = adaptive_max_tokens(100, complexity=0.5, target_efficiency=1.0)
+        assert 50 < result < 200
+
+    def test_efficiency_scales(self):
+        """target_efficiency < 1.0 reduces the budget."""
+        full = adaptive_max_tokens(100, complexity=0.5, target_efficiency=1.0)
+        half = adaptive_max_tokens(100, complexity=0.5, target_efficiency=0.5)
+        assert half < full
+
+    def test_minimum_is_one(self):
+        """Result is always at least 1."""
+        result = adaptive_max_tokens(1, complexity=0.0, target_efficiency=0.01)
+        assert result >= 1
+
+    def test_invalid_complexity_raises(self):
+        """complexity outside [0,1] raises ValueError."""
+        with pytest.raises(ValueError):
+            adaptive_max_tokens(100, complexity=-0.1)
+        with pytest.raises(ValueError):
+            adaptive_max_tokens(100, complexity=1.5)
+
+    def test_invalid_efficiency_raises(self):
+        """target_efficiency outside (0,1] raises ValueError."""
+        with pytest.raises(ValueError):
+            adaptive_max_tokens(100, complexity=0.5, target_efficiency=0.0)
+        with pytest.raises(ValueError):
+            adaptive_max_tokens(100, complexity=0.5, target_efficiency=1.5)
 
 
-def test_generate_with_budget_early_stop():
-    """With very low threshold (0.0), stopped_early=True and tokens_saved > 0."""
-    model = _make_model()
-    input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
-    cfg = TokenBudgetConfig(
-        max_new_tokens=20,
-        min_new_tokens=1,
-        low_entropy_threshold=0.0,   # any entropy >= 0 so never triggers on its own…
-        patience=1,                  # but threshold=0.0 means H < 0.0 never true
-    )
-    # threshold=0.0 means H < 0.0 is never true — we need a threshold that is
-    # guaranteed to be exceeded. Use a very HIGH threshold instead so every token
-    # triggers early stop.
-    cfg = TokenBudgetConfig(
-        max_new_tokens=20,
-        min_new_tokens=1,
-        low_entropy_threshold=1000.0,  # always below threshold (H is always < 1000)
-        patience=1,
-    )
-    result = generate_with_budget(model, input_ids, cfg)
-    assert result.stopped_early is True
-    assert result.tokens_saved > 0
+# ===================================================================
+# budget_aware_generate tests
+# ===================================================================
+
+class TestBudgetAwareGenerate:
+    def test_respects_budget(self):
+        """Never generates more tokens than the budget allows."""
+        model = _make_model()
+        input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
+        budget = TokenBudget(5)
+        tokens = budget_aware_generate(model, input_ids, budget)
+        assert len(tokens) <= 5
+
+    def test_returns_tensor(self):
+        """Return value is a 1-D tensor."""
+        model = _make_model()
+        input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
+        budget = TokenBudget(3)
+        tokens = budget_aware_generate(model, input_ids, budget)
+        assert isinstance(tokens, torch.Tensor)
+        assert tokens.dim() == 1
+
+    def test_budget_consumed(self):
+        """Budget consumed count matches number of generated tokens."""
+        model = _make_model()
+        input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
+        budget = TokenBudget(6)
+        tokens = budget_aware_generate(model, input_ids, budget)
+        assert budget.consumed == len(tokens)
+
+
+# ===================================================================
+# BudgetedGenerator tests
+# ===================================================================
+
+class TestBudgetedGenerator:
+    def test_generate_returns_dict(self):
+        """generate() returns a dict with expected keys."""
+        model = _make_model()
+        gen = BudgetedGenerator(model, BudgetConfig(max_tokens=8))
+        input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
+        result = gen.generate(input_ids)
+        assert isinstance(result, dict)
+        assert "tokens" in result
+        assert "tokens_consumed" in result
+        assert "efficiency" in result
+
+    def test_tokens_consumed_matches(self):
+        """tokens_consumed matches len(tokens)."""
+        model = _make_model()
+        gen = BudgetedGenerator(model, BudgetConfig(max_tokens=8))
+        input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
+        result = gen.generate(input_ids)
+        assert result["tokens_consumed"] == len(result["tokens"])
+
+    def test_efficiency_in_range(self):
+        """efficiency is in [0, 1]."""
+        model = _make_model()
+        gen = BudgetedGenerator(model, BudgetConfig(max_tokens=10))
+        input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
+        result = gen.generate(input_ids)
+        assert 0.0 <= result["efficiency"] <= 1.0
+
+    def test_non_adaptive_uses_raw_budget(self):
+        """When adaptive=False, budget equals max_tokens exactly."""
+        model = _make_model()
+        cfg = BudgetConfig(max_tokens=4, adaptive=False)
+        gen = BudgetedGenerator(model, cfg)
+        input_ids = torch.randint(0, VOCAB_SIZE, (1, 4))
+        result = gen.generate(input_ids)
+        # With adaptive=False, max_tok == 4, so consumed <= 4
+        assert result["tokens_consumed"] <= 4
+
+    def test_default_config(self):
+        """BudgetedGenerator works with default BudgetConfig when None passed."""
+        model = _make_model()
+        gen = BudgetedGenerator(model)
+        assert gen.config.max_tokens == 512
+        assert gen.config.adaptive is True

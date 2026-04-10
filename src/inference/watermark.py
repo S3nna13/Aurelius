@@ -14,118 +14,128 @@ import torch
 
 @dataclass
 class WatermarkConfig:
-    vocab_size: int
-    green_list_fraction: float = 0.5  # fraction of vocab in green list
-    delta: float = 2.0  # logit boost for green list tokens
-    seeding_scheme: str = "hash"  # "hash" only for now
-    seed: int = 42  # base seed for reproducibility
+    """Configuration for watermark generation and detection."""
+
+    gamma: float = 0.25  # green list fraction
+    delta: float = 2.0  # logit bias for green list tokens
+    vocab_size: int = 256
+    seed: int = 42
 
 
-def _get_green_list(cfg: WatermarkConfig, prev_token_id: int) -> torch.Tensor:
-    """Return boolean tensor of shape (vocab_size,) marking green tokens.
+def compute_green_list(
+    prev_token: int,
+    vocab_size: int,
+    gamma: float,
+    seed: int,
+) -> set[int]:
+    """Hash prev_token with seed to deterministically split vocab into green/red.
 
-    Deterministic given prev_token_id: hash(seed || prev_token_id) -> shuffle -> take top fraction.
+    Returns a set of green token indices whose size is approximately
+    gamma * vocab_size.
     """
-    # Hash prev_token_id with seed to get a deterministic permutation
-    key = f"{cfg.seed}:{prev_token_id}".encode()
+    key = f"{seed}:{prev_token}".encode()
     hash_val = int(hashlib.sha256(key).hexdigest(), 16)
 
-    # Use hash_val to seed a generator, shuffle vocab indices
     rng = torch.Generator()
     rng.manual_seed(hash_val % (2**63))
-    perm = torch.randperm(cfg.vocab_size, generator=rng)
+    perm = torch.randperm(vocab_size, generator=rng)
 
-    # First green_list_fraction * vocab_size indices are green
-    n_green = int(cfg.vocab_size * cfg.green_list_fraction)
-    green_tokens = perm[:n_green]
-
-    # Return boolean mask
-    mask = torch.zeros(cfg.vocab_size, dtype=torch.bool)
-    mask[green_tokens] = True
-    return mask
+    n_green = int(vocab_size * gamma)
+    return set(perm[:n_green].tolist())
 
 
-class WatermarkLogitProcessor:
-    """Boosts logits of green-list tokens at each generation step.
+def apply_watermark(
+    logits: torch.Tensor,
+    prev_token: int,
+    config: WatermarkConfig,
+) -> torch.Tensor:
+    """Add delta to green list token logits. Returns modified logits (same shape)."""
+    green_set = compute_green_list(
+        prev_token, config.vocab_size, config.gamma, config.seed
+    )
+    out = logits.clone()
+    green_indices = torch.tensor(sorted(green_set), dtype=torch.long)
+    out[..., green_indices] += config.delta
+    return out
 
-    Green list is determined by hashing the previous token ID.
-    This is a LogitProcessor-compatible __call__ interface.
+
+def detect_watermark(
+    token_ids: list[int] | torch.Tensor,
+    config: WatermarkConfig,
+) -> dict:
+    """For each token check if it is in the green list given its predecessor.
+
+    Returns dict with green_fraction, z_score, is_watermarked (z > 2.0).
     """
+    if isinstance(token_ids, torch.Tensor):
+        token_ids = token_ids.tolist()
 
-    def __init__(self, cfg: WatermarkConfig) -> None:
-        self.cfg = cfg
+    total = len(token_ids) - 1
+    if total <= 0:
+        return {
+            "green_fraction": 0.0,
+            "z_score": 0.0,
+            "is_watermarked": False,
+        }
 
-    def _get_green_list(self, prev_token_id: int) -> torch.Tensor:
-        """Return boolean tensor of shape (vocab_size,) marking green tokens."""
-        return _get_green_list(self.cfg, prev_token_id)
+    green_count = 0
+    for i in range(1, len(token_ids)):
+        green_set = compute_green_list(
+            token_ids[i - 1], config.vocab_size, config.gamma, config.seed
+        )
+        if token_ids[i] in green_set:
+            green_count += 1
 
-    def __call__(self, logits: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
-        """Add delta to green list tokens based on last token in input_ids.
+    green_fraction = green_count / total
+    expected = total * config.gamma
+    std = math.sqrt(total * config.gamma * (1 - config.gamma))
+    z_score = (green_count - expected) / (std + 1e-8)
 
-        If input_ids is empty, use seed as prev_token (no conditioning).
-        """
-        logits = logits.clone()
-        if len(input_ids) == 0:
-            prev_token = self.cfg.seed  # use seed as proxy
-        else:
-            prev_token = input_ids[-1].item()
-        green_mask = self._get_green_list(prev_token)
-        logits[green_mask] += self.cfg.delta
-        return logits
+    return {
+        "green_fraction": green_fraction,
+        "z_score": z_score,
+        "is_watermarked": z_score > 2.0,
+    }
+
+
+class WatermarkGenerator:
+    """Generates text with watermark bias applied at each step."""
+
+    def __init__(self, model: torch.nn.Module, config: WatermarkConfig) -> None:
+        self.model = model
+        self.config = config
+
+    @torch.no_grad()
+    def generate(self, input_ids: torch.Tensor, max_new_tokens: int) -> torch.Tensor:
+        """Generate tokens with watermark bias. Returns 1-D token tensor."""
+        # Ensure input_ids is 2-D (B, S)
+        if input_ids.dim() == 1:
+            input_ids = input_ids.unsqueeze(0)
+
+        generated = input_ids.clone()
+
+        for _ in range(max_new_tokens):
+            _loss, logits, _pkv = self.model(generated)
+            # logits shape: (B, S, V) -- take last position
+            next_logits = logits[:, -1, :]  # (B, V)
+
+            # Apply watermark bias for each batch element
+            prev_token = generated[0, -1].item()
+            next_logits = apply_watermark(next_logits, prev_token, self.config)
+
+            next_token = next_logits.argmax(dim=-1, keepdim=True)  # (B, 1)
+            generated = torch.cat([generated, next_token], dim=-1)
+
+        # Return flattened 1-D tensor for the first batch element
+        return generated[0]
 
 
 class WatermarkDetector:
-    """Detects watermarked text using z-score on green token fraction.
+    """Detects watermarked text using z-score on green token fraction."""
 
-    If text has significantly more green tokens than expected (green_list_fraction),
-    it was likely watermarked.
-    """
+    def __init__(self, config: WatermarkConfig) -> None:
+        self.config = config
 
-    def __init__(self, cfg: WatermarkConfig) -> None:
-        self.cfg = cfg
-
-    def _get_green_list(self, prev_token_id: int) -> torch.Tensor:
-        """Return boolean tensor of shape (vocab_size,) marking green tokens."""
-        return _get_green_list(self.cfg, prev_token_id)
-
-    def detect(
-        self,
-        token_ids: list[int],
-        z_threshold: float = 4.0,
-    ) -> dict:
-        """Run detection on a sequence of token IDs.
-
-        For each token t[i] (i >= 1):
-        - Compute green list based on t[i-1]
-        - Check if t[i] is in the green list
-
-        Returns dict with: green_count, total, z_score, is_watermarked, green_fraction.
-        """
-        p = self.cfg.green_list_fraction
-        total = len(token_ids) - 1
-        if total <= 0:
-            return {
-                "green_count": 0,
-                "total": 0,
-                "z_score": 0.0,
-                "is_watermarked": False,
-                "green_fraction": 0.0,
-            }
-
-        green_count = 0
-        for i in range(1, len(token_ids)):
-            green_mask = self._get_green_list(token_ids[i - 1])
-            if green_mask[token_ids[i]]:
-                green_count += 1
-
-        expected = total * p
-        std = math.sqrt(total * p * (1 - p))
-        z_score = (green_count - expected) / (std + 1e-8)
-
-        return {
-            "green_count": green_count,
-            "total": total,
-            "z_score": z_score,
-            "is_watermarked": z_score >= z_threshold,
-            "green_fraction": green_count / total,
-        }
+    def detect(self, token_ids: list[int] | torch.Tensor) -> dict:
+        """Returns detection dict with green_fraction, z_score, is_watermarked."""
+        return detect_watermark(token_ids, self.config)
