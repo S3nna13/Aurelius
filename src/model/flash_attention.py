@@ -195,6 +195,197 @@ def compute_memory_footprint(
     }
 
 
+@dataclass
+class FlashAttentionConfig:
+    """Configuration for the chunked/tiled Flash Attention implementation.
+
+    Attributes:
+        block_size: Tile size for Q/K/V blocking (default 64).
+        causal: If True, apply causal masking (tokens cannot attend to future).
+        dropout: Attention dropout probability.
+        scale: Optional explicit scale factor; defaults to 1/sqrt(head_dim) when None.
+    """
+
+    block_size: int = 64
+    causal: bool = True
+    dropout: float = 0.0
+    scale: float | None = None
+
+
+def chunked_attention(
+    Q: Tensor,
+    K: Tensor,
+    V: Tensor,
+    block_size: int,
+    causal: bool = True,
+    scale: float | None = None,
+) -> Tensor:
+    """Compute scaled dot-product attention in chunks using online softmax.
+
+    Processes Q in blocks of ``block_size`` rows.  For each Q-block, all K/V
+    tiles are visited and the output is accumulated using the online softmax
+    algorithm (running max + running normaliser) so the full T×T attention
+    matrix is never materialised.
+
+    This is mathematically equivalent to standard scaled dot-product attention.
+
+    Args:
+        Q: Query tensor, shape (B, H, T, d).
+        K: Key tensor,   shape (B, H, T, d).
+        V: Value tensor, shape (B, H, T, d).
+        block_size: Number of query rows processed per tile.
+        causal: If True, future key positions receive score −1e9.
+        scale: Explicit scale factor; defaults to ``1 / sqrt(d)`` when None.
+
+    Returns:
+        Output tensor of shape (B, H, T, d).
+    """
+    B, H, T, d = Q.shape
+    if scale is None:
+        scale = 1.0 / math.sqrt(d)
+    device = Q.device
+
+    output = torch.zeros_like(Q)
+
+    for q_start in range(0, T, block_size):
+        q_end = min(q_start + block_size, T)
+        q_block = Q[:, :, q_start:q_end, :]          # (B, H, Tq, d)
+        Tq = q_end - q_start
+
+        # Running state for online softmax per query row.
+        # m_i: running row-wise max,       shape (B, H, Tq, 1)
+        # l_i: running normaliser (sum exp), shape (B, H, Tq, 1)
+        # o_i: running output accumulator,  shape (B, H, Tq, d)
+        m_i = torch.full((B, H, Tq, 1), float("-inf"), device=device, dtype=Q.dtype)
+        l_i = torch.zeros((B, H, Tq, 1), device=device, dtype=Q.dtype)
+        o_i = torch.zeros((B, H, Tq, d), device=device, dtype=Q.dtype)
+
+        for k_start in range(0, T, block_size):
+            k_end = min(k_start + block_size, T)
+            k_block = K[:, :, k_start:k_end, :]      # (B, H, Tk, d)
+            v_block = V[:, :, k_start:k_end, :]      # (B, H, Tk, d)
+            Tk = k_end - k_start
+
+            # Compute scores for this (Q-block, K-block) pair
+            s_ij = scale * torch.matmul(q_block, k_block.transpose(-2, -1))  # (B, H, Tq, Tk)
+
+            if causal:
+                q_idx = torch.arange(q_start, q_end, device=device).view(1, 1, -1, 1)
+                k_idx = torch.arange(k_start, k_end, device=device).view(1, 1, 1, -1)
+                future_mask = k_idx > q_idx          # True where key is in the future
+                s_ij = s_ij.masked_fill(future_mask, -1e9)
+
+            # Online softmax update
+            m_new = torch.maximum(m_i, s_ij.max(dim=-1, keepdim=True).values)  # (B, H, Tq, 1)
+            exp_ij = torch.exp(s_ij - m_new)                                    # (B, H, Tq, Tk)
+            l_new = torch.exp(m_i - m_new) * l_i + exp_ij.sum(dim=-1, keepdim=True)
+
+            # Accumulate weighted values; correct previous contribution by rescaling
+            o_i = torch.exp(m_i - m_new) * o_i + torch.matmul(exp_ij, v_block)
+
+            m_i = m_new
+            l_i = l_new
+
+        # Normalise by the final running sum
+        output[:, :, q_start:q_end, :] = o_i / l_i
+
+    return output
+
+
+def flash_attention_forward(
+    Q: Tensor,
+    K: Tensor,
+    V: Tensor,
+    config: FlashAttentionConfig,
+) -> Tensor:
+    """Wrapper around :func:`chunked_attention` using a :class:`FlashAttentionConfig`.
+
+    Args:
+        Q: Query tensor, shape (B, H, T, d).
+        K: Key tensor,   shape (B, H, T, d).
+        V: Value tensor, shape (B, H, T, d).
+        config: Flash attention configuration.
+
+    Returns:
+        Output tensor of shape (B, H, T, d).
+    """
+    return chunked_attention(
+        Q, K, V,
+        block_size=config.block_size,
+        causal=config.causal,
+        scale=config.scale,
+    )
+
+
+class FlashAttentionLayer(nn.Module):
+    """Multi-head self-attention computed via :func:`chunked_attention`.
+
+    Provides the same interface as a standard multi-head attention layer but
+    uses the chunked/tiled algorithm to limit peak attention-matrix memory.
+
+    Args:
+        d_model: Total model dimension.
+        n_heads: Number of attention heads. Must divide d_model evenly.
+        config: :class:`FlashAttentionConfig` controlling tiling and masking.
+    """
+
+    def __init__(self, d_model: int, n_heads: int, config: FlashAttentionConfig) -> None:
+        super().__init__()
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        self.d_model = d_model
+        self.n_heads = n_heads
+        self.head_dim = d_model // n_heads
+        self.config = config
+
+        self.q_proj = nn.Linear(d_model, d_model, bias=False)
+        self.k_proj = nn.Linear(d_model, d_model, bias=False)
+        self.v_proj = nn.Linear(d_model, d_model, bias=False)
+        self.o_proj = nn.Linear(d_model, d_model, bias=False)
+
+    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
+        """Forward pass.
+
+        Args:
+            x: Input tensor, shape (B, T, d_model).
+            mask: Optional attention mask (unused; causal masking is controlled
+                  by ``config.causal``).
+
+        Returns:
+            Output tensor, shape (B, T, d_model).
+        """
+        B, T, _ = x.shape
+
+        # Project and reshape to (B, H, T, head_dim)
+        q = self.q_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+
+        out = flash_attention_forward(q, k, v, self.config)
+
+        # (B, H, T, head_dim) -> (B, T, d_model)
+        out = out.transpose(1, 2).contiguous().view(B, T, self.d_model)
+        return self.o_proj(out)
+
+
+def memory_efficiency_ratio(seq_len: int, block_size: int) -> float:
+    """Return the theoretical memory reduction factor of chunked vs standard attention.
+
+    Standard attention requires an O(T²) matrix; chunked attention only ever
+    holds O(T × block_size) at once.
+
+    Args:
+        seq_len: Sequence length T.
+        block_size: Tile / block size used in chunked attention.
+
+    Returns:
+        Ratio ``seq_len² / (seq_len * block_size)`` = ``seq_len / block_size``.
+        Values > 1 indicate a memory saving.
+    """
+    standard_memory = seq_len * seq_len
+    chunked_memory = seq_len * block_size
+    return standard_memory / chunked_memory
+
+
 def benchmark_attention_equivalence(
     B: int,
     H: int,

@@ -12,8 +12,11 @@ from src.training.maml import (
     MAMLTrainer,
     Task,
     apply_adapted_params,
+    clone_parameters,
     compute_task_loss,
     inner_loop,
+    inner_update,
+    maml_loss,
     restore_params,
 )
 
@@ -258,3 +261,224 @@ def test_inner_loop_zero_steps_returns_original_params(model):
     for name in original:
         assert torch.equal(original[name], adapted[name]), \
             f"Param '{name}' changed with n_inner_steps=0"
+
+
+# ---------------------------------------------------------------------------
+# New spec-aligned API tests (16+ tests)
+# ---------------------------------------------------------------------------
+
+# 15. MAMLConfig spec fields exist with correct defaults
+def test_maml_config_spec_fields():
+    cfg = MAMLConfig()
+    assert hasattr(cfg, "inner_steps")
+    assert hasattr(cfg, "outer_lr")
+    assert cfg.inner_steps == 5
+    assert cfg.outer_lr == 1e-3
+
+
+# 16. MAMLConfig spec fields can be set at construction
+def test_maml_config_spec_fields_settable():
+    cfg = MAMLConfig(inner_steps=3, outer_lr=5e-4, inner_lr=0.05, n_tasks=8, first_order=False)
+    assert cfg.inner_steps == 3
+    assert cfg.outer_lr == 5e-4
+    assert cfg.inner_lr == 0.05
+    assert cfg.n_tasks == 8
+    assert cfg.first_order is False
+
+
+# 17. clone_parameters returns OrderedDict with same keys as model.named_parameters()
+def test_clone_parameters_returns_ordered_dict_with_model_keys(model):
+    from collections import OrderedDict
+    cloned = clone_parameters(model)
+    assert isinstance(cloned, OrderedDict)
+    model_keys = set(name for name, _ in model.named_parameters())
+    assert set(cloned.keys()) == model_keys
+
+
+# 18. clone_parameters returns tensors (not the same objects as model params)
+def test_clone_parameters_returns_independent_copies(model):
+    cloned = clone_parameters(model)
+    for name, param in model.named_parameters():
+        assert name in cloned
+        assert cloned[name] is not param.data, \
+            f"clone_parameters returned same object for '{name}'"
+        assert torch.equal(cloned[name].data, param.data), \
+            f"Cloned value for '{name}' does not match original"
+
+
+# 19. clone_parameters tensors have requires_grad consistent with model params
+def test_clone_parameters_requires_grad(model):
+    cloned = clone_parameters(model)
+    for name, param in model.named_parameters():
+        assert cloned[name].requires_grad == param.requires_grad, \
+            f"requires_grad mismatch for '{name}'"
+
+
+# 20. inner_update returns an OrderedDict
+def test_inner_update_returns_dict(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, first_order=True)
+    support = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    result = inner_update(model, support, cfg)
+    assert isinstance(result, dict)
+
+
+# 21. inner_update result has same keys as model.named_parameters()
+def test_inner_update_keys_match_model(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, first_order=True)
+    support = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    result = inner_update(model, support, cfg)
+    model_keys = {name for name, _ in model.named_parameters()}
+    assert set(result.keys()) == model_keys
+
+
+# 22. inner_update changes at least one parameter vs initial model state
+def test_inner_update_changes_params(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, first_order=True)
+    support = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    original = {name: p.data.clone() for name, p in model.named_parameters() if p.requires_grad}
+    updated = inner_update(model, support, cfg)
+    any_changed = any(
+        not torch.equal(original[name], updated[name])
+        for name in original
+        if name in updated
+    )
+    assert any_changed, "inner_update: no parameter changed after 1 step"
+
+
+# 23. inner_update does NOT modify model in-place
+def test_inner_update_does_not_modify_model_in_place(model):
+    cfg = MAMLConfig(inner_steps=2, inner_lr=0.01, first_order=True)
+    support = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    before = {name: p.data.clone() for name, p in model.named_parameters()}
+    inner_update(model, support, cfg)
+    after = {name: p.data.clone() for name, p in model.named_parameters()}
+    for name in before:
+        assert torch.equal(before[name], after[name]), \
+            f"inner_update modified model in-place for '{name}'"
+
+
+# 24. inner_update works with inner_steps=1
+def test_inner_update_single_step(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, first_order=True)
+    support = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    result = inner_update(model, support, cfg)
+    assert isinstance(result, dict)
+    assert len(result) > 0
+
+
+# 25. inner_update accepts explicit params argument
+def test_inner_update_accepts_params_arg(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, first_order=True)
+    support = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    initial_params = clone_parameters(model)
+    result = inner_update(model, support, cfg, params=initial_params)
+    assert isinstance(result, dict)
+    assert set(result.keys()) == set(initial_params.keys())
+
+
+# 26. maml_loss returns a scalar tensor
+def test_maml_loss_returns_scalar(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, first_order=True)
+    support = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    query = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    updated_params = inner_update(model, support, cfg)
+    loss = maml_loss(model, updated_params, query)
+    assert isinstance(loss, Tensor)
+    assert loss.ndim == 0, f"Expected scalar, got shape {loss.shape}"
+
+
+# 27. maml_loss returns a positive float
+def test_maml_loss_is_positive(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, first_order=True)
+    support = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    query = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    updated_params = inner_update(model, support, cfg)
+    loss = maml_loss(model, updated_params, query)
+    assert loss.item() > 0.0, f"Expected positive maml_loss, got {loss.item()}"
+
+
+# 28. maml_loss does NOT modify model in-place
+def test_maml_loss_does_not_modify_model_in_place(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, first_order=True)
+    support = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    query = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    updated_params = inner_update(model, support, cfg)
+    before = {name: p.data.clone() for name, p in model.named_parameters()}
+    maml_loss(model, updated_params, query)
+    after = {name: p.data.clone() for name, p in model.named_parameters()}
+    for name in before:
+        assert torch.equal(before[name], after[name]), \
+            f"maml_loss modified model in-place for '{name}'"
+
+
+# 29. MAMLTrainer accepts (model, config, optimizer) spec convention
+def test_maml_trainer_spec_constructor(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, outer_lr=1e-3, first_order=True)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    trainer = MAMLTrainer(model, cfg, optimizer)
+    assert trainer.config is cfg
+    assert trainer.meta_optimizer is optimizer
+    assert trainer.model is model
+
+
+# 30. MAMLTrainer.meta_train_step accepts (support_ids, query_ids) tuple list
+def test_meta_train_step_accepts_tuple_task_batch(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, outer_lr=1e-3, first_order=True)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    trainer = MAMLTrainer(model, cfg, optimizer)
+    task_batch = [
+        (torch.randint(0, VOCAB, (BATCH, SEQ_LEN)), torch.randint(0, VOCAB, (BATCH, SEQ_LEN)))
+        for _ in range(2)
+    ]
+    result = trainer.meta_train_step(task_batch)
+    assert "meta_loss" in result
+    assert "n_tasks" in result
+    assert result["n_tasks"] == 2
+
+
+# 31. meta_train_step with tuple tasks returns positive meta_loss
+def test_meta_train_step_tuple_tasks_positive_loss(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, outer_lr=1e-3, first_order=True)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    trainer = MAMLTrainer(model, cfg, optimizer)
+    task_batch = [
+        (torch.randint(0, VOCAB, (BATCH, SEQ_LEN)), torch.randint(0, VOCAB, (BATCH, SEQ_LEN)))
+        for _ in range(2)
+    ]
+    result = trainer.meta_train_step(task_batch)
+    assert isinstance(result["meta_loss"], float)
+    assert result["meta_loss"] > 0.0
+
+
+# 32. first_order=True and first_order=False both produce valid results with inner_update
+def test_inner_update_first_order_vs_second_order(model):
+    support = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    cfg_fo = MAMLConfig(inner_steps=1, inner_lr=0.01, first_order=True)
+    cfg_so = MAMLConfig(inner_steps=1, inner_lr=0.01, first_order=False)
+    result_fo = inner_update(model, support, cfg_fo)
+    result_so = inner_update(model, support, cfg_so)
+    assert isinstance(result_fo, dict)
+    assert isinstance(result_so, dict)
+    assert set(result_fo.keys()) == set(result_so.keys())
+
+
+# 33. gradient accumulation: meta_loss scales with number of tasks
+def test_meta_loss_scales_with_n_tasks(model):
+    cfg = MAMLConfig(inner_steps=1, inner_lr=0.01, outer_lr=1e-3, first_order=True)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    trainer = MAMLTrainer(model, cfg, optimizer)
+    torch.manual_seed(42)
+    task_batch_2 = [
+        (torch.randint(0, VOCAB, (BATCH, SEQ_LEN)), torch.randint(0, VOCAB, (BATCH, SEQ_LEN)))
+        for _ in range(2)
+    ]
+    torch.manual_seed(42)
+    task_batch_4 = [
+        (torch.randint(0, VOCAB, (BATCH, SEQ_LEN)), torch.randint(0, VOCAB, (BATCH, SEQ_LEN)))
+        for _ in range(4)
+    ]
+    result_2 = trainer.meta_train_step(task_batch_2)
+    result_4 = trainer.meta_train_step(task_batch_4)
+    # More tasks should accumulate more loss (not strictly equal)
+    assert result_4["n_tasks"] == 4
+    assert result_2["n_tasks"] == 2

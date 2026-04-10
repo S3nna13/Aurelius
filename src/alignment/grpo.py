@@ -10,73 +10,221 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Callable, List, Optional
 
+
+# ---------------------------------------------------------------------------
+# New canonical API (required by task spec)
+# ---------------------------------------------------------------------------
 
 @dataclass
 class GRPOConfig:
-    num_rollouts: int = 8          # N responses per prompt
-    clip_eps: float = 0.2          # PPO clip epsilon
-    kl_coef: float = 0.01          # KL penalty coefficient (optional regularization)
-    advantage_eps: float = 1e-8    # denominator stability
-    learning_rate: float = 1e-6
-    num_steps: int = 100           # training iterations
-    max_new_tokens: int = 256
-    temperature: float = 0.8
-    batch_size: int = 4            # prompts per batch
-    seed: int = 42
+    """Configuration for GRPO training."""
+    n_samples: int = 8              # N responses per prompt
+    beta: float = 0.01              # KL penalty coefficient
+    clip_ratio: float = 0.2         # PPO clip epsilon
+    kl_coef: float = 0.1            # Additional KL regularization coefficient
+    max_new_tokens: int = 64        # Maximum tokens to generate per completion
+    temperature: float = 1.0        # Sampling temperature
+
+
+def sample_completions(
+    model: nn.Module,
+    input_ids: torch.Tensor,
+    n_samples: int,
+    max_new_tokens: int,
+    temperature: float,
+) -> List[torch.Tensor]:
+    """Generate n_samples completions for a given prompt via temperature sampling.
+
+    Args:
+        model: The policy model with a generate() method.
+        input_ids: (1, prompt_len) — prompt token ids.
+        n_samples: Number of completions to generate.
+        max_new_tokens: Maximum new tokens per completion.
+        temperature: Sampling temperature.
+
+    Returns:
+        List of n_samples token tensors, each of shape (1, prompt_len + gen_len).
+    """
+    completions = []
+    for _ in range(n_samples):
+        with torch.no_grad():
+            full_ids = model.generate(
+                input_ids,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+            )
+        completions.append(full_ids)
+    return completions
+
+
+def group_relative_advantages(rewards: torch.Tensor) -> torch.Tensor:
+    """Normalize rewards within a group to produce advantages.
+
+    Args:
+        rewards: (N,) — scalar reward for each rollout in the group.
+
+    Returns:
+        (N,) — normalized advantages: (r - mean) / (std + 1e-8).
+        Returns zeros when all rewards are identical (std == 0).
+    """
+    if rewards.numel() <= 1:
+        return torch.zeros_like(rewards)
+    mean = rewards.mean()
+    std = rewards.std()
+    return (rewards - mean) / (std + 1e-8)
+
+
+def grpo_policy_loss(
+    log_probs_new: torch.Tensor,
+    log_probs_old: torch.Tensor,
+    advantages: torch.Tensor,
+    clip_ratio: float = 0.2,
+) -> torch.Tensor:
+    """Clipped policy gradient loss (GRPO/PPO style).
+
+    Args:
+        log_probs_new: (N,) — log probs under the current policy.
+        log_probs_old: (N,) — log probs under the old/reference policy (detached).
+        advantages: (N,) — group-normalized advantages.
+        clip_ratio: PPO clipping epsilon (ε). Ratio is clipped to [1-ε, 1+ε].
+
+    Returns:
+        Scalar loss (negative clipped objective, to minimize).
+    """
+    ratio = torch.exp(log_probs_new - log_probs_old)
+    clipped = torch.clamp(ratio, 1.0 - clip_ratio, 1.0 + clip_ratio)
+    loss = -torch.min(ratio * advantages, clipped * advantages).mean()
+    return loss
 
 
 def compute_sequence_log_probs(
     model: nn.Module,
     input_ids: torch.Tensor,
-    response_start: int,
+    response_start: Optional[int] = None,
 ) -> torch.Tensor:
-    """Compute per-token log probs for the response portion of input_ids.
+    """Compute sum of per-token log probs for a sequence.
+
+    When response_start is provided, sums only over the response portion.
+    When response_start is None, sums over all tokens (excluding the first,
+    since the model predicts token[t+1] from token[t]).
 
     Args:
         model: The policy model.
-        input_ids: (1, total_len) — prompt + response tokens concatenated.
-        response_start: Index where the response begins in input_ids.
+        input_ids: (1, seq_len) — full token sequence.
+        response_start: Optional index where the response begins. If None,
+            log probs are summed over all positions (tokens 1 onward).
 
     Returns:
-        Scalar — sum of log probs over response tokens.
+        Scalar — sum of log probs (always <= 0 for valid probability distributions).
     """
     _, logits, _ = model(input_ids)
-    # Shift: logits[:, :-1] predicts input_ids[:, 1:]
-    log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)
-    targets = input_ids[:, 1:]  # (1, total_len - 1)
-    token_lp = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1)  # (1, total_len-1)
-    # Sum only over response tokens (offset by 1 due to shift)
-    response_lp = token_lp[:, response_start - 1:].sum(dim=-1)  # (1,)
-    return response_lp.squeeze(0)  # scalar
+    # Shift: logits[:, t] predicts input_ids[:, t+1]
+    log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)  # (1, seq_len-1, vocab)
+    targets = input_ids[:, 1:]                             # (1, seq_len-1)
+    token_lp = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1)  # (1, seq_len-1)
+
+    if response_start is not None:
+        # Sum only response tokens (offset by 1 for the shift)
+        token_lp = token_lp[:, max(0, response_start - 1):]
+
+    return token_lp.sum(dim=-1).squeeze(0)  # scalar
 
 
-def grpo_loss(
-    log_probs_new: torch.Tensor,
-    log_probs_old: torch.Tensor,
-    advantages: torch.Tensor,
-    clip_eps: float = 0.2,
-) -> torch.Tensor:
-    """Compute clipped GRPO/PPO policy gradient loss.
+class GRPOTrainer:
+    """Train a model using GRPO on prompts scored by a reward function.
 
     Args:
-        log_probs_new: (N,) — log probs of responses under current policy.
-        log_probs_old: (N,) — log probs under old policy (detached, from rollout).
-        advantages: (N,) — group-normalized advantages.
-        clip_eps: PPO clipping epsilon.
-
-    Returns:
-        Scalar loss (to minimize).
+        model: The policy model (AureliusTransformer or compatible nn.Module).
+        ref_model: Reference model for KL regularization (may be None).
+        config: GRPOConfig instance.
+        optimizer: A pre-built optimizer for the policy model parameters.
+        reward_fn: Callable mapping (completion_ids: torch.Tensor) -> float.
     """
-    ratio = torch.exp(log_probs_new - log_probs_old)
-    clipped = torch.clamp(ratio, 1 - clip_eps, 1 + clip_eps)
-    loss = -torch.min(ratio * advantages, clipped * advantages).mean()
-    return loss
 
+    def __init__(
+        self,
+        model: nn.Module,
+        ref_model: Optional[nn.Module],
+        config: GRPOConfig,
+        optimizer: torch.optim.Optimizer,
+        reward_fn: Callable[[torch.Tensor], float],
+    ) -> None:
+        self.model = model
+        self.ref_model = ref_model
+        self.config = config
+        self.optimizer = optimizer
+        self.reward_fn = reward_fn
+
+    def train_step(self, prompt_ids: torch.Tensor) -> dict:
+        """One GRPO training step: sample, score, advantage, update.
+
+        Args:
+            prompt_ids: (1, prompt_len) prompt token ids.
+
+        Returns:
+            dict with keys: "loss" (float), "mean_reward" (float),
+            "advantage_std" (float).
+        """
+        cfg = self.config
+
+        # --- Rollout: generate n_samples completions ---------------------------
+        completions = sample_completions(
+            self.model, prompt_ids, cfg.n_samples, cfg.max_new_tokens, cfg.temperature
+        )
+
+        # --- Score completions via reward_fn -----------------------------------
+        rewards = torch.tensor(
+            [float(self.reward_fn(c)) for c in completions], dtype=torch.float32
+        )
+
+        # --- Compute group-relative advantages ---------------------------------
+        advantages = group_relative_advantages(rewards)
+
+        # --- Collect old log probs (detached, under rollout policy) ------------
+        old_log_probs_list = []
+        with torch.no_grad():
+            for c in completions:
+                lp = compute_sequence_log_probs(self.model, c, response_start=prompt_ids.shape[1])
+                old_log_probs_list.append(lp.detach())
+        old_log_probs = torch.stack(old_log_probs_list)
+
+        # --- Recompute log probs under current (training) policy ---------------
+        self.model.train()
+        new_log_probs_list = []
+        for c in completions:
+            lp = compute_sequence_log_probs(self.model, c, response_start=prompt_ids.shape[1])
+            new_log_probs_list.append(lp)
+        new_log_probs = torch.stack(new_log_probs_list)
+
+        # --- Policy gradient loss ----------------------------------------------
+        loss = grpo_policy_loss(new_log_probs, old_log_probs, advantages, cfg.clip_ratio)
+
+        # --- Optional KL regularization ----------------------------------------
+        if cfg.kl_coef > 0:
+            kl_penalty = (new_log_probs - old_log_probs).mean()
+            loss = loss + cfg.kl_coef * kl_penalty
+
+        # --- Optimizer step ----------------------------------------------------
+        self.optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+        self.optimizer.step()
+
+        return {
+            "loss": loss.item(),
+            "mean_reward": rewards.mean().item(),
+            "advantage_std": advantages.std().item() if advantages.numel() > 1 else 0.0,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Legacy API (kept for backward compatibility)
+# ---------------------------------------------------------------------------
 
 def compute_advantages(rewards: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
-    """Normalize rewards within a group to get advantages.
+    """Normalize rewards within a group to get advantages (legacy name).
 
     Args:
         rewards: (N,) — scalar reward for each rollout.
@@ -90,105 +238,24 @@ def compute_advantages(rewards: torch.Tensor, eps: float = 1e-8) -> torch.Tensor
     return (rewards - rewards.mean()) / (std + eps)
 
 
-class GRPOTrainer:
-    """Train a model using GRPO on a set of prompts with a reward function.
+def grpo_loss(
+    log_probs_new: torch.Tensor,
+    log_probs_old: torch.Tensor,
+    advantages: torch.Tensor,
+    clip_eps: float = 0.2,
+) -> torch.Tensor:
+    """Compute clipped GRPO/PPO policy gradient loss (legacy name).
 
     Args:
-        model: The policy model (AureliusTransformer or any nn.Module).
-        reward_fn: Callable mapping (prompt: str, response: str) -> float.
-        cfg: GRPO configuration.
+        log_probs_new: (N,) — log probs under current policy.
+        log_probs_old: (N,) — log probs under old policy (detached).
+        advantages: (N,) — group-normalized advantages.
+        clip_eps: PPO clipping epsilon.
+
+    Returns:
+        Scalar loss (to minimize).
     """
-
-    def __init__(
-        self,
-        model: nn.Module,
-        reward_fn: Callable[[str, str], float],
-        cfg: GRPOConfig | None = None,
-    ) -> None:
-        self.model = model
-        self.reward_fn = reward_fn
-        self.cfg = cfg or GRPOConfig()
-        self.optimizer = torch.optim.AdamW(
-            [p for p in model.parameters() if p.requires_grad],
-            lr=self.cfg.learning_rate,
-        )
-
-    def rollout(
-        self,
-        prompt_ids: torch.Tensor,
-        prompt_text: str,
-        tokenizer,
-    ) -> tuple[list[torch.Tensor], list[float], list[torch.Tensor]]:
-        """Generate N responses, score them, and collect old log probs.
-
-        Returns:
-            response_id_list: list of N response token tensors (each variable length)
-            rewards: list of N scalar rewards
-            old_log_probs: list of N log prob scalars (detached)
-        """
-        self.model.eval()
-        response_id_list = []
-        rewards = []
-        old_log_probs = []
-
-        with torch.no_grad():
-            for _ in range(self.cfg.num_rollouts):
-                full_ids = self.model.generate(
-                    prompt_ids,
-                    max_new_tokens=self.cfg.max_new_tokens,
-                    temperature=self.cfg.temperature,
-                )
-                response_ids = full_ids[:, prompt_ids.shape[1]:]
-                response_text = tokenizer.decode(response_ids[0].tolist())
-                reward = float(self.reward_fn(prompt_text, response_text))
-
-                lp = compute_sequence_log_probs(self.model, full_ids, prompt_ids.shape[1])
-
-                response_id_list.append(response_ids)
-                rewards.append(reward)
-                old_log_probs.append(lp.detach())
-
-        return response_id_list, rewards, old_log_probs
-
-    def step(
-        self,
-        prompt_ids: torch.Tensor,
-        prompt_text: str,
-        tokenizer,
-    ) -> dict[str, float]:
-        """One GRPO training step: rollout + advantage + loss + update."""
-        response_ids_list, rewards, old_log_probs_list = self.rollout(
-            prompt_ids, prompt_text, tokenizer
-        )
-
-        rewards_t = torch.tensor(rewards, dtype=torch.float32)
-        advantages = compute_advantages(rewards_t, eps=self.cfg.advantage_eps)
-        old_log_probs_t = torch.stack(old_log_probs_list)
-
-        # Recompute log probs under current policy
-        self.model.train()
-        new_log_probs = []
-        for response_ids in response_ids_list:
-            full_ids = torch.cat([prompt_ids, response_ids], dim=1)
-            lp = compute_sequence_log_probs(self.model, full_ids, prompt_ids.shape[1])
-            new_log_probs.append(lp)
-        new_log_probs_t = torch.stack(new_log_probs)
-
-        loss = grpo_loss(new_log_probs_t, old_log_probs_t, advantages, self.cfg.clip_eps)
-
-        # Optional KL regularization: penalizes deviation from rollout policy.
-        # This also ensures a non-zero gradient when all advantages are identical.
-        if self.cfg.kl_coef > 0:
-            kl = (new_log_probs_t - old_log_probs_t).mean()
-            loss = loss + self.cfg.kl_coef * kl
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-        self.optimizer.step()
-
-        return {
-            "loss": loss.item(),
-            "mean_reward": rewards_t.mean().item(),
-            "reward_std": rewards_t.std().item(),
-        }
+    ratio = torch.exp(log_probs_new - log_probs_old)
+    clipped = torch.clamp(ratio, 1 - clip_eps, 1 + clip_eps)
+    loss = -torch.min(ratio * advantages, clipped * advantages).mean()
+    return loss

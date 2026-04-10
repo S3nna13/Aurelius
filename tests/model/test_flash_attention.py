@@ -1,4 +1,4 @@
-"""Tests for src/model/flash_attention.py — minimum 12 tests."""
+"""Tests for src/model/flash_attention.py — minimum 16 tests."""
 
 from __future__ import annotations
 
@@ -15,6 +15,12 @@ from src.model.flash_attention import (
     compute_memory_footprint,
     online_softmax,
     tiled_attention,
+    # New components
+    FlashAttentionConfig,
+    FlashAttentionLayer,
+    chunked_attention,
+    flash_attention_forward,
+    memory_efficiency_ratio,
 )
 
 # ---------------------------------------------------------------------------
@@ -191,3 +197,240 @@ def test_benchmark_attention_equivalence_standard_dims():
         f"Tiled attention not equivalent for B={B} H={H} T={T} HD={HD} BS={BS}; "
         f"max_diff={result['max_diff']:.2e}"
     )
+
+
+# ===========================================================================
+# New tests for FlashAttentionConfig, chunked_attention, flash_attention_forward,
+# FlashAttentionLayer, and memory_efficiency_ratio
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# N1. FlashAttentionConfig defaults
+# ---------------------------------------------------------------------------
+def test_flash_attention_config_defaults():
+    cfg = FlashAttentionConfig()
+    assert cfg.block_size == 64
+    assert cfg.causal is True
+    assert cfg.dropout == 0.0
+    assert cfg.scale is None
+
+
+# ---------------------------------------------------------------------------
+# N2. FlashAttentionConfig custom values round-trip
+# ---------------------------------------------------------------------------
+def test_flash_attention_config_custom():
+    cfg = FlashAttentionConfig(block_size=32, causal=False, dropout=0.1, scale=0.5)
+    assert cfg.block_size == 32
+    assert cfg.causal is False
+    assert cfg.dropout == 0.1
+    assert cfg.scale == 0.5
+
+
+# ---------------------------------------------------------------------------
+# N3. chunked_attention output shape (B, H, T, d)
+# ---------------------------------------------------------------------------
+def test_chunked_attention_output_shape():
+    Q = torch.randn(B, H, T, HD)
+    K = torch.randn(B, H, T, HD)
+    V = torch.randn(B, H, T, HD)
+    out = chunked_attention(Q, K, V, block_size=BS, causal=True)
+    assert out.shape == (B, H, T, HD), f"Unexpected shape: {out.shape}"
+
+
+# ---------------------------------------------------------------------------
+# N4. chunked_attention mathematically equivalent to standard attention (tol 1e-4)
+# ---------------------------------------------------------------------------
+def test_chunked_attention_equivalence_with_standard():
+    torch.manual_seed(17)
+    Q = torch.randn(B, H, T, HD)
+    K = torch.randn(B, H, T, HD)
+    V = torch.randn(B, H, T, HD)
+
+    # Standard causal attention
+    scale = 1.0 / math.sqrt(HD)
+    scores = scale * torch.matmul(Q, K.transpose(-2, -1))
+    causal_mask = torch.triu(torch.ones(T, T, dtype=torch.bool), diagonal=1)
+    scores = scores.masked_fill(causal_mask.unsqueeze(0).unsqueeze(0), -1e9)
+    standard_out = torch.matmul(F.softmax(scores, dim=-1), V)
+
+    chunked_out = chunked_attention(Q, K, V, block_size=BS, causal=True)
+
+    max_diff = (standard_out - chunked_out).abs().max().item()
+    assert max_diff < 1e-4, f"max_diff={max_diff:.2e} exceeds 1e-4"
+
+
+# ---------------------------------------------------------------------------
+# N5. chunked_attention causal masking: future tokens have zero attention weight
+# ---------------------------------------------------------------------------
+def test_chunked_attention_causal_masking():
+    torch.manual_seed(42)
+    Q = torch.randn(B, H, T, HD)
+    K = torch.randn(B, H, T, HD)
+    V = torch.randn(B, H, T, HD)
+
+    out_before = chunked_attention(Q, K, V, block_size=BS, causal=True)
+
+    # Perturb V at last position — position 0 must be unaffected
+    V_perturbed = V.clone()
+    V_perturbed[:, :, T - 1, :] += 100.0
+
+    out_after = chunked_attention(Q, K, V_perturbed, block_size=BS, causal=True)
+
+    assert torch.allclose(out_before[:, :, 0, :], out_after[:, :, 0, :], atol=1e-5), (
+        "Causal masking violated: position 0 output changed when future V was perturbed"
+    )
+
+
+# ---------------------------------------------------------------------------
+# N6. chunked_attention non-causal: all positions can attend to all others
+# ---------------------------------------------------------------------------
+def test_chunked_attention_non_causal_equivalence():
+    torch.manual_seed(99)
+    Q = torch.randn(B, H, T, HD)
+    K = torch.randn(B, H, T, HD)
+    V = torch.randn(B, H, T, HD)
+
+    scale = 1.0 / math.sqrt(HD)
+    scores = scale * torch.matmul(Q, K.transpose(-2, -1))
+    standard_out = torch.matmul(F.softmax(scores, dim=-1), V)
+
+    chunked_out = chunked_attention(Q, K, V, block_size=BS, causal=False)
+    max_diff = (standard_out - chunked_out).abs().max().item()
+    assert max_diff < 1e-4, f"non-causal max_diff={max_diff:.2e} exceeds 1e-4"
+
+
+# ---------------------------------------------------------------------------
+# N7. block_size=1 gives same result as block_size=T
+# ---------------------------------------------------------------------------
+def test_chunked_attention_block_size_1_vs_full():
+    torch.manual_seed(55)
+    Q = torch.randn(B, H, T, HD)
+    K = torch.randn(B, H, T, HD)
+    V = torch.randn(B, H, T, HD)
+
+    out_bs1 = chunked_attention(Q, K, V, block_size=1, causal=True)
+    out_bsT = chunked_attention(Q, K, V, block_size=T, causal=True)
+
+    max_diff = (out_bs1 - out_bsT).abs().max().item()
+    assert max_diff < 1e-4, f"block_size=1 vs block_size=T max_diff={max_diff:.2e}"
+
+
+# ---------------------------------------------------------------------------
+# N8. chunked_attention with explicit scale matches scaled standard attention
+# ---------------------------------------------------------------------------
+def test_chunked_attention_explicit_scale():
+    torch.manual_seed(33)
+    Q = torch.randn(B, H, T, HD)
+    K = torch.randn(B, H, T, HD)
+    V = torch.randn(B, H, T, HD)
+
+    explicit_scale = 0.25
+    scores = explicit_scale * torch.matmul(Q, K.transpose(-2, -1))
+    causal_mask = torch.triu(torch.ones(T, T, dtype=torch.bool), diagonal=1)
+    scores = scores.masked_fill(causal_mask.unsqueeze(0).unsqueeze(0), -1e9)
+    standard_out = torch.matmul(F.softmax(scores, dim=-1), V)
+
+    chunked_out = chunked_attention(Q, K, V, block_size=BS, causal=True, scale=explicit_scale)
+    max_diff = (standard_out - chunked_out).abs().max().item()
+    assert max_diff < 1e-4, f"explicit scale max_diff={max_diff:.2e} exceeds 1e-4"
+
+
+# ---------------------------------------------------------------------------
+# N9. flash_attention_forward wrapper produces correct shape
+# ---------------------------------------------------------------------------
+def test_flash_attention_forward_shape():
+    cfg = FlashAttentionConfig(block_size=BS, causal=True)
+    Q = torch.randn(B, H, T, HD)
+    K = torch.randn(B, H, T, HD)
+    V = torch.randn(B, H, T, HD)
+    out = flash_attention_forward(Q, K, V, cfg)
+    assert out.shape == (B, H, T, HD), f"Unexpected shape: {out.shape}"
+
+
+# ---------------------------------------------------------------------------
+# N10. flash_attention_forward agrees with chunked_attention directly
+# ---------------------------------------------------------------------------
+def test_flash_attention_forward_agrees_with_chunked():
+    torch.manual_seed(77)
+    cfg = FlashAttentionConfig(block_size=BS, causal=True)
+    Q = torch.randn(B, H, T, HD)
+    K = torch.randn(B, H, T, HD)
+    V = torch.randn(B, H, T, HD)
+
+    out_wrapper = flash_attention_forward(Q, K, V, cfg)
+    out_direct = chunked_attention(Q, K, V, block_size=BS, causal=True)
+
+    assert torch.allclose(out_wrapper, out_direct, atol=1e-6), (
+        "flash_attention_forward and chunked_attention disagree"
+    )
+
+
+# ---------------------------------------------------------------------------
+# N11. FlashAttentionLayer output shape (B, T, d_model)
+# ---------------------------------------------------------------------------
+def test_flash_attention_layer_output_shape():
+    cfg = FlashAttentionConfig(block_size=BS)
+    layer = FlashAttentionLayer(d_model=D_MODEL, n_heads=H, config=cfg)
+    x = torch.randn(B, T, D_MODEL)
+    out = layer(x)
+    assert out.shape == (B, T, D_MODEL), f"Unexpected shape: {out.shape}"
+
+
+# ---------------------------------------------------------------------------
+# N12. FlashAttentionLayer forward with various seq lengths
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("seq_len", [4, 8, 16, 32])
+def test_flash_attention_layer_various_seq_lengths(seq_len):
+    cfg = FlashAttentionConfig(block_size=4)
+    layer = FlashAttentionLayer(d_model=D_MODEL, n_heads=H, config=cfg)
+    x = torch.randn(B, seq_len, D_MODEL)
+    out = layer(x)
+    assert out.shape == (B, seq_len, D_MODEL), (
+        f"seq_len={seq_len}: unexpected shape {out.shape}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# N13. memory_efficiency_ratio > 1 for seq_len > block_size
+# ---------------------------------------------------------------------------
+def test_memory_efficiency_ratio_greater_than_one():
+    ratio = memory_efficiency_ratio(seq_len=512, block_size=64)
+    assert ratio > 1.0, f"Expected ratio > 1, got {ratio}"
+
+
+# ---------------------------------------------------------------------------
+# N14. memory_efficiency_ratio correct value (seq_len / block_size)
+# ---------------------------------------------------------------------------
+def test_memory_efficiency_ratio_correct_value():
+    ratio = memory_efficiency_ratio(seq_len=256, block_size=32)
+    expected = 256 / 32  # = 8.0
+    assert abs(ratio - expected) < 1e-9, f"Expected {expected}, got {ratio}"
+
+
+# ---------------------------------------------------------------------------
+# N15. memory_efficiency_ratio = 1 when block_size == seq_len
+# ---------------------------------------------------------------------------
+def test_memory_efficiency_ratio_equals_one_when_full():
+    ratio = memory_efficiency_ratio(seq_len=64, block_size=64)
+    assert abs(ratio - 1.0) < 1e-9, f"Expected 1.0, got {ratio}"
+
+
+# ---------------------------------------------------------------------------
+# N16. Gradient flows through chunked_attention
+# ---------------------------------------------------------------------------
+def test_chunked_attention_gradient_flows():
+    Q = torch.randn(2, 2, 8, 8, requires_grad=True)
+    K = torch.randn(2, 2, 8, 8, requires_grad=True)
+    V = torch.randn(2, 2, 8, 8, requires_grad=True)
+
+    out = chunked_attention(Q, K, V, block_size=4, causal=True)
+    loss = out.sum()
+    loss.backward()
+
+    assert Q.grad is not None, "No gradient for Q"
+    assert K.grad is not None, "No gradient for K"
+    assert V.grad is not None, "No gradient for V"
+    assert not torch.isnan(Q.grad).any(), "NaN gradient in Q"
+    assert not torch.isnan(K.grad).any(), "NaN gradient in K"
+    assert not torch.isnan(V.grad).any(), "NaN gradient in V"
