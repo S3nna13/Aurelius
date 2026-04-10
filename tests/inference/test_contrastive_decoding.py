@@ -7,18 +7,19 @@ import torch
 import pytest
 
 from src.inference.contrastive_decoding import (
-    CDConfig,
-    compute_contrastive_logits,
-    nucleus_sample,
+    ContrastiveDecodeConfig,
+    compute_plausibility_mask,
+    contrastive_score,
+    contrastive_step,
     ContrastiveDecoder,
-    VocabProjectionAmateur,
+    adaptive_alpha,
 )
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
 
 # ---------------------------------------------------------------------------
-# Shared fixtures
+# Shared helpers / fixtures
 # ---------------------------------------------------------------------------
 
 def _small_config() -> AureliusConfig:
@@ -37,19 +38,17 @@ def _small_config() -> AureliusConfig:
 @pytest.fixture
 def expert_model():
     torch.manual_seed(0)
-    return AureliusTransformer(_small_config())
+    m = AureliusTransformer(_small_config())
+    m.eval()
+    return m
 
 
 @pytest.fixture
 def amateur_model():
     torch.manual_seed(1)
-    return AureliusTransformer(_small_config())
-
-
-@pytest.fixture
-def cd_decoder(expert_model, amateur_model):
-    cfg = CDConfig(max_new_tokens=3)
-    return ContrastiveDecoder(expert_model, amateur_model, cfg)
+    m = AureliusTransformer(_small_config())
+    m.eval()
+    return m
 
 
 @pytest.fixture
@@ -59,156 +58,226 @@ def input_ids():
 
 
 # ---------------------------------------------------------------------------
-# 1. CDConfig defaults
+# 1. ContrastiveDecodeConfig defaults
 # ---------------------------------------------------------------------------
 
-def test_cd_config_defaults():
-    cfg = CDConfig()
+def test_config_defaults():
+    cfg = ContrastiveDecodeConfig()
     assert cfg.alpha == 0.1
-    assert cfg.beta == 0.5
     assert cfg.temperature == 1.0
-    assert cfg.max_new_tokens == 50
-    assert cfg.top_p == 0.95
+    assert cfg.max_new_tokens == 64
 
 
 # ---------------------------------------------------------------------------
-# 2. compute_contrastive_logits shape
+# 2. ContrastiveDecodeConfig custom values
 # ---------------------------------------------------------------------------
 
-def test_compute_contrastive_logits_shape():
-    V = 256
-    expert_logits = torch.randn(V)
-    amateur_logits = torch.randn(V)
-    score = compute_contrastive_logits(expert_logits, amateur_logits, alpha=0.1)
-    assert score.shape == (V,)
-
-
-# ---------------------------------------------------------------------------
-# 3. compute_contrastive_logits plausibility mask
-# ---------------------------------------------------------------------------
-
-def test_compute_contrastive_logits_plausibility_mask():
-    V = 16
-    # Expert strongly peaks at token 0; all others far below threshold
-    expert_logits = torch.full((V,), -100.0)
-    expert_logits[0] = 10.0
-    amateur_logits = torch.zeros(V)
-
-    score = compute_contrastive_logits(expert_logits, amateur_logits, alpha=0.1)
-
-    # Tokens 1..V-1 are below threshold → -inf
-    assert score[0] != float("-inf"), "Token 0 should be in plausibility set"
-    for i in range(1, V):
-        assert score[i] == float("-inf"), f"Token {i} should be masked to -inf"
+def test_config_custom():
+    cfg = ContrastiveDecodeConfig(alpha=0.3, temperature=0.7, max_new_tokens=128)
+    assert cfg.alpha == 0.3
+    assert cfg.temperature == 0.7
+    assert cfg.max_new_tokens == 128
 
 
 # ---------------------------------------------------------------------------
-# 4. compute_contrastive_logits top token
+# 3. compute_plausibility_mask shape
 # ---------------------------------------------------------------------------
 
-def test_compute_contrastive_logits_top_token():
-    V = 32
-    # Expert strongly prefers token 0; amateur is uniform
-    expert_logits = torch.full((V,), -1.0)
-    expert_logits[0] = 10.0
-    amateur_logits = torch.zeros(V)  # uniform amateur
-
-    score = compute_contrastive_logits(expert_logits, amateur_logits, alpha=0.1)
-
-    # Token 0 should have the highest (non -inf) score
-    assert score.argmax().item() == 0
+def test_plausibility_mask_shape():
+    logits = torch.randn(2, 256)
+    mask = compute_plausibility_mask(logits, alpha=0.1)
+    assert mask.shape == (2, 256)
+    assert mask.dtype == torch.bool
 
 
 # ---------------------------------------------------------------------------
-# 5. nucleus_sample returns valid token id
+# 4. compute_plausibility_mask keeps top token
 # ---------------------------------------------------------------------------
 
-def test_nucleus_sample_returns_valid_token():
-    V = 256
-    torch.manual_seed(0)
-    logits = torch.randn(V)
-    token_id = nucleus_sample(logits, top_p=0.9, temperature=1.0)
-    assert isinstance(token_id, int)
-    assert 0 <= token_id < V
+def test_plausibility_mask_keeps_top():
+    logits = torch.full((1, 16), -10.0)
+    logits[0, 5] = 10.0  # dominant token
+    mask = compute_plausibility_mask(logits, alpha=0.1)
+    assert mask[0, 5].item() is True
 
 
 # ---------------------------------------------------------------------------
-# 6. nucleus_sample top_p=1.0 allows all tokens
+# 5. compute_plausibility_mask filters low-prob tokens
 # ---------------------------------------------------------------------------
 
-def test_nucleus_sample_top_p_one():
-    V = 64
-    torch.manual_seed(42)
-    # Flat logits → all tokens equally likely
-    logits = torch.zeros(V)
-    seen = set()
-    for seed in range(200):
-        torch.manual_seed(seed)
-        seen.add(nucleus_sample(logits, top_p=1.0, temperature=1.0))
-    # With top_p=1.0 and enough seeds we should see more than 1 distinct token
-    assert len(seen) > 1
+def test_plausibility_mask_filters_low():
+    logits = torch.full((1, 16), -100.0)
+    logits[0, 0] = 10.0
+    mask = compute_plausibility_mask(logits, alpha=0.1)
+    # Only token 0 should pass; others have negligible probability
+    assert mask[0, 0].item() is True
+    assert mask[0, 1:].sum().item() == 0
 
 
 # ---------------------------------------------------------------------------
-# 7. ContrastiveDecoder generate shape
+# 6. compute_plausibility_mask with alpha=0 keeps all
 # ---------------------------------------------------------------------------
 
-def test_contrastive_decoder_generate_shape(cd_decoder, input_ids):
-    output = cd_decoder.generate(input_ids, max_new_tokens=3)
-    assert output.shape[0] == 1
-    T = input_ids.shape[1]
-    assert output.shape[1] == T + 3
-
-
-# ---------------------------------------------------------------------------
-# 8. ContrastiveDecoder generate_greedy shape
-# ---------------------------------------------------------------------------
-
-def test_contrastive_decoder_greedy_shape(cd_decoder, input_ids):
-    output = cd_decoder.generate_greedy(input_ids, max_new_tokens=3)
-    assert output.shape[0] == 1
-    T = input_ids.shape[1]
-    assert output.shape[1] == T + 3
+def test_plausibility_mask_alpha_zero():
+    logits = torch.randn(1, 32)
+    mask = compute_plausibility_mask(logits, alpha=0.0)
+    assert mask.all()
 
 
 # ---------------------------------------------------------------------------
-# 9. ContrastiveDecoder generate_greedy is deterministic
+# 7. contrastive_score shape
 # ---------------------------------------------------------------------------
 
-def test_contrastive_decoder_greedy_deterministic(cd_decoder, input_ids):
-    out1 = cd_decoder.generate_greedy(input_ids, max_new_tokens=3)
-    out2 = cd_decoder.generate_greedy(input_ids, max_new_tokens=3)
-    assert torch.equal(out1, out2)
-
-
-# ---------------------------------------------------------------------------
-# 10. VocabProjectionAmateur — no projection when vocab sizes match
-# ---------------------------------------------------------------------------
-
-def test_vocab_projection_same_vocab(expert_model):
-    """When amateur and expert share vocab size, no projection layer is created."""
-    wrapper = VocabProjectionAmateur(expert_model, expert_vocab_size=expert_model.config.vocab_size)
-    assert wrapper.projection is None
+def test_contrastive_score_shape():
+    B, V = 2, 256
+    e = torch.randn(B, V)
+    a = torch.randn(B, V)
+    mask = torch.ones(B, V, dtype=torch.bool)
+    s = contrastive_score(e, a, mask)
+    assert s.shape == (B, V)
 
 
 # ---------------------------------------------------------------------------
-# 11. VocabProjectionAmateur — output shape matches expert vocab
+# 8. contrastive_score masked positions are -inf
 # ---------------------------------------------------------------------------
 
-def test_vocab_projection_output_shape():
-    """Output logits shape must be (B, T, expert_vocab_size) even when vocabs differ."""
-    torch.manual_seed(0)
-    amateur_cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=128, max_seq_len=512,
-    )
-    amateur = AureliusTransformer(amateur_cfg)
-    expert_vocab_size = 256
+def test_contrastive_score_masked_inf():
+    B, V = 1, 8
+    e = torch.randn(B, V)
+    a = torch.randn(B, V)
+    mask = torch.zeros(B, V, dtype=torch.bool)
+    mask[0, 3] = True
+    s = contrastive_score(e, a, mask)
+    # Only position 3 should be finite
+    assert torch.isfinite(s[0, 3])
+    for i in range(V):
+        if i != 3:
+            assert s[0, i] == float("-inf")
 
-    wrapper = VocabProjectionAmateur(amateur, expert_vocab_size=expert_vocab_size)
-    assert wrapper.projection is not None
 
-    # Input ids must be valid for the *amateur* vocab (< 128)
-    input_ids = torch.randint(0, 128, (1, 4))
-    logits = wrapper(input_ids)
-    assert logits.shape == (1, 4, expert_vocab_size)
+# ---------------------------------------------------------------------------
+# 9. contrastive_score favors expert-preferred tokens
+# ---------------------------------------------------------------------------
+
+def test_contrastive_score_expert_preference():
+    B, V = 1, 4
+    # Expert strongly prefers token 0, amateur prefers token 1
+    e = torch.tensor([[10.0, -10.0, -10.0, -10.0]])
+    a = torch.tensor([[-10.0, 10.0, -10.0, -10.0]])
+    mask = torch.ones(B, V, dtype=torch.bool)
+    s = contrastive_score(e, a, mask)
+    assert s.argmax(dim=-1).item() == 0
+
+
+# ---------------------------------------------------------------------------
+# 10. adaptive_alpha at step 0
+# ---------------------------------------------------------------------------
+
+def test_adaptive_alpha_start():
+    assert adaptive_alpha(0, 10) == pytest.approx(0.05)
+
+
+# ---------------------------------------------------------------------------
+# 11. adaptive_alpha at last step
+# ---------------------------------------------------------------------------
+
+def test_adaptive_alpha_end():
+    assert adaptive_alpha(9, 10) == pytest.approx(0.5)
+
+
+# ---------------------------------------------------------------------------
+# 12. adaptive_alpha mid-point
+# ---------------------------------------------------------------------------
+
+def test_adaptive_alpha_mid():
+    mid = adaptive_alpha(5, 11)  # t = 5/10 = 0.5
+    expected = 0.05 + 0.5 * (0.5 - 0.05)
+    assert mid == pytest.approx(expected)
+
+
+# ---------------------------------------------------------------------------
+# 13. adaptive_alpha with total_steps=1
+# ---------------------------------------------------------------------------
+
+def test_adaptive_alpha_single_step():
+    assert adaptive_alpha(0, 1) == pytest.approx(0.05)
+
+
+# ---------------------------------------------------------------------------
+# 14. contrastive_step returns correct shapes
+# ---------------------------------------------------------------------------
+
+def test_contrastive_step_shapes(expert_model, amateur_model, input_ids):
+    cfg = ContrastiveDecodeConfig()
+    next_token, scores = contrastive_step(expert_model, amateur_model, input_ids, cfg)
+    assert next_token.shape == (1, 1)
+    assert scores.shape == (1, 256)
+
+
+# ---------------------------------------------------------------------------
+# 15. contrastive_step token is valid
+# ---------------------------------------------------------------------------
+
+def test_contrastive_step_valid_token(expert_model, amateur_model, input_ids):
+    cfg = ContrastiveDecodeConfig()
+    next_token, _ = contrastive_step(expert_model, amateur_model, input_ids, cfg)
+    assert 0 <= next_token.item() < 256
+
+
+# ---------------------------------------------------------------------------
+# 16. ContrastiveDecoder generate output shape
+# ---------------------------------------------------------------------------
+
+def test_decoder_generate_shape(expert_model, amateur_model, input_ids):
+    cfg = ContrastiveDecodeConfig(max_new_tokens=3)
+    decoder = ContrastiveDecoder(expert_model, amateur_model, cfg)
+    output = decoder.generate(input_ids)
+    assert output.shape == (1, input_ids.shape[1] + 3)
+
+
+# ---------------------------------------------------------------------------
+# 17. ContrastiveDecoder preserves prompt prefix
+# ---------------------------------------------------------------------------
+
+def test_decoder_preserves_prompt(expert_model, amateur_model, input_ids):
+    cfg = ContrastiveDecodeConfig(max_new_tokens=2)
+    decoder = ContrastiveDecoder(expert_model, amateur_model, cfg)
+    output = decoder.generate(input_ids)
+    assert torch.equal(output[:, :input_ids.shape[1]], input_ids)
+
+
+# ---------------------------------------------------------------------------
+# 18. ContrastiveDecoder generate tokens are valid vocab indices
+# ---------------------------------------------------------------------------
+
+def test_decoder_generate_valid_tokens(expert_model, amateur_model, input_ids):
+    cfg = ContrastiveDecodeConfig(max_new_tokens=4)
+    decoder = ContrastiveDecoder(expert_model, amateur_model, cfg)
+    output = decoder.generate(input_ids)
+    generated = output[:, input_ids.shape[1]:]
+    assert (generated >= 0).all()
+    assert (generated < 256).all()
+
+
+# ---------------------------------------------------------------------------
+# 19. adaptive_alpha is monotonically increasing
+# ---------------------------------------------------------------------------
+
+def test_adaptive_alpha_monotonic():
+    total = 20
+    values = [adaptive_alpha(s, total) for s in range(total)]
+    for i in range(1, len(values)):
+        assert values[i] >= values[i - 1]
+
+
+# ---------------------------------------------------------------------------
+# 20. contrastive_score all masked yields all -inf
+# ---------------------------------------------------------------------------
+
+def test_contrastive_score_all_masked():
+    B, V = 1, 8
+    e = torch.randn(B, V)
+    a = torch.randn(B, V)
+    mask = torch.zeros(B, V, dtype=torch.bool)
+    s = contrastive_score(e, a, mask)
+    assert (s == float("-inf")).all()
