@@ -1,79 +1,182 @@
-"""Sparse attention mask: local window + global tokens (Longformer-style)."""
+"""Sparse attention: local window + strided global patterns."""
+from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
-from dataclasses import dataclass
+import torch.nn as nn
+import torch.nn.functional as F
+from torch import Tensor
 
 
 @dataclass
 class SparseAttentionConfig:
-    window_size: int = 256          # local window radius (total = 2*window_size + 1)
-    causal: bool = True             # if True, only look backward (causal window)
+    d_model: int = 256
+    n_heads: int = 4
+    window_size: int = 32       # local attention window (each side)
+    stride: int = 8             # global strided attention step
+    dropout: float = 0.0
 
 
-def make_longformer_mask(
+def build_local_mask(
     seq_len: int,
     window_size: int,
-    global_token_indices: list[int] | None = None,
-    causal: bool = False,
-    device: torch.device | None = None,
-) -> torch.Tensor:
-    """Build Longformer-style sparse attention mask.
+    device: torch.device = torch.device("cpu"),
+) -> Tensor:
+    """Build (T, T) boolean mask where mask[i,j]=True if |i-j| <= window_size AND j<=i (causal).
 
-    Combines:
-    1. Local window attention: each token attends to ±window_size neighbors
-       (or only backward if causal=True)
-    2. Global tokens: specified indices attend to ALL tokens and vice versa
+    Used as attention mask: True = attend, False = mask out.
+    """
+    rows = torch.arange(seq_len, device=device).unsqueeze(1)  # (T, 1)
+    cols = torch.arange(seq_len, device=device).unsqueeze(0)  # (1, T)
+    causal = cols <= rows
+    local = (rows - cols).abs() <= window_size
+    return causal & local
 
-    Mask convention: 0.0 = allowed, -inf = blocked (additive mask for SDPA).
+
+def build_strided_mask(
+    seq_len: int,
+    stride: int,
+    device: torch.device = torch.device("cpu"),
+) -> Tensor:
+    """Build (T, T) boolean mask where mask[i,j]=True if j % stride == 0 AND j<=i (causal global)."""
+    rows = torch.arange(seq_len, device=device).unsqueeze(1)  # (T, 1)
+    cols = torch.arange(seq_len, device=device).unsqueeze(0)  # (1, T)
+    causal = cols <= rows
+    strided = (cols % stride) == 0
+    return causal & strided
+
+
+def build_sparse_mask(
+    seq_len: int,
+    window_size: int,
+    stride: int,
+    device: torch.device = torch.device("cpu"),
+) -> Tensor:
+    """Combine local + strided masks: True where EITHER mask is True."""
+    local = build_local_mask(seq_len, window_size, device=device)
+    strided = build_strided_mask(seq_len, stride, device=device)
+    return local | strided
+
+
+class SparseAttention(nn.Module):
+    """Multi-head attention with sparse (local+strided) pattern.
 
     Args:
-        seq_len: sequence length
-        window_size: local attention radius
-        global_token_indices: indices of global tokens (attend to/from everywhere)
-        causal: if True, only attend to past positions (no future in window)
-        device: target device
-
-    Returns:
-        (seq_len, seq_len) float tensor
+        d_model: model dimension
+        n_heads: number of heads
+        window_size: local window radius (attend to window_size tokens each side)
+        stride: strided global attention step
     """
-    mask = torch.full((seq_len, seq_len), float("-inf"), device=device)
 
-    # Build local window
-    rows = torch.arange(seq_len, device=device).unsqueeze(1)  # (S, 1)
-    cols = torch.arange(seq_len, device=device).unsqueeze(0)  # (1, S)
+    def __init__(self, config: SparseAttentionConfig) -> None:
+        super().__init__()
+        self.d_model = config.d_model
+        self.n_heads = config.n_heads
+        self.window_size = config.window_size
+        self.stride = config.stride
+        self.dropout = config.dropout
 
-    if causal:
-        # Attend to: col <= row AND col >= row - window_size
-        allowed = (cols <= rows) & (cols >= rows - window_size)
-    else:
-        # Attend to: |col - row| <= window_size
-        allowed = (cols - rows).abs() <= window_size
+        assert config.d_model % config.n_heads == 0, (
+            f"d_model ({config.d_model}) must be divisible by n_heads ({config.n_heads})"
+        )
+        self.head_dim = config.d_model // config.n_heads
 
-    mask[allowed] = 0.0
+        self.qkv_proj = nn.Linear(config.d_model, 3 * config.d_model, bias=False)
+        self.out_proj = nn.Linear(config.d_model, config.d_model, bias=False)
+        self.attn_dropout = nn.Dropout(config.dropout)
 
-    # Global tokens: attend to all and all attend to them
-    if global_token_indices:
-        for g in global_token_indices:
-            if 0 <= g < seq_len:
-                mask[g, :] = 0.0      # global token attends to all
-                mask[:, g] = 0.0      # all attend to global token
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Args: x (B, T, d_model)
+        Returns: (B, T, d_model)
 
-    return mask
+        Applies sparse attention mask before softmax.
+        Positions where mask=False get -inf before softmax.
+        """
+        B, T, C = x.shape
+
+        qkv = self.qkv_proj(x)  # (B, T, 3*d_model)
+        q, k, v = qkv.split(self.d_model, dim=-1)
+
+        # Reshape to (B, n_heads, T, head_dim)
+        q = q.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+        k = k.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+        v = v.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+
+        # Build sparse mask (T, T) — True = attend
+        sparse_mask = build_sparse_mask(T, self.window_size, self.stride, device=x.device)
+
+        # Compute attention scores
+        scale = self.head_dim ** -0.5
+        attn = torch.matmul(q, k.transpose(-2, -1)) * scale  # (B, n_heads, T, T)
+
+        # Apply sparse mask: set False positions to -inf
+        # sparse_mask: (T, T) -> broadcast over (B, n_heads, T, T)
+        attn = attn.masked_fill(~sparse_mask.unsqueeze(0).unsqueeze(0), float("-inf"))
+
+        attn = F.softmax(attn, dim=-1)
+        # Replace NaN from rows that are all -inf (shouldn't happen for causal since diagonal is True)
+        attn = torch.nan_to_num(attn, nan=0.0)
+        attn = self.attn_dropout(attn)
+
+        out = torch.matmul(attn, v)  # (B, n_heads, T, head_dim)
+        out = out.transpose(1, 2).contiguous().view(B, T, C)
+        return self.out_proj(out)
 
 
-def make_causal_longformer_mask(
-    seq_len: int,
-    window_size: int,
-    global_token_indices: list[int] | None = None,
-    device: torch.device | None = None,
-) -> torch.Tensor:
-    """Convenience wrapper for causal (decoder) Longformer mask."""
-    return make_longformer_mask(seq_len, window_size, global_token_indices, causal=True, device=device)
+class SparseTransformerLayer(nn.Module):
+    """Transformer layer with sparse attention + FFN."""
+
+    def __init__(self, config: SparseAttentionConfig) -> None:
+        super().__init__()
+        self.attn = SparseAttention(config)
+        self.attn_norm = nn.LayerNorm(config.d_model)
+        self.ffn_norm = nn.LayerNorm(config.d_model)
+        self.ffn = nn.Sequential(
+            nn.Linear(config.d_model, 4 * config.d_model, bias=False),
+            nn.GELU(),
+            nn.Linear(4 * config.d_model, config.d_model, bias=False),
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = x + self.attn(self.attn_norm(x))
+        x = x + self.ffn(self.ffn_norm(x))
+        return x
 
 
-def count_attended_tokens(mask: torch.Tensor) -> torch.Tensor:
-    """Count how many tokens each position attends to.
+class SparseTransformer(nn.Module):
+    """Sparse transformer: embed -> N sparse layers -> lm_head."""
 
-    Returns (seq_len,) int tensor — 0.0 entries in mask = attended.
+    def __init__(
+        self,
+        config: SparseAttentionConfig,
+        n_layers: int,
+        vocab_size: int,
+    ) -> None:
+        super().__init__()
+        self.embed = nn.Embedding(vocab_size, config.d_model)
+        self.layers = nn.ModuleList(
+            [SparseTransformerLayer(config) for _ in range(n_layers)]
+        )
+        self.norm = nn.LayerNorm(config.d_model)
+        self.lm_head = nn.Linear(config.d_model, vocab_size, bias=False)
+
+    def forward(self, input_ids: Tensor) -> Tensor:
+        """Returns logits (B, T, vocab_size)."""
+        x = self.embed(input_ids)
+        for layer in self.layers:
+            x = layer(x)
+        x = self.norm(x)
+        return self.lm_head(x)
+
+
+def sparsity_ratio(seq_len: int, window_size: int, stride: int) -> float:
+    """Compute fraction of attention entries that are attended (not masked).
+
+    Lower = sparser.
     """
-    return (mask == 0.0).sum(dim=-1)
+    mask = build_sparse_mask(seq_len, window_size, stride)
+    total = seq_len * seq_len
+    attended = mask.sum().item()
+    return attended / total

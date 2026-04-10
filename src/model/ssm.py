@@ -34,11 +34,12 @@ from torch import Tensor
 class SSMConfig:
     """Hyperparameters for the Selective State Space Model."""
 
-    d_model: int = 2048
+    d_model: int = 128
     d_state: int = 16           # SSM state dimension (N in the paper)
     d_conv: int = 4             # local depthwise convolution width
     expand: int = 2             # inner dim expansion factor (d_inner = expand * d_model)
-    dt_rank: str | int = "auto" # "auto" → ceil(d_model / 16)
+    dt_rank: str | int = 8      # rank of Δt projection ("auto" → ceil(d_model / 16))
+    dropout: float = 0.0
     dt_min: float = 0.001
     dt_max: float = 0.1
     dt_init_floor: float = 1e-4
@@ -307,3 +308,133 @@ class MambaBlock(nn.Module):
 
         # Project back to d_model
         return self.out_proj(y)  # (B, L, d_model)
+
+
+# ---------------------------------------------------------------------------
+# selective_scan — public alias matching the spec API
+# ---------------------------------------------------------------------------
+
+def selective_scan(
+    u: Tensor,      # (B, L, d_inner)
+    dt: Tensor,     # (B, L, d_inner) — time step (softplus applied internally)
+    A: Tensor,      # (d_inner, d_state) — log scale, negative
+    B: Tensor,      # (B, L, d_state)
+    C: Tensor,      # (B, L, d_state)
+    D: Tensor,      # (d_inner,)
+) -> Tensor:
+    """Discretized SSM scan matching the spec API.
+
+    Delegates to selective_scan_naive; dt is treated as already in d_inner width.
+    Returns: (B, L, d_inner)
+    """
+    return selective_scan_naive(u, dt, A, B, C, D)
+
+
+# ---------------------------------------------------------------------------
+# MambaLayer — MambaBlock with residual connection + RMSNorm
+# ---------------------------------------------------------------------------
+
+class MambaLayer(nn.Module):
+    """MambaBlock wrapped with pre-norm (RMSNorm) and residual connection."""
+
+    def __init__(self, config: SSMConfig) -> None:
+        super().__init__()
+        self.norm = nn.RMSNorm(config.d_model)
+
+        # Build a lightweight AureliusConfig-like namespace for MambaBlock
+        class _Cfg:
+            d_model = config.d_model
+
+        self.block = _MambaBlockFromSSMConfig(config)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Input (B, T, d_model), output (B, T, d_model) with residual."""
+        return x + self.block(self.norm(x))
+
+
+class _MambaBlockFromSSMConfig(nn.Module):
+    """Internal MambaBlock that accepts SSMConfig directly (not AureliusConfig)."""
+
+    def __init__(self, config: SSMConfig) -> None:
+        super().__init__()
+        d_model = config.d_model
+        d_inner = config.d_model * config.expand
+        self.d_inner = d_inner
+        d_conv = config.d_conv
+
+        # Resolve dt_rank
+        dt_rank = config.dt_rank
+        if isinstance(dt_rank, str) and dt_rank == "auto":
+            dt_rank = math.ceil(d_model / 16)
+        self.dt_rank = dt_rank
+
+        self.in_proj = nn.Linear(d_model, 2 * d_inner, bias=False)
+        self.conv1d = nn.Conv1d(
+            in_channels=d_inner,
+            out_channels=d_inner,
+            kernel_size=d_conv,
+            groups=d_inner,
+            bias=True,
+            padding=d_conv - 1,
+        )
+        self.x_proj = nn.Linear(d_inner, self.dt_rank + 2 * config.d_state, bias=False)
+        self.dt_proj = nn.Linear(self.dt_rank, d_inner, bias=True)
+
+        A = torch.arange(1, config.d_state + 1).float().unsqueeze(0).expand(d_inner, -1)
+        self.A_log = nn.Parameter(torch.log(A))
+        self.D = nn.Parameter(torch.ones(d_inner))
+        self.out_proj = nn.Linear(d_inner, d_model, bias=False)
+
+        self._d_state = config.d_state
+
+    def forward(self, x: Tensor) -> Tensor:
+        B, L, _ = x.shape
+        xz = self.in_proj(x)
+        x_ssm, z = xz.chunk(2, dim=-1)
+
+        x_conv = x_ssm.transpose(1, 2)
+        x_conv = self.conv1d(x_conv)[:, :, :L]
+        x_conv = x_conv.transpose(1, 2)
+        x_conv = F.silu(x_conv)
+
+        xz2 = self.x_proj(x_conv)
+        delta_raw, B_ssm, C_ssm = xz2.split([self.dt_rank, self._d_state, self._d_state], dim=-1)
+        delta = self.dt_proj(delta_raw)
+        A = -torch.exp(self.A_log)
+
+        y = selective_scan_naive(x_conv, delta, A, B_ssm, C_ssm, self.D)
+        y = y * F.silu(z)
+        return self.out_proj(y)
+
+
+# ---------------------------------------------------------------------------
+# MambaLM — stack of MambaLayers for language modelling
+# ---------------------------------------------------------------------------
+
+class MambaLM(nn.Module):
+    """Stack of Mamba layers for language modeling.
+
+    Returns logits (B, T, vocab_size). Self-contained — does NOT wrap
+    AureliusTransformer.
+    """
+
+    def __init__(self, config: SSMConfig, n_layers: int, vocab_size: int) -> None:
+        super().__init__()
+        self.embed = nn.Embedding(vocab_size, config.d_model)
+        self.layers = nn.ModuleList([MambaLayer(config) for _ in range(n_layers)])
+        self.norm = nn.RMSNorm(config.d_model)
+        self.head = nn.Linear(config.d_model, vocab_size, bias=False)
+
+    def forward(self, input_ids: Tensor) -> Tensor:
+        """
+        Args:
+            input_ids: (B, T) integer token ids
+
+        Returns:
+            logits: (B, T, vocab_size)
+        """
+        x = self.embed(input_ids)
+        for layer in self.layers:
+            x = layer(x)
+        x = self.norm(x)
+        return self.head(x)
