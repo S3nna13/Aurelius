@@ -2,166 +2,254 @@
 
 Kirkpatrick et al., 2017 - arXiv:1612.00796
 
-Computes the diagonal Fisher Information Matrix after training on task A,
-then adds a quadratic penalty during task B training to prevent forgetting A.
+Prevents catastrophic forgetting by anchoring important parameters
+(measured via Fisher information) to their values after learning a
+previous task.
 
 Penalty: lambda/2 * sum_i F_i * (theta_i - theta*_i)^2
-
-Where:
-- F_i = Fisher information for parameter i (importance weight)
-- theta*_i = optimal parameter value after task A
-- theta_i = current parameter value
 """
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Iterator
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torch import Tensor
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class EWCConfig:
-    ewc_lambda: float = 5000.0    # penalty strength (higher = more conservative)
-    n_fisher_samples: int = 200   # samples to estimate Fisher info
-    fisher_batch_size: int = 4    # batch size during Fisher estimation
+    ewc_lambda: float = 1000.0      # regularization strength
+    n_fisher_samples: int = 200     # samples to estimate Fisher
+    fisher_type: str = "empirical"  # "empirical" | "diagonal"
+
+
+def compute_fisher_diagonal(
+    model: nn.Module,
+    data_iter: Iterator[Tensor],  # yields input_ids batches
+    n_samples: int,
+) -> dict[str, Tensor]:
+    """Estimate diagonal Fisher Information Matrix.
+
+    For each batch (up to n_samples total batches):
+        1. Forward pass, compute log probability (negative cross-entropy
+           treating input_ids as both input and shifted labels).
+        2. Backward to get gradients.
+        3. Fisher[param] += grad^2 (element-wise).
+
+    Returns dict mapping param name -> Fisher diagonal (same shape as param),
+    averaged over sampled batches.
+    """
+    model.eval()
+
+    # Initialise accumulators
+    fisher: dict[str, Tensor] = {
+        name: torch.zeros_like(param.data)
+        for name, param in model.named_parameters()
+        if param.requires_grad
+    }
+
+    n_batches = 0
+    for batch in data_iter:
+        if n_batches >= n_samples:
+            break
+
+        # Support both dict batches and plain tensors
+        if isinstance(batch, dict):
+            input_ids = batch["input_ids"]
+        elif isinstance(batch, (list, tuple)):
+            input_ids = batch[0]
+        else:
+            input_ids = batch
+
+        model.zero_grad()
+
+        # Forward pass: unpack (loss, logits, pkv) — AureliusTransformer API
+        loss, logits, _ = model(input_ids)
+
+        if loss is None or not loss.requires_grad:
+            # Compute cross-entropy manually
+            shift_logits = logits[:, :-1, :].contiguous()
+            shift_labels = input_ids[:, 1:].contiguous()
+            loss = F.cross_entropy(
+                shift_logits.view(-1, logits.size(-1)),
+                shift_labels.view(-1),
+            )
+
+        loss.backward()
+
+        # Accumulate squared gradients (Fisher diagonal estimate)
+        for name, param in model.named_parameters():
+            if param.requires_grad and param.grad is not None:
+                fisher[name] += param.grad.detach().pow(2)
+
+        n_batches += 1
+
+    # Average over batches and detach from computation graph
+    n_batches = max(1, n_batches)
+    fisher = {name: (f / n_batches).detach() for name, f in fisher.items()}
+
+    model.train()
+    logger.info("Computed Fisher diagonal over %d batches", n_batches)
+    return fisher
+
+
+def ewc_penalty(
+    model: nn.Module,
+    fisher: dict[str, Tensor],
+    optimal_params: dict[str, Tensor],
+    ewc_lambda: float,
+) -> Tensor:
+    """Compute EWC regularization penalty.
+
+    penalty = (lambda/2) * sum_i F_i * (theta_i - theta*_i)^2
+
+    Returns scalar tensor.
+    """
+    device = next(model.parameters()).device
+    penalty = torch.tensor(0.0, device=device)
+
+    for name, param in model.named_parameters():
+        if name not in fisher:
+            continue
+        f = fisher[name].to(device)
+        theta_star = optimal_params[name].to(device)
+        penalty = penalty + (f * (param - theta_star).pow(2)).sum()
+
+    return ewc_lambda / 2.0 * penalty
+
+
+class EWCTrainer:
+    """Continual learning trainer using EWC regularization."""
+
+    def __init__(
+        self,
+        model: nn.Module,
+        config: EWCConfig,
+        optimizer: torch.optim.Optimizer,
+    ) -> None:
+        self.model = model
+        self.config = config
+        self.optimizer = optimizer
+        self._fisher: dict[str, Tensor] | None = None
+        self._optimal_params: dict[str, Tensor] | None = None
+
+    def consolidate(self, data_iter: Iterator[Tensor]) -> None:
+        """After finishing task T, compute Fisher and save optimal params.
+
+        Call this before training on task T+1.
+        """
+        self._fisher = compute_fisher_diagonal(
+            self.model,
+            data_iter,
+            self.config.n_fisher_samples,
+        )
+        self._optimal_params = {
+            name: param.data.clone().detach()
+            for name, param in self.model.named_parameters()
+            if param.requires_grad
+        }
+        logger.info("EWCTrainer: consolidated task with %d parameters", len(self._fisher))
+
+    def train_step(self, input_ids: Tensor) -> dict:
+        """Train step with EWC regularization (if consolidated).
+
+        loss = task_loss + ewc_penalty  (if Fisher available)
+
+        Returns dict with keys: 'task_loss', 'ewc_loss', 'total_loss'.
+        """
+        self.model.train()
+        self.optimizer.zero_grad()
+
+        # Task loss: language modelling (next-token prediction)
+        task_loss_tensor, logits, _ = self.model(input_ids, labels=input_ids)
+
+        if task_loss_tensor is None:
+            shift_logits = logits[:, :-1, :].contiguous()
+            shift_labels = input_ids[:, 1:].contiguous()
+            task_loss_tensor = F.cross_entropy(
+                shift_logits.view(-1, logits.size(-1)),
+                shift_labels.view(-1),
+            )
+
+        # EWC regularisation
+        if self._fisher is not None and self._optimal_params is not None:
+            ewc_loss_tensor = ewc_penalty(
+                self.model,
+                self._fisher,
+                self._optimal_params,
+                self.config.ewc_lambda,
+            )
+        else:
+            device = next(self.model.parameters()).device
+            ewc_loss_tensor = torch.tensor(0.0, device=device)
+
+        total_loss = task_loss_tensor + ewc_loss_tensor
+        total_loss.backward()
+        self.optimizer.step()
+
+        return {
+            "task_loss": task_loss_tensor.item(),
+            "ewc_loss": ewc_loss_tensor.item(),
+            "total_loss": total_loss.item(),
+        }
+
+    def is_consolidated(self) -> bool:
+        """True if Fisher has been computed (consolidate() was called)."""
+        return self._fisher is not None
+
+
+class TaskSequence:
+    """Manages a sequence of tasks for continual learning evaluation."""
+
+    def __init__(self) -> None:
+        self._tasks: list[dict] = []
+
+    def add_task(self, name: str, data: list[Tensor]) -> None:
+        """Register a named task with its training data."""
+        self._tasks.append({"name": name, "data": data})
+
+    def get_task(self, name: str) -> list[Tensor]:
+        """Retrieve task data by name.
+
+        Raises:
+            KeyError: If no task with the given name exists.
+        """
+        for task in self._tasks:
+            if task["name"] == name:
+                return task["data"]
+        raise KeyError(f"Task '{name}' not found")
+
+    def task_names(self) -> list[str]:
+        """Return ordered list of registered task names."""
+        return [t["name"] for t in self._tasks]
+
+    def __len__(self) -> int:
+        return len(self._tasks)
+
+# Backward-compatible alias
+EWC = EWCTrainer
 
 
 class EWC:
-    """Elastic Weight Consolidation regularizer.
+    """Legacy EWC interface (model, config) compatible with continual.py."""
 
-    Usage:
-        # After training on task A:
-        ewc = EWC(model, cfg)
-        ewc.compute_fisher(task_a_dataloader)
-
-        # During task B training:
-        loss = task_b_loss + ewc.penalty(model)
-
-    Args:
-        model: The model (must remain the same Python object).
-        cfg: EWC configuration.
-    """
-
-    def __init__(self, model: nn.Module, cfg: EWCConfig | None = None) -> None:
+    def __init__(self, model: nn.Module, config: "EWCConfig") -> None:
         self.model = model
-        self.cfg = cfg or EWCConfig()
-        # Stored after compute_fisher():
-        self._fisher: dict[str, torch.Tensor] = {}   # param_name -> diagonal Fisher
-        self._optimal: dict[str, torch.Tensor] = {}  # param_name -> theta* (frozen copy)
+        self.config = config
+        self._fisher: dict[str, Tensor] | None = None
+        self._optimal_params: dict[str, Tensor] | None = None
 
-    def compute_fisher(self, dataloader) -> None:
-        """Estimate diagonal Fisher information from task A data.
+    def compute_fisher(self, data_iter) -> None:
+        self._fisher = compute_fisher_diagonal(self.model, iter(data_iter), self.config.n_fisher_samples)
+        self._optimal_params = {n: p.detach().clone() for n, p in self.model.named_parameters()}
 
-        Runs model forward on sampled batches, backpropagates the log-likelihood,
-        and accumulates squared gradients as Fisher diagonal estimate.
-
-        After this call, `self._fisher` and `self._optimal` are populated.
-
-        Args:
-            dataloader: DataLoader yielding {"input_ids": Tensor, "labels": Tensor}
-                        or (input_ids, labels) tuples.
-        """
-        self.model.set_grad_checkpointing(False) if hasattr(self.model, 'set_grad_checkpointing') else None
-        self.model.eval()
-
-        # Store current parameters as theta*
-        self._optimal = {
-            name: param.data.clone()
-            for name, param in self.model.named_parameters()
-            if param.requires_grad
-        }
-
-        # Initialize Fisher accumulators
-        fisher: dict[str, torch.Tensor] = {
-            name: torch.zeros_like(param.data)
-            for name, param in self.model.named_parameters()
-            if param.requires_grad
-        }
-
-        n_samples = 0
-        for batch in dataloader:
-            if n_samples >= self.cfg.n_fisher_samples:
-                break
-
-            if isinstance(batch, dict):
-                input_ids = batch["input_ids"]
-                labels = batch.get("labels", batch["input_ids"])
-            else:
-                input_ids, labels = batch[0], batch[1]
-
-            # Take a mini-batch
-            ids_batch = input_ids[:self.cfg.fisher_batch_size]
-            lbl_batch = labels[:self.cfg.fisher_batch_size]
-
-            self.model.zero_grad()
-            loss, _, _ = self.model(input_ids=ids_batch, labels=lbl_batch)
-            loss.backward()
-
-            # Accumulate squared gradients
-            for name, param in self.model.named_parameters():
-                if param.requires_grad and param.grad is not None:
-                    fisher[name] += param.grad.data.pow(2)
-
-            n_samples += ids_batch.shape[0]
-
-        # Average and store
-        n_batches = max(1, n_samples // self.cfg.fisher_batch_size)
-        self._fisher = {name: f / n_batches for name, f in fisher.items()}
-
-        logger.info(
-            "Computed Fisher information over %d samples (%d batches)",
-            n_samples, n_batches,
-        )
-        self.model.train()
-
-    def penalty(self, model: nn.Module | None = None) -> torch.Tensor:
-        """Compute EWC penalty term for current model parameters.
-
-        Args:
-            model: Model to compute penalty for (defaults to self.model).
-
-        Returns:
-            Scalar penalty tensor (to add to task loss before backward).
-
-        Raises:
-            RuntimeError: If compute_fisher() has not been called yet.
-        """
-        if not self._fisher:
-            raise RuntimeError(
-                "EWC.compute_fisher() must be called before EWC.penalty(). "
-                "Run compute_fisher() after training on the previous task."
-            )
-
-        model = model or self.model
-        penalty = torch.tensor(0.0, device=next(model.parameters()).device)
-
-        for name, param in model.named_parameters():
-            if name not in self._fisher:
-                continue
-            fisher = self._fisher[name].to(param.device)
-            optimal = self._optimal[name].to(param.device)
-            penalty = penalty + (fisher * (param - optimal).pow(2)).sum()
-
-        return self.cfg.ewc_lambda / 2 * penalty
-
-    def is_ready(self) -> bool:
-        """Returns True if Fisher information has been computed."""
-        return len(self._fisher) > 0
-
-    def named_importances(self, top_n: int = 10) -> list[tuple[str, float]]:
-        """Return top-n most important parameters by Fisher information magnitude.
-
-        Useful for understanding which layers EWC is protecting.
-
-        Returns:
-            List of (param_name, mean_fisher) sorted descending.
-        """
-        scores = [
-            (name, f.mean().item())
-            for name, f in self._fisher.items()
-        ]
-        return sorted(scores, key=lambda x: x[1], reverse=True)[:top_n]
+    def penalty(self, model: nn.Module) -> Tensor:
+        if self._fisher is None or self._optimal_params is None:
+            return torch.tensor(0.0)
+        return ewc_penalty(model, self._fisher, self._optimal_params, self.config.ewc_lambda)

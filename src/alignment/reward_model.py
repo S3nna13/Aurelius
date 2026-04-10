@@ -43,11 +43,14 @@ class RewardHead(nn.Module):
 class RewardModel(nn.Module):
     """Backbone + RewardHead for preference learning."""
 
-    def __init__(self, backbone: nn.Module, config: RewardModelConfig | None = None) -> None:
+    def __init__(self, backbone: nn.Module, config: RewardModelConfig | None = None, freeze_backbone: bool = False) -> None:
         super().__init__()
         self.backbone = backbone
         self.config = config or RewardModelConfig(d_model=backbone.config.d_model)
         self.reward_head = RewardHead(self.config.d_model, self.config.dropout)
+        if freeze_backbone:
+            for p in self.backbone.parameters():
+                p.requires_grad_(False)
 
     def _hidden_states(self, input_ids: Tensor) -> Tensor:
         """Run backbone manually to extract hidden states before lm_head.

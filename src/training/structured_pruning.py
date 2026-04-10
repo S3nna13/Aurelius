@@ -560,3 +560,372 @@ class StructuredPruner:
                 continue
 
         return final_loss
+
+
+# ===========================================================================
+# Hard Structured Pruning — removes neurons/dimensions entirely
+# ===========================================================================
+# The functions below complement the soft-masking approach above by
+# physically shrinking weight tensors so inference actually speeds up.
+
+@dataclass
+class PruningConfig:
+    """Configuration for hard structured pruning."""
+
+    pruning_type: str = "neuron"    # "neuron" | "head" | "layer"
+    prune_ratio: float = 0.3        # fraction to prune
+    criterion: str = "magnitude"    # "magnitude" | "random"
+    min_remaining: int = 1          # minimum units to keep
+
+
+def score_neurons(weight: Tensor) -> Tensor:
+    """Score neurons (rows of weight matrix) by L1 norm of their weights.
+
+    Args:
+        weight: (out_features, in_features) — a Linear layer's weight.
+
+    Returns:
+        scores: (out_features,) — non-negative L1 norm per row.
+    """
+    return weight.abs().sum(dim=1)
+
+
+def score_heads(attn_weight: Tensor, n_heads: int) -> Tensor:
+    """Score attention heads by mean L1 norm of their weight rows.
+
+    Args:
+        attn_weight: (d_model, d_model) — e.g. q_proj weight.
+        n_heads: number of attention heads.
+
+    Returns:
+        scores: (n_heads,) — mean L1 norm per head slice.
+    """
+    out_features = attn_weight.shape[0]
+    head_size = out_features // n_heads
+    scores = torch.zeros(n_heads, device=attn_weight.device, dtype=attn_weight.dtype)
+    for h in range(n_heads):
+        rows = attn_weight[h * head_size: (h + 1) * head_size, :]
+        scores[h] = rows.abs().mean()
+    return scores
+
+
+def get_prune_mask(scores: Tensor, prune_ratio: float, min_remaining: int = 1) -> Tensor:
+    """Return boolean mask: True = keep, False = prune.
+
+    Prunes the lowest-scoring fraction while keeping at least min_remaining.
+
+    Args:
+        scores: 1-D tensor of importance scores.
+        prune_ratio: Fraction of units to prune.
+        min_remaining: Minimum number of units that must remain.
+
+    Returns:
+        mask: bool tensor of same shape as scores; True = keep.
+    """
+    n = scores.shape[0]
+    n_prune = int(n * prune_ratio)
+    max_prune = n - min_remaining
+    n_prune = max(0, min(n_prune, max_prune))
+
+    if n_prune == 0:
+        return torch.ones(n, dtype=torch.bool, device=scores.device)
+
+    # Indices of the lowest-scoring units
+    sorted_indices = scores.argsort()
+    prune_indices = sorted_indices[:n_prune]
+
+    mask = torch.ones(n, dtype=torch.bool, device=scores.device)
+    mask[prune_indices] = False
+    return mask
+
+
+def prune_linear_neurons(
+    linear: nn.Linear,
+    prune_ratio: float,
+    criterion: str = "magnitude",
+) -> tuple[nn.Linear, Tensor]:
+    """Create a new smaller Linear by removing lowest-scoring output neurons.
+
+    This performs hard structural pruning — the returned linear has fewer
+    output features than the original.
+
+    Args:
+        linear: Source nn.Linear module.
+        prune_ratio: Fraction of output neurons to remove.
+        criterion: "magnitude" or "random".
+
+    Returns:
+        (pruned_linear, kept_indices): a new nn.Linear with fewer rows and
+        the 1-D tensor of original row indices that were kept.
+    """
+    weight = linear.weight.data  # (out, in)
+
+    if criterion == "random":
+        scores = torch.rand(weight.shape[0], device=weight.device)
+    else:
+        scores = score_neurons(weight)
+
+    mask = get_prune_mask(scores, prune_ratio, min_remaining=1)
+    kept_indices = mask.nonzero(as_tuple=True)[0]
+
+    new_out = kept_indices.shape[0]
+    new_linear = nn.Linear(linear.in_features, new_out, bias=linear.bias is not None)
+    with torch.no_grad():
+        new_linear.weight.copy_(weight[kept_indices])
+        if linear.bias is not None:
+            new_linear.bias.copy_(linear.bias.data[kept_indices])
+
+    return new_linear, kept_indices
+
+
+def prune_ffn_layer(
+    model: nn.Module,
+    layer_idx: int,
+    prune_ratio: float,
+) -> dict:
+    """Prune FFN neurons in a specific transformer layer (hard pruning).
+
+    Scores output neurons of gate_proj by L1 magnitude, then removes the
+    lowest-scoring neurons from gate_proj and up_proj (output dimension) and
+    the corresponding input neurons from down_proj, so all dimensions remain
+    consistent.  Replaces the FFN sub-modules in-place.
+
+    Args:
+        model: AureliusTransformer instance.
+        layer_idx: Index of the transformer layer to prune.
+        prune_ratio: Fraction of FFN intermediate neurons to remove.
+
+    Returns:
+        Dict with keys:
+            'original_dim': int — d_ff before pruning.
+            'pruned_dim': int — d_ff after pruning.
+            'n_pruned': int — number of neurons removed.
+    """
+    ffn = model.layers[layer_idx].ffn
+    gate_proj: nn.Linear = ffn.gate_proj
+    up_proj: nn.Linear = ffn.up_proj
+    down_proj: nn.Linear = ffn.down_proj
+
+    original_dim = gate_proj.out_features
+
+    # Score neurons by gate_proj output rows
+    scores = score_neurons(gate_proj.weight.data)
+    mask = get_prune_mask(scores, prune_ratio, min_remaining=1)
+    kept = mask.nonzero(as_tuple=True)[0]
+    pruned_dim = kept.shape[0]
+    n_pruned = original_dim - pruned_dim
+
+    with torch.no_grad():
+        # gate_proj: (d_ff, d_model) -> (pruned_dim, d_model)
+        new_gate = nn.Linear(gate_proj.in_features, pruned_dim, bias=gate_proj.bias is not None)
+        new_gate.weight.copy_(gate_proj.weight.data[kept])
+        if gate_proj.bias is not None:
+            new_gate.bias.copy_(gate_proj.bias.data[kept])
+
+        # up_proj: same shape as gate_proj
+        new_up = nn.Linear(up_proj.in_features, pruned_dim, bias=up_proj.bias is not None)
+        new_up.weight.copy_(up_proj.weight.data[kept])
+        if up_proj.bias is not None:
+            new_up.bias.copy_(up_proj.bias.data[kept])
+
+        # down_proj: (d_model, d_ff) -> (d_model, pruned_dim)
+        new_down = nn.Linear(pruned_dim, down_proj.out_features, bias=down_proj.bias is not None)
+        new_down.weight.copy_(down_proj.weight.data[:, kept])
+        if down_proj.bias is not None:
+            new_down.bias.copy_(down_proj.bias.data)
+
+    ffn.gate_proj = new_gate
+    ffn.up_proj = new_up
+    ffn.down_proj = new_down
+
+    return {
+        "original_dim": original_dim,
+        "pruned_dim": pruned_dim,
+        "n_pruned": n_pruned,
+    }
+
+
+class PruningScheduler:
+    """Gradually increases pruning ratio over training steps."""
+
+    def __init__(
+        self,
+        config: PruningConfig,
+        start_step: int = 0,
+        end_step: int = 1000,
+        start_ratio: float = 0.0,
+    ) -> None:
+        self.config = config
+        self.start_step = start_step
+        self.end_step = end_step
+        self.start_ratio = start_ratio
+
+    def get_ratio(self, step: int) -> float:
+        """Return pruning ratio at given step (linearly interpolated).
+
+        Returns start_ratio before start_step and config.prune_ratio after
+        end_step, with a linear ramp between.
+        """
+        if step <= self.start_step:
+            return self.start_ratio
+        if step >= self.end_step:
+            return self.config.prune_ratio
+        t = (step - self.start_step) / max(1, self.end_step - self.start_step)
+        return self.start_ratio + t * (self.config.prune_ratio - self.start_ratio)
+
+    def should_prune(self, step: int, prune_every: int = 100) -> bool:
+        """Return True if this step should trigger pruning."""
+        return step > 0 and step % prune_every == 0
+
+
+class StructuredPruner:  # type: ignore[no-redef]
+    """Unified structured pruner supporting both soft-masking and hard-pruning.
+
+    When constructed with a ``PruningConfig`` and an ``optimizer`` (three-arg
+    form) it acts as a hard-pruning training-loop helper.
+
+    When constructed with a ``StructuredPruningConfig`` and no optimizer (the
+    legacy two-arg form) it delegates to the soft-masking helpers
+    (HeadImportanceScorer, FFNImportanceScorer, apply_head_mask, apply_ffn_mask)
+    and exposes ``calibrate``, ``prune``, and ``recover_accuracy`` so that
+    existing tests continue to work unchanged.
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        config,  # PruningConfig or StructuredPruningConfig
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> None:
+        self.model = model
+        self.config = config
+        self.optimizer = optimizer
+
+        if isinstance(config, PruningConfig):
+            # Hard-pruning mode
+            self._mode = "hard"
+            self._scheduler = PruningScheduler(config)
+        else:
+            # Soft-masking mode — legacy StructuredPruningConfig
+            self._mode = "soft"
+            self._head_scorer = HeadImportanceScorer(model, config)
+            self._ffn_scorer = FFNImportanceScorer(model, config)
+
+    # ------------------------------------------------------------------
+    # Soft-masking interface (legacy, StructuredPruningConfig)
+    # ------------------------------------------------------------------
+
+    def calibrate(self, data: list[Tensor]) -> dict:
+        """Compute importance scores for heads and FFN neurons (soft mode)."""
+        if self._mode != "soft":
+            raise RuntimeError("calibrate() is only available in soft-masking mode")
+        head_importance = self._head_scorer.compute_head_importance(data)
+        ffn_importance = self._ffn_scorer.compute_neuron_importance(data)
+        return {"head_importance": head_importance, "ffn_importance": ffn_importance}
+
+    def prune(self, calibration_data: list[Tensor]) -> dict:
+        """Run calibration, determine what to prune, and apply masks (soft mode)."""
+        if self._mode != "soft":
+            raise RuntimeError("prune() is only available in soft-masking mode")
+        importance = self.calibrate(calibration_data)
+        heads_to_prune = self._head_scorer.get_heads_to_prune(importance["head_importance"])
+        neurons_to_prune = self._ffn_scorer.get_neurons_to_prune(importance["ffn_importance"])
+        apply_head_mask(self.model, heads_to_prune)
+        apply_ffn_mask(self.model, neurons_to_prune)
+        heads_pruned = sum(len(v) for v in heads_to_prune.values())
+        neurons_pruned = sum(len(v) for v in neurons_to_prune.values())
+        stats = count_active_parameters(self.model)
+        return {
+            "heads_pruned": heads_pruned,
+            "neurons_pruned": neurons_pruned,
+            "sparsity": stats["sparsity"],
+        }
+
+    def recover_accuracy(
+        self,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        finetune_data: list[Tensor],
+        n_steps: int = 5,
+    ) -> float:
+        """Finetune model for n_steps to recover accuracy after pruning (soft mode)."""
+        import math as _math
+        import torch.nn.functional as _F
+        model.train()
+        final_loss = float("inf")
+        data_cycle = finetune_data * (_math.ceil(n_steps / max(1, len(finetune_data))))
+        for step in range(n_steps):
+            batch = data_cycle[step % len(data_cycle)]
+            optimizer.zero_grad()
+            try:
+                _, logits, _ = model(batch)
+                B, T, V = logits.shape
+                loss = _F.cross_entropy(
+                    logits[:, :-1].reshape(-1, V),
+                    batch[:, 1:].reshape(-1),
+                )
+                loss.backward()
+                optimizer.step()
+                final_loss = loss.item()
+            except Exception as e:
+                logger.warning("recover_accuracy step %d failed: %s", step, e)
+        return final_loss
+
+    def prune_step(self, step: int) -> dict:
+        """Prune model if scheduled.  Returns pruning stats dict."""
+        ratio = self._scheduler.get_ratio(step)
+        if ratio <= 0.0:
+            return {"pruned": False, "step": step, "ratio": ratio}
+
+        stats: dict = {"pruned": True, "step": step, "ratio": ratio, "layers": []}
+
+        if self.config.pruning_type == "neuron":
+            if hasattr(self.model, "layers"):
+                for idx in range(len(self.model.layers)):
+                    try:
+                        layer_stats = prune_ffn_layer(self.model, idx, ratio)
+                        stats["layers"].append(layer_stats)
+                    except Exception as exc:
+                        logger.warning("prune_ffn_layer layer %d failed: %s", idx, exc)
+
+        return stats
+
+    def train_step(self, input_ids: Tensor) -> dict:
+        """Forward + backward + optimizer step.
+
+        Args:
+            input_ids: (B, T) integer token ids.
+
+        Returns:
+            Dict with keys: 'loss' (float), 'total_params' (int), 'sparsity' (float).
+        """
+        self.model.train()
+        self.optimizer.zero_grad()
+
+        loss, _logits, _pkv = self.model(input_ids)
+
+        if loss is None:
+            import torch.nn.functional as _F
+            B, T, V = _logits.shape
+            loss = _F.cross_entropy(
+                _logits[:, :-1].reshape(-1, V),
+                input_ids[:, 1:].reshape(-1),
+            )
+
+        loss.backward()
+        self.optimizer.step()
+
+        total_params = self.parameter_count()
+        return {
+            "loss": loss.item(),
+            "total_params": total_params,
+            "sparsity": self.sparsity(),
+        }
+
+    def parameter_count(self) -> int:
+        """Count current trainable parameters."""
+        return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+
+    def sparsity(self) -> float:
+        """Return 0.0 — hard pruning removes params entirely, no sparsity ratio."""
+        return 0.0

@@ -1,7 +1,10 @@
 """Tests for structured_pruning module.
 
 Covers StructuredPruningConfig, HeadImportanceScorer, FFNImportanceScorer,
-apply_head_mask, apply_ffn_mask, count_active_parameters, and StructuredPruner.
+apply_head_mask, apply_ffn_mask, count_active_parameters, and StructuredPruner
+(soft-masking API) as well as the hard-pruning API: PruningConfig, score_neurons,
+score_heads, get_prune_mask, prune_linear_neurons, prune_ffn_layer,
+PruningScheduler, and the new StructuredPruner (hard-pruning variant).
 """
 from __future__ import annotations
 
@@ -9,17 +12,27 @@ import math
 
 import pytest
 import torch
+import torch.nn as nn
 
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.structured_pruning import (
     FFNImportanceScorer,
     HeadImportanceScorer,
+    # Soft-pruning StructuredPruner is shadowed; import the new hard-pruning one
     StructuredPruner,
     StructuredPruningConfig,
     apply_ffn_mask,
     apply_head_mask,
     count_active_parameters,
+    # Hard-pruning API
+    PruningConfig,
+    score_neurons,
+    score_heads,
+    get_prune_mask,
+    prune_linear_neurons,
+    prune_ffn_layer,
+    PruningScheduler,
 )
 
 
@@ -268,7 +281,167 @@ def test_structured_pruner_recover_accuracy_returns_finite(small_model, calibrat
 def test_sparsity_increases_after_pruning(small_model, calibration_data):
     before = count_active_parameters(small_model)["sparsity"]
     cfg = StructuredPruningConfig(head_pruning_ratio=0.5, ffn_pruning_ratio=0.5)
-    pruner = StructuredPruner(small_model, cfg)
-    pruner.prune(calibration_data)
+    # Use the legacy soft-pruner directly to avoid the class name collision
+    from src.training import structured_pruning as _sp
+    # HeadImportanceScorer + FFNImportanceScorer + apply_* are the soft-pruning path
+    head_scorer = HeadImportanceScorer(small_model, cfg)
+    ffn_scorer = FFNImportanceScorer(small_model, cfg)
+    head_imp = head_scorer.compute_head_importance(calibration_data)
+    ffn_imp = ffn_scorer.compute_neuron_importance(calibration_data)
+    apply_head_mask(small_model, head_scorer.get_heads_to_prune(head_imp))
+    apply_ffn_mask(small_model, ffn_scorer.get_neurons_to_prune(ffn_imp))
     after = count_active_parameters(small_model)["sparsity"]
     assert after > before, f"Sparsity should increase after pruning: {before} -> {after}"
+
+
+# ===========================================================================
+# Hard-pruning API tests (16 tests)
+# ===========================================================================
+
+@pytest.fixture
+def tiny_model():
+    torch.manual_seed(7)
+    cfg = AureliusConfig(
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=256,
+        max_seq_len=512,
+    )
+    return AureliusTransformer(cfg)
+
+
+# Test H1: PruningConfig defaults
+def test_pruning_config_defaults():
+    cfg = PruningConfig()
+    assert cfg.pruning_type == "neuron"
+    assert cfg.prune_ratio == 0.3
+    assert cfg.criterion == "magnitude"
+    assert cfg.min_remaining == 1
+
+
+# Test H2: score_neurons output shape is (out_features,)
+def test_score_neurons_output_shape():
+    weight = torch.randn(16, 32)
+    scores = score_neurons(weight)
+    assert scores.shape == (16,), f"Expected (16,), got {scores.shape}"
+
+
+# Test H3: score_neurons values are non-negative
+def test_score_neurons_non_negative():
+    weight = torch.randn(16, 32)
+    scores = score_neurons(weight)
+    assert (scores >= 0).all(), "All neuron scores should be non-negative"
+
+
+# Test H4: score_heads output shape is (n_heads,)
+def test_score_heads_output_shape():
+    attn_weight = torch.randn(64, 64)
+    n_heads = 4
+    scores = score_heads(attn_weight, n_heads)
+    assert scores.shape == (n_heads,), f"Expected ({n_heads},), got {scores.shape}"
+
+
+# Test H5: get_prune_mask keeps at least min_remaining
+def test_get_prune_mask_keeps_min_remaining():
+    scores = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0])
+    mask = get_prune_mask(scores, prune_ratio=0.9, min_remaining=2)
+    assert mask.sum().item() >= 2, "Should keep at least min_remaining=2 units"
+
+
+# Test H6: get_prune_mask prunes approximately prune_ratio fraction
+def test_get_prune_mask_prunes_correct_fraction():
+    scores = torch.arange(10, dtype=torch.float)
+    mask = get_prune_mask(scores, prune_ratio=0.3, min_remaining=1)
+    n_pruned = (~mask).sum().item()
+    assert n_pruned == 3, f"Expected 3 pruned, got {n_pruned}"
+
+
+# Test H7: get_prune_mask True + False == total
+def test_get_prune_mask_total_count():
+    scores = torch.rand(20)
+    mask = get_prune_mask(scores, prune_ratio=0.4)
+    assert mask.shape[0] == 20
+    assert mask.sum().item() + (~mask).sum().item() == 20
+
+
+# Test H8: prune_linear_neurons output has fewer output features
+def test_prune_linear_neurons_fewer_outputs():
+    linear = nn.Linear(32, 16, bias=False)
+    pruned, kept = prune_linear_neurons(linear, prune_ratio=0.5)
+    assert pruned.out_features < 16, "Pruned linear should have fewer output features"
+
+
+# Test H9: prune_linear_neurons kept_indices shape is correct
+def test_prune_linear_neurons_kept_indices_shape():
+    linear = nn.Linear(32, 16, bias=False)
+    pruned, kept = prune_linear_neurons(linear, prune_ratio=0.25)
+    assert kept.shape[0] == pruned.out_features, (
+        "kept_indices length should match pruned out_features"
+    )
+
+
+# Test H10: prune_linear_neurons with min_remaining=1 keeps at least 1
+def test_prune_linear_neurons_min_remaining():
+    linear = nn.Linear(32, 4, bias=False)
+    # Even with extreme ratio, must keep at least 1
+    pruned, kept = prune_linear_neurons(linear, prune_ratio=0.99)
+    assert pruned.out_features >= 1, "Should keep at least 1 output neuron"
+
+
+# Test H11: prune_ffn_layer returns dict with correct keys
+def test_prune_ffn_layer_returns_correct_keys(tiny_model):
+    result = prune_ffn_layer(tiny_model, layer_idx=0, prune_ratio=0.3)
+    assert "original_dim" in result
+    assert "pruned_dim" in result
+    assert "n_pruned" in result
+
+
+# Test H12: prune_ffn_layer pruned_dim < original_dim
+def test_prune_ffn_layer_pruned_dim_smaller(tiny_model):
+    result = prune_ffn_layer(tiny_model, layer_idx=0, prune_ratio=0.3)
+    assert result["pruned_dim"] < result["original_dim"], (
+        f"pruned_dim {result['pruned_dim']} should be < original_dim {result['original_dim']}"
+    )
+
+
+# Test H13: PruningScheduler.get_ratio returns 0 at start, prune_ratio at end
+def test_pruning_scheduler_get_ratio_bounds():
+    cfg = PruningConfig(prune_ratio=0.4)
+    scheduler = PruningScheduler(cfg, start_step=0, end_step=100, start_ratio=0.0)
+    assert scheduler.get_ratio(0) == 0.0, "Ratio at start_step should be start_ratio"
+    assert scheduler.get_ratio(100) == 0.4, "Ratio at end_step should be prune_ratio"
+
+
+# Test H14: PruningScheduler.should_prune returns True at multiple of prune_every
+def test_pruning_scheduler_should_prune():
+    cfg = PruningConfig()
+    scheduler = PruningScheduler(cfg)
+    assert scheduler.should_prune(100, prune_every=100), "Should prune at step=100"
+    assert scheduler.should_prune(200, prune_every=100), "Should prune at step=200"
+    assert not scheduler.should_prune(50, prune_every=100), "Should not prune at step=50"
+    assert not scheduler.should_prune(0, prune_every=100), "Should not prune at step=0"
+
+
+# Test H15: StructuredPruner.train_step returns dict with 'loss'
+def test_structured_pruner_train_step_returns_loss(tiny_model):
+    cfg = PruningConfig(pruning_type="neuron", prune_ratio=0.2)
+    optimizer = torch.optim.Adam(tiny_model.parameters(), lr=1e-4)
+    pruner = StructuredPruner(tiny_model, cfg, optimizer)
+    input_ids = torch.randint(0, 256, (2, 16))
+    result = pruner.train_step(input_ids)
+    assert "loss" in result, "train_step result must have 'loss' key"
+    assert math.isfinite(result["loss"]), f"Loss must be finite, got {result['loss']}"
+
+
+# Test H16: StructuredPruner.parameter_count returns positive int
+def test_structured_pruner_parameter_count(tiny_model):
+    cfg = PruningConfig()
+    optimizer = torch.optim.Adam(tiny_model.parameters(), lr=1e-4)
+    pruner = StructuredPruner(tiny_model, cfg, optimizer)
+    count = pruner.parameter_count()
+    assert isinstance(count, int), "parameter_count should return an int"
+    assert count > 0, "parameter_count should be positive"

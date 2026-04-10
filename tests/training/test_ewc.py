@@ -1,122 +1,245 @@
-"""Tests for Elastic Weight Consolidation."""
+"""Tests for Elastic Weight Consolidation (EWC)."""
+from __future__ import annotations
+
 import torch
 import pytest
-from torch.utils.data import DataLoader, TensorDataset
-from src.training.ewc import EWC, EWCConfig
+
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
+from src.training.ewc import (
+    EWCConfig,
+    EWCTrainer,
+    TaskSequence,
+    compute_fisher_diagonal,
+    ewc_penalty,
+)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+VOCAB = 256
+SEQ_LEN = 16
+BATCH = 2
 
 
-@pytest.fixture
-def small_model():
-    torch.manual_seed(0)
+def _make_model() -> AureliusTransformer:
+    torch.manual_seed(42)
     cfg = AureliusConfig(
-        n_layers=2, d_model=64, n_heads=2, n_kv_heads=2,
-        head_dim=32, d_ff=128, vocab_size=256, max_seq_len=32,
+        n_layers=2,
+        d_model=64,
+        n_heads=2,
+        n_kv_heads=2,
+        head_dim=32,
+        d_ff=128,
+        vocab_size=VOCAB,
+        max_seq_len=512,
     )
     return AureliusTransformer(cfg)
 
 
-def _make_dataloader(n=8, seq_len=16, batch_size=4):
-    ids = torch.randint(0, 256, (n, seq_len))
-    def collate(batch):
-        b = torch.stack([x[0] for x in batch])
-        return {"input_ids": b, "labels": b}
-    return DataLoader(TensorDataset(ids), batch_size=batch_size, collate_fn=collate)
+def _data_iter(n_batches: int = 5):
+    """Yield random input_ids tensors."""
+    torch.manual_seed(0)
+    for _ in range(n_batches):
+        yield torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
 
 
-def test_compute_fisher_populates_dicts(small_model):
-    """compute_fisher must populate _fisher and _optimal."""
-    ewc = EWC(small_model, EWCConfig(n_fisher_samples=4, fisher_batch_size=2))
-    loader = _make_dataloader()
-    ewc.compute_fisher(loader)
-
-    assert len(ewc._fisher) > 0
-    assert len(ewc._optimal) > 0
-    # Fisher keys should match optimal keys
-    assert set(ewc._fisher.keys()) == set(ewc._optimal.keys())
+def _make_trainer(model):
+    cfg = EWCConfig(ewc_lambda=1000.0, n_fisher_samples=3)
+    opt = torch.optim.SGD(model.parameters(), lr=1e-3)
+    return EWCTrainer(model, cfg, opt)
 
 
-def test_fisher_values_nonnegative(small_model):
-    """Fisher information (squared gradients) must be non-negative."""
-    ewc = EWC(small_model, EWCConfig(n_fisher_samples=4, fisher_batch_size=2))
-    loader = _make_dataloader()
-    ewc.compute_fisher(loader)
+# ---------------------------------------------------------------------------
+# 1. EWCConfig defaults
+# ---------------------------------------------------------------------------
 
-    for name, f in ewc._fisher.items():
+def test_ewcconfig_default_lambda():
+    cfg = EWCConfig()
+    assert cfg.ewc_lambda == 1000.0
+
+
+def test_ewcconfig_default_n_fisher_samples():
+    cfg = EWCConfig()
+    assert cfg.n_fisher_samples == 200
+
+
+# ---------------------------------------------------------------------------
+# 2-5. compute_fisher_diagonal
+# ---------------------------------------------------------------------------
+
+def test_compute_fisher_returns_dict():
+    model = _make_model()
+    fisher = compute_fisher_diagonal(model, _data_iter(), n_samples=3)
+    assert isinstance(fisher, dict)
+    assert len(fisher) > 0
+
+
+def test_compute_fisher_keys_match_param_names():
+    model = _make_model()
+    fisher = compute_fisher_diagonal(model, _data_iter(), n_samples=3)
+    expected = {name for name, p in model.named_parameters() if p.requires_grad}
+    assert set(fisher.keys()) == expected
+
+
+def test_compute_fisher_values_nonnegative():
+    model = _make_model()
+    fisher = compute_fisher_diagonal(model, _data_iter(), n_samples=3)
+    for name, f in fisher.items():
         assert (f >= 0).all(), f"Negative Fisher values for {name}"
 
 
-def test_penalty_zero_at_optimal(small_model):
-    """EWC penalty must be 0 when model params equal stored optimal params."""
-    ewc = EWC(small_model, EWCConfig(n_fisher_samples=4, fisher_batch_size=2))
-    loader = _make_dataloader()
-    ewc.compute_fisher(loader)
+def test_compute_fisher_shapes_match_params():
+    model = _make_model()
+    fisher = compute_fisher_diagonal(model, _data_iter(), n_samples=3)
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        assert fisher[name].shape == param.shape, (
+            f"Shape mismatch for {name}: fisher={fisher[name].shape}, param={param.shape}"
+        )
 
-    # Model hasn't changed from optimal -> penalty should be ~0
-    penalty = ewc.penalty()
+
+# ---------------------------------------------------------------------------
+# 6-9. ewc_penalty
+# ---------------------------------------------------------------------------
+
+def test_ewc_penalty_returns_scalar():
+    model = _make_model()
+    fisher = compute_fisher_diagonal(model, _data_iter(), n_samples=3)
+    optimal = {n: p.data.clone() for n, p in model.named_parameters() if p.requires_grad}
+    penalty = ewc_penalty(model, fisher, optimal, ewc_lambda=1000.0)
+    assert penalty.shape == torch.Size([])  # scalar
+
+
+def test_ewc_penalty_zero_when_params_unchanged():
+    model = _make_model()
+    fisher = compute_fisher_diagonal(model, _data_iter(), n_samples=3)
+    # optimal == current params -> penalty should be ~0
+    optimal = {n: p.data.clone() for n, p in model.named_parameters() if p.requires_grad}
+    penalty = ewc_penalty(model, fisher, optimal, ewc_lambda=1000.0)
     assert abs(penalty.item()) < 1e-5
 
 
-def test_penalty_positive_after_update(small_model):
-    """EWC penalty must increase when model parameters are perturbed."""
-    ewc = EWC(small_model, EWCConfig(n_fisher_samples=4, fisher_batch_size=2, ewc_lambda=1.0))
-    loader = _make_dataloader()
-    ewc.compute_fisher(loader)
+def test_ewc_penalty_positive_when_params_differ():
+    model = _make_model()
+    fisher = compute_fisher_diagonal(model, _data_iter(), n_samples=3)
+    optimal = {n: p.data.clone() for n, p in model.named_parameters() if p.requires_grad}
 
-    # Perturb model weights
+    # Perturb model parameters
     with torch.no_grad():
-        for p in small_model.parameters():
-            p.add_(torch.randn_like(p) * 0.1)
+        for p in model.parameters():
+            p.add_(torch.randn_like(p) * 0.5)
 
-    penalty = ewc.penalty()
+    penalty = ewc_penalty(model, fisher, optimal, ewc_lambda=1000.0)
     assert penalty.item() > 0
 
 
-def test_penalty_requires_fisher(small_model):
-    """penalty() without prior compute_fisher must raise RuntimeError."""
-    ewc = EWC(small_model)
-    with pytest.raises(RuntimeError, match="compute_fisher"):
-        ewc.penalty()
+def test_ewc_penalty_scales_with_lambda():
+    model = _make_model()
+    fisher = compute_fisher_diagonal(model, _data_iter(), n_samples=3)
+    optimal = {n: p.data.clone() for n, p in model.named_parameters() if p.requires_grad}
 
-
-def test_ewc_prevents_forgetting(small_model):
-    """EWC penalty gradient must oppose changes from optimal params."""
-    ewc = EWC(small_model, EWCConfig(n_fisher_samples=4, fisher_batch_size=2, ewc_lambda=1000.0))
-    loader = _make_dataloader()
-    ewc.compute_fisher(loader)
-
-    # Get optimal param snapshot
-    optimal = {n: p.clone() for n, p in small_model.named_parameters()}
-
-    # Perturb and compute penalty + grad
+    # Perturb so penalty is non-zero
     with torch.no_grad():
-        for p in small_model.parameters():
-            p.add_(torch.randn_like(p) * 0.01)
+        for p in model.parameters():
+            p.add_(torch.randn_like(p) * 0.1)
 
-    penalty = ewc.penalty()
-    penalty.backward()
-
-    # Gradient should point back toward optimal (negative direction of deviation)
-    for name, param in small_model.named_parameters():
-        if param.grad is not None and param.grad.abs().sum() > 0:
-            deviation = param.data - optimal[name]
-            # Gradient should have same sign as deviation (pushes back)
-            alignment = (param.grad * deviation).sum().item()
-            # At least some parameters should be pushed back
-            break
-
-    # Just verify the penalty backward doesn't error and grad is non-zero
-    assert any(p.grad is not None and p.grad.abs().sum() > 0 for p in small_model.parameters())
+    p1 = ewc_penalty(model, fisher, optimal, ewc_lambda=100.0).item()
+    p2 = ewc_penalty(model, fisher, optimal, ewc_lambda=200.0).item()
+    assert abs(p2 - 2 * p1) < 1e-3 * abs(p2), (
+        f"Penalty should scale linearly with lambda: p1={p1}, p2={p2}"
+    )
 
 
-def test_named_importances(small_model):
-    """named_importances must return sorted list of (name, score) tuples."""
-    ewc = EWC(small_model, EWCConfig(n_fisher_samples=4, fisher_batch_size=2))
-    loader = _make_dataloader()
-    ewc.compute_fisher(loader)
+# ---------------------------------------------------------------------------
+# 10-14. EWCTrainer
+# ---------------------------------------------------------------------------
 
-    importances = ewc.named_importances(top_n=5)
-    assert len(importances) <= 5
-    scores = [s for _, s in importances]
-    assert scores == sorted(scores, reverse=True)
+def test_ewctrainer_starts_not_consolidated():
+    model = _make_model()
+    trainer = _make_trainer(model)
+    assert not trainer.is_consolidated()
+
+
+def test_ewctrainer_consolidate_sets_flag():
+    model = _make_model()
+    trainer = _make_trainer(model)
+    trainer.consolidate(_data_iter(n_batches=3))
+    assert trainer.is_consolidated()
+
+
+def test_ewctrainer_train_step_before_consolidation_ewc_zero():
+    model = _make_model()
+    trainer = _make_trainer(model)
+    input_ids = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    result = trainer.train_step(input_ids)
+    assert result["ewc_loss"] == 0.0
+
+
+def test_ewctrainer_train_step_after_consolidation_has_all_keys():
+    model = _make_model()
+    trainer = _make_trainer(model)
+    trainer.consolidate(_data_iter(n_batches=3))
+
+    input_ids = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    result = trainer.train_step(input_ids)
+
+    assert "task_loss" in result
+    assert "ewc_loss" in result
+    assert "total_loss" in result
+
+
+def test_ewctrainer_total_loss_equals_sum():
+    model = _make_model()
+    trainer = _make_trainer(model)
+    trainer.consolidate(_data_iter(n_batches=3))
+
+    input_ids = torch.randint(0, VOCAB, (BATCH, SEQ_LEN))
+    result = trainer.train_step(input_ids)
+
+    expected = result["task_loss"] + result["ewc_loss"]
+    assert abs(result["total_loss"] - expected) < 1e-5, (
+        f"total_loss={result['total_loss']} != task_loss + ewc_loss={expected}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 15-16. TaskSequence
+# ---------------------------------------------------------------------------
+
+def test_task_sequence_starts_empty():
+    ts = TaskSequence()
+    assert len(ts) == 0
+
+
+def test_task_sequence_add_get_roundtrip():
+    ts = TaskSequence()
+    data = [torch.randint(0, VOCAB, (BATCH, SEQ_LEN)) for _ in range(4)]
+    ts.add_task("task_a", data)
+
+    assert len(ts) == 1
+    assert ts.task_names() == ["task_a"]
+
+    retrieved = ts.get_task("task_a")
+    assert len(retrieved) == len(data)
+    for orig, ret in zip(data, retrieved):
+        assert torch.equal(orig, ret)
+
+
+def test_task_sequence_get_missing_raises():
+    ts = TaskSequence()
+    with pytest.raises(KeyError):
+        ts.get_task("nonexistent")
+
+
+def test_task_sequence_multiple_tasks():
+    ts = TaskSequence()
+    ts.add_task("a", [torch.zeros(2, 4)])
+    ts.add_task("b", [torch.ones(2, 4)])
+    ts.add_task("c", [torch.full((2, 4), 2)])
+
+    assert len(ts) == 3
+    assert ts.task_names() == ["a", "b", "c"]
+    assert torch.equal(ts.get_task("b")[0], torch.ones(2, 4))

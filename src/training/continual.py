@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as _F
 from torch.utils.data import DataLoader
 
 from src.training.ewc import EWC, EWCConfig
@@ -112,7 +113,10 @@ class ContinualTrainer:
                 input_ids, labels = batch[0], batch[1]
 
             self._optimizer.zero_grad()
-            loss, _, _ = self.model(input_ids=input_ids, labels=labels)
+            _loss, logits, _ = self.model(input_ids)
+            shift_logits = logits[:, :-1, :].contiguous()
+            shift_labels = input_ids[:, 1:].contiguous()
+            loss = _F.cross_entropy(shift_logits.view(-1, logits.size(-1)), shift_labels.view(-1))
 
             # Add EWC penalties from all completed tasks
             total_loss = loss
@@ -179,7 +183,10 @@ class ContinualTrainer:
                 else:
                     input_ids, labels = batch[0], batch[1]
 
-                loss, _, _ = self.model(input_ids=input_ids, labels=labels)
+                _loss, logits, _ = self.model(input_ids)
+                shift_logits = logits[:, :-1, :].contiguous()
+                shift_labels = input_ids[:, 1:].contiguous()
+                loss = _F.cross_entropy(shift_logits.view(-1, logits.size(-1)), shift_labels.view(-1))
                 total_loss += loss.item()
                 n_batches += 1
 
