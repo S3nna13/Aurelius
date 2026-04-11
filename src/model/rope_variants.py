@@ -260,3 +260,195 @@ def interpolate_rope_positions(positions: Tensor, scale: float) -> Tensor:
         Scaled positions, shape (T,), float tensor.
     """
     return positions.float() / scale
+
+
+# ---------------------------------------------------------------------------
+# New RoPE variant components: ALiBi (functional), FIRE, CoPE, unified layer
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class RoPEVariantConfig:
+    """Configuration for position encoding variants."""
+    variant: str = "alibi"       # "alibi" | "fire" | "cope"
+    n_heads: int = 2
+    max_seq_len: int = 512
+    d_model: int = 64
+
+
+def alibi_bias(seq_len: int, slopes: Tensor) -> Tensor:
+    """Compute ALiBi position bias matrix.
+
+    bias[h, i, j] = slopes[h] * |i - j|
+
+    Args:
+        seq_len: Sequence length T.
+        slopes:  Per-head slopes, shape (n_heads,).
+
+    Returns:
+        Tensor of shape (n_heads, seq_len, seq_len).
+    """
+    positions = torch.arange(seq_len, device=slopes.device, dtype=torch.float32)
+    dist = (positions.unsqueeze(0) - positions.unsqueeze(1)).abs()  # (T, T)
+    n_heads = slopes.shape[0]
+    bias = slopes.view(n_heads, 1, 1) * dist.unsqueeze(0)  # (H, T, T)
+    return bias
+
+
+class FirePositionEncoding(nn.Module):
+    """FIRE: Fourier features with learnable frequencies for position encoding."""
+
+    def __init__(self, d_model: int, max_seq_len: int = 512) -> None:
+        super().__init__()
+        self.d_model = d_model
+        self.max_seq_len = max_seq_len
+        half = d_model // 2
+        self.log_freqs = nn.Parameter(torch.randn(half) * 0.01)
+        self.proj = nn.Linear(d_model, d_model, bias=False)
+
+    def forward(self, positions: Tensor) -> Tensor:
+        """Compute FIRE position encoding.
+
+        Args:
+            positions: Position indices, shape (T,).
+
+        Returns:
+            Tensor of shape (T, d_model).
+        """
+        pos = positions.float().unsqueeze(-1)  # (T, 1)
+        freqs = self.log_freqs.exp()            # (d_model//2,)
+        angles = pos * freqs.unsqueeze(0)       # (T, d_model//2)
+        features = torch.cat([angles.sin(), angles.cos()], dim=-1)  # (T, d_model)
+        return self.proj(features)
+
+
+def fire_position_encoding(positions: Tensor, d_model: int) -> Tensor:
+    """Functional FIRE position encoding (stateless, random projection).
+
+    Args:
+        positions: Position indices, shape (T,).
+        d_model:   Model dimension.
+
+    Returns:
+        Tensor of shape (T, d_model).
+    """
+    module = FirePositionEncoding(d_model)
+    module.eval()
+    with torch.no_grad():
+        return module(positions)
+
+
+class CoPEGate(nn.Module):
+    """Contextual Position Encoding (CoPE).
+
+    Computes position-aware gating: gate = sigmoid(q @ k.T) * position_encoding.
+    """
+
+    def __init__(self, head_dim: int, max_seq_len: int = 512) -> None:
+        super().__init__()
+        self.head_dim = head_dim
+        self.max_seq_len = max_seq_len
+        self.pos_embed = nn.Embedding(max_seq_len, head_dim)
+
+    def forward(self, query: Tensor, key: Tensor) -> Tensor:
+        """Compute CoPE gate bias.
+
+        Args:
+            query: (B, H, T, D)
+            key:   (B, H, T, D)
+
+        Returns:
+            Position bias of shape (B, H, T, T).
+        """
+        B, H, T, D = query.shape
+        gate = torch.sigmoid(torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(D))
+        positions = torch.arange(T, device=query.device)
+        pos_emb = self.pos_embed(positions)  # (T, D)
+        pos_bias = torch.matmul(pos_emb, pos_emb.transpose(0, 1))  # (T, T)
+        pos_bias = pos_bias / math.sqrt(D)
+        return gate * pos_bias.unsqueeze(0).unsqueeze(0)  # (B, H, T, T)
+
+
+def cope_gate(query: Tensor, key: Tensor) -> Tensor:
+    """Functional CoPE gate (stateless, random embeddings).
+
+    Args:
+        query: (B, H, T, D)
+        key:   (B, H, T, D)
+
+    Returns:
+        Position bias of shape (B, H, T, T).
+    """
+    B, H, T, D = query.shape
+    module = CoPEGate(head_dim=D, max_seq_len=max(T, 512))
+    module.eval()
+    with torch.no_grad():
+        return module(query, key)
+
+
+class RoPEVariantLayer(nn.Module):
+    """Applies a chosen position encoding variant to attention.
+
+    Variants:
+        - "alibi": adds ALiBi bias to attention logits
+        - "fire":  adds FIRE position encoding to Q/K before attention
+        - "cope":  adds CoPE gated position bias to attention logits
+
+    Forward: forward(Q, K, V) -> attention output (B, H, T, D).
+    """
+
+    def __init__(self, config: RoPEVariantConfig) -> None:
+        super().__init__()
+        self.config = config
+        self.variant = config.variant
+        head_dim = config.d_model // config.n_heads
+
+        if self.variant == "alibi":
+            slopes = build_alibi_slopes(config.n_heads)
+            self.register_buffer("slopes", slopes)
+        elif self.variant == "fire":
+            self.fire = FirePositionEncoding(head_dim, config.max_seq_len)
+        elif self.variant == "cope":
+            self.cope = CoPEGate(head_dim, config.max_seq_len)
+        else:
+            raise ValueError(f"Unknown variant: {self.variant}")
+
+    def forward(self, Q: Tensor, K: Tensor, V: Tensor) -> Tensor:
+        """Apply position-aware attention.
+
+        Args:
+            Q: Query tensor, shape (B, H, T, D).
+            K: Key tensor,   shape (B, H, T, D).
+            V: Value tensor, shape (B, H, T, D).
+
+        Returns:
+            Attention output, shape (B, H, T, D).
+        """
+        B, H, T, D = Q.shape
+        scale = math.sqrt(D)
+
+        if self.variant == "alibi":
+            scores = torch.matmul(Q, K.transpose(-2, -1)) / scale
+            bias = alibi_bias(T, self.slopes)  # (H, T, T)
+            scores = scores - bias.unsqueeze(0)
+            attn = F.softmax(scores, dim=-1)
+            return torch.matmul(attn, V)
+
+        elif self.variant == "fire":
+            positions = torch.arange(T, device=Q.device)
+            pos_enc = self.fire(positions)  # (T, D)
+            Q_pos = Q + pos_enc.unsqueeze(0).unsqueeze(0)
+            K_pos = K + pos_enc.unsqueeze(0).unsqueeze(0)
+            scores = torch.matmul(Q_pos, K_pos.transpose(-2, -1)) / scale
+            attn = F.softmax(scores, dim=-1)
+            return torch.matmul(attn, V)
+
+        elif self.variant == "cope":
+            scores = torch.matmul(Q, K.transpose(-2, -1)) / scale
+            cope_bias = self.cope(Q, K)
+            scores = scores + cope_bias
+            attn = F.softmax(scores, dim=-1)
+            return torch.matmul(attn, V)
+
+        else:
+            raise ValueError(f"Unknown variant: {self.variant}")
