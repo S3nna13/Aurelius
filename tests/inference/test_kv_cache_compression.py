@@ -1,4 +1,4 @@
-"""Tests for KV cache compression: H2O and StreamingLLM-style eviction."""
+"""16 tests for KV cache compression with token eviction."""
 
 from __future__ import annotations
 
@@ -6,244 +6,333 @@ import torch
 import pytest
 
 from src.inference.kv_cache_compression import (
-    AttentionScoreAccumulator,
-    CachedAttentionLayer,
-    H2OKVCache,
+    CacheCompressionStats,
+    CompressedKVCache,
+    KVCache,
     KVCacheConfig,
-    compress_kv_cache,
+    evict_attention_sink,
+    evict_heavy_hitter,
+    evict_recent_only,
 )
 
 # ---------------------------------------------------------------------------
-# Shared small dimensions
+# Shared dimensions (as specified)
 # ---------------------------------------------------------------------------
 
-D_MODEL = 64
-N_HEADS = 4
-N_KV_HEADS = 2
-HEAD_DIM = 16
-BUDGET = 8
-N_SINK = 2
-T = 16
+N_LAYERS = 2
+N_HEADS = 2
+HEAD_DIM = 8
+MAX_CACHE = 10
+SINK = 2
 B = 1
 
 
+def make_config(**kwargs) -> KVCacheConfig:
+    defaults = dict(
+        max_cache_size=MAX_CACHE,
+        eviction_strategy="attention_sink",
+        sink_tokens=SINK,
+        recent_tokens=MAX_CACHE - SINK,
+        heavy_hitter_ratio=0.2,
+    )
+    defaults.update(kwargs)
+    return KVCacheConfig(**defaults)
+
+
+def rand_kv(T: int) -> tuple[torch.Tensor, torch.Tensor]:
+    k = torch.randn(B, N_HEADS, T, HEAD_DIM)
+    v = torch.randn(B, N_HEADS, T, HEAD_DIM)
+    return k, v
+
+
 # ---------------------------------------------------------------------------
-# 1. KVCacheConfig defaults
+# Test 1: KVCacheConfig defaults
 # ---------------------------------------------------------------------------
 
 
-def test_kv_cache_config_defaults():
+def test_kvcacheconfig_defaults():
     cfg = KVCacheConfig()
-    assert cfg.budget == 128
-    assert cfg.n_sink_tokens == 4
-    assert cfg.strategy == "h2o"
-    assert cfg.accumulation_steps == 1
+    assert cfg.max_cache_size == 512
+    assert cfg.eviction_strategy == "attention_sink"
+    assert cfg.sink_tokens == 4
+    assert cfg.recent_tokens == 256
+    assert cfg.heavy_hitter_ratio == 0.2
 
 
 # ---------------------------------------------------------------------------
-# 2. AttentionScoreAccumulator: scores shape after update
+# Test 2: KVCache update returns correct shape
 # ---------------------------------------------------------------------------
 
 
-def test_attention_score_accumulator_update_shape():
-    torch.manual_seed(0)
-    T_k = 16
-    n_heads = N_HEADS
-    T_q = 4
-    acc = AttentionScoreAccumulator(budget=BUDGET, n_sink_tokens=N_SINK)
-    attn_weights = torch.rand(n_heads, T_q, T_k)
-    acc.update(attn_weights)
-    assert acc.scores is not None
-    assert acc.scores.shape == (T_k,)
+def test_kvcache_update_returns_correct_shape():
+    cfg = make_config()
+    cache = KVCache(cfg, N_LAYERS, N_HEADS, HEAD_DIM)
+    k, v = rand_kv(5)
+    out_k, out_v = cache.update(0, k, v)
+    assert out_k.shape == (B, N_HEADS, 5, HEAD_DIM)
+    assert out_v.shape == (B, N_HEADS, 5, HEAD_DIM)
 
 
 # ---------------------------------------------------------------------------
-# 3. AttentionScoreAccumulator: heavy hitters are highest scored
+# Test 3: KVCache update appends correctly (small cache, no eviction)
 # ---------------------------------------------------------------------------
 
 
-def test_attention_score_accumulator_heavy_hitters():
-    torch.manual_seed(0)
-    T_k = 16
-    acc = AttentionScoreAccumulator(budget=BUDGET, n_sink_tokens=N_SINK)
-    # Create scores where we know which non-sink tokens are highest
-    scores = torch.zeros(T_k)
-    # Make tokens 5, 10 the highest non-sink
-    scores[5] = 100.0
-    scores[10] = 99.0
-    acc.scores = scores
-
-    n_to_fetch = 2
-    hitters = acc.get_heavy_hitters(n_to_fetch)
-    assert hitters.shape == (n_to_fetch,)
-    # Results should be sorted ascending
-    assert (hitters[1] > hitters[0]).item()
-    # Both 5 and 10 should appear
-    hitters_list = hitters.tolist()
-    assert 5 in hitters_list
-    assert 10 in hitters_list
+def test_kvcache_update_appends_without_eviction():
+    cfg = make_config()
+    cache = KVCache(cfg, N_LAYERS, N_HEADS, HEAD_DIM)
+    k1, v1 = rand_kv(3)
+    k2, v2 = rand_kv(4)
+    cache.update(0, k1, v1)
+    out_k, out_v = cache.update(0, k2, v2)
+    # 3 + 4 = 7 which is < MAX_CACHE=10, so no eviction
+    assert out_k.shape[2] == 7
+    assert out_v.shape[2] == 7
 
 
 # ---------------------------------------------------------------------------
-# 4. H2OKVCache: size grows after update
+# Test 4: KVCache get returns None before update
 # ---------------------------------------------------------------------------
 
 
-def test_h2o_kvcache_update_appends():
-    torch.manual_seed(0)
-    cfg = KVCacheConfig(budget=BUDGET, n_sink_tokens=N_SINK, strategy="h2o")
-    cache = H2OKVCache(cfg, n_layers=1, n_kv_heads=N_KV_HEADS, head_dim=HEAD_DIM)
-
-    assert cache.size() == 0
-
-    new_k = torch.randn(B, N_KV_HEADS, 4, HEAD_DIM)
-    new_v = torch.randn(B, N_KV_HEADS, 4, HEAD_DIM)
-    cache.update(0, new_k, new_v)
-    assert cache.size() == 4
-
-    new_k2 = torch.randn(B, N_KV_HEADS, 2, HEAD_DIM)
-    new_v2 = torch.randn(B, N_KV_HEADS, 2, HEAD_DIM)
-    cache.update(0, new_k2, new_v2)
-    assert cache.size() == 6
+def test_kvcache_get_returns_none_before_update():
+    cfg = make_config()
+    cache = KVCache(cfg, N_LAYERS, N_HEADS, HEAD_DIM)
+    result = cache.get(0)
+    assert result is None
+    result = cache.get(1)
+    assert result is None
 
 
 # ---------------------------------------------------------------------------
-# 5. H2OKVCache: size <= budget after many updates
+# Test 5: KVCache clear resets to empty
 # ---------------------------------------------------------------------------
 
 
-def test_h2o_kvcache_evicts_when_full():
-    torch.manual_seed(0)
-    cfg = KVCacheConfig(budget=BUDGET, n_sink_tokens=N_SINK, strategy="h2o")
-    cache = H2OKVCache(cfg, n_layers=1, n_kv_heads=N_KV_HEADS, head_dim=HEAD_DIM)
-
-    for step in range(20):
-        new_k = torch.randn(B, N_KV_HEADS, 1, HEAD_DIM)
-        new_v = torch.randn(B, N_KV_HEADS, 1, HEAD_DIM)
-        # Provide fake attention weights: (n_heads, 1, current_cache_size+1)
-        T_k = cache.size() + 1
-        attn_w = torch.rand(N_HEADS, 1, T_k)
-        cache.update(0, new_k, new_v, attn_weights=attn_w)
-
-    assert cache.size() <= BUDGET
+def test_kvcache_clear_resets():
+    cfg = make_config()
+    cache = KVCache(cfg, N_LAYERS, N_HEADS, HEAD_DIM)
+    k, v = rand_kv(5)
+    cache.update(0, k, v)
+    cache.update(1, k, v)
+    assert len(cache) == 5
+    cache.clear()
+    assert len(cache) == 0
+    assert cache.get(0) is None
+    assert cache.get(1) is None
 
 
 # ---------------------------------------------------------------------------
-# 6. H2OKVCache: first n_sink_tokens always preserved
+# Test 6: KVCache __len__ correct
 # ---------------------------------------------------------------------------
 
 
-def test_h2o_kvcache_keeps_sinks():
-    torch.manual_seed(0)
-    cfg = KVCacheConfig(budget=BUDGET, n_sink_tokens=N_SINK, strategy="recent")
-    cache = H2OKVCache(cfg, n_layers=1, n_kv_heads=N_KV_HEADS, head_dim=HEAD_DIM)
-
-    # Fill with identifiable values: token i has all values == float(i)
-    initial_k = torch.stack([torch.full((B, N_KV_HEADS, HEAD_DIM), float(i)) for i in range(T)], dim=2)
-    initial_v = initial_k.clone()
-    cache.update(0, initial_k, initial_v)
-
-    k, _ = cache.get(0)
-    # First N_SINK tokens should be preserved (value 0.0 and 1.0)
-    for sink_i in range(N_SINK):
-        assert torch.allclose(k[:, :, sink_i, :], torch.full_like(k[:, :, sink_i, :], float(sink_i)))
+def test_kvcache_len_correct():
+    cfg = make_config()
+    cache = KVCache(cfg, N_LAYERS, N_HEADS, HEAD_DIM)
+    assert len(cache) == 0
+    k, v = rand_kv(6)
+    cache.update(0, k, v)
+    assert len(cache) == 6
 
 
 # ---------------------------------------------------------------------------
-# 7. H2OKVCache: reset clears cache, size == 0
+# Test 7: evict_attention_sink keeps sink_tokens at start
 # ---------------------------------------------------------------------------
 
 
-def test_h2o_kvcache_reset():
-    torch.manual_seed(0)
-    cfg = KVCacheConfig(budget=BUDGET, n_sink_tokens=N_SINK, strategy="h2o")
-    cache = H2OKVCache(cfg, n_layers=1, n_kv_heads=N_KV_HEADS, head_dim=HEAD_DIM)
+def test_evict_attention_sink_keeps_sink_at_start():
+    cfg = make_config(sink_tokens=SINK)
+    T = 20  # > MAX_CACHE
 
-    new_k = torch.randn(B, N_KV_HEADS, 4, HEAD_DIM)
-    new_v = torch.randn(B, N_KV_HEADS, 4, HEAD_DIM)
-    cache.update(0, new_k, new_v)
-    assert cache.size() > 0
-
-    cache.reset()
-    assert cache.size() == 0
-    assert cache.keys[0] is None
-    assert cache.values[0] is None
-
-
-# ---------------------------------------------------------------------------
-# 8. compress_kv_cache: output shape (B, H, budget, D)
-# ---------------------------------------------------------------------------
-
-
-def test_compress_kv_cache_shape():
-    torch.manual_seed(0)
-    T_long = 32
-    keys = torch.randn(B, N_HEADS, T_long, HEAD_DIM)
-    values = torch.randn(B, N_HEADS, T_long, HEAD_DIM)
-    scores = torch.rand(T_long)
-
-    ck, cv = compress_kv_cache(keys, values, scores, budget=BUDGET, n_sink=N_SINK)
-    assert ck.shape == (B, N_HEADS, BUDGET, HEAD_DIM)
-    assert cv.shape == (B, N_HEADS, BUDGET, HEAD_DIM)
-
-
-# ---------------------------------------------------------------------------
-# 9. compress_kv_cache: first n_sink tokens always in output
-# ---------------------------------------------------------------------------
-
-
-def test_compress_kv_cache_keeps_sinks():
-    torch.manual_seed(0)
-    T_long = 32
-    # Make sink tokens identifiable with large unique values
-    keys = torch.randn(B, N_HEADS, T_long, HEAD_DIM)
-    for i in range(N_SINK):
-        keys[:, :, i, :] = float(i + 1) * 1000.0
-
+    # Make each token position identifiable: token i has value float(i)
+    keys = torch.stack(
+        [torch.full((B, N_HEADS, HEAD_DIM), float(i)) for i in range(T)], dim=2
+    )
     values = keys.clone()
-    scores = torch.rand(T_long)
 
-    ck, cv = compress_kv_cache(keys, values, scores, budget=BUDGET, n_sink=N_SINK)
+    out_k, out_v = evict_attention_sink(keys, values, cfg)
 
-    # The first N_SINK slots of the compressed output should match the original sink tokens
-    for i in range(N_SINK):
-        expected = float(i + 1) * 1000.0
-        assert torch.allclose(ck[:, :, i, :], torch.full_like(ck[:, :, i, :], expected))
-
-
-# ---------------------------------------------------------------------------
-# 10. CachedAttentionLayer: forward output shape (B, T, D)
-# ---------------------------------------------------------------------------
-
-
-def test_cached_attention_layer_forward_shape():
-    torch.manual_seed(0)
-    cfg = KVCacheConfig(budget=BUDGET, n_sink_tokens=N_SINK)
-    layer = CachedAttentionLayer(D_MODEL, N_HEADS, N_KV_HEADS, HEAD_DIM, cfg)
-    x = torch.randn(B, T, D_MODEL)
-    out = layer(x, use_cache=False)
-    assert out.shape == (B, T, D_MODEL)
+    # First SINK slots must be the original sink tokens (value 0.0 and 1.0)
+    for i in range(SINK):
+        expected = float(i)
+        assert torch.allclose(
+            out_k[:, :, i, :], torch.full_like(out_k[:, :, i, :], expected)
+        ), f"Sink token {i} not preserved; got {out_k[:, :, i, :].unique()}"
 
 
 # ---------------------------------------------------------------------------
-# 11. CachedAttentionLayer: use_cache=True works without error
+# Test 8: evict_attention_sink output length <= max_cache_size
 # ---------------------------------------------------------------------------
 
 
-def test_cached_attention_layer_with_cache():
-    torch.manual_seed(0)
-    cfg = KVCacheConfig(budget=BUDGET, n_sink_tokens=N_SINK, strategy="recent")
-    layer = CachedAttentionLayer(D_MODEL, N_HEADS, N_KV_HEADS, HEAD_DIM, cfg)
+def test_evict_attention_sink_output_length():
+    cfg = make_config()
+    T = 25
+    k, v = rand_kv(T)
+    out_k, out_v = evict_attention_sink(k, v, cfg)
+    assert out_k.shape[2] <= MAX_CACHE
+    assert out_v.shape[2] <= MAX_CACHE
 
-    # Simulate decode: feed tokens one at a time (or small chunks)
-    x_prefill = torch.randn(B, 4, D_MODEL)
-    out_prefill = layer(x_prefill, use_cache=True)
-    assert out_prefill.shape == (B, 4, D_MODEL)
 
-    # Continue decode with new tokens
-    x_decode = torch.randn(B, 1, D_MODEL)
-    out_decode = layer(x_decode, use_cache=True)
-    assert out_decode.shape == (B, 1, D_MODEL)
+# ---------------------------------------------------------------------------
+# Test 9: evict_recent_only keeps only tail
+# ---------------------------------------------------------------------------
 
-    # Verify cache is non-empty
-    assert layer.cache.size() > 0
+
+def test_evict_recent_only_keeps_tail():
+    cfg = make_config()
+    T = 20
+    # Token i has value float(i+1)
+    keys = torch.stack(
+        [torch.full((B, N_HEADS, HEAD_DIM), float(i + 1)) for i in range(T)], dim=2
+    )
+    values = keys.clone()
+
+    out_k, out_v = evict_recent_only(keys, values, cfg)
+
+    assert out_k.shape[2] == MAX_CACHE
+    # Last token in output should match last token of input
+    last_input_val = float(T)  # token index T-1 has value float(T-1+1) = float(T)
+    assert torch.allclose(
+        out_k[:, :, -1, :], torch.full_like(out_k[:, :, -1, :], last_input_val)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Test 10: evict_heavy_hitter with None attention falls back to recent
+# ---------------------------------------------------------------------------
+
+
+def test_evict_heavy_hitter_none_attention_falls_back_to_recent():
+    cfg = make_config(eviction_strategy="heavy_hitter")
+    T = 20
+    k, v = rand_kv(T)
+
+    out_k_hh, out_v_hh = evict_heavy_hitter(k, v, None, cfg)
+    out_k_re, out_v_re = evict_recent_only(k, v, cfg)
+
+    assert torch.allclose(out_k_hh, out_k_re)
+    assert torch.allclose(out_v_hh, out_v_re)
+
+
+# ---------------------------------------------------------------------------
+# Test 11: evict_heavy_hitter with attention weights reduces cache
+# ---------------------------------------------------------------------------
+
+
+def test_evict_heavy_hitter_with_attention_reduces_cache():
+    cfg = make_config()
+    T = 20
+    k, v = rand_kv(T)
+    # attention_weights shape: (B, n_heads, T)
+    attn_w = torch.rand(B, N_HEADS, T)
+
+    out_k, out_v = evict_heavy_hitter(k, v, attn_w, cfg)
+    assert out_k.shape[2] <= MAX_CACHE
+    assert out_v.shape[2] <= MAX_CACHE
+
+
+# ---------------------------------------------------------------------------
+# Test 12: CompressedKVCache stats tracks evictions
+# ---------------------------------------------------------------------------
+
+
+def test_compressed_kvcache_stats_tracks_evictions():
+    cfg = make_config()
+    cache = CompressedKVCache(cfg, N_LAYERS, N_HEADS, HEAD_DIM)
+
+    # Add tokens that exceed max_cache_size to trigger eviction
+    k, v = rand_kv(MAX_CACHE + 5)  # 15 > 10
+    cache.update(0, k, v)
+
+    stats = cache.get_stats()
+    assert stats.n_evictions >= 1
+    assert stats.total_tokens_evicted > 0
+
+
+# ---------------------------------------------------------------------------
+# Test 13: CompressedKVCache compression_ratio > 0 after eviction
+# ---------------------------------------------------------------------------
+
+
+def test_compressed_kvcache_compression_ratio_after_eviction():
+    cfg = make_config()
+    cache = CompressedKVCache(cfg, N_LAYERS, N_HEADS, HEAD_DIM)
+
+    k, v = rand_kv(MAX_CACHE + 5)
+    cache.update(0, k, v)
+
+    stats = cache.get_stats()
+    assert stats.compression_ratio > 0.0
+    assert stats.compression_ratio <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# Test 14: KVCache update triggers eviction when over max_cache_size
+# ---------------------------------------------------------------------------
+
+
+def test_kvcache_update_triggers_eviction_over_max():
+    cfg = make_config()
+    cache = KVCache(cfg, N_LAYERS, N_HEADS, HEAD_DIM)
+
+    # Push well over max_cache_size
+    k, v = rand_kv(MAX_CACHE + 8)  # 18 > 10
+    out_k, out_v = cache.update(0, k, v)
+
+    assert out_k.shape[2] <= MAX_CACHE
+    assert out_v.shape[2] <= MAX_CACHE
+
+
+# ---------------------------------------------------------------------------
+# Test 15: KVCache update with multiple layers independently
+# ---------------------------------------------------------------------------
+
+
+def test_kvcache_multiple_layers_independent():
+    cfg = make_config()
+    cache = KVCache(cfg, N_LAYERS, N_HEADS, HEAD_DIM)
+
+    k0, v0 = rand_kv(5)
+    k1, v1 = rand_kv(7)
+
+    cache.update(0, k0, v0)
+    cache.update(1, k1, v1)
+
+    res0 = cache.get(0)
+    res1 = cache.get(1)
+
+    assert res0 is not None
+    assert res1 is not None
+    assert res0[0].shape[2] == 5
+    assert res1[0].shape[2] == 7
+
+
+# ---------------------------------------------------------------------------
+# Test 16: evict_attention_sink preserves sink tokens exactly
+# ---------------------------------------------------------------------------
+
+
+def test_evict_attention_sink_preserves_sink_tokens_exactly():
+    cfg = make_config(sink_tokens=SINK)
+    T = 18
+
+    # Each token has a distinct, known value
+    keys = torch.zeros(B, N_HEADS, T, HEAD_DIM)
+    for i in range(T):
+        keys[:, :, i, :] = float(i * 10 + 1)
+    values = keys.clone()
+
+    out_k, out_v = evict_attention_sink(keys, values, cfg)
+
+    # Verify exact values of the first SINK tokens are unchanged
+    for i in range(SINK):
+        expected_val = float(i * 10 + 1)
+        assert torch.allclose(
+            out_k[:, :, i, :],
+            torch.full_like(out_k[:, :, i, :], expected_val),
+        ), f"Sink token {i}: expected {expected_val}, got {out_k[:,:,i,:].unique()}"
+
+    # Also check output length
+    assert out_k.shape[2] == MAX_CACHE
