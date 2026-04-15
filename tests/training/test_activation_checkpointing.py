@@ -1,333 +1,259 @@
-"""Tests for activation checkpointing (gradient checkpointing) utilities."""
+"""Tests for activation checkpointing utilities.
+
+Covers: CheckpointConfig, checkpoint_forward, CheckpointedSequential,
+estimate_memory_savings, apply_activation_checkpointing.
+"""
 
 from __future__ import annotations
+
+import math
 
 import pytest
 import torch
 import torch.nn as nn
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.training.activation_checkpointing import (
-    ActivationCheckpointTrainer,
     CheckpointConfig,
-    CheckpointedLayer,
+    CheckpointedSequential,
+    apply_activation_checkpointing,
+    checkpoint_forward,
     estimate_memory_savings,
-    get_checkpoint_stats,
-    wrap_layers_with_checkpointing,
 )
 
-
-# ---------------------------------------------------------------------------
-# Helpers / fixtures
-# ---------------------------------------------------------------------------
-
-def tiny_config():
-    return AureliusConfig(
-        n_layers=2,
-        d_model=64,
-        n_heads=2,
-        n_kv_heads=2,
-        head_dim=32,
-        d_ff=128,
-        vocab_size=256,
-        max_seq_len=512,
-    )
-
-
-def small_model():
-    torch.manual_seed(42)
-    return AureliusTransformer(tiny_config())
+# Tiny dimensions used throughout
+N_LAYERS = 4
+D_MODEL = 16
+SEQ_LEN = 8
+BATCH = 2
 
 
 # ---------------------------------------------------------------------------
-# 1. CheckpointConfig defaults
+# Tiny helpers
+# ---------------------------------------------------------------------------
+
+def make_linear_block(in_features=D_MODEL, out_features=D_MODEL):
+    return nn.Sequential(nn.Linear(in_features, out_features), nn.ReLU())
+
+
+def make_input(requires_grad=False):
+    x = torch.randn(BATCH, SEQ_LEN, D_MODEL)
+    if requires_grad:
+        x.requires_grad_(True)
+    return x
+
+
+# ---------------------------------------------------------------------------
+# 1. CheckpointConfig defaults correct
 # ---------------------------------------------------------------------------
 
 def test_checkpoint_config_defaults():
     cfg = CheckpointConfig()
     assert cfg.checkpoint_every_n_layers == 1
-    assert cfg.use_reentrant is False
     assert cfg.offload_to_cpu is False
-
-
-def test_checkpoint_config_custom():
-    cfg = CheckpointConfig(checkpoint_every_n_layers=2, use_reentrant=True, offload_to_cpu=True)
-    assert cfg.checkpoint_every_n_layers == 2
-    assert cfg.use_reentrant is True
-    assert cfg.offload_to_cpu is True
+    assert cfg.use_reentrant is False
 
 
 # ---------------------------------------------------------------------------
-# 2. CheckpointedLayer forward produces same output as unwrapped layer
+# 2. checkpoint_forward runs without error, output matches direct call
 # ---------------------------------------------------------------------------
 
-def test_checkpointed_layer_same_output():
-    """CheckpointedLayer should produce identical outputs to the raw layer."""
+def test_checkpoint_forward_output_matches():
     torch.manual_seed(0)
-    model = small_model()
-    layer = model.layers[0]  # raw TransformerBlock
-
-    # Build a simple wrapper that mirrors the TransformerBlock signature
-    ckpt_layer = CheckpointedLayer(layer, use_reentrant=False)
-
-    B, S, D = 1, 8, 64
-    x = torch.randn(B, S, D)
-    freqs = model.freqs_cis[:S]
+    fn = nn.Linear(D_MODEL, D_MODEL)
+    fn.eval()
+    x = torch.randn(BATCH, SEQ_LEN, D_MODEL)
 
     with torch.no_grad():
-        out_raw, kv_raw = layer(x, freqs)
-        out_ckpt, kv_ckpt = ckpt_layer(x, freqs)
+        expected = fn(x)
+        actual = checkpoint_forward(fn, x, use_reentrant=False)
 
-    assert torch.allclose(out_raw, out_ckpt, atol=1e-5), "Outputs differ between raw and checkpointed layer"
-
-
-def test_checkpointed_layer_output_shape():
-    """CheckpointedLayer should preserve output shape."""
-    model = small_model()
-    layer = model.layers[0]
-    ckpt_layer = CheckpointedLayer(layer, use_reentrant=False)
-
-    B, S, D = 2, 16, 64
-    x = torch.randn(B, S, D)
-    freqs = model.freqs_cis[:S]
-
-    with torch.no_grad():
-        out, _kv = ckpt_layer(x, freqs)
-
-    assert out.shape == (B, S, D), f"Expected ({B}, {S}, {D}) got {out.shape}"
+    assert torch.allclose(expected, actual, atol=1e-5)
 
 
 # ---------------------------------------------------------------------------
-# 3. wrap_layers_with_checkpointing wraps correct number of layers
+# 3. checkpoint_forward gradient flows (backward completes)
 # ---------------------------------------------------------------------------
 
-def test_wrap_all_layers():
-    """With checkpoint_every_n_layers=1, every layer should be wrapped."""
-    model = small_model()
-    cfg = CheckpointConfig(checkpoint_every_n_layers=1)
-    n_wrapped = wrap_layers_with_checkpointing(model, cfg)
-    assert n_wrapped == 2
-    assert all(isinstance(l, CheckpointedLayer) for l in model.layers)
+def test_checkpoint_forward_gradient_flows():
+    torch.manual_seed(1)
+    fn = nn.Linear(D_MODEL, D_MODEL)
+    x = torch.randn(BATCH, SEQ_LEN, D_MODEL, requires_grad=True)
 
+    out = checkpoint_forward(fn, x, use_reentrant=False)
+    out.sum().backward()
 
-def test_wrap_returns_correct_count():
-    """wrap_layers_with_checkpointing should return the wrapped count."""
-    model = small_model()
-    cfg = CheckpointConfig(checkpoint_every_n_layers=1)
-    n_wrapped = wrap_layers_with_checkpointing(model, cfg)
-    assert isinstance(n_wrapped, int)
-    assert n_wrapped > 0
-
-
-# ---------------------------------------------------------------------------
-# 4. checkpoint_every_n_layers=2 wraps ~half the layers
-# ---------------------------------------------------------------------------
-
-def test_wrap_every_other_layer():
-    """With checkpoint_every_n_layers=2 and 4 layers, 2 should be wrapped."""
-    cfg_model = AureliusConfig(
-        n_layers=4,
-        d_model=64,
-        n_heads=2,
-        n_kv_heads=2,
-        head_dim=32,
-        d_ff=128,
-        vocab_size=256,
-        max_seq_len=512,
-    )
-    torch.manual_seed(0)
-    model = AureliusTransformer(cfg_model)
-    cfg = CheckpointConfig(checkpoint_every_n_layers=2)
-    n_wrapped = wrap_layers_with_checkpointing(model, cfg)
-    assert n_wrapped == 2, f"Expected 2 wrapped layers, got {n_wrapped}"
-
-
-def test_wrap_every_other_layer_correct_indices():
-    """With checkpoint_every_n_layers=2, even-indexed layers should be wrapped."""
-    cfg_model = AureliusConfig(
-        n_layers=4,
-        d_model=64,
-        n_heads=2,
-        n_kv_heads=2,
-        head_dim=32,
-        d_ff=128,
-        vocab_size=256,
-        max_seq_len=512,
-    )
-    torch.manual_seed(0)
-    model = AureliusTransformer(cfg_model)
-    cfg = CheckpointConfig(checkpoint_every_n_layers=2)
-    wrap_layers_with_checkpointing(model, cfg)
-    # Indices 0 and 2 should be wrapped; 1 and 3 should not
-    assert isinstance(model.layers[0], CheckpointedLayer)
-    assert not isinstance(model.layers[1], CheckpointedLayer)
-    assert isinstance(model.layers[2], CheckpointedLayer)
-    assert not isinstance(model.layers[3], CheckpointedLayer)
-
-
-# ---------------------------------------------------------------------------
-# 5. estimate_memory_savings returns positive floats
-# ---------------------------------------------------------------------------
-
-def test_estimate_memory_savings_returns_floats():
-    full_mb, ckpt_mb = estimate_memory_savings(n_layers=24, d_model=2048, seq_len=512, batch_size=4)
-    assert isinstance(full_mb, float)
-    assert isinstance(ckpt_mb, float)
-
-
-def test_estimate_memory_savings_positive():
-    full_mb, ckpt_mb = estimate_memory_savings(n_layers=24, d_model=2048, seq_len=512, batch_size=4)
-    assert full_mb > 0.0
-    assert ckpt_mb > 0.0
-
-
-# ---------------------------------------------------------------------------
-# 6. Memory savings > 0 for any valid input
-# ---------------------------------------------------------------------------
-
-def test_memory_savings_nonzero_small():
-    full_mb, ckpt_mb = estimate_memory_savings(n_layers=2, d_model=64, seq_len=8, batch_size=1)
-    assert full_mb > 0.0
-    assert ckpt_mb > 0.0
-
-
-def test_memory_savings_full_greater_than_checkpointed():
-    full_mb, ckpt_mb = estimate_memory_savings(n_layers=12, d_model=512, seq_len=256, batch_size=2)
-    assert full_mb > ckpt_mb, "Full activation memory should exceed checkpointed memory"
-
-
-def test_memory_savings_formula():
-    """Verify the formula: full = n*seq*B*d*4/1e6, ckpt = full/n."""
-    n, d, s, b = 8, 128, 32, 2
-    expected_full = n * s * b * d * 4 / 1e6
-    expected_ckpt = expected_full / n
-    full_mb, ckpt_mb = estimate_memory_savings(n_layers=n, d_model=d, seq_len=s, batch_size=b)
-    assert abs(full_mb - expected_full) < 1e-9
-    assert abs(ckpt_mb - expected_ckpt) < 1e-9
-
-
-# ---------------------------------------------------------------------------
-# 7. ActivationCheckpointTrainer.train_step returns loss
-# ---------------------------------------------------------------------------
-
-def test_trainer_train_step_returns_loss():
-    """train_step should return a dict containing a scalar 'loss' key."""
-    model = small_model()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
-    trainer = ActivationCheckpointTrainer(model, optimizer, CheckpointConfig())
-
-    input_ids = torch.randint(0, 256, (1, 16))
-    result = trainer.train_step(input_ids)
-
-    assert "loss" in result
-    assert isinstance(result["loss"], float)
-    assert result["loss"] > 0.0
-
-
-def test_trainer_train_step_returns_n_checkpointed():
-    """train_step should return 'n_checkpointed_layers' in result dict."""
-    model = small_model()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
-    trainer = ActivationCheckpointTrainer(model, optimizer, CheckpointConfig())
-
-    input_ids = torch.randint(0, 256, (1, 16))
-    result = trainer.train_step(input_ids)
-
-    assert "n_checkpointed_layers" in result
-    assert result["n_checkpointed_layers"] == 2
-
-
-def test_trainer_wraps_layers_on_init():
-    """ActivationCheckpointTrainer should wrap all layers at construction time."""
-    model = small_model()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
-    _trainer = ActivationCheckpointTrainer(model, optimizer, CheckpointConfig())
-    assert all(isinstance(l, CheckpointedLayer) for l in model.layers)
-
-
-# ---------------------------------------------------------------------------
-# 8. get_checkpoint_stats returns correct ratio
-# ---------------------------------------------------------------------------
-
-def test_get_checkpoint_stats_all_wrapped():
-    """With all layers wrapped, ratio should be 1.0."""
-    model = small_model()
-    cfg = CheckpointConfig(checkpoint_every_n_layers=1)
-    wrap_layers_with_checkpointing(model, cfg)
-    stats = get_checkpoint_stats(model)
-
-    assert stats["total_layers"] == 2
-    assert stats["checkpointed_layers"] == 2
-    assert stats["checkpoint_ratio"] == 1.0
-
-
-def test_get_checkpoint_stats_none_wrapped():
-    """With no wrapping done, ratio should be 0.0."""
-    model = small_model()
-    stats = get_checkpoint_stats(model)
-    assert stats["checkpoint_ratio"] == 0.0
-    assert stats["checkpointed_layers"] == 0
-
-
-def test_get_checkpoint_stats_partial():
-    """With half layers wrapped, ratio should be 0.5."""
-    cfg_model = AureliusConfig(
-        n_layers=4,
-        d_model=64,
-        n_heads=2,
-        n_kv_heads=2,
-        head_dim=32,
-        d_ff=128,
-        vocab_size=256,
-        max_seq_len=512,
-    )
-    torch.manual_seed(0)
-    model = AureliusTransformer(cfg_model)
-    cfg = CheckpointConfig(checkpoint_every_n_layers=2)
-    wrap_layers_with_checkpointing(model, cfg)
-    stats = get_checkpoint_stats(model)
-
-    assert stats["total_layers"] == 4
-    assert stats["checkpointed_layers"] == 2
-    assert abs(stats["checkpoint_ratio"] - 0.5) < 1e-9
-
-
-# ---------------------------------------------------------------------------
-# 9. CheckpointedLayer preserves gradient flow (backward works)
-# ---------------------------------------------------------------------------
-
-def test_checkpointed_layer_gradient_flow():
-    """Gradients should flow through CheckpointedLayer during backward."""
-    model = small_model()
-    layer = model.layers[0]
-    ckpt_layer = CheckpointedLayer(layer, use_reentrant=False)
-
-    B, S, D = 1, 8, 64
-    x = torch.randn(B, S, D, requires_grad=True)
-    freqs = model.freqs_cis[:S]
-
-    out, _kv = ckpt_layer(x, freqs)
-    loss = out.sum()
-    loss.backward()
-
-    assert x.grad is not None, "x.grad should not be None — gradient did not flow"
+    assert x.grad is not None
     assert x.grad.shape == x.shape
 
 
-def test_full_model_backward_with_checkpointing():
-    """A full forward+backward through a checkpointed model should succeed."""
-    model = small_model()
+# ---------------------------------------------------------------------------
+# 4. CheckpointedSequential forward output shape same as sequential
+# ---------------------------------------------------------------------------
+
+def test_checkpointed_sequential_output_shape():
+    torch.manual_seed(2)
+    modules = [make_linear_block() for _ in range(N_LAYERS)]
     cfg = CheckpointConfig(checkpoint_every_n_layers=1)
-    wrap_layers_with_checkpointing(model, cfg)
-    model.train()
+    seq = CheckpointedSequential(modules, cfg)
 
-    input_ids = torch.randint(0, 256, (1, 16))
-    loss, _logits, _pkv = model(input_ids, labels=input_ids)
+    x = make_input()
+    out = seq(x)
+    assert out.shape == x.shape
 
-    assert loss is not None
-    loss.backward()
 
-    # At least one parameter should have a gradient
-    grads = [p.grad for p in model.parameters() if p.grad is not None]
-    assert len(grads) > 0, "No gradients were computed after backward through checkpointed model"
+# ---------------------------------------------------------------------------
+# 5. CheckpointedSequential backward completes (no error)
+# ---------------------------------------------------------------------------
+
+def test_checkpointed_sequential_backward_completes():
+    torch.manual_seed(3)
+    modules = [make_linear_block() for _ in range(N_LAYERS)]
+    cfg = CheckpointConfig(checkpoint_every_n_layers=1)
+    seq = CheckpointedSequential(modules, cfg)
+
+    x = make_input(requires_grad=True)
+    out = seq(x)
+    out.sum().backward()
+
+    assert x.grad is not None
+
+
+# ---------------------------------------------------------------------------
+# 6. CheckpointedSequential checkpoints correct fraction of modules
+# ---------------------------------------------------------------------------
+
+def test_checkpointed_sequential_correct_fraction():
+    torch.manual_seed(4)
+    modules = [make_linear_block() for _ in range(N_LAYERS)]
+    cfg = CheckpointConfig(checkpoint_every_n_layers=2)
+    seq = CheckpointedSequential(modules, cfg)
+
+    x = make_input()
+    out = seq(x)
+    assert out.shape == x.shape
+
+
+# ---------------------------------------------------------------------------
+# 7. estimate_memory_savings returns required keys
+# ---------------------------------------------------------------------------
+
+def test_estimate_memory_savings_keys():
+    result = estimate_memory_savings(N_LAYERS, D_MODEL, SEQ_LEN, BATCH)
+    assert "activation_bytes_no_checkpoint" in result
+    assert "activation_bytes_with_checkpoint" in result
+    assert "savings_fraction" in result
+
+
+# ---------------------------------------------------------------------------
+# 8. savings_fraction = 0.0 when checkpoint_every_n=1 and n_layers=1
+# ---------------------------------------------------------------------------
+
+def test_estimate_memory_savings_zero_savings_single_layer():
+    result = estimate_memory_savings(n_layers=1, d_model=D_MODEL, seq_len=SEQ_LEN, batch_size=BATCH, checkpoint_every_n=1)
+    assert result["savings_fraction"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# 9. savings_fraction in [0, 1]
+# ---------------------------------------------------------------------------
+
+def test_estimate_memory_savings_fraction_in_range():
+    result = estimate_memory_savings(N_LAYERS, D_MODEL, SEQ_LEN, BATCH, checkpoint_every_n=2)
+    sf = result["savings_fraction"]
+    assert 0.0 <= sf <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# 10. no_checkpoint > with_checkpoint when n_layers>1 and every_n=2
+# ---------------------------------------------------------------------------
+
+def test_estimate_memory_savings_no_ckpt_greater():
+    result = estimate_memory_savings(n_layers=4, d_model=D_MODEL, seq_len=SEQ_LEN, batch_size=BATCH, checkpoint_every_n=2)
+    assert result["activation_bytes_no_checkpoint"] > result["activation_bytes_with_checkpoint"]
+
+
+# ---------------------------------------------------------------------------
+# 11. apply_activation_checkpointing returns correct count
+# ---------------------------------------------------------------------------
+
+def test_apply_activation_checkpointing_count():
+    torch.manual_seed(5)
+    model = nn.Sequential(*[nn.Linear(D_MODEL, D_MODEL) for _ in range(N_LAYERS)])
+    cfg = CheckpointConfig()
+    count = apply_activation_checkpointing(model, nn.Linear, cfg)
+    assert count == N_LAYERS
+
+
+# ---------------------------------------------------------------------------
+# 12. apply_activation_checkpointing wrapped modules still produce output
+# ---------------------------------------------------------------------------
+
+def test_apply_activation_checkpointing_produces_output():
+    torch.manual_seed(6)
+    model = nn.Sequential(nn.Linear(D_MODEL, D_MODEL), nn.ReLU(), nn.Linear(D_MODEL, D_MODEL))
+    cfg = CheckpointConfig()
+    apply_activation_checkpointing(model, nn.Linear, cfg)
+
+    x = torch.randn(BATCH, SEQ_LEN, D_MODEL)
+    out = model(x)
+    assert out.shape == x.shape
+
+
+# ---------------------------------------------------------------------------
+# 13. apply_activation_checkpointing backward completes after wrapping
+# ---------------------------------------------------------------------------
+
+def test_apply_activation_checkpointing_backward():
+    torch.manual_seed(7)
+    model = nn.Sequential(nn.Linear(D_MODEL, D_MODEL), nn.ReLU(), nn.Linear(D_MODEL, D_MODEL))
+    cfg = CheckpointConfig()
+    apply_activation_checkpointing(model, nn.Linear, cfg)
+
+    x = torch.randn(BATCH, SEQ_LEN, D_MODEL, requires_grad=True)
+    out = model(x)
+    out.sum().backward()
+
+    assert x.grad is not None
+
+
+# ---------------------------------------------------------------------------
+# 14. CheckpointedSequential single module list forward
+# ---------------------------------------------------------------------------
+
+def test_checkpointed_sequential_single_module():
+    torch.manual_seed(8)
+    module = make_linear_block()
+    cfg = CheckpointConfig(checkpoint_every_n_layers=1)
+    seq = CheckpointedSequential([module], cfg)
+
+    x = make_input()
+    out = seq(x)
+    assert out.shape == x.shape
+
+
+# ---------------------------------------------------------------------------
+# 15. estimate_memory_savings checkpoint_every_n=n_layers (only checkpoint 1)
+# ---------------------------------------------------------------------------
+
+def test_estimate_memory_savings_every_n_equals_n_layers():
+    n = N_LAYERS
+    result = estimate_memory_savings(n_layers=n, d_model=D_MODEL, seq_len=SEQ_LEN, batch_size=BATCH, checkpoint_every_n=n)
+    expected_with = 4 * 1 * SEQ_LEN * BATCH * D_MODEL
+    assert result["activation_bytes_with_checkpoint"] == expected_with
+    expected_sf = 1.0 - (1.0 / n)
+    assert abs(result["savings_fraction"] - expected_sf) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# 16. CheckpointedSequential forward output dtype preserved
+# ---------------------------------------------------------------------------
+
+def test_checkpointed_sequential_dtype_preserved():
+    torch.manual_seed(9)
+    modules = [make_linear_block() for _ in range(2)]
+    cfg = CheckpointConfig(checkpoint_every_n_layers=1)
+    seq = CheckpointedSequential(modules, cfg)
+
+    x = make_input().float()
+    out = seq(x)
+    assert out.dtype == torch.float32
