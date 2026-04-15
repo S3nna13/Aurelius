@@ -1,4 +1,7 @@
-"""Tests for src/model/mixture_of_depths.py."""
+"""Tests for src/model/mixture_of_depths.py.
+
+Uses tiny configs: D_MODEL=16, CAPACITY=0.5, B=2, SEQ=8.
+"""
 from __future__ import annotations
 
 import math
@@ -7,330 +10,318 @@ import pytest
 import torch
 import torch.nn as nn
 
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 from src.model.mixture_of_depths import (
     MoDConfig,
-    MoDRouter,
     MoDLayer,
-    MoDTransformerWrapper,
-    mod_aux_loss,
+    MoDTransformer,
+    compute_mod_aux_loss,
+    scatter_back,
+    token_router,
 )
 
-
 # ---------------------------------------------------------------------------
-# Fixtures
+# Tiny test constants
 # ---------------------------------------------------------------------------
 
-@pytest.fixture
-def tiny_cfg():
-    return AureliusConfig(
-        n_layers=2,
-        d_model=64,
-        n_heads=2,
-        n_kv_heads=2,
-        head_dim=32,
-        d_ff=128,
-        vocab_size=256,
-        max_seq_len=512,
-    )
-
-
-@pytest.fixture
-def tiny_model(tiny_cfg):
-    return AureliusTransformer(tiny_cfg)
-
-
-@pytest.fixture
-def simple_layer():
-    """A plain nn.Linear as a stand-in for a transformer sub-layer."""
-    return nn.Linear(64, 64, bias=False)
-
-
-@pytest.fixture
-def identity_layer():
-    return nn.Identity()
+D_MODEL = 16
+CAPACITY = 0.5
+B = 2
+SEQ = 8
 
 
 # ---------------------------------------------------------------------------
 # 1. MoDConfig defaults
 # ---------------------------------------------------------------------------
 
+
 class TestMoDConfigDefaults:
-    def test_capacity_factor_default(self):
+    def test_d_model_default(self):
         cfg = MoDConfig()
-        assert cfg.capacity_factor == 0.5
+        assert cfg.d_model == 64
 
-    def test_aux_loss_coeff_default(self):
+    def test_capacity_default(self):
         cfg = MoDConfig()
-        assert cfg.router_aux_loss_coeff == 0.01
+        assert cfg.capacity == 0.125
+
+    def test_aux_loss_coef_default(self):
+        cfg = MoDConfig()
+        assert cfg.aux_loss_coef == 0.01
 
 
 # ---------------------------------------------------------------------------
-# 2-5. MoDRouter
+# 2. token_router output shapes: selected (B,k,D), indices (B,k), weights (B,k)
 # ---------------------------------------------------------------------------
 
-class TestMoDRouter:
-    """Tests for MoDRouter output shapes and selection correctness."""
 
-    @pytest.mark.parametrize("B,T,D", [(1, 10, 64), (2, 20, 64), (4, 8, 64)])
-    def test_output_shapes(self, B, T, D):
-        """Test 2: MoDRouter output shapes for various (B, T, d_model)."""
-        router = MoDRouter(D, capacity_factor=0.5)
-        x = torch.randn(B, T, D)
-        selected_x, indices, router_scores = router(x)
+class TestTokenRouterShapes:
+    def test_selected_tokens_shape(self):
+        router = nn.Linear(D_MODEL, 1, bias=False)
+        x = torch.randn(B, SEQ, D_MODEL)
+        k = math.ceil(CAPACITY * SEQ)
+        selected, indices, weights = token_router(x, router, CAPACITY)
+        assert selected.shape == (B, k, D_MODEL), f"Expected ({B},{k},{D_MODEL}), got {selected.shape}"
 
-        k = max(1, math.ceil(0.5 * T))
-        assert selected_x.shape == (B, k, D), f"selected_x shape mismatch: {selected_x.shape}"
-        assert indices.shape == (B, k), f"indices shape mismatch: {indices.shape}"
-        assert router_scores.shape == (B, T), f"router_scores shape mismatch: {router_scores.shape}"
+    def test_token_indices_shape(self):
+        router = nn.Linear(D_MODEL, 1, bias=False)
+        x = torch.randn(B, SEQ, D_MODEL)
+        k = math.ceil(CAPACITY * SEQ)
+        selected, indices, weights = token_router(x, router, CAPACITY)
+        assert indices.shape == (B, k), f"Expected ({B},{k}), got {indices.shape}"
 
-    @pytest.mark.parametrize("capacity_factor,T", [(0.5, 10), (0.25, 8), (1.0, 6), (0.3, 7)])
-    def test_selects_exact_k_tokens(self, capacity_factor, T):
-        """Test 3: MoDRouter selects exactly ceil(capacity_factor * T) tokens."""
-        D = 32
-        router = MoDRouter(D, capacity_factor=capacity_factor)
-        x = torch.randn(1, T, D)
-        selected_x, indices, _ = router(x)
+    def test_router_weights_shape(self):
+        router = nn.Linear(D_MODEL, 1, bias=False)
+        x = torch.randn(B, SEQ, D_MODEL)
+        k = math.ceil(CAPACITY * SEQ)
+        selected, indices, weights = token_router(x, router, CAPACITY)
+        assert weights.shape == (B, k), f"Expected ({B},{k}), got {weights.shape}"
 
-        expected_k = max(1, math.ceil(capacity_factor * T))
-        assert indices.shape[1] == expected_k, (
-            f"Expected k={expected_k} but got {indices.shape[1]} for "
-            f"capacity_factor={capacity_factor}, T={T}"
+
+# ---------------------------------------------------------------------------
+# 3. k = ceil(capacity * T)
+# ---------------------------------------------------------------------------
+
+
+class TestTokenRouterK:
+    @pytest.mark.parametrize("capacity,T", [
+        (0.5, 8),
+        (0.25, 8),
+        (0.3, 7),
+        (1.0, 6),
+        (0.125, 16),
+    ])
+    def test_k_equals_ceil_capacity_times_T(self, capacity, T):
+        router = nn.Linear(D_MODEL, 1, bias=False)
+        x = torch.randn(1, T, D_MODEL)
+        expected_k = math.ceil(capacity * T)
+        selected, indices, weights = token_router(x, router, capacity)
+        assert selected.shape[1] == expected_k
+        assert indices.shape[1] == expected_k
+        assert weights.shape[1] == expected_k
+
+
+# ---------------------------------------------------------------------------
+# 4. weights sum to 1 per batch item (among selected)
+# ---------------------------------------------------------------------------
+
+
+class TestTokenRouterWeights:
+    def test_weights_sum_to_one_per_batch_item(self):
+        router = nn.Linear(D_MODEL, 1, bias=False)
+        x = torch.randn(B, SEQ, D_MODEL)
+        selected, indices, weights = token_router(x, router, CAPACITY)
+        weight_sums = weights.sum(dim=-1)  # (B,)
+        assert torch.allclose(weight_sums, torch.ones(B), atol=1e-5), (
+            f"Weights do not sum to 1 per batch item: {weight_sums}"
         )
 
-    def test_indices_in_valid_range(self):
-        """Test 4: MoDRouter indices are in range [0, T)."""
-        B, T, D = 3, 12, 64
-        router = MoDRouter(D, capacity_factor=0.5)
-        x = torch.randn(B, T, D)
-        _, indices, _ = router(x)
 
-        assert (indices >= 0).all(), "Indices contain negative values"
-        assert (indices < T).all(), f"Indices exceed T={T}"
+# ---------------------------------------------------------------------------
+# 5. scatter_back output shape (B, T, D)
+# ---------------------------------------------------------------------------
 
-    def test_router_scores_shape(self):
-        """Test 5: MoDRouter router_scores shape is (B, T)."""
-        B, T, D = 2, 15, 64
-        router = MoDRouter(D, capacity_factor=0.5)
-        x = torch.randn(B, T, D)
-        _, _, router_scores = router(x)
-        assert router_scores.shape == (B, T)
 
-    def test_minimum_one_token_always_selected(self):
-        """Even with tiny capacity_factor and T=1, at least 1 token is selected."""
-        router = MoDRouter(64, capacity_factor=0.01)
-        x = torch.randn(1, 1, 64)
-        selected_x, indices, _ = router(x)
-        assert selected_x.shape[1] >= 1
-        assert indices.shape[1] >= 1
+class TestScatterBackShape:
+    def test_output_shape(self):
+        k = math.ceil(CAPACITY * SEQ)
+        output = torch.randn(B, k, D_MODEL)
+        indices = torch.randint(0, SEQ, (B, k))
+        weights = torch.softmax(torch.randn(B, k), dim=-1)
+        x = torch.randn(B, SEQ, D_MODEL)
+        result = scatter_back(output, indices, weights, x)
+        assert result.shape == (B, SEQ, D_MODEL), f"Expected ({B},{SEQ},{D_MODEL}), got {result.shape}"
 
 
 # ---------------------------------------------------------------------------
-# 6-9. MoDLayer
+# 6. unselected positions preserved in scatter_back
 # ---------------------------------------------------------------------------
 
-class TestMoDLayer:
-    """Tests for MoDLayer forward output correctness."""
 
-    def test_forward_returns_tuple(self, simple_layer):
-        """Test 6: MoDLayer forward returns (Tensor, Tensor) — output and aux_loss."""
-        config = MoDConfig(capacity_factor=0.5)
-        layer = MoDLayer(simple_layer, d_model=64, config=config)
-        x = torch.randn(2, 10, 64)
-        result = layer(x)
+class TestScatterBackUnselected:
+    def test_unselected_positions_preserved(self):
+        T = 8
+        k = 2  # select only 2 out of 8 tokens
+        # Use fixed indices [0, 1] for batch item 0 and [2, 3] for batch item 1
+        indices = torch.tensor([[0, 1], [2, 3]])
+        output = torch.zeros(B, k, D_MODEL)
+        weights = torch.ones(B, k) / k
+        x = torch.randn(B, T, D_MODEL)
+        result = scatter_back(output, indices, weights, x)
 
-        assert isinstance(result, tuple), "MoDLayer.forward should return a tuple"
-        assert len(result) == 2, "Tuple should have 2 elements: (output, aux_loss)"
-        output, aux_loss = result
-        assert isinstance(output, torch.Tensor)
-        assert isinstance(aux_loss, torch.Tensor)
-
-    def test_output_shape_matches_input(self, simple_layer):
-        """Test 7: MoDLayer output shape matches input (B, T, d_model)."""
-        config = MoDConfig(capacity_factor=0.5)
-        layer = MoDLayer(simple_layer, d_model=64, config=config)
-        x = torch.randn(2, 10, 64)
-        output, _ = layer(x)
-        assert output.shape == x.shape, (
-            f"Output shape {output.shape} does not match input {x.shape}"
-        )
-
-    def test_aux_loss_is_scalar(self, simple_layer):
-        """Test 8: MoDLayer aux_loss is a scalar (0-dim tensor)."""
-        config = MoDConfig(capacity_factor=0.5)
-        layer = MoDLayer(simple_layer, d_model=64, config=config)
-        x = torch.randn(2, 10, 64)
-        _, aux_loss = layer(x)
-        assert aux_loss.ndim == 0, f"aux_loss should be scalar, got ndim={aux_loss.ndim}"
-
-    def test_aux_loss_non_negative(self, simple_layer):
-        """Test 9: MoDLayer aux_loss >= 0."""
-        config = MoDConfig(capacity_factor=0.5)
-        layer = MoDLayer(simple_layer, d_model=64, config=config)
-        x = torch.randn(2, 10, 64)
-        _, aux_loss = layer(x)
-        assert aux_loss.item() >= 0.0, f"aux_loss should be non-negative, got {aux_loss.item()}"
-
-    @pytest.mark.parametrize("B,T", [(1, 8), (2, 16), (3, 5)])
-    def test_various_batch_seq_sizes(self, B, T):
-        """MoDLayer works for various batch and sequence sizes."""
-        config = MoDConfig(capacity_factor=0.5)
-        layer = MoDLayer(nn.Linear(64, 64, bias=False), d_model=64, config=config)
-        x = torch.randn(B, T, 64)
-        output, aux_loss = layer(x)
-        assert output.shape == x.shape
-        assert aux_loss.ndim == 0
-
-    def test_identity_layer_passes_selected_through(self, identity_layer):
-        """With identity_layer, selected tokens are unchanged."""
-        config = MoDConfig(capacity_factor=1.0)
-        layer = MoDLayer(identity_layer, d_model=64, config=config)
-        x = torch.randn(2, 8, 64)
-        output, _ = layer(x)
-        # With capacity_factor=1.0 all tokens are selected and identity keeps them same
-        assert torch.allclose(output, x, atol=1e-5), "Identity layer should not change tokens"
+        # Unselected for batch item 0: positions 2..7
+        for pos in range(2, T):
+            assert torch.allclose(result[0, pos], x[0, pos]), (
+                f"Batch 0, position {pos} was modified but should be preserved"
+            )
+        # Unselected for batch item 1: positions 0,1,4..7
+        for pos in list(range(0, 2)) + list(range(4, T)):
+            assert torch.allclose(result[1, pos], x[1, pos]), (
+                f"Batch 1, position {pos} was modified but should be preserved"
+            )
 
 
 # ---------------------------------------------------------------------------
-# 10-11. mod_aux_loss
+# 7. compute_mod_aux_loss returns a scalar
 # ---------------------------------------------------------------------------
 
-class TestModAuxLoss:
+
+class TestComputeModAuxLoss:
     def test_returns_scalar(self):
-        """Test 10: mod_aux_loss returns scalar."""
-        scores = torch.randn(2, 10)
-        loss = mod_aux_loss(scores, capacity_factor=0.5)
+        scores = torch.randn(B, SEQ)
+        loss = compute_mod_aux_loss(scores, CAPACITY, coef=0.01)
         assert isinstance(loss, torch.Tensor)
-        assert loss.ndim == 0
+        assert loss.ndim == 0, f"Expected scalar (0-dim), got ndim={loss.ndim}"
 
-    def test_uniform_routing_near_zero(self):
-        """Test 11: mod_aux_loss returns ~0 for uniform routing at target capacity.
-
-        When all router scores are the same, sigmoid(score) is constant and
-        mean_prob equals sigmoid(score). Setting score so sigmoid(score)=0.5
-        (capacity_factor) should yield loss ~0.
-        """
-        # logit(0.5) = 0.0, so sigmoid(0.0) = 0.5 exactly
-        scores = torch.zeros(4, 20)  # all zeros -> sigmoid = 0.5
-        loss = mod_aux_loss(scores, capacity_factor=0.5)
-        assert loss.item() < 1e-6, f"Expected near-zero loss, got {loss.item()}"
+    def test_non_negative(self):
+        scores = torch.randn(B, SEQ)
+        loss = compute_mod_aux_loss(scores, CAPACITY, coef=0.01)
+        assert loss.item() >= 0.0, f"Expected non-negative loss, got {loss.item()}"
 
     def test_imbalanced_routing_positive(self):
-        """Clearly imbalanced routing should give a positive loss."""
-        # All scores very high -> sigmoid ~1.0, target 0.5 -> loss = (1-0.5)^2 = 0.25
-        scores = torch.full((2, 10), 100.0)
-        loss = mod_aux_loss(scores, capacity_factor=0.5)
-        assert loss.item() > 0.1, f"Expected positive loss for imbalanced routing, got {loss.item()}"
-
-    def test_loss_is_non_negative(self):
-        """mod_aux_loss is always non-negative (MSE-based)."""
-        scores = torch.randn(3, 15)
-        loss = mod_aux_loss(scores, capacity_factor=0.4)
-        assert loss.item() >= 0.0
+        # All scores very high -> sigmoid ~1.0, deviation from capacity is large
+        scores = torch.full((B, SEQ), 100.0)
+        loss = compute_mod_aux_loss(scores, CAPACITY, coef=0.01)
+        assert loss.item() > 0.0, f"Expected positive loss, got {loss.item()}"
 
 
 # ---------------------------------------------------------------------------
-# 12-15. MoDTransformerWrapper
+# 8. MoDLayer output shape (B, T, D)
 # ---------------------------------------------------------------------------
 
-class TestMoDTransformerWrapper:
-    def test_wraps_model_forward_returns_3_tuple(self, tiny_model):
-        """Test 12: MoDTransformerWrapper forward returns 3-tuple."""
-        config = MoDConfig(capacity_factor=0.5)
-        wrapper = MoDTransformerWrapper(tiny_model, config)
-        input_ids = torch.randint(0, 256, (1, 16))
-        result = wrapper(input_ids)
-        assert isinstance(result, tuple)
-        assert len(result) == 3
 
-    def test_output_logits_shape_correct(self, tiny_model, tiny_cfg):
-        """Test 13: MoDTransformerWrapper output logits shape correct."""
-        config = MoDConfig(capacity_factor=0.5)
-        wrapper = MoDTransformerWrapper(tiny_model, config)
-        B, S = 2, 16
-        input_ids = torch.randint(0, tiny_cfg.vocab_size, (B, S))
-        loss, logits, pkv = wrapper(input_ids)
-        assert logits.shape == (B, S, tiny_cfg.vocab_size), (
-            f"Expected logits shape ({B}, {S}, {tiny_cfg.vocab_size}), got {logits.shape}"
+class TestMoDLayerOutputShape:
+    def test_output_shape(self):
+        config = MoDConfig(d_model=D_MODEL, capacity=CAPACITY, aux_loss_coef=0.01)
+        layer = MoDLayer(nn.Identity(), config)
+        x = torch.randn(B, SEQ, D_MODEL)
+        output, aux_loss = layer(x)
+        assert output.shape == (B, SEQ, D_MODEL), f"Expected ({B},{SEQ},{D_MODEL}), got {output.shape}"
+
+
+# ---------------------------------------------------------------------------
+# 9. MoDLayer aux_loss is scalar
+# ---------------------------------------------------------------------------
+
+
+class TestMoDLayerAuxLoss:
+    def test_aux_loss_is_scalar(self):
+        config = MoDConfig(d_model=D_MODEL, capacity=CAPACITY, aux_loss_coef=0.01)
+        layer = MoDLayer(nn.Identity(), config)
+        x = torch.randn(B, SEQ, D_MODEL)
+        output, aux_loss = layer(x)
+        assert aux_loss.ndim == 0, f"aux_loss should be 0-dim scalar, got ndim={aux_loss.ndim}"
+
+    def test_aux_loss_non_negative(self):
+        config = MoDConfig(d_model=D_MODEL, capacity=CAPACITY, aux_loss_coef=0.01)
+        layer = MoDLayer(nn.Identity(), config)
+        x = torch.randn(B, SEQ, D_MODEL)
+        _, aux_loss = layer(x)
+        assert aux_loss.item() >= 0.0
+
+
+# ---------------------------------------------------------------------------
+# 10. Gradient flows through MoDLayer
+# ---------------------------------------------------------------------------
+
+
+class TestMoDLayerGradients:
+    def test_gradient_flows(self):
+        config = MoDConfig(d_model=D_MODEL, capacity=CAPACITY, aux_loss_coef=0.01)
+        inner = nn.Linear(D_MODEL, D_MODEL, bias=False)
+        layer = MoDLayer(inner, config)
+        x = torch.randn(B, SEQ, D_MODEL, requires_grad=True)
+        output, aux_loss = layer(x)
+        loss = output.sum() + aux_loss
+        loss.backward()
+
+        assert x.grad is not None, "No gradient flowed to input x"
+        has_param_grad = any(
+            p.grad is not None for p in layer.parameters() if p.requires_grad
+        )
+        assert has_param_grad, "No gradient flowed to MoDLayer parameters"
+
+
+# ---------------------------------------------------------------------------
+# 11. MoDTransformer output shape
+# ---------------------------------------------------------------------------
+
+
+class TestMoDTransformerOutputShape:
+    def test_output_shape(self):
+        config = MoDConfig(d_model=D_MODEL, capacity=CAPACITY, aux_loss_coef=0.01)
+        layers = [nn.Linear(D_MODEL, D_MODEL, bias=False) for _ in range(2)]
+        transformer = MoDTransformer(layers, config)
+        x = torch.randn(B, SEQ, D_MODEL)
+        output, total_aux_loss = transformer(x)
+        assert output.shape == (B, SEQ, D_MODEL), f"Expected ({B},{SEQ},{D_MODEL}), got {output.shape}"
+
+
+# ---------------------------------------------------------------------------
+# 12. MoDTransformer aux_loss is sum of per-layer losses (2 layers)
+# ---------------------------------------------------------------------------
+
+
+class TestMoDTransformerAuxLossSum:
+    def test_aux_loss_sum_of_layers(self):
+        """MoDTransformer total_aux_loss equals sum of individual layer aux losses."""
+        config = MoDConfig(d_model=D_MODEL, capacity=CAPACITY, aux_loss_coef=0.01)
+        inner1 = nn.Linear(D_MODEL, D_MODEL, bias=False)
+        inner2 = nn.Linear(D_MODEL, D_MODEL, bias=False)
+
+        transformer = MoDTransformer([inner1, inner2], config)
+        x = torch.randn(B, SEQ, D_MODEL)
+
+        # Run through transformer and collect total
+        output, total_aux_loss = transformer(x)
+
+        # Run each layer independently from x to get their individual losses
+        # Note: we test that total = layer1_loss + layer2_loss
+        # We do this by running the transformer with a single layer each
+        cfg1 = MoDConfig(d_model=D_MODEL, capacity=CAPACITY, aux_loss_coef=0.01)
+        layer1 = transformer.mod_layers[0]
+        layer2 = transformer.mod_layers[1]
+
+        with torch.no_grad():
+            out1, loss1 = layer1(x)
+            out2, loss2 = layer2(out1)
+
+        expected_total = (loss1 + loss2).item()
+        assert abs(total_aux_loss.item() - expected_total) < 1e-5, (
+            f"Expected total aux_loss={expected_total}, got {total_aux_loss.item()}"
         )
 
-    def test_get_routing_stats_returns_dict_with_expected_keys(self, tiny_model):
-        """Test 14: get_routing_stats returns dict with expected keys."""
-        config = MoDConfig(capacity_factor=0.5)
-        wrapper = MoDTransformerWrapper(tiny_model, config)
-        input_ids = torch.randint(0, 256, (1, 16))
-        wrapper(input_ids)  # populate stats
+    def test_total_aux_loss_is_scalar(self):
+        config = MoDConfig(d_model=D_MODEL, capacity=CAPACITY, aux_loss_coef=0.01)
+        layers = [nn.Linear(D_MODEL, D_MODEL, bias=False) for _ in range(2)]
+        transformer = MoDTransformer(layers, config)
+        x = torch.randn(B, SEQ, D_MODEL)
+        _, total_aux_loss = transformer(x)
+        assert total_aux_loss.ndim == 0
 
-        stats = wrapper.get_routing_stats()
-        assert isinstance(stats, dict)
-        assert "tokens_processed_fraction" in stats
-        assert "capacity_factor" in stats
-        assert "n_mod_layers" in stats
-        assert "aux_loss" in stats
 
-    def test_capacity_factor_1_vs_05(self, tiny_cfg):
-        """Test 15: capacity_factor=1.0 (all tokens) vs 0.5 (half tokens).
+# ---------------------------------------------------------------------------
+# 13. capacity=1.0 routes all tokens
+# ---------------------------------------------------------------------------
 
-        With capacity_factor=1.0, all tokens are processed by every layer.
-        With 0.5, roughly half are skipped. Both should produce valid outputs.
-        """
-        B, S = 2, 16
-        input_ids = torch.randint(0, tiny_cfg.vocab_size, (B, S))
 
-        # capacity_factor = 1.0: all tokens processed
-        model_full = AureliusTransformer(tiny_cfg)
-        wrapper_full = MoDTransformerWrapper(model_full, MoDConfig(capacity_factor=1.0))
-        loss_full, logits_full, _ = wrapper_full(input_ids)
-        stats_full = wrapper_full.get_routing_stats()
-        assert logits_full.shape == (B, S, tiny_cfg.vocab_size)
-        assert abs(stats_full["tokens_processed_fraction"] - 1.0) < 1e-5
-
-        # capacity_factor = 0.5: half tokens processed
-        model_half = AureliusTransformer(tiny_cfg)
-        wrapper_half = MoDTransformerWrapper(model_half, MoDConfig(capacity_factor=0.5))
-        loss_half, logits_half, _ = wrapper_half(input_ids)
-        stats_half = wrapper_half.get_routing_stats()
-        assert logits_half.shape == (B, S, tiny_cfg.vocab_size)
-        expected_fraction = math.ceil(0.5 * S) / S
-        assert abs(stats_half["tokens_processed_fraction"] - expected_fraction) < 1e-5
-
-    def test_n_mod_layers_matches_model_layers(self, tiny_model, tiny_cfg):
-        """MoDTransformerWrapper creates one MoDLayer per transformer block."""
-        config = MoDConfig(capacity_factor=0.5)
-        wrapper = MoDTransformerWrapper(tiny_model, config)
-        assert len(wrapper.mod_layers) == tiny_cfg.n_layers
-
-    def test_loss_is_scalar_tensor(self, tiny_model):
-        """Returned loss is a scalar tensor."""
-        config = MoDConfig(capacity_factor=0.5)
-        wrapper = MoDTransformerWrapper(tiny_model, config)
-        input_ids = torch.randint(0, 256, (1, 8))
-        loss, _, _ = wrapper(input_ids)
-        assert isinstance(loss, torch.Tensor)
-        assert loss.ndim == 0
-
-    def test_routing_stats_capacity_factor_matches_config(self, tiny_model):
-        """stats['capacity_factor'] matches the MoDConfig value."""
-        config = MoDConfig(capacity_factor=0.3)
-        wrapper = MoDTransformerWrapper(tiny_model, config)
-        input_ids = torch.randint(0, 256, (1, 10))
-        wrapper(input_ids)
-        stats = wrapper.get_routing_stats()
-        assert stats["capacity_factor"] == 0.3
-
-    def test_gradients_flow_through_wrapper(self, tiny_model):
-        """Gradients should flow through the MoDTransformerWrapper."""
-        config = MoDConfig(capacity_factor=0.5)
-        wrapper = MoDTransformerWrapper(tiny_model, config)
-        input_ids = torch.randint(0, 256, (1, 8))
-        loss, logits, _ = wrapper(input_ids)
-        # Backprop through logits sum
-        logits.sum().backward()
-        # At least one parameter should have a gradient
-        has_grad = any(
-            p.grad is not None
-            for p in wrapper.parameters()
-            if p.requires_grad
+class TestCapacityOne:
+    def test_capacity_one_routes_all_tokens(self):
+        """When capacity=1.0, all tokens are selected (k == T)."""
+        config = MoDConfig(d_model=D_MODEL, capacity=1.0, aux_loss_coef=0.01)
+        router = nn.Linear(D_MODEL, 1, bias=False)
+        x = torch.randn(B, SEQ, D_MODEL)
+        selected, indices, weights = token_router(x, router, capacity=1.0)
+        # All T tokens should be selected
+        assert selected.shape == (B, SEQ, D_MODEL), (
+            f"With capacity=1.0, expected all {SEQ} tokens selected, got {selected.shape}"
         )
-        assert has_grad, "No gradients flowed through MoDTransformerWrapper"
+        assert indices.shape == (B, SEQ)
+        assert weights.shape == (B, SEQ)
+
+    def test_mod_layer_capacity_one(self):
+        """With capacity=1.0, MoDLayer processes all tokens."""
+        config = MoDConfig(d_model=D_MODEL, capacity=1.0, aux_loss_coef=0.01)
+        layer = MoDLayer(nn.Identity(), config)
+        x = torch.randn(B, SEQ, D_MODEL)
+        output, aux_loss = layer(x)
+        assert output.shape == (B, SEQ, D_MODEL)
+        assert aux_loss.ndim == 0
