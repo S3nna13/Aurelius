@@ -1,212 +1,286 @@
-"""Lookahead decoding: parallel n-gram branch generation and verification."""
+"""Lookahead decoding: parallel n-gram branch generation and verification.
+
+Based on Fu et al. 2024, "Break the Sequential Dependency of LLM Inference
+Using Lookahead Decoding". Proposes multiple candidate n-gram continuations
+in parallel ("windows"), verifies them against the model's distribution,
+and accepts as many tokens as possible per step.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
 
 
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
 @dataclass
 class LookaheadConfig:
-    window_size: int = 4        # W: steps to look ahead
-    n_gram_size: int = 3        # N: n-gram candidates to verify
-    n_candidates: int = 5       # number of n-gram candidates per step
-    temperature: float = 1.0
-    max_new_tokens: int = 32
+    window_size: int = 5     # W — tokens per lookahead branch
+    n_gram_size: int = 3     # N — n-gram size for the n-gram pool
+    guess_set_size: int = 5  # G — max candidate guesses per step
+    max_new_tokens: int = 50
 
+
+# ---------------------------------------------------------------------------
+# NGramPool
+# ---------------------------------------------------------------------------
 
 class NGramPool:
-    """Stores and retrieves n-gram candidates for lookahead verification."""
+    """Stores and retrieves n-grams built from accepted token sequences.
 
-    def __init__(self, n_gram_size: int, max_pool_size: int = 500) -> None:
-        self.n_gram_size = n_gram_size
-        self.max_pool_size = max_pool_size
-        self._pool: list[Tensor] = []
+    Keys are (n-1)-length prefix tuples; values are lists of full n-gram tuples.
+    """
 
-    def add(self, tokens: Tensor) -> None:
-        """Add all n-grams from a token sequence (1D tensor)."""
-        tokens = tokens.reshape(-1)
-        n = self.n_gram_size
-        length = tokens.shape[0]
-        if length < n:
+    def __init__(self, n: int) -> None:
+        self.n = n
+        # Maps prefix tuple (length n-1) to list of full n-gram tuples (length n)
+        self._pool: Dict[Tuple[int, ...], List[Tuple[int, ...]]] = {}
+        self._total: int = 0
+
+    def update(self, tokens: List[int]) -> None:
+        """Extract all n-grams from tokens and add to pool."""
+        n = self.n
+        if len(tokens) < n:
             return
-        for i in range(length - n + 1):
-            ngram = tokens[i : i + n].clone()
-            self._pool.append(ngram)
-            if len(self._pool) > self.max_pool_size:
-                self._pool.pop(0)
+        for i in range(len(tokens) - n + 1):
+            ngram: Tuple[int, ...] = tuple(tokens[i : i + n])
+            prefix: Tuple[int, ...] = ngram[: n - 1]
+            if prefix not in self._pool:
+                self._pool[prefix] = []
+            if ngram not in self._pool[prefix]:
+                self._pool[prefix].append(ngram)
+                self._total += 1
 
-    def get_candidates(self, prefix: Tensor, n_candidates: int) -> list[Tensor]:
-        """Return up to n_candidates n-grams that start with the last token of prefix.
+    def lookup(self, prefix: Tuple[int, ...]) -> List[Tuple[int, ...]]:
+        """Find n-grams whose first (n-1) tokens match prefix.
 
-        Each candidate is a (n_gram_size,) tensor.
-        Returns empty list if pool is empty or no matches.
+        prefix length should be n-1. Returns [] if not found.
         """
-        if len(self._pool) == 0:
-            return []
-        prefix = prefix.reshape(-1)
-        if prefix.shape[0] == 0:
-            return []
-        last_token = prefix[-1].item()
-        matches: list[Tensor] = []
-        for ngram in self._pool:
-            if ngram[0].item() == last_token:
-                matches.append(ngram)
-                if len(matches) >= n_candidates:
-                    break
-        return matches
+        return list(self._pool.get(prefix, []))
 
     def __len__(self) -> int:
-        return len(self._pool)
+        return self._total
 
 
-def verify_ngram(
+# ---------------------------------------------------------------------------
+# verify_candidates
+# ---------------------------------------------------------------------------
+
+def verify_candidates(
     model: nn.Module,
-    context_ids: Tensor,
-    candidate: Tensor,
-    temperature: float = 1.0,
-) -> tuple[int, Tensor]:
-    """Verify how many tokens of candidate are accepted by model.
+    input_ids: Tensor,
+    candidates: List[Tensor],
+) -> Tuple[Tensor, int]:
+    """Run model on extended context; verify each candidate greedily.
 
-    Run model on context, check if argmax matches candidate[0].
-    If yes, extend context and check candidate[1], etc.
+    Extends input_ids with the longest candidate for a single forward pass,
+    then checks how many leading tokens of each candidate match the model's
+    greedy predictions at each position.
 
-    Returns (n_accepted, accepted_tokens (n_accepted,)).
+    Returns:
+        best_accepted_tokens: 1-D Tensor of accepted token ids
+        n_tokens_accepted: int >= 1
     """
-    device = context_ids.device
-    candidate = candidate.to(device)
-    n_gram_size = candidate.shape[0]
+    device = input_ids.device
 
-    accepted_tokens: list[Tensor] = []
-    current_context = context_ids.clone()
+    if not candidates:
+        with torch.no_grad():
+            _, logits, _ = model(input_ids)
+        next_token = logits[0, -1, :].argmax(dim=-1)
+        return next_token.unsqueeze(0), 1
+
+    # Find longest candidate to set the forward-pass length
+    longest = max(candidates, key=lambda c: c.shape[0])
+    extended = torch.cat(
+        [input_ids, longest.to(device).unsqueeze(0)], dim=1
+    )  # (1, L + longest_len)
 
     with torch.no_grad():
-        for i in range(n_gram_size):
-            _, logits, _ = model(current_context)
-            next_logits = logits[0, -1, :]
-            if temperature != 1.0:
-                next_logits = next_logits / temperature
-            predicted_token = next_logits.argmax(dim=-1)
-
-            if predicted_token.item() == candidate[i].item():
-                accepted_tokens.append(candidate[i].clone())
-                current_context = torch.cat(
-                    [current_context, candidate[i].view(1, 1)], dim=1
-                )
-            else:
-                break
-
-    n_accepted = len(accepted_tokens)
-    if n_accepted == 0:
-        accepted = torch.empty(0, dtype=torch.long, device=device)
-    else:
-        accepted = torch.stack(accepted_tokens)
-
-    return n_accepted, accepted
-
-
-def lookahead_step(
-    model: nn.Module,
-    context_ids: Tensor,
-    pool: NGramPool,
-    config: LookaheadConfig,
-    temperature: float = 1.0,
-) -> tuple[Tensor, int]:
-    """One lookahead step.
-
-    1. Get n-gram candidates from pool
-    2. Verify each candidate against model
-    3. Accept the longest matching prefix
-    4. If no candidates match, fall back to greedy decode (1 token)
-
-    Returns (accepted_ids (n_accepted,), n_accepted).
-    """
-    device = context_ids.device
-
-    candidates = pool.get_candidates(context_ids[0], config.n_candidates)
+        _, logits, _ = model(extended)
+    # logits[0, input_len-1+i, :] predicts the token at position input_len+i
+    # i.e. candidate[i]
+    input_len = input_ids.shape[1]
 
     best_n = 0
     best_tokens: Optional[Tensor] = None
 
     for candidate in candidates:
-        n_accepted, accepted_tokens = verify_ngram(
-            model, context_ids, candidate, temperature
-        )
-        if n_accepted > best_n:
-            best_n = n_accepted
-            best_tokens = accepted_tokens
+        candidate = candidate.to(device)
+        cand_len = candidate.shape[0]
+        accepted: List[Tensor] = []
+        for i in range(cand_len):
+            predicted = logits[0, input_len - 1 + i, :].argmax(dim=-1)
+            if predicted.item() == candidate[i].item():
+                accepted.append(candidate[i].clone())
+            else:
+                break
+        n = len(accepted)
+        if n > best_n:
+            best_n = n
+            best_tokens = torch.stack(accepted) if accepted else None
 
     if best_n > 0 and best_tokens is not None:
         return best_tokens, best_n
 
-    with torch.no_grad():
-        _, logits, _ = model(context_ids)
-        next_logits = logits[0, -1, :]
-        if temperature != 1.0:
-            next_logits = next_logits / temperature
-        next_token = next_logits.argmax(dim=-1)
+    # No candidate matched even the first token — return greedy token
+    greedy_first = logits[0, input_len - 1, :].argmax(dim=-1)
+    return greedy_first.unsqueeze(0), 1
 
-    accepted = next_token.unsqueeze(0)
-    return accepted, 1
 
+# ---------------------------------------------------------------------------
+# lookahead_decode_step
+# ---------------------------------------------------------------------------
+
+def lookahead_decode_step(
+    model: nn.Module,
+    input_ids: Tensor,
+    pool: NGramPool,
+    config: LookaheadConfig,
+) -> Tuple[Tensor, int]:
+    """One lookahead decoding step.
+
+    1. Use the last (n-1) tokens as prefix to look up candidates from the pool.
+    2. If pool is empty: greedy decode 1 token, update pool, return (token, 1).
+    3. Otherwise: verify top-G candidates, accept the longest match, update pool.
+
+    Returns:
+        accepted_tokens: 1-D Tensor
+        n_accepted: int >= 1
+    """
+    device = input_ids.device
+    n = config.n_gram_size
+
+    # Build prefix from the last (n-1) tokens of input_ids
+    seq = input_ids[0]  # shape (L,)
+    prefix_len = n - 1
+    if seq.shape[0] >= prefix_len and prefix_len > 0:
+        prefix: Tuple[int, ...] = tuple(seq[-prefix_len:].tolist())
+    else:
+        prefix = tuple(seq.tolist())
+
+    candidates_tuples = pool.lookup(prefix)
+
+    if not candidates_tuples:
+        # Greedy fallback
+        with torch.no_grad():
+            _, logits, _ = model(input_ids)
+        next_token = logits[0, -1, :].argmax(dim=-1)
+        accepted = next_token.unsqueeze(0)
+        # Update pool with the accepted sequence (context + new token)
+        all_tokens: List[int] = seq.tolist() + [int(next_token.item())]
+        pool.update(all_tokens)
+        return accepted, 1
+
+    # Convert top-G candidate tuples to tensors (the suffix/continuation part)
+    top_g = candidates_tuples[: config.guess_set_size]
+    candidate_tensors: List[Tensor] = []
+    for ngram_tuple in top_g:
+        continuation = list(ngram_tuple[prefix_len:])
+        if continuation:
+            candidate_tensors.append(
+                torch.tensor(continuation, dtype=torch.long, device=device)
+            )
+
+    accepted_tokens, n_accepted = verify_candidates(model, input_ids, candidate_tensors)
+
+    # Update pool with the full new sequence
+    all_tokens = seq.tolist() + accepted_tokens.tolist()
+    pool.update(all_tokens)
+
+    return accepted_tokens, n_accepted
+
+
+# ---------------------------------------------------------------------------
+# LookaheadDecoder
+# ---------------------------------------------------------------------------
 
 class LookaheadDecoder:
-    """Full lookahead decoder with n-gram pool."""
+    """Full lookahead decoder using an n-gram pool for speculation."""
 
     def __init__(self, model: nn.Module, config: LookaheadConfig) -> None:
         self.model = model
         self.config = config
-        self.pool = NGramPool(n_gram_size=config.n_gram_size)
+        self._pool = NGramPool(n=config.n_gram_size)
 
-    def generate(self, input_ids: Tensor) -> tuple[Tensor, dict]:
-        """Generate up to max_new_tokens using lookahead decoding.
+    def decode(self, input_ids: Tensor, max_new_tokens: int) -> Tensor:
+        """Autoregressively call lookahead_decode_step, accumulate tokens.
 
-        Returns (output_ids, stats) where stats has:
-            'n_steps': int - number of lookahead_step calls
-            'n_tokens': int - tokens generated
-            'mean_accept_len': float - avg tokens accepted per step
+        Returns a 1-D tensor of generated tokens (batch=1 only).
         """
-        self.model.eval()
+        self.model.train(False)
         context = input_ids.clone()
-        n_steps = 0
-        n_tokens = 0
-        total_accept = 0
+        generated: List[Tensor] = []
+        total = 0
 
         with torch.no_grad():
-            while n_tokens < self.config.max_new_tokens:
-                accepted_ids, n_accepted = lookahead_step(
-                    self.model,
-                    context,
-                    self.pool,
-                    self.config,
-                    self.config.temperature,
+            while total < max_new_tokens:
+                accepted, n_accepted = lookahead_decode_step(
+                    self.model, context, self._pool, self.config
                 )
-                remaining = self.config.max_new_tokens - n_tokens
+                remaining = max_new_tokens - total
                 if n_accepted > remaining:
-                    accepted_ids = accepted_ids[:remaining]
+                    accepted = accepted[:remaining]
                     n_accepted = remaining
 
-                self.pool.add(accepted_ids)
-
+                generated.append(accepted)
                 context = torch.cat(
-                    [context, accepted_ids.to(context.device).unsqueeze(0)], dim=1
+                    [context, accepted.unsqueeze(0)], dim=1
                 )
+                total += n_accepted
 
-                n_steps += 1
-                n_tokens += n_accepted
-                total_accept += n_accepted
+        if not generated:
+            return torch.empty(0, dtype=torch.long, device=input_ids.device)
+        return torch.cat(generated, dim=0)
 
-        stats = {
-            "n_steps": n_steps,
-            "n_tokens": n_tokens,
-            "mean_accept_len": total_accept / max(n_steps, 1),
+    def decode_with_stats(self, input_ids: Tensor, max_new_tokens: int) -> Dict:
+        """Decode and return statistics.
+
+        Returns:
+            {
+                'output': 1-D Tensor of generated tokens,
+                'total_steps': int,
+                'total_tokens': int,
+                'mean_tokens_per_step': float,
+            }
+        """
+        self.model.train(False)
+        context = input_ids.clone()
+        generated: List[Tensor] = []
+        total_tokens = 0
+        total_steps = 0
+
+        with torch.no_grad():
+            while total_tokens < max_new_tokens:
+                accepted, n_accepted = lookahead_decode_step(
+                    self.model, context, self._pool, self.config
+                )
+                remaining = max_new_tokens - total_tokens
+                if n_accepted > remaining:
+                    accepted = accepted[:remaining]
+                    n_accepted = remaining
+
+                generated.append(accepted)
+                context = torch.cat(
+                    [context, accepted.unsqueeze(0)], dim=1
+                )
+                total_tokens += n_accepted
+                total_steps += 1
+
+        output = (
+            torch.cat(generated, dim=0)
+            if generated
+            else torch.empty(0, dtype=torch.long, device=input_ids.device)
+        )
+
+        return {
+            "output": output,
+            "total_steps": total_steps,
+            "total_tokens": total_tokens,
+            "mean_tokens_per_step": float(total_tokens) / max(total_steps, 1),
         }
-        return context, stats
-
-    def update_pool(self, tokens: Tensor) -> None:
-        """Add token sequence to the n-gram pool."""
-        self.pool.add(tokens.reshape(-1))
