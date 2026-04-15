@@ -1,156 +1,303 @@
-"""Text-level data augmentation: paraphrase templates, synonym substitution, and instruction variants."""
+"""Text-level data augmentation: word deletion, swapping, char noise, and more."""
 
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 
 @dataclass
-class TextAugConfig:
-    """Configuration for text-level augmentation."""
+class AugmentationConfig:
+    """Configuration for text augmentation operations."""
 
-    p_paraphrase: float = 0.3
-    p_synonym: float = 0.2
-    p_instruction_variant: float = 0.5
-    max_synonyms: int = 3
-    seed: int = 42
-
-
-SYNONYM_DICT: dict[str, list[str]] = {
-    "fast": ["quick", "rapid", "swift"],
-    "large": ["big", "huge", "enormous"],
-    "small": ["tiny", "little", "compact"],
-    "good": ["great", "excellent", "fine"],
-    "bad": ["poor", "terrible", "awful"],
-    "important": ["significant", "crucial", "essential"],
-    "difficult": ["hard", "challenging", "tough"],
-    "simple": ["easy", "straightforward", "basic"],
-    "new": ["recent", "fresh", "novel"],
-    "old": ["ancient", "aged", "dated"],
-    "make": ["create", "build", "produce"],
-    "find": ["locate", "discover", "identify"],
-    "help": ["assist", "support", "aid"],
-    "show": ["display", "demonstrate", "reveal"],
-    "say": ["state", "express", "mention"],
-    "know": ["understand", "realize", "recognize"],
-    "get": ["obtain", "acquire", "receive"],
-    "give": ["provide", "offer", "supply"],
-    "think": ["believe", "consider", "suppose"],
-    "use": ["employ", "utilize", "apply"],
-}
-
-_PARAPHRASE_TEMPLATES = [
-    "In other words, {text}",
-    "To put it differently, {text}",
-    "That is to say, {text}",
-    "Put simply, {text}",
-    "{text} In essence, this means the same thing.",
-]
+    p_word_delete: float = 0.1
+    p_word_swap: float = 0.1
+    p_char_noise: float = 0.05
+    max_aug_ratio: float = 0.3
+    seed: Optional[int] = None
 
 
-def apply_synonym_substitution(
-    text: str,
-    p: float,
-    synonym_dict: dict[str, list[str]],
-    rng: random.Random,
-) -> str:
-    """Substitute words with synonyms with probability p.
+def random_word_deletion(text: str, p: float, rng: random.Random) -> str:
+    """Delete each word independently with probability p; never delete all words.
 
-    Preserves capitalization of the first word. Returns the augmented text.
+    Args:
+        text: Input text string.
+        p: Probability of deleting each word.
+        rng: Random number generator.
+
+    Returns:
+        Augmented text with some words deleted.
     """
     words = text.split()
     if not words:
         return text
+    if len(words) == 1:
+        return text
 
+    kept = [w for w in words if rng.random() >= p]
+
+    # Never delete all words — keep at least one
+    if not kept:
+        kept = [rng.choice(words)]
+
+    return " ".join(kept)
+
+
+def random_word_swap(text: str, p: float, rng: random.Random) -> str:
+    """For each word, with probability p swap it with a random other word.
+
+    Applies up to max_aug_ratio * len(words) swaps total (max_aug_ratio is
+    taken from the outer scope; here we accept p and apply up to
+    int(p * len(words)) + 1 swaps for simplicity, since max_aug_ratio is on
+    AugmentationConfig and not passed here — callers using TextAugmentor have
+    access to it).
+
+    Args:
+        text: Input text string.
+        p: Probability of swapping each word.
+        rng: Random number generator.
+
+    Returns:
+        Augmented text with some words swapped.
+    """
+    words = text.split()
+    if len(words) < 2:
+        return text
+
+    words = list(words)
+    n = len(words)
+    swapped = 0
+    max_swaps = max(1, int(p * n))
+
+    for i in range(n):
+        if swapped >= max_swaps:
+            break
+        if rng.random() < p:
+            j = rng.randint(0, n - 1)
+            words[i], words[j] = words[j], words[i]
+            swapped += 1
+
+    return " ".join(words)
+
+
+def random_char_noise(text: str, p: float, rng: random.Random) -> str:
+    """For each non-space character, with probability p replace with a random letter (a-z).
+
+    Preserves spaces.
+
+    Args:
+        text: Input text string.
+        p: Probability of replacing each non-space character.
+        rng: Random number generator.
+
+    Returns:
+        Augmented text with some characters replaced.
+    """
+    chars = list(text)
+    for i, ch in enumerate(chars):
+        if ch != " " and rng.random() < p:
+            chars[i] = chr(ord("a") + rng.randint(0, 25))
+    return "".join(chars)
+
+
+def random_word_insertion(words: List[str], p: float, rng: random.Random) -> List[str]:
+    """With probability p per word, insert a random word from the vocabulary at a random position.
+
+    The vocabulary is the words list itself.
+
+    Args:
+        words: List of words (also serves as the vocabulary to insert from).
+        p: Probability of inserting a new word for each existing word.
+        rng: Random number generator.
+
+    Returns:
+        New list of words with possible insertions.
+    """
+    if not words:
+        return words
+
+    result = list(words)
+    # We iterate over original length to avoid runaway insertion
+    for _ in range(len(words)):
+        if rng.random() < p:
+            insert_word = rng.choice(words)
+            pos = rng.randint(0, len(result))
+            result.insert(pos, insert_word)
+
+    return result
+
+
+def synonym_swap_simple(text: str, swap_map: Dict[str, str]) -> str:
+    """Replace words in text according to swap_map.
+
+    Case-insensitive match. Preserves original case if the original word
+    starts with an uppercase letter.
+
+    Args:
+        text: Input text string.
+        swap_map: Mapping from word (lowercase key) to replacement word.
+
+    Returns:
+        Text with words replaced according to swap_map.
+    """
+    words = text.split()
     result = []
-    for i, word in enumerate(words):
+    for word in words:
         # Strip trailing punctuation for lookup
         stripped = word.rstrip(".,!?;:")
         punct = word[len(stripped):]
         lookup = stripped.lower()
 
-        if rng.random() < p and lookup in synonym_dict:
-            synonyms = synonym_dict[lookup]
-            chosen = rng.choice(synonyms)
-            # Preserve capitalization of the first word in the text
-            if i == 0 and stripped and stripped[0].isupper():
-                chosen = chosen.capitalize()
-            result.append(chosen + punct)
+        if lookup in swap_map:
+            replacement = swap_map[lookup]
+            # Preserve case: if original starts with uppercase, capitalize replacement
+            if stripped and stripped[0].isupper():
+                replacement = replacement[0].upper() + replacement[1:] if replacement else replacement
+            result.append(replacement + punct)
         else:
             result.append(word)
 
     return " ".join(result)
 
 
-def paraphrase_with_template(text: str, rng: random.Random) -> str:
-    """Wrap text with one of 5 paraphrase templates."""
-    template = rng.choice(_PARAPHRASE_TEMPLATES)
-    return template.format(text=text)
+def compute_edit_distance(s1: str, s2: str) -> int:
+    """Compute Levenshtein distance at the word level (not character level).
 
+    Uses dynamic programming.
 
-def generate_instruction_variants(instruction: str, rng: random.Random) -> list[str]:
-    """Generate 3 variants of an instruction.
+    Args:
+        s1: First string.
+        s2: Second string.
 
-    Variants:
-      1. Prefix with "Please " or "Could you "
-      2. Append " Thank you." or " Please be thorough."
-      3. Rephrase using paraphrase_with_template
+    Returns:
+        Word-level edit distance between s1 and s2.
     """
-    prefix = rng.choice(["Please ", "Could you "])
-    variant1 = prefix + instruction
+    words1 = s1.split()
+    words2 = s2.split()
+    m, n = len(words1), len(words2)
 
-    suffix = rng.choice([" Thank you.", " Please be thorough."])
-    variant2 = instruction + suffix
+    # DP table of size (m+1) x (n+1)
+    dp = list(range(n + 1))
+    for i in range(1, m + 1):
+        prev = dp[0]
+        dp[0] = i
+        for j in range(1, n + 1):
+            temp = dp[j]
+            if words1[i - 1] == words2[j - 1]:
+                dp[j] = prev
+            else:
+                dp[j] = 1 + min(prev, dp[j], dp[j - 1])
+            prev = temp
 
-    variant3 = paraphrase_with_template(instruction, rng)
-
-    return [variant1, variant2, variant3]
-
-
-def augment_text_sample(text: str, config: TextAugConfig, rng: random.Random) -> str:
-    """Apply text-level augmentations based on probabilities in config."""
-    if rng.random() < config.p_paraphrase:
-        text = paraphrase_with_template(text, rng)
-
-    if rng.random() < config.p_synonym:
-        text = apply_synonym_substitution(text, config.p_synonym, SYNONYM_DICT, rng)
-
-    return text
+    return dp[n]
 
 
-def augment_dataset(texts: list[str], config: TextAugConfig) -> list[str]:
-    """Augment each text in the dataset using a seeded RNG for reproducibility.
+class TextAugmentor:
+    """Applies a configurable set of text augmentation operations."""
 
-    Returns a list of augmented texts of the same length as the input.
-    """
-    rng = random.Random(config.seed)
-    return [augment_text_sample(text, config, rng) for text in texts]
+    _METHOD_ORDER = ["delete", "swap", "char_noise"]
 
-
-class InstructionAugmenter:
-    """Augments instruction+response pairs with instruction variants."""
-
-    def __init__(self, config: TextAugConfig) -> None:
+    def __init__(self, config: AugmentationConfig) -> None:
         self.config = config
         self._rng = random.Random(config.seed)
 
-    def augment(self, instruction: str, response: str) -> list[tuple[str, str]]:
-        """Generate variants of the instruction paired with the original response.
+    def augment(self, text: str, methods: Optional[List[str]] = None) -> str:
+        """Apply specified augmentation methods in canonical order.
 
-        Returns a list of (instruction_variant, response) tuples.
+        The canonical order is: ["delete", "swap", "char_noise"].
+        If methods is None, all three are applied.
+        If methods is an empty list, the original text is returned unchanged.
+
+        Args:
+            text: Input text string.
+            methods: List of method names to apply. Subset of
+                     ["delete", "swap", "char_noise"].
+
+        Returns:
+            Augmented text.
         """
-        variants = generate_instruction_variants(instruction, self._rng)
-        return [(variant, response) for variant in variants]
+        if methods is not None and len(methods) == 0:
+            return text
+
+        active = set(methods) if methods is not None else set(self._METHOD_ORDER)
+
+        for method in self._METHOD_ORDER:
+            if method not in active:
+                continue
+            if method == "delete":
+                text = random_word_deletion(text, self.config.p_word_delete, self._rng)
+            elif method == "swap":
+                text = random_word_swap(text, self.config.p_word_swap, self._rng)
+            elif method == "char_noise":
+                text = random_char_noise(text, self.config.p_char_noise, self._rng)
+
+        return text
 
     def augment_batch(
-        self, pairs: list[tuple[str, str]]
-    ) -> list[tuple[str, str]]:
-        """Augment each (instruction, response) pair in a batch.
+        self, texts: List[str], n_augments_per_text: int = 1
+    ) -> List[str]:
+        """For each text, generate n_augments_per_text augmented versions.
 
-        Returns a flat list of all (instruction_variant, response) pairs.
+        Returns a flattened list of all augmented texts.
+
+        Args:
+            texts: List of input strings.
+            n_augments_per_text: Number of augmented versions per input text.
+
+        Returns:
+            Flat list of augmented strings (length = len(texts) * n_augments_per_text).
         """
-        result: list[tuple[str, str]] = []
-        for instruction, response in pairs:
-            result.extend(self.augment(instruction, response))
+        result: List[str] = []
+        for text in texts:
+            for _ in range(n_augments_per_text):
+                result.append(self.augment(text))
         return result
+
+    def get_augment_stats(self, original: str, augmented: str) -> Dict[str, float]:
+        """Compute statistics comparing original and augmented text.
+
+        Returns a dict with keys:
+            - word_count_original: word count of original
+            - word_count_augmented: word count of augmented
+            - edit_distance_ratio: word-level edit distance / max(word counts)
+            - words_changed_ratio: fraction of original words not in augmented
+
+        Args:
+            original: Original text.
+            augmented: Augmented text.
+
+        Returns:
+            Dictionary of float statistics.
+        """
+        orig_words = original.split()
+        aug_words = augmented.split()
+
+        wc_orig = float(len(orig_words))
+        wc_aug = float(len(aug_words))
+
+        max_wc = max(wc_orig, wc_aug, 1.0)
+        edit_dist = float(compute_edit_distance(original, augmented))
+        edit_distance_ratio = edit_dist / max_wc
+
+        # words_changed_ratio: fraction of original words that changed
+        # Use multiset difference: words in original but not matched in augmented
+        aug_counter: Dict[str, int] = {}
+        for w in aug_words:
+            aug_counter[w] = aug_counter.get(w, 0) + 1
+
+        changed = 0
+        for w in orig_words:
+            if aug_counter.get(w, 0) > 0:
+                aug_counter[w] -= 1
+            else:
+                changed += 1
+
+        words_changed_ratio = changed / max(wc_orig, 1.0)
+
+        return {
+            "word_count_original": wc_orig,
+            "word_count_augmented": wc_aug,
+            "edit_distance_ratio": edit_distance_ratio,
+            "words_changed_ratio": words_changed_ratio,
+        }
