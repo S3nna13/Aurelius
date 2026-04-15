@@ -1,113 +1,189 @@
-"""Token healing: fix tokenization boundary artifacts by resampling the last token constrained to a prefix."""
+"""Token healing: fix tokenization boundary artifacts by resampling at the rollback position.
+
+Token healing backs up by one (or more) tokens at the boundary of a prompt prefix, then
+re-generates those tokens — fixing artifacts that arise when a prompt is split mid-token.
+"""
+
+from __future__ import annotations
 
 import torch
-import torch.nn.functional as F
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Callable, List, Tuple
 
 
 @dataclass
 class TokenHealingConfig:
-    top_p: float = 0.9
+    """Configuration for token healing."""
+    n_rollback_tokens: int = 1
+    top_k_candidates: int = 10
     temperature: float = 1.0
-    max_heal_tokens: int = 1  # how many trailing tokens to back up and reheal
+    max_new_tokens: int = 50
 
 
-def get_valid_token_ids(
-    partial_str: str,
-    vocab: dict[int, str],
-) -> list[int]:
-    """Return all token IDs whose string representation starts with partial_str.
+def get_token_prefix_logit_bias(vocab_size: int, allowed_token_ids: List[int]) -> torch.Tensor:
+    """Return a float bias tensor of shape (vocab_size,).
 
-    Args:
-        partial_str: The string the next token must start with (e.g. "htt")
-        vocab: dict mapping token_id -> token_string
-
-    Returns:
-        List of token IDs that start with partial_str. Empty list if none.
-    """
-    return [tid for tid, tok_str in vocab.items() if tok_str.startswith(partial_str)]
-
-
-def build_prefix_constrained_logits(
-    logits: torch.Tensor,
-    valid_ids: list[int],
-) -> torch.Tensor:
-    """Mask logits so only valid_ids have non-inf values.
+    Allowed token positions get 0.0; all others get -1e9 (effectively blocked).
 
     Args:
-        logits: (V,) logit tensor
-        valid_ids: list of allowed token IDs
+        vocab_size: Total vocabulary size V.
+        allowed_token_ids: List of token IDs that are permitted.
 
     Returns:
-        (V,) masked logits tensor.
+        Float tensor of shape (vocab_size,).
     """
-    masked = torch.full_like(logits, float("-inf"))
-    if valid_ids:
-        valid_tensor = torch.tensor(valid_ids, dtype=torch.long, device=logits.device)
-        masked[valid_tensor] = logits[valid_tensor]
-    return masked
+    bias = torch.full((vocab_size,), -1e9, dtype=torch.float)
+    if allowed_token_ids:
+        allowed = torch.tensor(allowed_token_ids, dtype=torch.long)
+        bias[allowed] = 0.0
+    return bias
 
 
-def heal_tokens(
-    model: torch.nn.Module,
-    input_ids: torch.Tensor,
-    partial_str: str,
-    vocab: dict[int, str],
-    cfg: TokenHealingConfig | None = None,
-) -> torch.Tensor:
-    """Perform token healing: back up by len(partial_str's token) and resample.
-
-    Algorithm:
-    1. Remove the last token from input_ids
-    2. Run a forward pass to get logits for the last remaining position
-    3. Get valid token IDs (tokens starting with partial_str)
-    4. Mask out all invalid tokens (set logits to -inf)
-    5. Sample from the constrained distribution using temperature + top-p
-    6. Return input_ids with the last token replaced by the healed token
+def apply_logit_bias(logits: torch.Tensor, bias: torch.Tensor) -> torch.Tensor:
+    """Add bias to the last dimension of logits.
 
     Args:
-        model: AureliusTransformer
-        input_ids: (1, S) tensor -- last token should be the partial/boundary token
-        partial_str: String that the replacement token must start with
-        vocab: dict[int, str] mapping token_id to string
-        cfg: TokenHealingConfig
+        logits: Tensor of any shape (..., V).
+        bias: Tensor of shape (V,) — broadcast-compatible with logits last dim.
 
     Returns:
-        (1, S) tensor with healed last token. If no valid tokens found, returns input_ids unchanged.
+        Tensor of the same shape as logits with bias added.
     """
-    cfg = cfg or TokenHealingConfig()
-    B, S = input_ids.shape
-    if S < 2:
-        return input_ids  # nothing to back up
+    return logits + bias
 
-    # Back up: remove last token
-    prefix_ids = input_ids[:, :-1]  # (1, S-1)
 
-    # Forward pass on prefix
-    with torch.no_grad():
-        _, logits, _ = model(prefix_ids)  # logits: (1, S-1, V)
-    last_logits = logits[0, -1, :]  # (V,)
+def greedy_extend(model_fn: Callable[[torch.Tensor], torch.Tensor],
+                  token_ids: torch.Tensor,
+                  n_steps: int) -> torch.Tensor:
+    """Greedily decode n_steps additional tokens.
 
-    # Find valid tokens
-    valid_ids = get_valid_token_ids(partial_str, vocab)
-    if not valid_ids:
-        return input_ids  # no healing possible
+    Args:
+        model_fn: Callable that takes (B, T) ids and returns (B, T, V) logits.
+        token_ids: Starting token ids of shape (B, T).
+        n_steps: Number of additional tokens to generate.
 
-    # Apply constraint + temperature
-    constrained = build_prefix_constrained_logits(last_logits, valid_ids)
-    constrained = constrained / max(cfg.temperature, 1e-8)
-    probs = F.softmax(constrained, dim=-1)
+    Returns:
+        Token ids tensor of shape (B, T + n_steps).
+    """
+    current = token_ids
+    for _ in range(n_steps):
+        logits = model_fn(current)          # (B, T_cur, V)
+        next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)  # (B, 1)
+        current = torch.cat([current, next_token], dim=1)
+    return current
 
-    # Top-p sampling over constrained distribution
-    sorted_probs, sorted_idx = torch.sort(probs, descending=True)
-    cumsum = sorted_probs.cumsum(0)
-    cutoff = (cumsum - sorted_probs) > cfg.top_p
-    sorted_probs[cutoff] = 0.0
-    sorted_probs /= sorted_probs.sum() + 1e-12
-    healed_idx_in_sorted = torch.multinomial(sorted_probs, 1)
-    healed_token = sorted_idx[healed_idx_in_sorted]
 
-    # Replace last token
-    result = input_ids.clone()
-    result[0, -1] = healed_token
-    return result
+class TokenHealer:
+    """Performs token healing on a token sequence.
+
+    Token healing backs up n_rollback_tokens tokens, then re-generates them
+    using the model — fixing tokenization boundary artifacts.
+    """
+
+    def __init__(self,
+                 model_fn: Callable[[torch.Tensor], torch.Tensor],
+                 config: TokenHealingConfig | None = None) -> None:
+        """Initialize the healer.
+
+        Args:
+            model_fn: Callable that takes (B, T) int64 ids and returns (B, T, V) logits.
+            config: TokenHealingConfig; defaults to TokenHealingConfig() if None.
+        """
+        self.model_fn = model_fn
+        self.config = config if config is not None else TokenHealingConfig()
+
+    def rollback_tokens(self,
+                        token_ids: torch.Tensor,
+                        n: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Split token_ids into a prefix and the removed suffix.
+
+        Args:
+            token_ids: (B, T) int64 tensor.
+            n: Number of tokens to remove from the end.
+
+        Returns:
+            (prefix, removed) where prefix is token_ids[:, :-n] and
+            removed is token_ids[:, -n:].
+
+        Raises:
+            ValueError: If n >= T (not enough tokens to roll back).
+        """
+        T = token_ids.shape[1]
+        if n <= 0:
+            raise ValueError(f"n must be positive, got {n}")
+        if n >= T:
+            raise ValueError(f"Cannot roll back {n} tokens from sequence of length {T}")
+        prefix = token_ids[:, :-n]
+        removed = token_ids[:, -n:]
+        return prefix, removed
+
+    def get_continuation_candidates(self,
+                                    prefix_ids: torch.Tensor,
+                                    removed_ids: torch.Tensor,
+                                    top_k: int) -> torch.Tensor:
+        """Run the model on prefix_ids and return top_k candidate next tokens.
+
+        Args:
+            prefix_ids: (B, T_prefix) int64 tensor.
+            removed_ids: (B, n_removed) int64 tensor (not used in forward pass,
+                         retained for API symmetry / future constrained use).
+            top_k: How many candidate token IDs to return.
+
+        Returns:
+            (B, top_k) int64 tensor of top-k token IDs at the rollback position.
+        """
+        with torch.no_grad():
+            logits = self.model_fn(prefix_ids)  # (B, T_prefix, V)
+        position_logits = logits[:, -1, :]       # (B, V)
+        # Clamp top_k to vocab size
+        vocab_size = position_logits.shape[-1]
+        k = min(top_k, vocab_size)
+        _, top_ids = position_logits.topk(k, dim=-1)  # (B, k)
+        return top_ids
+
+    def heal(self, token_ids: torch.Tensor) -> torch.Tensor:
+        """Full token healing: roll back 1 token, pick argmax replacement.
+
+        The returned sequence has the same length as the input (prefix + 1 healed token).
+
+        Args:
+            token_ids: (B, T) int64 tensor, T >= 2.
+
+        Returns:
+            (B, T) int64 tensor with the last token replaced by the healed token.
+        """
+        n = self.config.n_rollback_tokens
+        prefix, removed = self.rollback_tokens(token_ids, n)
+
+        # Run model on prefix to get next-position logits
+        with torch.no_grad():
+            logits = self.model_fn(prefix)  # (B, T-n, V)
+        position_logits = logits[:, -1, :]  # (B, V)
+
+        # Argmax — no temperature for heal()
+        healed_token = position_logits.argmax(dim=-1, keepdim=True)  # (B, 1)
+
+        # Re-attach: prefix + healed token + remaining removed tokens (if n > 1)
+        if n == 1:
+            healed_seq = torch.cat([prefix, healed_token], dim=1)
+        else:
+            # Keep first healed token, then re-attach remaining n-1 removed tokens
+            healed_seq = torch.cat([prefix, healed_token, removed[:, 1:]], dim=1)
+
+        return healed_seq
+
+    def heal_and_continue(self,
+                          token_ids: torch.Tensor,
+                          n_new: int) -> torch.Tensor:
+        """Heal the token sequence then greedily decode n_new additional tokens.
+
+        Args:
+            token_ids: (B, T) int64 tensor, T >= 2.
+            n_new: Number of new tokens to decode after healing.
+
+        Returns:
+            (B, T + n_new) int64 tensor.
+        """
+        healed = self.heal(token_ids)          # (B, T)
+        extended = greedy_extend(self.model_fn, healed, n_new)  # (B, T + n_new)
+        return extended
