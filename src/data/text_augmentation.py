@@ -301,3 +301,138 @@ class TextAugmentor:
             "edit_distance_ratio": edit_distance_ratio,
             "words_changed_ratio": words_changed_ratio,
         }
+
+
+# ---------------------------------------------------------------------------
+# Instruction-augmentation API (required by tests/data/test_text_augmentation.py)
+# ---------------------------------------------------------------------------
+
+SYNONYM_DICT: Dict[str, List[str]] = {
+    "fast": ["quick", "rapid", "swift", "speedy"],
+    "slow": ["gradual", "leisurely", "unhurried"],
+    "large": ["big", "huge", "massive", "enormous"],
+    "small": ["tiny", "little", "miniature", "compact"],
+    "good": ["great", "excellent", "fine", "superb"],
+    "bad": ["poor", "terrible", "awful", "dreadful"],
+    "make": ["create", "build", "produce", "construct"],
+    "use": ["utilize", "employ", "apply"],
+    "find": ["discover", "locate", "detect"],
+    "show": ["display", "reveal", "demonstrate"],
+    "help": ["assist", "aid", "support"],
+    "need": ["require", "want", "demand"],
+    "think": ["believe", "consider", "suppose"],
+    "know": ["understand", "realize", "recognize"],
+    "get": ["obtain", "acquire", "receive"],
+    "give": ["provide", "offer", "supply"],
+    "take": ["grab", "seize", "capture"],
+    "keep": ["maintain", "retain", "preserve"],
+    "start": ["begin", "initiate", "commence"],
+    "stop": ["halt", "cease", "end"],
+    "increase": ["grow", "rise", "expand"],
+    "decrease": ["reduce", "shrink", "diminish"],
+}
+
+_PARAPHRASE_TEMPLATES = [
+    "In other words, {text}",
+    "To put it differently, {text}",
+    "Alternatively stated: {text}",
+    "Another way to say this: {text}",
+]
+
+_INSTRUCTION_PREFIXES = [
+    "Please ",
+    "Could you ",
+    "I would like you to ",
+]
+
+
+@dataclass
+class TextAugConfig:
+    """Configuration for instruction-level text augmentation."""
+
+    p_paraphrase: float = 0.3
+    p_synonym: float = 0.2
+    p_instruction_variant: float = 0.5
+    max_synonyms: int = 3
+    seed: int = 42
+
+
+def apply_synonym_substitution(
+    text: str,
+    p: float,
+    synonym_dict: Dict[str, List[str]],
+    rng: random.Random,
+) -> str:
+    """Replace each word with a synonym from synonym_dict with probability p.
+
+    Preserves capitalisation of the first character of each word.
+    """
+    if not text:
+        return text
+    words = text.split()
+    result = []
+    for word in words:
+        stripped = word.rstrip(".,!?;:")
+        punct = word[len(stripped):]
+        lookup = stripped.lower()
+        if lookup in synonym_dict and rng.random() < p:
+            replacement = rng.choice(synonym_dict[lookup])
+            if stripped and stripped[0].isupper():
+                replacement = replacement[0].upper() + replacement[1:]
+            result.append(replacement + punct)
+        else:
+            result.append(word)
+    return " ".join(result)
+
+
+def paraphrase_with_template(text: str, rng: random.Random) -> str:
+    """Wrap text in a randomly selected paraphrase template."""
+    template = rng.choice(_PARAPHRASE_TEMPLATES)
+    return template.format(text=text)
+
+
+def generate_instruction_variants(instruction: str, rng: random.Random) -> List[str]:
+    """Return 3 variants of an instruction using different phrasings.
+
+    At least 2 variants contain the original instruction text verbatim.
+    """
+    lower = instruction[0].lower() + instruction[1:] if instruction else instruction
+    prefixes = rng.sample(_INSTRUCTION_PREFIXES, k=min(2, len(_INSTRUCTION_PREFIXES)))
+    variants = [
+        instruction,
+        prefixes[0] + lower,
+        instruction + " " + prefixes[1] + "help with this.",
+    ]
+    return variants[:3]
+
+
+def augment_dataset(texts: List[str], config: TextAugConfig) -> List[str]:
+    """Apply synonym substitution and paraphrase augmentation to each text."""
+    rng = random.Random(config.seed)
+    result = []
+    for text in texts:
+        augmented = apply_synonym_substitution(text, config.p_synonym, SYNONYM_DICT, rng)
+        if rng.random() < config.p_paraphrase:
+            augmented = paraphrase_with_template(augmented, rng)
+        result.append(augmented)
+    return result
+
+
+class InstructionAugmenter:
+    """Augments (instruction, response) pairs for instruction tuning datasets."""
+
+    def __init__(self, config: TextAugConfig) -> None:
+        self.config = config
+        self._rng = random.Random(config.seed)
+
+    def augment(self, instruction: str, response: str) -> List[tuple]:
+        """Return 3 (instruction_variant, response) tuples."""
+        variants = generate_instruction_variants(instruction, self._rng)
+        return [(v, response) for v in variants]
+
+    def augment_batch(self, pairs: List[tuple]) -> List[tuple]:
+        """Augment each (instruction, response) pair; each produces 3 variants."""
+        result = []
+        for instruction, response in pairs:
+            result.extend(self.augment(instruction, response))
+        return result
