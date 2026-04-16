@@ -1,15 +1,15 @@
-"""Lexically constrained decoding via constraint automaton.
+"""Constrained decoding — enforces structural constraints during generation.
 
-Ensures required token sequences (phrases) appear in generated output.
-This is distinct from format_enforcer.py (JSON/format constraints) and
-logit_processors.py (statistical transformations) — here we use an explicit
-constraint automaton that tracks progress through required token sequences
-and steers the model's logit distribution to satisfy them.
+Provides token-level constraints (allowed/banned tokens), minimum length
+enforcement, prefix forcing, and higher-level greedy/sampling decoders that
+apply all of these constraints in a unified pipeline.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
+from typing import Callable, Dict, List, Optional
 
 import torch
 from torch import Tensor
@@ -21,217 +21,362 @@ from torch import Tensor
 
 @dataclass
 class ConstraintConfig:
-    """Configuration for lexically constrained decoding."""
+    """Configuration for constrained decoding."""
 
-    constraints: list[list[int]]  # each inner list is a required token sequence
-    bank_strategy: str = "ordered"  # "ordered" | "any"
-
-
-# ---------------------------------------------------------------------------
-# ConstraintState
-# ---------------------------------------------------------------------------
-
-class ConstraintState:
-    """Tracks progress through a single required token sequence."""
-
-    def __init__(self, tokens: list[int]) -> None:
-        self._tokens = list(tokens)
-        self._pointer: int = 0
-
-    # ------------------------------------------------------------------
-    # Mutation
-    # ------------------------------------------------------------------
-
-    def advance(self, token: int) -> bool:
-        """Advance pointer if token matches next expected token.
-
-        Returns True if the constraint just completed (pointer reached end).
-        Returns False otherwise (no match or already completed).
-        """
-        if self.completed:
-            return False
-        if token == self._tokens[self._pointer]:
-            self._pointer += 1
-            return self.completed
-        return False
-
-    def reset(self) -> None:
-        """Reset progress to the beginning of the constraint sequence."""
-        self._pointer = 0
-
-    # ------------------------------------------------------------------
-    # Properties
-    # ------------------------------------------------------------------
-
-    @property
-    def completed(self) -> bool:
-        """True when all tokens in the sequence have been matched."""
-        return self._pointer >= len(self._tokens)
-
-    @property
-    def next_tokens(self) -> list[int]:
-        """Tokens that would advance this constraint.
-
-        Returns an empty list if the constraint is already completed or
-        the token sequence is empty.
-        """
-        if self.completed or not self._tokens:
-            return []
-        return [self._tokens[self._pointer]]
+    allowed_tokens: Optional[List[int]] = None
+    banned_tokens: Optional[List[int]] = None
+    min_new_tokens: int = 0
+    max_new_tokens: int = 100
+    force_eos_token: Optional[int] = None
+    prefix_tokens: Optional[List[int]] = None
 
 
 # ---------------------------------------------------------------------------
-# ConstraintBank
+# apply_token_constraints
 # ---------------------------------------------------------------------------
 
-class ConstraintBank:
-    """Manages multiple ConstraintState objects."""
-
-    def __init__(self, constraints: list[list[int]], strategy: str = "ordered") -> None:
-        self._strategy = strategy
-        self._states: list[ConstraintState] = [
-            ConstraintState(seq) for seq in constraints
-        ]
-
-    # ------------------------------------------------------------------
-    # Mutation
-    # ------------------------------------------------------------------
-
-    def advance(self, token: int) -> None:
-        """Update all constraint states with the given token."""
-        for state in self._states:
-            state.advance(token)
-
-    # ------------------------------------------------------------------
-    # Properties
-    # ------------------------------------------------------------------
-
-    @property
-    def all_completed(self) -> bool:
-        """True when every constraint has been satisfied."""
-        return all(s.completed for s in self._states)
-
-    def get_active_next_tokens(self) -> set[int]:
-        """Return the union of next_tokens from all uncompleted constraints."""
-        result: set[int] = set()
-        for state in self._states:
-            if not state.completed:
-                result.update(state.next_tokens)
-        return result
-
-
-# ---------------------------------------------------------------------------
-# apply_constraint_mask
-# ---------------------------------------------------------------------------
-
-def apply_constraint_mask(
+def apply_token_constraints(
     logits: Tensor,
-    bank: ConstraintBank,
-    penalty: float = -1e9,
+    allowed: Optional[List[int]] = None,
+    banned: Optional[List[int]] = None,
 ) -> Tensor:
-    """Apply constraint-based logit adjustments.
+    """Apply token-level logit constraints.
 
-    If any constraint is currently active (has next tokens it needs to see),
-    the logits are modified so that:
-    - Required next tokens keep their original logit values (+ 0).
-    - All other tokens receive a large penalty so they are suppressed.
-
-    If no constraint is active (all completed or bank is empty), logits are
-    returned unchanged.
+    Banned tokens are set to -inf.  If an allowed list is provided, all tokens
+    NOT in the allowed list are set to -inf (applied after banned suppression).
 
     Args:
-        logits: Tensor of shape (vocab_size,) or (B, vocab_size).
-        bank: The ConstraintBank tracking all constraint states.
-        penalty: Value added to non-required tokens when a constraint is active.
+        logits: Shape ``(vocab_size,)`` or ``(B, vocab_size)``.
+        allowed: Optional list of token ids that are permitted.
+        banned: Optional list of token ids that are forbidden.
 
     Returns:
-        Tensor of the same shape as logits.
+        Modified logits tensor of the same shape.
     """
-    active_tokens = bank.get_active_next_tokens()
-    if not active_tokens:
-        # No active constraints — leave logits untouched.
-        return logits
+    logits = logits.clone()
+    neg_inf = float("-inf")
 
-    vocab_size = logits.shape[-1]
-    bias = torch.full((vocab_size,), penalty, dtype=logits.dtype, device=logits.device)
-    for tok in active_tokens:
-        if 0 <= tok < vocab_size:
-            bias[tok] = 0.0  # no penalty for required tokens
+    if banned:
+        for tok in banned:
+            if logits.dim() == 1:
+                if 0 <= tok < logits.shape[-1]:
+                    logits[tok] = neg_inf
+            else:
+                logits[:, tok] = neg_inf
 
-    if logits.dim() == 1:
-        return logits + bias
-    # (B, V)
-    return logits + bias.unsqueeze(0)
+    if allowed is not None:
+        vocab_size = logits.shape[-1]
+        # Build a mask: True for tokens NOT in allowed list
+        mask = torch.ones(vocab_size, dtype=torch.bool, device=logits.device)
+        for tok in allowed:
+            if 0 <= tok < vocab_size:
+                mask[tok] = False
+        if logits.dim() == 1:
+            logits[mask] = neg_inf
+        else:
+            logits[:, mask] = neg_inf
+
+    return logits
 
 
 # ---------------------------------------------------------------------------
-# ConstrainedDecoder
+# apply_min_length_constraint
 # ---------------------------------------------------------------------------
 
-class ConstrainedDecoder:
-    """Generates sequences that satisfy all lexical constraints via greedy decoding."""
+def apply_min_length_constraint(
+    logits: Tensor,
+    current_len: int,
+    min_len: int,
+    eos_token_id: int,
+) -> Tensor:
+    """Suppress EOS before the minimum length is reached.
 
-    def __init__(self, model, config: ConstraintConfig) -> None:
-        self.model = model
+    Args:
+        logits: Shape ``(vocab_size,)`` or ``(B, vocab_size)``.
+        current_len: Number of tokens generated so far (not counting prompt).
+        min_len: Minimum number of new tokens required.
+        eos_token_id: Token id for end-of-sequence.
+
+    Returns:
+        Modified logits tensor.
+    """
+    if current_len < min_len:
+        logits = logits.clone()
+        if logits.dim() == 1:
+            logits[eos_token_id] = float("-inf")
+        else:
+            logits[:, eos_token_id] = float("-inf")
+    return logits
+
+
+# ---------------------------------------------------------------------------
+# force_prefix
+# ---------------------------------------------------------------------------
+
+def force_prefix(
+    generated: List[int],
+    prefix: List[int],
+    step: int,
+) -> Optional[int]:
+    """Return the forced token for the current decoding step.
+
+    If ``step < len(prefix)``, the token at ``prefix[step]`` must be produced.
+    Otherwise returns ``None`` (no forcing).
+
+    Args:
+        generated: Tokens generated so far (not used directly, kept for API
+                   symmetry with callers that track state externally).
+        prefix: The sequence of tokens that must appear at the start of output.
+        step: Zero-based index of the current generation step.
+
+    Returns:
+        The forced token id, or ``None`` if beyond the prefix.
+    """
+    if step < len(prefix):
+        return prefix[step]
+    return None
+
+
+# ---------------------------------------------------------------------------
+# LogitProcessor
+# ---------------------------------------------------------------------------
+
+class LogitProcessor:
+    """Applies all constraints from a :class:`ConstraintConfig` to logits.
+
+    Constraints are applied in order:
+    1. Prefix forcing — if still within the prefix, set all logits to -inf
+       except the forced token.
+    2. Allowed / banned token masking.
+    3. Minimum-length EOS suppression.
+    """
+
+    def __init__(self, config: ConstraintConfig) -> None:
         self.config = config
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _model_forward(self, input_ids: Tensor) -> Tensor:
-        """Run model forward pass and return last-step logits, shape (vocab_size,)."""
-        out = self.model(input_ids)
-        # Model returns (loss, logits, pkv) plain tuple.
-        if isinstance(out, tuple):
-            logits = out[1]
-        else:
-            logits = out
-        # logits shape: (B, T, V) → take last position of first batch item.
-        if logits.dim() == 3:
-            logits = logits[0, -1, :]
-        elif logits.dim() == 2:
-            logits = logits[0, -1] if logits.shape[0] == 1 else logits[-1]
-        return logits  # (V,)
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def generate(
-        self,
-        input_ids: Tensor,
-        max_new_tokens: int,
-    ) -> tuple[Tensor, bool]:
-        """Generate tokens with constraint logit masking.
+    def __call__(self, logits: Tensor, generated_ids: List[int]) -> Tensor:
+        """Apply all constraints and return modified ``(vocab_size,)`` logits.
 
         Args:
-            input_ids: Prompt token IDs, shape (1, seq_len) or (seq_len,).
-            max_new_tokens: Number of tokens to generate.
+            logits: Raw model logits, shape ``(vocab_size,)``.
+            generated_ids: Tokens generated so far (excludes the prompt).
 
         Returns:
-            (generated_ids, all_constraints_met) where generated_ids has
-            shape (1, max_new_tokens).
+            Constrained logits tensor with shape ``(vocab_size,)``.
         """
-        # Normalise input to (1, seq_len).
+        logits = logits.clone()
+        step = len(generated_ids)
+
+        # 1. Prefix forcing
+        if self.config.prefix_tokens is not None:
+            forced = force_prefix(generated_ids, self.config.prefix_tokens, step)
+            if forced is not None:
+                mask = torch.ones(logits.shape[-1], dtype=torch.bool, device=logits.device)
+                if 0 <= forced < logits.shape[-1]:
+                    mask[forced] = False
+                logits[mask] = float("-inf")
+                return logits  # prefix overrides everything else
+
+        # 2. Allowed / banned token constraints
+        logits = apply_token_constraints(
+            logits,
+            allowed=self.config.allowed_tokens,
+            banned=self.config.banned_tokens,
+        )
+
+        # 3. Minimum-length EOS suppression
+        if self.config.force_eos_token is not None:
+            logits = apply_min_length_constraint(
+                logits,
+                current_len=step,
+                min_len=self.config.min_new_tokens,
+                eos_token_id=self.config.force_eos_token,
+            )
+
+        return logits
+
+
+# ---------------------------------------------------------------------------
+# ConstrainedGreedyDecoder
+# ---------------------------------------------------------------------------
+
+class ConstrainedGreedyDecoder:
+    """Greedy decoder that applies :class:`ConstraintConfig` at each step.
+
+    Args:
+        model_fn: Callable that accepts ``(input_ids: Tensor)`` of shape
+                  ``(1, seq_len)`` and returns logits of shape
+                  ``(1, seq_len, vocab_size)``.
+        config: Constraint configuration.
+        eos_token_id: Token id that signals end of sequence.
+    """
+
+    def __init__(
+        self,
+        model_fn: Callable,
+        config: ConstraintConfig,
+        eos_token_id: int = 2,
+    ) -> None:
+        self.model_fn = model_fn
+        self.config = config
+        self.eos_token_id = eos_token_id
+        self._processor = LogitProcessor(config)
+
+    def decode(self, input_ids: Tensor) -> Tensor:
+        """Greedily decode from ``input_ids`` with constraints applied.
+
+        Args:
+            input_ids: Prompt token ids, shape ``(seq_len,)`` or
+                       ``(1, seq_len)``.
+
+        Returns:
+            Generated token ids including the original prompt, shape
+            ``(T_out,)`` where ``T_out = prompt_len + n_generated``.
+        """
         if input_ids.dim() == 1:
-            input_ids = input_ids.unsqueeze(0)
+            current_ids = input_ids.unsqueeze(0)  # (1, T)
+        else:
+            current_ids = input_ids.clone()
 
-        bank = ConstraintBank(self.config.constraints, self.config.bank_strategy)
-        generated: list[int] = []
+        generated: List[int] = []
 
-        current_ids = input_ids.clone()
+        for _ in range(self.config.max_new_tokens):
+            logits_3d = self.model_fn(current_ids)  # (1, T, V)
+            step_logits = logits_3d[0, -1, :]  # (V,)
 
-        for _ in range(max_new_tokens):
-            logits = self._model_forward(current_ids)  # (V,)
-            # Apply constraint mask so required tokens are strongly preferred.
-            logits = apply_constraint_mask(logits, bank)
-            next_token = int(torch.argmax(logits).item())
+            step_logits = self._processor(step_logits, generated)
+            next_token = int(torch.argmax(step_logits).item())
             generated.append(next_token)
-            bank.advance(next_token)
 
-            next_id_tensor = torch.tensor([[next_token]], dtype=torch.long)
-            current_ids = torch.cat([current_ids, next_id_tensor], dim=1)
+            next_tensor = torch.tensor([[next_token]], dtype=torch.long, device=current_ids.device)
+            current_ids = torch.cat([current_ids, next_tensor], dim=1)
 
-        generated_ids = torch.tensor([generated], dtype=torch.long)  # (1, max_new_tokens)
-        return generated_ids, bank.all_completed
+            # Stop at EOS
+            if next_token == self.eos_token_id:
+                break
+
+        prompt_len = input_ids.shape[-1]
+        all_ids = current_ids[0]  # (prompt_len + n_generated,)
+        return all_ids
+
+
+# ---------------------------------------------------------------------------
+# ConstrainedSampler
+# ---------------------------------------------------------------------------
+
+class ConstrainedSampler:
+    """Multinomial sampler with :class:`ConstraintConfig` constraints applied.
+
+    Args:
+        model_fn: Same signature as :class:`ConstrainedGreedyDecoder`.
+        config: Constraint configuration.
+        eos_token_id: Token id that signals end of sequence.
+        temperature: Sampling temperature; higher = more random.
+    """
+
+    def __init__(
+        self,
+        model_fn: Callable,
+        config: ConstraintConfig,
+        eos_token_id: int = 2,
+        temperature: float = 1.0,
+    ) -> None:
+        self.model_fn = model_fn
+        self.config = config
+        self.eos_token_id = eos_token_id
+        self.temperature = temperature
+        self._processor = LogitProcessor(config)
+
+    def _sample_one(self, input_ids: Tensor) -> Tensor:
+        """Generate a single sampled sequence."""
+        if input_ids.dim() == 1:
+            current_ids = input_ids.unsqueeze(0)
+        else:
+            current_ids = input_ids.clone()
+
+        generated: List[int] = []
+
+        for _ in range(self.config.max_new_tokens):
+            logits_3d = self.model_fn(current_ids)
+            step_logits = logits_3d[0, -1, :]  # (V,)
+
+            step_logits = self._processor(step_logits, generated)
+
+            # Temperature scaling then sample
+            if self.temperature != 1.0:
+                step_logits = step_logits / self.temperature
+
+            probs = torch.softmax(step_logits, dim=-1)
+            next_token = int(torch.multinomial(probs, num_samples=1).item())
+            generated.append(next_token)
+
+            next_tensor = torch.tensor([[next_token]], dtype=torch.long, device=current_ids.device)
+            current_ids = torch.cat([current_ids, next_tensor], dim=1)
+
+            if next_token == self.eos_token_id:
+                break
+
+        return current_ids[0]
+
+    def sample(self, input_ids: Tensor, n_samples: int = 1) -> List[Tensor]:
+        """Draw ``n_samples`` independently sampled sequences.
+
+        Args:
+            input_ids: Prompt token ids, shape ``(seq_len,)`` or
+                       ``(1, seq_len)``.
+            n_samples: Number of sequences to generate.
+
+        Returns:
+            List of ``n_samples`` tensors, each of shape ``(T_out,)``.
+        """
+        return [self._sample_one(input_ids) for _ in range(n_samples)]
+
+
+# ---------------------------------------------------------------------------
+# compute_constraint_satisfaction
+# ---------------------------------------------------------------------------
+
+def compute_constraint_satisfaction(
+    sequence: Tensor,
+    config: ConstraintConfig,
+) -> Dict[str, bool]:
+    """Check whether a generated sequence satisfies the configured constraints.
+
+    Checks performed:
+    - ``"no_banned_tokens"``: True if none of the banned tokens appear in the
+      sequence.
+    - ``"all_allowed"``: True if every token in the sequence is in the allowed
+      list (or if no allowed list is specified).
+    - ``"min_length_met"``: True if the sequence length is at least
+      ``config.min_new_tokens``.
+
+    Args:
+        sequence: 1-D tensor of token ids (may include prompt tokens).
+        config: The constraint configuration to check against.
+
+    Returns:
+        Dictionary mapping constraint names to boolean satisfaction values.
+    """
+    token_set = set(sequence.tolist())
+
+    # no_banned_tokens
+    if config.banned_tokens:
+        no_banned = not any(t in token_set for t in config.banned_tokens)
+    else:
+        no_banned = True
+
+    # all_allowed
+    if config.allowed_tokens is not None:
+        allowed_set = set(config.allowed_tokens)
+        all_allowed = all(t in allowed_set for t in token_set)
+    else:
+        all_allowed = True
+
+    # min_length_met
+    min_length_met = len(sequence) >= config.min_new_tokens
+
+    return {
+        "no_banned_tokens": no_banned,
+        "all_allowed": all_allowed,
+        "min_length_met": min_length_met,
+    }
