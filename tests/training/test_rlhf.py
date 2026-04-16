@@ -43,8 +43,11 @@ def make_policy():
 
 
 def make_reward_model():
+    from src.alignment.reward_model import RewardModelConfig
     backbone = AureliusTransformer(TINY_CFG)
-    return RewardModel(backbone)
+    # backbone returns (loss, logits, kv) tuple; logits dim == vocab_size
+    cfg = RewardModelConfig(d_model=TINY_CFG.vocab_size)
+    return RewardModel(backbone, cfg)
 
 
 def make_prompts(n: int = 2, prompt_len: int = 4) -> list[torch.Tensor]:

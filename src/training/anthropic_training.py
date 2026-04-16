@@ -229,12 +229,13 @@ class PersuasionRewardConfig:
 
 def _get_model_max_seq_len(model: nn.Module, default: int = 512) -> int:
     """Infer max_seq_len from a model's config attribute chain."""
-    # RewardModel wraps backbone
-    backbone = getattr(model, "backbone", None)
-    if backbone is not None:
-        cfg = getattr(backbone, "config", None)
-        if cfg is not None:
-            return int(getattr(cfg, "max_seq_len", default))
+    # RewardModel wraps backbone (stored as backbone_fn or backbone)
+    for attr in ("backbone_fn", "backbone"):
+        backbone = getattr(model, attr, None)
+        if backbone is not None:
+            cfg = getattr(backbone, "config", None)
+            if cfg is not None and hasattr(cfg, "max_seq_len"):
+                return int(cfg.max_seq_len)
     # Direct model config
     cfg = getattr(model, "config", None)
     if cfg is not None:

@@ -215,8 +215,11 @@ def test_hh_rlhf_trainer_train_step_loss_positive(hh_trainer):
 @pytest.fixture
 def persuasion_trainer():
     torch.manual_seed(1)
+    from src.alignment.reward_model import RewardModelConfig
     backbone = _make_model()
-    reward_model = RewardModel(backbone)
+    # backbone returns (loss, logits, kv) tuple; logits dim == vocab_size
+    rm_cfg = RewardModelConfig(d_model=VOCAB_SIZE)  # logits dim == vocab_size
+    reward_model = RewardModel(backbone, rm_cfg)
     cfg = PersuasionRewardConfig(batch_size=4, learning_rate=2e-5, n_steps=1)
     return PersuasionRewardTrainer(reward_model, _tokenizer_encode, cfg)
 
