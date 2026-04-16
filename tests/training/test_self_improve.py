@@ -41,7 +41,9 @@ def small_model():
 def small_reward_model(small_model):
     import copy
     backbone = copy.deepcopy(small_model)
-    rm = RewardModel(backbone=backbone, freeze_backbone=False)
+    from src.alignment.reward_model import RewardModelConfig
+    cfg = RewardModelConfig(d_model=256)  # matches vocab_size (logits dim)
+    rm = RewardModel(backbone_fn=backbone, config=cfg)
     return rm
 
 

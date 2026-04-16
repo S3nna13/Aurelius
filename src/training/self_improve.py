@@ -133,9 +133,10 @@ class SelfImprover:
                 # Concatenate prompt + response into one sequence
                 seq = torch.cat([prompt, response], dim=0)  # (S_prompt + S_resp,)
                 # Clamp to model's max_seq_len if needed
-                backbone = getattr(self.reward_model, "backbone", self.reward_model)
+                backbone = getattr(self.reward_model, "backbone_fn",
+                                   getattr(self.reward_model, "backbone", self.reward_model))
                 backbone_cfg = getattr(backbone, "config", None)
-                if backbone_cfg is not None:
+                if backbone_cfg is not None and hasattr(backbone_cfg, "max_seq_len"):
                     max_seq_len = backbone_cfg.max_seq_len
                     if seq.shape[0] > max_seq_len:
                         seq = seq[-max_seq_len:]

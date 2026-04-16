@@ -54,7 +54,9 @@ class RewardModel(nn.Module):
 
     def forward(self, token_ids: Tensor) -> Tensor:
         """token_ids (B, T) -> scalar rewards (B,)."""
-        hidden = self.backbone_fn(token_ids)
+        out = self.backbone_fn(token_ids)
+        # Handle models that return (loss, logits, ...) tuples
+        hidden = out[1] if isinstance(out, tuple) else out
         return self.reward_head(hidden)
 
     @torch.no_grad()
