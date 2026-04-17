@@ -1,234 +1,336 @@
-"""Tests for the logit lens module (Nostalgebraist 2020)."""
+"""Tests for src/eval/logit_lens.py (Logit Lens — nostalgebraist 2020).
+
+Import path: from aurelius.eval.logit_lens import ...
+"""
 
 from __future__ import annotations
+
+import math
+from typing import List
 
 import pytest
 import torch
 import torch.nn as nn
 
-from src.eval.logit_lens import (
-    HiddenStateCollector,
+from aurelius.eval.logit_lens import (
     LogitLens,
+    LogitLensAnalyzer,
     LogitLensConfig,
-    compute_answer_rank,
-    compute_layer_entropy,
-    get_top_tokens,
-    plot_logit_lens_text,
-    project_hidden_to_logits,
+    LogitLensTracker,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
-
 
 # ---------------------------------------------------------------------------
-# Shared fixtures
+# Shared helpers / fixtures
 # ---------------------------------------------------------------------------
 
-@pytest.fixture(scope="module")
-def small_cfg():
-    return AureliusConfig(
-        n_layers=2,
-        d_model=64,
-        n_heads=2,
-        n_kv_heads=2,
-        head_dim=32,
-        d_ff=128,
-        vocab_size=256,
-        max_seq_len=512,
-    )
+B, T, D, V = 2, 6, 32, 64  # batch, seq-len, d_model, vocab_size
 
 
-@pytest.fixture(scope="module")
-def small_model(small_cfg):
-    torch.manual_seed(42)
-    model = AureliusTransformer(small_cfg)
-    model.eval()
-    return model
-
-
-@pytest.fixture
-def input_ids():
+def make_unembed(vocab_size: int = V, d_model: int = D) -> nn.Linear:
+    """Create a deterministic unembedding linear layer (no bias)."""
     torch.manual_seed(0)
-    return torch.randint(0, 256, (1, 8))
+    lin = nn.Linear(d_model, vocab_size, bias=False)
+    return lin
 
 
-@pytest.fixture
-def default_config():
-    return LogitLensConfig()
+def make_layer_norm(d_model: int = D) -> nn.LayerNorm:
+    return nn.LayerNorm(d_model)
 
 
-# ---------------------------------------------------------------------------
-# 1. test_logit_lens_config_defaults
-# ---------------------------------------------------------------------------
-
-def test_logit_lens_config_defaults():
-    cfg = LogitLensConfig()
-    assert cfg.n_top_tokens == 10
-    assert cfg.normalize_hidden is True
-    assert cfg.track_entropy is True
-    assert cfg.track_rank is True
+def make_hidden(batch: int = B, seq: int = T, d: int = D) -> torch.Tensor:
+    torch.manual_seed(1)
+    return torch.randn(batch, seq, d)
 
 
-# ---------------------------------------------------------------------------
-# 2. test_hidden_state_collector_captures
-# ---------------------------------------------------------------------------
-
-def test_hidden_state_collector_captures(small_model, input_ids):
-    collector = HiddenStateCollector(small_model)
-    layers = list(small_model.layers)
-    collector.register(layers)
-    try:
-        with torch.no_grad():
-            small_model(input_ids)
-    finally:
-        collector.remove_hooks()
-
-    assert len(collector.hiddens) == len(layers), (
-        f"Expected {len(layers)} hiddens, got {len(collector.hiddens)}"
-    )
-    # Each hidden should be a tensor of shape (1, 8, 64)
-    for h in collector.hiddens:
-        assert isinstance(h, torch.Tensor)
-        assert h.shape == (1, 8, 64)
+def make_lens(with_ln: bool = True) -> LogitLens:
+    unembed = make_unembed()
+    ln = make_layer_norm() if with_ln else None
+    return LogitLens(unembed, layer_norm=ln)
 
 
 # ---------------------------------------------------------------------------
-# 3. test_hidden_state_collector_context_manager
+# 1. LogitLensConfig – fields and defaults
 # ---------------------------------------------------------------------------
 
-def test_hidden_state_collector_context_manager(small_model, input_ids):
-    collector = HiddenStateCollector(small_model)
-    layers = list(small_model.layers)
 
-    with collector:
-        collector.register(layers)
-        # Hooks are registered inside
-        assert len(collector._hooks) == len(layers)
+def test_logit_lens_config_fields():
+    cfg = LogitLensConfig(n_layers=12, d_model=768, vocab_size=50257)
+    assert cfg.n_layers == 12
+    assert cfg.d_model == 768
+    assert cfg.vocab_size == 50257
+    assert cfg.use_layer_norm is True  # default
 
-    # After exiting context manager, hooks must be removed
-    assert len(collector._hooks) == 0, "Hooks not removed after context manager exit"
-    for layer in layers:
-        assert len(layer._forward_hooks) == 0, "Layer still has forward hooks"
+
+def test_logit_lens_config_use_layer_norm_false():
+    cfg = LogitLensConfig(n_layers=4, d_model=64, vocab_size=128, use_layer_norm=False)
+    assert cfg.use_layer_norm is False
 
 
 # ---------------------------------------------------------------------------
-# 4. test_project_hidden_to_logits_shape
+# 2. LogitLens.project — shape
 # ---------------------------------------------------------------------------
 
-def test_project_hidden_to_logits_shape():
-    B, T, D, V = 2, 5, 64, 256
-    hidden = torch.randn(B, T, D)
-    unembed = torch.randn(V, D)
-    logits = project_hidden_to_logits(hidden, unembed, layer_norm=None)
+
+def test_logit_lens_project_shape():
+    lens = make_lens(with_ln=True)
+    hidden = make_hidden()
+    logits = lens.project(hidden)
     assert logits.shape == (B, T, V), f"Expected ({B}, {T}, {V}), got {logits.shape}"
 
 
 # ---------------------------------------------------------------------------
-# 5. test_project_hidden_with_layernorm
+# 3. LogitLens.project — equivalent to unembed(ln(h)) when layer_norm given
 # ---------------------------------------------------------------------------
 
-def test_project_hidden_with_layernorm():
-    B, T, D, V = 1, 4, 64, 256
-    hidden = torch.randn(B, T, D)
-    unembed = torch.randn(V, D)
-    layer_norm = nn.LayerNorm(D)
-    logits = project_hidden_to_logits(hidden, unembed, layer_norm=layer_norm)
-    assert logits.shape == (B, T, V)
 
-    # Verify that layer norm was applied: compute expected result manually
-    normed = layer_norm(hidden)
-    expected = normed @ unembed.T
+def test_logit_lens_project_with_layer_norm():
+    """project(h) == linear(ln(h)) when a layer_norm is set."""
+    unembed = make_unembed()
+    ln = make_layer_norm()
+    lens = LogitLens(unembed, layer_norm=ln)
+
+    hidden = make_hidden()
+    logits = lens.project(hidden)
+
+    # Manual computation
+    normed = ln(hidden)
+    expected = nn.functional.linear(normed, unembed.weight, unembed.bias)
+
+    assert torch.allclose(logits, expected, atol=1e-5), (
+        "project() result does not match manual ln → unembed computation"
+    )
+
+
+def test_logit_lens_project_without_layer_norm():
+    """project(h) == unembed(h) when no layer_norm is provided."""
+    unembed = make_unembed()
+    lens = LogitLens(unembed, layer_norm=None)
+
+    hidden = make_hidden()
+    logits = lens.project(hidden)
+    expected = nn.functional.linear(hidden, unembed.weight, unembed.bias)
+
     assert torch.allclose(logits, expected, atol=1e-5)
 
 
 # ---------------------------------------------------------------------------
-# 6. test_get_top_tokens_shapes
+# 4. LogitLens.top_k_tokens — shape
 # ---------------------------------------------------------------------------
 
-def test_get_top_tokens_shapes():
-    B, T, V = 3, 6, 256
-    n_top = 10
-    logits = torch.randn(B, T, V)
-    top_ids, top_logits = get_top_tokens(logits, n_top=n_top)
-    assert top_ids.shape == (B, n_top), f"top_ids shape: {top_ids.shape}"
-    assert top_logits.shape == (B, n_top), f"top_logits shape: {top_logits.shape}"
 
-
-# ---------------------------------------------------------------------------
-# 7. test_compute_layer_entropy_shape
-# ---------------------------------------------------------------------------
-
-def test_compute_layer_entropy_shape():
-    B, T, V = 2, 8, 256
-    logits = torch.randn(B, T, V)
-    entropy = compute_layer_entropy(logits)
-    assert entropy.shape == (B, T), f"Expected ({B}, {T}), got {entropy.shape}"
+def test_top_k_tokens_shape():
+    k = 5
+    lens = make_lens()
+    hidden = make_hidden()
+    top_k = lens.top_k_tokens(hidden, k=k)
+    assert top_k.shape == (B, T, k), f"Expected ({B}, {T}, {k}), got {top_k.shape}"
 
 
 # ---------------------------------------------------------------------------
-# 8. test_compute_layer_entropy_positive
+# 5. LogitLens.top_k_tokens — indices in valid vocab range
 # ---------------------------------------------------------------------------
 
-def test_compute_layer_entropy_positive():
-    B, T, V = 2, 8, 256
-    logits = torch.randn(B, T, V)
-    entropy = compute_layer_entropy(logits)
-    assert (entropy >= 0).all(), "Some entropy values are negative"
 
-
-# ---------------------------------------------------------------------------
-# 9. test_compute_answer_rank_shape
-# ---------------------------------------------------------------------------
-
-def test_compute_answer_rank_shape():
-    B, T, V = 3, 6, 256
-    logits = torch.randn(B, T, V)
-    answer_token_id = 42
-    ranks = compute_answer_rank(logits, answer_token_id)
-    assert ranks.shape == (B,), f"Expected ({B},), got {ranks.shape}"
+def test_top_k_tokens_vocab_range():
+    k = 5
+    lens = make_lens()
+    hidden = make_hidden()
+    top_k = lens.top_k_tokens(hidden, k=k)
+    assert (top_k >= 0).all(), "Negative token index found"
+    assert (top_k < V).all(), f"Token index >= vocab_size ({V}) found"
 
 
 # ---------------------------------------------------------------------------
-# 10. test_logit_lens_analyze_keys
+# 6. LogitLens.entropy — shape and non-negative
 # ---------------------------------------------------------------------------
 
-def test_logit_lens_analyze_keys(small_model, input_ids, default_config):
-    lens = LogitLens(small_model, default_config)
-    results = lens.analyze(input_ids, answer_token_id=5)
 
-    required_keys = {"n_layers", "layer_entropies", "layer_top_tokens", "answer_ranks"}
-    assert required_keys.issubset(results.keys()), (
-        f"Missing keys: {required_keys - results.keys()}"
+def test_entropy_shape():
+    lens = make_lens()
+    hidden = make_hidden()
+    ent = lens.entropy(hidden)
+    assert ent.shape == (B, T), f"Expected ({B}, {T}), got {ent.shape}"
+
+
+def test_entropy_non_negative():
+    lens = make_lens()
+    hidden = make_hidden()
+    ent = lens.entropy(hidden)
+    assert (ent >= -1e-6).all(), "Entropy contains negative values"
+
+
+# ---------------------------------------------------------------------------
+# 7. LogitLens.entropy — zero for a perfectly peaked distribution
+# ---------------------------------------------------------------------------
+
+
+def test_entropy_zero_for_peaked_distribution():
+    """If the projected logits are a one-hot (very large at one position),
+    the softmax entropy should be near zero."""
+    unembed = nn.Linear(D, V, bias=False)
+    # Zero out the weight, then force a single huge logit via construction:
+    # We'll craft a hidden state such that W @ h^T = e_k * 1e9.
+    with torch.no_grad():
+        unembed.weight.zero_()
+        unembed.weight[0, 0] = 1.0  # only token 0 gets a non-zero logit
+
+    lens = LogitLens(unembed, layer_norm=None)
+
+    # hidden with only the first feature active → logit for token 0 is huge
+    hidden = torch.zeros(1, 1, D)
+    hidden[0, 0, 0] = 1e6  # makes logit[0] = 1e6, all others = 0
+
+    ent = lens.entropy(hidden)
+    assert ent.item() < 1e-3, f"Expected near-zero entropy, got {ent.item()}"
+
+
+# ---------------------------------------------------------------------------
+# 8. LogitLensAnalyzer.analyze — correct output keys
+# ---------------------------------------------------------------------------
+
+
+def test_analyzer_analyze_keys():
+    n_layers = 3
+    lenses = [make_lens() for _ in range(n_layers)]
+    analyzer = LogitLensAnalyzer(lenses)
+
+    hiddens = [make_hidden() for _ in range(n_layers)]
+    result = analyzer.analyze(hiddens)
+
+    assert "logits" in result
+    assert "top1" in result
+    assert "entropy" in result
+
+
+# ---------------------------------------------------------------------------
+# 9. LogitLensAnalyzer.analyze — correct number of layer entries
+# ---------------------------------------------------------------------------
+
+
+def test_analyzer_analyze_num_layers():
+    n_layers = 4
+    lenses = [make_lens() for _ in range(n_layers)]
+    analyzer = LogitLensAnalyzer(lenses)
+
+    hiddens = [make_hidden() for _ in range(n_layers)]
+    result = analyzer.analyze(hiddens)
+
+    assert len(result["logits"]) == n_layers
+    assert len(result["top1"]) == n_layers
+    assert len(result["entropy"]) == n_layers
+
+
+# ---------------------------------------------------------------------------
+# 10. LogitLensAnalyzer.rank_of_true_token — correct return shapes
+# ---------------------------------------------------------------------------
+
+
+def test_rank_of_true_token_shapes():
+    n_layers = 3
+    lenses = [make_lens() for _ in range(n_layers)]
+    analyzer = LogitLensAnalyzer(lenses)
+
+    hiddens = [make_hidden() for _ in range(n_layers)]
+    true_tokens = torch.randint(0, V, (B, T))
+
+    ranks = analyzer.rank_of_true_token(hiddens, true_tokens)
+
+    assert len(ranks) == n_layers
+    for r in ranks:
+        assert r.shape == (B, T), f"Expected ({B}, {T}), got {r.shape}"
+
+
+# ---------------------------------------------------------------------------
+# 11. rank_of_true_token — rank 0 when true token is top-predicted
+# ---------------------------------------------------------------------------
+
+
+def test_rank_zero_when_true_token_is_top():
+    """Construct a situation where the true token is always rank 0."""
+    # Use bias-only linear: project gives a fixed vector regardless of input.
+    # Set bias so token 7 always has the highest logit.
+    unembed = nn.Linear(D, V, bias=True)
+    with torch.no_grad():
+        unembed.weight.zero_()
+        unembed.bias.zero_()
+        unembed.bias[7] = 1e6  # token 7 always top
+
+    lens = LogitLens(unembed, layer_norm=None)
+    analyzer = LogitLensAnalyzer([lens])
+
+    hidden = make_hidden(batch=1, seq=3)
+    true_tokens = torch.full((1, 3), fill_value=7, dtype=torch.long)
+
+    ranks = analyzer.rank_of_true_token([hidden], true_tokens)
+    assert len(ranks) == 1
+    assert (ranks[0] == 0).all(), f"Expected all-zero ranks, got {ranks[0]}"
+
+
+# ---------------------------------------------------------------------------
+# 12. LogitLensTracker — context manager installs and removes hooks
+# ---------------------------------------------------------------------------
+
+
+class _SimpleLayer(nn.Module):
+    """Trivial layer that passes input through unchanged."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x
+
+
+def test_tracker_installs_and_removes_hooks():
+    layers = [_SimpleLayer(), _SimpleLayer()]
+    tracker = LogitLensTracker(layers)
+
+    with tracker:
+        # Inside: hooks should be registered
+        for layer in layers:
+            assert len(layer._forward_hooks) > 0, "Hook not installed"
+
+    # Outside: hooks should be removed
+    for layer in layers:
+        assert len(layer._forward_hooks) == 0, "Hook not removed after __exit__"
+
+
+# ---------------------------------------------------------------------------
+# 13. LogitLensTracker — collects hidden states after forward pass
+# ---------------------------------------------------------------------------
+
+
+def test_tracker_collects_hiddens():
+    layers = [_SimpleLayer(), _SimpleLayer()]
+    tracker = LogitLensTracker(layers)
+    x = torch.randn(1, 4, D)
+
+    with tracker:
+        out = x
+        for layer in layers:
+            out = layer(out)
+
+    hiddens = tracker.get_hiddens()
+    assert len(hiddens) == len(layers), (
+        f"Expected {len(layers)} hiddens, got {len(hiddens)}"
     )
-    assert results["n_layers"] == 2
-    assert len(results["layer_entropies"]) == 2
-    assert len(results["layer_top_tokens"]) == 2
-    assert results["answer_ranks"] is not None
-    assert len(results["answer_ranks"]) == 2
+    for h in hiddens:
+        assert isinstance(h, torch.Tensor)
+        assert h.shape == x.shape
 
 
 # ---------------------------------------------------------------------------
-# 11. test_logit_lens_layer_prediction_agreement_range
+# 14. Works with B=1, T=1 (minimal shape)
 # ---------------------------------------------------------------------------
 
-def test_logit_lens_layer_prediction_agreement_range(small_model, input_ids, default_config):
-    lens = LogitLens(small_model, default_config)
-    results = lens.analyze(input_ids)
-    agreement = lens.layer_prediction_agreement(results)
-    assert 0.0 <= agreement <= 1.0, f"Agreement {agreement} out of [0, 1]"
 
+def test_minimal_shape_b1_t1():
+    lens = make_lens(with_ln=True)
 
-# ---------------------------------------------------------------------------
-# 12. test_plot_logit_lens_text_is_string
-# ---------------------------------------------------------------------------
+    hidden = torch.randn(1, 1, D)
+    logits = lens.project(hidden)
+    assert logits.shape == (1, 1, V)
 
-def test_plot_logit_lens_text_is_string(small_model, input_ids, default_config):
-    lens = LogitLens(small_model, default_config)
-    results = lens.analyze(input_ids)
+    top_k = lens.top_k_tokens(hidden, k=3)
+    assert top_k.shape == (1, 1, 3)
 
-    def decode(token_id: int) -> str:
-        return f"<{token_id}>"
-
-    text = plot_logit_lens_text(results, tokenizer_decode=decode)
-    assert isinstance(text, str), f"Expected str, got {type(text)}"
-    assert len(text) > 0, "plot_logit_lens_text returned empty string"
+    ent = lens.entropy(hidden)
+    assert ent.shape == (1, 1)
+    assert ent.item() >= 0.0

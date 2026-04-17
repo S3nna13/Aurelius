@@ -1,281 +1,288 @@
-"""Tests for src/alignment/constitutional_ai.py — RLAIF self-critique loop."""
+"""Tests for Constitutional AI (Bai et al., 2022) RL-CAI stage.
+
+Import path: aurelius.alignment.constitutional_ai
+"""
 from __future__ import annotations
 
 import copy
 
 import pytest
 import torch
+import torch.nn as nn
 
-from src.alignment.constitutional_ai import (
-    ConstitutionalAIConfig,
-    Principle,
-    default_principles,
-    score_principle_compliance,
-    compute_critique_loss,
-    SelfCritiqueBuffer,
-    ConstitutionalAITrainer,
+from aurelius.alignment.constitutional_ai import (
+    ConstitutionalPrinciple,
+    Constitution,
+    ConstitutionalScorer,
+    CAILoss,
+    CAITrainer,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 
 
 # ---------------------------------------------------------------------------
-# Tiny model factory
+# Helpers
 # ---------------------------------------------------------------------------
 
-def make_tiny_model() -> AureliusTransformer:
-    cfg = AureliusConfig(
-        n_layers=2,
-        d_model=64,
-        n_heads=2,
-        n_kv_heads=2,
-        head_dim=32,
-        d_ff=128,
-        vocab_size=256,
-        max_seq_len=512,
+def make_constitution(n: int = 3) -> Constitution:
+    principles = [
+        ConstitutionalPrinciple(
+            name=f"p{i}",
+            critique_prompt=f"Does this response satisfy criterion {i}?",
+            weight=float(i + 1),
+        )
+        for i in range(n)
+    ]
+    return Constitution(principles)
+
+
+class _DummyModel(nn.Module):
+    """Minimal model with trainable params for CAITrainer tests."""
+
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.linear = nn.Linear(dim, dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.linear(x)
+
+
+# ---------------------------------------------------------------------------
+# 1. ConstitutionalPrinciple fields
+# ---------------------------------------------------------------------------
+
+def test_constitutional_principle_fields():
+    p = ConstitutionalPrinciple(
+        name="honesty",
+        critique_prompt="Does this response avoid deception?",
+        weight=2.5,
     )
-    return AureliusTransformer(cfg)
-
-
-def make_trainer() -> ConstitutionalAITrainer:
-    policy = make_tiny_model()
-    ref = copy.deepcopy(policy)
-    for p in ref.parameters():
-        p.requires_grad_(False)
-    config = ConstitutionalAIConfig()
-    optimizer = torch.optim.AdamW(policy.parameters(), lr=1e-4)
-    return ConstitutionalAITrainer(policy=policy, ref_model=ref, config=config, optimizer=optimizer)
+    assert p.name == "honesty"
+    assert p.critique_prompt == "Does this response avoid deception?"
+    assert p.weight == 2.5
 
 
 # ---------------------------------------------------------------------------
-# 1. ConstitutionalAIConfig defaults
+# 2. ConstitutionalPrinciple default weight
 # ---------------------------------------------------------------------------
 
-def test_config_defaults():
-    cfg = ConstitutionalAIConfig()
-    assert cfg.n_principles == 4
-    assert cfg.n_critique_rounds == 2
-    assert cfg.sft_loss_coeff == 1.0
-    assert cfg.kl_coeff == 0.1
-    assert cfg.max_seq_len == 128
+def test_constitutional_principle_default_weight():
+    p = ConstitutionalPrinciple(name="safety", critique_prompt="Is it safe?")
+    assert p.weight == 1.0
 
 
 # ---------------------------------------------------------------------------
-# 2. default_principles returns list of length 4
+# 3. Constitution.get_principle returns correct principle
 # ---------------------------------------------------------------------------
 
-def test_default_principles_length():
-    principles = default_principles()
-    assert isinstance(principles, list)
-    assert len(principles) == 4
-
-
-# ---------------------------------------------------------------------------
-# 3. Principle dataclass fields
-# ---------------------------------------------------------------------------
-
-def test_principle_fields():
-    p = Principle(
-        name="test",
-        description="Test description",
-        critique_prompt="Is it good?",
-        revision_prompt="Make it better.",
-    )
-    assert p.name == "test"
-    assert p.description == "Test description"
-    assert p.critique_prompt == "Is it good?"
-    assert p.revision_prompt == "Make it better."
+def test_constitution_get_principle():
+    c = make_constitution(3)
+    p = c.get_principle("p1")
+    assert p.name == "p1"
+    assert p.weight == 2.0
 
 
 # ---------------------------------------------------------------------------
-# 4. score_principle_compliance returns scalar tensor
+# 4. Constitution.get_principle raises KeyError for unknown name
 # ---------------------------------------------------------------------------
 
-def test_score_principle_compliance_scalar():
-    B, T, V = 2, 10, 256
-    logits = torch.randn(B, T, V)
-    token_ids = torch.randint(0, V, (B, T))
-    score = score_principle_compliance(logits, token_ids, 0, 4)
-    assert isinstance(score, torch.Tensor)
-    assert score.numel() == 1
+def test_constitution_get_principle_keyerror():
+    c = make_constitution(2)
+    with pytest.raises(KeyError):
+        c.get_principle("nonexistent")
 
 
 # ---------------------------------------------------------------------------
-# 5. score_principle_compliance output is finite
+# 5. Constitution.total_weight sums weights
 # ---------------------------------------------------------------------------
 
-def test_score_principle_compliance_finite():
-    B, T, V = 2, 10, 256
-    logits = torch.randn(B, T, V)
-    token_ids = torch.randint(0, V, (B, T))
-    for i in range(4):
-        score = score_principle_compliance(logits, token_ids, i, 4)
-        assert torch.isfinite(score), f"Score for principle {i} is not finite"
+def test_constitution_total_weight():
+    c = make_constitution(4)
+    # weights = 1, 2, 3, 4 -> total = 10
+    assert c.total_weight() == pytest.approx(10.0)
 
 
 # ---------------------------------------------------------------------------
-# 6. compute_critique_loss returns (Tensor, dict)
+# 6. Constitution.weighted_score correct
 # ---------------------------------------------------------------------------
 
-def test_compute_critique_loss_return_types():
-    B, T, V = 2, 10, 256
-    policy_logits = torch.randn(B, T, V, requires_grad=True)
-    ref_logits = torch.randn(B, T, V)
-    target_ids = torch.randint(0, V, (B, T))
-    principle_scores = torch.randn(B, 4)
-    config = ConstitutionalAIConfig()
-
-    result = compute_critique_loss(policy_logits, ref_logits, target_ids, principle_scores, config)
-    assert isinstance(result, tuple)
-    loss, metrics = result
-    assert isinstance(loss, torch.Tensor)
-    assert isinstance(metrics, dict)
+def test_constitution_weighted_score():
+    principles = [
+        ConstitutionalPrinciple(name="a", critique_prompt="a?", weight=1.0),
+        ConstitutionalPrinciple(name="b", critique_prompt="b?", weight=3.0),
+    ]
+    c = Constitution(principles)
+    scores = {"a": 0.0, "b": 1.0}
+    # weighted mean = (1*0 + 3*1) / (1+3) = 0.75
+    result = c.weighted_score(scores)
+    assert result == pytest.approx(0.75)
 
 
 # ---------------------------------------------------------------------------
-# 7. compute_critique_loss dict has required keys
+# 7. Constitution.from_dicts constructs correctly
 # ---------------------------------------------------------------------------
 
-def test_compute_critique_loss_dict_keys():
-    B, T, V = 2, 10, 256
-    policy_logits = torch.randn(B, T, V, requires_grad=True)
-    ref_logits = torch.randn(B, T, V)
-    target_ids = torch.randint(0, V, (B, T))
-    principle_scores = torch.randn(B, 4)
-    config = ConstitutionalAIConfig()
-
-    _, metrics = compute_critique_loss(policy_logits, ref_logits, target_ids, principle_scores, config)
-    for key in ("sft_loss", "kl_loss", "principle_reward", "total_loss"):
-        assert key in metrics, f"Missing key: {key}"
+def test_constitution_from_dicts():
+    dicts = [
+        {"name": "helpfulness", "critique_prompt": "Is it helpful?", "weight": 2.0},
+        {"name": "safety", "critique_prompt": "Is it safe?"},
+    ]
+    c = Constitution.from_dicts(dicts)
+    assert len(c) == 2
+    assert c.get_principle("helpfulness").weight == 2.0
+    assert c.get_principle("safety").weight == 1.0  # default
 
 
 # ---------------------------------------------------------------------------
-# 8. compute_critique_loss loss is scalar and finite
+# 8. ConstitutionalScorer.score_response shape (N,)
 # ---------------------------------------------------------------------------
 
-def test_compute_critique_loss_scalar_finite():
-    B, T, V = 2, 10, 256
-    policy_logits = torch.randn(B, T, V, requires_grad=True)
-    ref_logits = torch.randn(B, T, V)
-    target_ids = torch.randint(0, V, (B, T))
-    principle_scores = torch.randn(B, 4)
-    config = ConstitutionalAIConfig()
+def test_scorer_score_response_shape():
+    c = make_constitution(4)
+    scorer = ConstitutionalScorer(c)
+    log_probs = [torch.randn(10) for _ in range(4)]
+    scores = scorer.score_response(log_probs)
+    assert scores.shape == (4,)
 
-    loss, metrics = compute_critique_loss(policy_logits, ref_logits, target_ids, principle_scores, config)
-    assert loss.numel() == 1
+
+# ---------------------------------------------------------------------------
+# 9. ConstitutionalScorer.score_response values = mean log-prob per response
+# ---------------------------------------------------------------------------
+
+def test_scorer_score_response_values():
+    c = make_constitution(3)
+    scorer = ConstitutionalScorer(c)
+    lp0 = torch.tensor([-1.0, -2.0, -3.0])
+    lp1 = torch.tensor([-0.5, -0.5])
+    lp2 = torch.tensor([-4.0])
+    scores = scorer.score_response([lp0, lp1, lp2])
+    assert scores[0].item() == pytest.approx(-2.0)
+    assert scores[1].item() == pytest.approx(-0.5)
+    assert scores[2].item() == pytest.approx(-4.0)
+
+
+# ---------------------------------------------------------------------------
+# 10. ConstitutionalScorer.aggregate_score returns scalar
+# ---------------------------------------------------------------------------
+
+def test_scorer_aggregate_score_scalar():
+    c = make_constitution(3)
+    scorer = ConstitutionalScorer(c)
+    principle_scores = torch.tensor([-1.0, -2.0, -3.0])
+    agg = scorer.aggregate_score(principle_scores)
+    assert agg.ndim == 0
+    assert agg.item() == pytest.approx(-2.0)
+
+
+# ---------------------------------------------------------------------------
+# 11. ConstitutionalScorer.aggregate_score with weights
+# ---------------------------------------------------------------------------
+
+def test_scorer_aggregate_score_weighted():
+    c = make_constitution(2)
+    scorer = ConstitutionalScorer(c)
+    principle_scores = torch.tensor([0.0, 1.0])
+    weights = torch.tensor([1.0, 3.0])
+    agg = scorer.aggregate_score(principle_scores, weights=weights)
+    assert agg.item() == pytest.approx(0.75)
+
+
+# ---------------------------------------------------------------------------
+# 12. ConstitutionalScorer.rank_responses descending order
+# ---------------------------------------------------------------------------
+
+def test_scorer_rank_responses_descending():
+    c = make_constitution(2)
+    scorer = ConstitutionalScorer(c)
+    scores = torch.tensor([0.3, 0.9, 0.1, 0.7])
+    ranks = scorer.rank_responses(scores)
+    # Expected order: 1 (0.9), 3 (0.7), 0 (0.3), 2 (0.1)
+    assert ranks.tolist() == [1, 3, 0, 2]
+
+
+# ---------------------------------------------------------------------------
+# 13. CAILoss returns scalar + correct keys
+# ---------------------------------------------------------------------------
+
+def test_cai_loss_returns_scalar_and_keys():
+    loss_fn = CAILoss(beta=0.1)
+    B = 4
+    chosen = torch.randn(B)
+    rejected = torch.randn(B)
+    ref_chosen = torch.randn(B)
+    ref_rejected = torch.randn(B)
+    loss, metrics = loss_fn(chosen, rejected, ref_chosen, ref_rejected)
+    assert loss.ndim == 0
     assert torch.isfinite(loss)
-    assert all(isinstance(v, float) for v in metrics.values())
-    assert all(torch.isfinite(torch.tensor(v)) for v in metrics.values())
-
-
-# ---------------------------------------------------------------------------
-# 9. compute_critique_loss kl_loss >= 0
-# ---------------------------------------------------------------------------
-
-def test_compute_critique_loss_kl_nonneg():
-    B, T, V = 2, 10, 256
-    policy_logits = torch.randn(B, T, V, requires_grad=True)
-    ref_logits = torch.randn(B, T, V)
-    target_ids = torch.randint(0, V, (B, T))
-    principle_scores = torch.randn(B, 4)
-    config = ConstitutionalAIConfig()
-
-    _, metrics = compute_critique_loss(policy_logits, ref_logits, target_ids, principle_scores, config)
-    assert metrics["kl_loss"] >= 0.0
-
-
-# ---------------------------------------------------------------------------
-# 10. SelfCritiqueBuffer starts empty
-# ---------------------------------------------------------------------------
-
-def test_buffer_starts_empty():
-    buf = SelfCritiqueBuffer()
-    assert len(buf) == 0
-
-
-# ---------------------------------------------------------------------------
-# 11. SelfCritiqueBuffer.add increases length
-# ---------------------------------------------------------------------------
-
-def test_buffer_add_increases_length():
-    buf = SelfCritiqueBuffer()
-    prompt = torch.randint(0, 256, (1, 8))
-    response = torch.randint(0, 256, (1, 8))
-    revised = torch.randint(0, 256, (1, 8))
-    scores = torch.randn(1, 4)
-
-    buf.add(prompt, response, revised, scores)
-    assert len(buf) == 1
-
-    buf.add(prompt, response, revised, scores)
-    assert len(buf) == 2
-
-
-# ---------------------------------------------------------------------------
-# 12. SelfCritiqueBuffer.sample returns None when buffer < batch_size
-# ---------------------------------------------------------------------------
-
-def test_buffer_sample_returns_none_when_small():
-    buf = SelfCritiqueBuffer()
-    prompt = torch.randint(0, 256, (1, 8))
-    response = torch.randint(0, 256, (1, 8))
-    revised = torch.randint(0, 256, (1, 8))
-    scores = torch.randn(1, 4)
-
-    buf.add(prompt, response, revised, scores)
-    # buffer has 1 item, batch_size=4 should return None
-    result = buf.sample(batch_size=4)
-    assert result is None
-
-
-# ---------------------------------------------------------------------------
-# 13. SelfCritiqueBuffer.sample returns 4-tuple when buffer is full enough
-# ---------------------------------------------------------------------------
-
-def test_buffer_sample_returns_tuple():
-    buf = SelfCritiqueBuffer()
-    for _ in range(5):
-        prompt = torch.randint(0, 256, (1, 8))
-        response = torch.randint(0, 256, (1, 8))
-        revised = torch.randint(0, 256, (1, 8))
-        scores = torch.randn(1, 4)
-        buf.add(prompt, response, revised, scores)
-
-    result = buf.sample(batch_size=3)
-    assert result is not None
-    assert isinstance(result, tuple)
-    assert len(result) == 4
-    for t in result:
-        assert isinstance(t, torch.Tensor)
-
-
-# ---------------------------------------------------------------------------
-# 14. ConstitutionalAITrainer.critique_and_revise returns (Tensor, Tensor)
-# ---------------------------------------------------------------------------
-
-def test_critique_and_revise_return_types():
-    trainer = make_trainer()
-    prompt_ids = torch.randint(0, 256, (2, 10))
-    response_ids = torch.randint(0, 256, (2, 10))
-
-    revised_ids, scores = trainer.critique_and_revise(prompt_ids, response_ids)
-    assert isinstance(revised_ids, torch.Tensor)
-    assert isinstance(scores, torch.Tensor)
-    assert revised_ids.shape == response_ids.shape
-    assert scores.shape == (2, trainer.config.n_principles)
-
-
-# ---------------------------------------------------------------------------
-# 15. ConstitutionalAITrainer.train_step returns dict with correct keys
-# ---------------------------------------------------------------------------
-
-def test_train_step_returns_correct_keys():
-    trainer = make_trainer()
-    prompt_ids = torch.randint(0, 256, (2, 10))
-    response_ids = torch.randint(0, 256, (2, 10))
-
-    metrics = trainer.train_step(prompt_ids, response_ids)
-    assert isinstance(metrics, dict)
-    for key in ("sft_loss", "kl_loss", "principle_reward", "total_loss"):
+    for key in ("loss", "accuracy", "margin"):
         assert key in metrics, f"Missing key: {key}"
-        assert isinstance(metrics[key], float)
+
+
+# ---------------------------------------------------------------------------
+# 14. CAILoss perfect separation -> accuracy = 1.0
+# ---------------------------------------------------------------------------
+
+def test_cai_loss_perfect_separation_accuracy():
+    loss_fn = CAILoss(beta=1.0)
+    B = 8
+    # chosen has much higher log-probs than rejected, refs are equal
+    chosen = torch.full((B,), 10.0)
+    rejected = torch.full((B,), -10.0)
+    ref_chosen = torch.zeros(B)
+    ref_rejected = torch.zeros(B)
+    _, metrics = loss_fn(chosen, rejected, ref_chosen, ref_rejected)
+    assert metrics["accuracy"] == pytest.approx(1.0)
+
+
+# ---------------------------------------------------------------------------
+# 15. CAILoss gradient flows
+# ---------------------------------------------------------------------------
+
+def test_cai_loss_gradient_flows():
+    loss_fn = CAILoss(beta=0.1)
+    B = 4
+    chosen = torch.randn(B, requires_grad=True)
+    rejected = torch.randn(B, requires_grad=True)
+    ref_chosen = torch.randn(B)
+    ref_rejected = torch.randn(B)
+    loss, _ = loss_fn(chosen, rejected, ref_chosen, ref_rejected)
+    loss.backward()
+    assert chosen.grad is not None
+    assert rejected.grad is not None
+    assert chosen.grad.shape == (B,)
+
+
+# ---------------------------------------------------------------------------
+# 16. CAITrainer.freeze_ref freezes all ref params
+# ---------------------------------------------------------------------------
+
+def test_cai_trainer_freeze_ref():
+    c = make_constitution(2)
+    model = _DummyModel()
+    ref_model = copy.deepcopy(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    loss_fn = CAILoss()
+    trainer = CAITrainer(model, ref_model, optimizer, c, loss_fn)
+    for param in trainer.ref_model.parameters():
+        assert not param.requires_grad, "ref_model param should be frozen"
+
+
+# ---------------------------------------------------------------------------
+# 17. CAITrainer.train_step returns correct keys
+# ---------------------------------------------------------------------------
+
+def test_cai_trainer_train_step_keys():
+    c = make_constitution(2)
+    model = _DummyModel()
+    ref_model = copy.deepcopy(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    loss_fn = CAILoss()
+    trainer = CAITrainer(model, ref_model, optimizer, c, loss_fn)
+
+    B = 4
+    chosen_lp = torch.randn(B, requires_grad=True)
+    rejected_lp = torch.randn(B)
+    ref_chosen = torch.randn(B)
+    ref_rejected = torch.randn(B)
+    metrics = trainer.train_step(chosen_lp, rejected_lp, ref_chosen, ref_rejected)
+    for key in ("loss", "accuracy", "margin"):
+        assert key in metrics, f"Missing key: {key}"

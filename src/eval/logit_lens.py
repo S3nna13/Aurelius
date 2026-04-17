@@ -1,10 +1,19 @@
-"""Logit lens: project intermediate hidden states to vocab space to trace prediction formation across layers."""
+"""Logit Lens: project intermediate hidden states to vocabulary space.
+
+Reference: nostalgebraist (2020) — "interpreting GPT: the logit lens"
+https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/
+
+Each transformer layer produces a hidden state.  By projecting that hidden
+state through the final unembedding matrix (optionally preceded by a layer
+norm) we can read off what token the model "predicts" at every intermediate
+layer, giving insight into how predictions form through the network.
+"""
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
@@ -12,311 +21,287 @@ import torch.nn.functional as F
 from torch import Tensor
 
 
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+
 @dataclass
 class LogitLensConfig:
-    """Configuration for the logit lens analyzer."""
+    """Configuration for the logit lens analysis.
 
-    n_top_tokens: int = 10
-    """Top tokens to show per layer."""
+    Attributes:
+        n_layers:       Number of transformer layers in the model.
+        d_model:        Hidden dimension of the model.
+        vocab_size:     Vocabulary size (number of token types).
+        use_layer_norm: Whether to apply layer norm before projecting hidden
+                        states through the unembedding matrix.
+    """
 
-    normalize_hidden: bool = True
-    """Apply layer norm before projecting."""
-
-    track_entropy: bool = True
-    """Track prediction entropy per layer."""
-
-    track_rank: bool = True
-    """Track rank of final answer at each layer."""
+    n_layers: int
+    d_model: int
+    vocab_size: int
+    use_layer_norm: bool = True
 
 
-class HiddenStateCollector:
-    """Hooks into model layers to collect hidden states."""
+# ---------------------------------------------------------------------------
+# Core lens
+# ---------------------------------------------------------------------------
 
-    def __init__(self, model: nn.Module) -> None:
-        self.model = model
-        self.hiddens: list[Tensor] = []
-        self._hooks: list = []
 
-    def register(self, layers: list[nn.Module]) -> None:
-        """Register forward hooks on each layer.
+class LogitLens:
+    """Projects a single layer's hidden state to vocabulary logits.
 
-        The hook captures the first output tensor (handles tuple returns).
+    Args:
+        unembed:    An ``nn.Linear`` whose weight matrix has shape *(V, d)*.
+                    The projection computes ``h @ unembed.weight.T`` (plus
+                    bias if present), matching the standard LM head.
+        layer_norm: Optional normalisation module applied to the hidden state
+                    before projection.  Typically the model's final layer norm
+                    (e.g. ``nn.LayerNorm``).
+    """
+
+    def __init__(
+        self,
+        unembed: nn.Linear,
+        layer_norm: Optional[nn.Module] = None,
+    ) -> None:
+        self.unembed = unembed
+        self.layer_norm = layer_norm
+
+    # ------------------------------------------------------------------
+    # Primary operations
+    # ------------------------------------------------------------------
+
+    def project(self, hidden: Tensor) -> Tensor:
+        """Project hidden states to vocabulary logits.
+
+        Args:
+            hidden: Float tensor of shape *(B, T, d)*.
+
+        Returns:
+            Float tensor of shape *(B, T, V)* containing unnormalised logits.
         """
-        for layer in layers:
+        h = hidden
+        if self.layer_norm is not None:
+            h = self.layer_norm(h)
+        # unembed.weight: (V, d)  →  h @ W^T: (B, T, V)
+        logits = F.linear(h, self.unembed.weight, self.unembed.bias)
+        return logits
+
+    def top_k_tokens(self, hidden: Tensor, k: int = 5) -> torch.LongTensor:
+        """Return the indices of the top-*k* predicted tokens.
+
+        Args:
+            hidden: Float tensor of shape *(B, T, d)*.
+            k:      Number of top tokens to return per position.
+
+        Returns:
+            Long tensor of shape *(B, T, k)* with token indices.
+        """
+        logits = self.project(hidden)  # (B, T, V)
+        _, top_indices = torch.topk(logits, k, dim=-1)  # (B, T, k)
+        return top_indices
+
+    def entropy(self, hidden: Tensor) -> Tensor:
+        """Compute the Shannon entropy of the token distribution.
+
+        Entropy is computed from the softmax of the projected logits.  A
+        uniform distribution has maximum entropy; a one-hot (peaked)
+        distribution has zero entropy.
+
+        Args:
+            hidden: Float tensor of shape *(B, T, d)*.
+
+        Returns:
+            Float tensor of shape *(B, T)* with entropy in nats (≥ 0).
+        """
+        logits = self.project(hidden)  # (B, T, V)
+        log_probs = F.log_softmax(logits, dim=-1)  # numerically stable
+        probs = log_probs.exp()
+        # H = -sum_v p_v * log(p_v)
+        ent = -(probs * log_probs).sum(dim=-1)  # (B, T)
+        return ent
+
+
+# ---------------------------------------------------------------------------
+# Multi-layer analyser
+# ---------------------------------------------------------------------------
+
+
+class LogitLensAnalyzer:
+    """Runs the logit lens over all collected hidden states.
+
+    Args:
+        lenses: One :class:`LogitLens` per layer.  The *i*-th lens is applied
+                to the hidden state produced by layer *i*.
+    """
+
+    def __init__(self, lenses: List[LogitLens]) -> None:
+        self.lenses = lenses
+
+    # ------------------------------------------------------------------
+
+    def analyze(
+        self,
+        layer_hiddens: List[Tensor],
+        layer_idx: Optional[List[int]] = None,
+    ) -> Dict:
+        """Project every layer's hidden state and collect results.
+
+        Args:
+            layer_hiddens: List of *(B, T, d)* tensors, one per layer.
+            layer_idx:     Optional list of layer indices to process.  If
+                           ``None`` all layers are processed in order.
+
+        Returns:
+            Dictionary with keys:
+
+            * ``"logits"``  – ``List[Tensor(B, T, V)]``
+            * ``"top1"``    – ``List[LongTensor(B, T)]``
+            * ``"entropy"`` – ``List[Tensor(B, T)]``
+        """
+        if layer_idx is None:
+            layer_idx = list(range(len(layer_hiddens)))
+
+        logits_list: List[Tensor] = []
+        top1_list: List[torch.LongTensor] = []
+        entropy_list: List[Tensor] = []
+
+        for i, li in enumerate(layer_idx):
+            lens = self.lenses[li] if li < len(self.lenses) else self.lenses[i]
+            hidden = layer_hiddens[i]
+
+            logits = lens.project(hidden)          # (B, T, V)
+            top1 = logits.argmax(dim=-1)           # (B, T)
+            ent = lens.entropy(hidden)             # (B, T)
+
+            logits_list.append(logits)
+            top1_list.append(top1)
+            entropy_list.append(ent)
+
+        return {
+            "logits": logits_list,
+            "top1": top1_list,
+            "entropy": entropy_list,
+        }
+
+    # ------------------------------------------------------------------
+
+    def rank_of_true_token(
+        self,
+        layer_hiddens: List[Tensor],
+        true_tokens: torch.LongTensor,
+    ) -> List[Tensor]:
+        """Compute the rank of the true token in each layer's projection.
+
+        Rank 0 means the true token is the top-predicted token; rank *V-1*
+        means it is the least likely token according to the projected logits.
+
+        Args:
+            layer_hiddens: List of *(B, T, d)* tensors, one per layer.
+            true_tokens:   Long tensor of shape *(B, T)* with ground-truth
+                           token indices.
+
+        Returns:
+            List of long tensors of shape *(B, T)*, one per layer.
+        """
+        ranks_per_layer: List[Tensor] = []
+
+        for i, (hidden, lens) in enumerate(zip(layer_hiddens, self.lenses)):
+            logits = lens.project(hidden)  # (B, T, V)
+
+            # argsort descending: position 0 has the highest logit token
+            sorted_indices = logits.argsort(dim=-1, descending=True)  # (B, T, V)
+
+            # For each (b, t) position find where true_tokens[b, t] appears
+            # in sorted_indices[b, t, :].
+            # ranks[b, t] = (sorted_indices[b, t, :] == true_tokens[b, t]).nonzero()[0]
+            B, T, V = sorted_indices.shape
+            true_expanded = true_tokens.unsqueeze(-1).expand(B, T, V)  # (B, T, V)
+            matches = (sorted_indices == true_expanded)  # (B, T, V) bool
+            # argmax along last dim gives the first True index = rank
+            rank = matches.long().argmax(dim=-1)  # (B, T)
+
+            ranks_per_layer.append(rank)
+
+        return ranks_per_layer
+
+
+# ---------------------------------------------------------------------------
+# Tracker (context-manager hook collector)
+# ---------------------------------------------------------------------------
+
+
+class LogitLensTracker:
+    """Attaches forward hooks to model layers to collect hidden states.
+
+    Designed for use as a context manager::
+
+        tracker = LogitLensTracker(model.layers)
+        with tracker:
+            output = model(input_ids)
+        hiddens = tracker.get_hiddens()  # List[Tensor], one per layer
+
+    Args:
+        layers: List of ``nn.Module`` objects to hook (one per layer).
+    """
+
+    def __init__(self, layers: List[nn.Module]) -> None:
+        self.layers = layers
+        self._hiddens: List[Tensor] = []
+        self._hooks: List[torch.utils.hooks.RemovableHook] = []
+
+    # ------------------------------------------------------------------
+    # Context manager interface
+    # ------------------------------------------------------------------
+
+    def __enter__(self) -> "LogitLensTracker":
+        self._install_hooks()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self._remove_hooks()
+
+    # ------------------------------------------------------------------
+    # Hook management
+    # ------------------------------------------------------------------
+
+    def _install_hooks(self) -> None:
+        """Register a forward hook on every tracked layer."""
+        for layer in self.layers:
             def _make_hook():
-                def hook(module: nn.Module, inputs, output):
-                    # Handle tuple outputs (e.g. (hidden, kv_cache))
+                def _hook(module: nn.Module, inputs, output):
+                    # Some layers return tuples (hidden, cache, …); grab first element.
                     if isinstance(output, (tuple, list)):
-                        hidden = output[0]
+                        h = output[0]
                     else:
-                        hidden = output
-                    self.hiddens.append(hidden.detach())
-                return hook
+                        h = output
+                    self._hiddens.append(h.detach())
+
+                return _hook
 
             handle = layer.register_forward_hook(_make_hook())
             self._hooks.append(handle)
 
-    def clear(self) -> None:
-        """Clear the collected hidden states list."""
-        self.hiddens.clear()
-
-    def remove_hooks(self) -> None:
+    def _remove_hooks(self) -> None:
         """Remove all registered hooks."""
         for handle in self._hooks:
             handle.remove()
         self._hooks.clear()
 
-    def __enter__(self) -> "HiddenStateCollector":
-        return self
+    # ------------------------------------------------------------------
+    # Data access
+    # ------------------------------------------------------------------
 
-    def __exit__(self, *args) -> None:
-        self.remove_hooks()
-
-
-def project_hidden_to_logits(
-    hidden: Tensor,
-    unembed_matrix: Tensor,
-    layer_norm: nn.Module | None = None,
-) -> Tensor:
-    """Project hidden state (B, T, D) to vocab logits (B, T, V).
-
-    Args:
-        hidden: Hidden states of shape (B, T, D).
-        unembed_matrix: Unembedding matrix of shape (V, D).
-        layer_norm: Optional layer norm to apply before projecting.
-
-    Returns:
-        Logits of shape (B, T, V).
-    """
-    if layer_norm is not None:
-        hidden = layer_norm(hidden)
-    # unembed_matrix is (V, D), so hidden @ unembed_matrix.T gives (B, T, V)
-    return hidden @ unembed_matrix.T
-
-
-def get_top_tokens(logits: Tensor, n_top: int = 10) -> tuple[Tensor, Tensor]:
-    """Get top-n tokens by logit value for the last position.
-
-    Args:
-        logits: Logits of shape (B, T, V).
-        n_top: Number of top tokens to return.
-
-    Returns:
-        Tuple of (top_ids, top_logits), each of shape (B, n_top).
-    """
-    last_pos_logits = logits[:, -1, :]  # (B, V)
-    top_logits, top_ids = torch.topk(last_pos_logits, n_top, dim=-1)
-    return top_ids, top_logits
-
-
-def compute_layer_entropy(logits: Tensor) -> Tensor:
-    """Compute entropy of the softmax distribution at each position.
-
-    Args:
-        logits: Logits of shape (B, T, V).
-
-    Returns:
-        Entropy values of shape (B, T).
-    """
-    probs = F.softmax(logits, dim=-1)  # (B, T, V)
-    log_probs = torch.log(probs + 1e-10)
-    # H = -sum(p * log(p)) over vocab dim
-    entropy = -torch.sum(probs * log_probs, dim=-1)  # (B, T)
-    return entropy
-
-
-def compute_answer_rank(logits: Tensor, answer_token_id: int) -> Tensor:
-    """Compute rank of answer_token_id in sorted logits at each layer.
-
-    Lower rank = more confident prediction (rank 0 = top prediction).
-
-    Args:
-        logits: Logits of shape (B, T, V) — uses position -1.
-        answer_token_id: The token whose rank to compute.
-
-    Returns:
-        Rank tensor of shape (B,).
-    """
-    last_pos_logits = logits[:, -1, :]  # (B, V)
-    # Sort descending and find where answer_token_id falls
-    sorted_ids = torch.argsort(last_pos_logits, dim=-1, descending=True)  # (B, V)
-    # Find rank for each batch element
-    answer = torch.tensor(answer_token_id, device=logits.device)
-    # rank = position in sorted_ids where value == answer_token_id
-    ranks = (sorted_ids == answer).nonzero(as_tuple=False)  # may be (B, 2)
-    # ranks[:, 0] is batch index, ranks[:, 1] is rank position
-    B = logits.shape[0]
-    rank_tensor = torch.zeros(B, dtype=torch.long, device=logits.device)
-    for row in ranks:
-        batch_idx, rank_pos = int(row[0]), int(row[1])
-        rank_tensor[batch_idx] = rank_pos
-    return rank_tensor
-
-
-class LogitLens:
-    """Main logit lens analyzer.
-
-    Projects intermediate layer hidden states through the unembedding matrix
-    to reveal how predictions evolve across layers.
-    """
-
-    def __init__(self, model: nn.Module, config: LogitLensConfig) -> None:
-        self.model = model
-        self.config = config
-
-        # Locate unembedding matrix — try common attribute names
-        if hasattr(model, "lm_head") and hasattr(model.lm_head, "weight"):
-            self.unembed_matrix: Tensor = model.lm_head.weight  # (V, D)
-        elif hasattr(model, "head") and hasattr(model.head, "weight"):
-            self.unembed_matrix = model.head.weight
-        elif hasattr(model, "embed") and hasattr(model.embed, "weight"):
-            self.unembed_matrix = model.embed.weight
-        else:
-            raise AttributeError(
-                "Cannot locate unembedding matrix. Expected model.lm_head.weight, "
-                "model.head.weight, or model.embed.weight."
-            )
-
-        # Locate final layer norm if available
-        self.layer_norm: nn.Module | None = None
-        if config.normalize_hidden:
-            for attr in ("norm", "final_norm", "ln_f"):
-                if hasattr(model, attr):
-                    self.layer_norm = getattr(model, attr)
-                    break
-
-        self.collector = HiddenStateCollector(model)
-
-    def _get_layers(self) -> list[nn.Module]:
-        """Return the list of transformer layer modules."""
-        for attr in ("layers", "blocks", "transformer_blocks"):
-            if hasattr(self.model, attr):
-                layers = getattr(self.model, attr)
-                return list(layers)
-        raise AttributeError("Cannot find transformer layers on model.")
-
-    @torch.no_grad()
-    def analyze(
-        self,
-        input_ids: Tensor,
-        answer_token_id: int | None = None,
-    ) -> dict[str, Any]:
-        """Run the logit lens analysis.
-
-        Args:
-            input_ids: Token ids of shape (B, T).
-            answer_token_id: Optional token id to track rank across layers.
+    def get_hiddens(self) -> List[Tensor]:
+        """Return collected hidden states (one tensor per layer per call).
 
         Returns:
-            Dictionary with keys:
-                n_layers: int
-                layer_entropies: list[float] — mean entropy per layer
-                layer_top_tokens: list[list[int]] — top token ids per layer
-                answer_ranks: list[int] | None
+            List of tensors in the order the hooks fired.
         """
-        layers = self._get_layers()
+        return list(self._hiddens)
 
-        self.collector.clear()
-        self.collector.register(layers)
-        try:
-            self.model(input_ids)
-        finally:
-            self.collector.remove_hooks()
-
-        hiddens = self.collector.hiddens  # list of (B, T, D) tensors
-
-        layer_entropies: list[float] = []
-        layer_top_tokens: list[list[int]] = []
-        answer_ranks: list[int] | None = [] if answer_token_id is not None else None
-
-        for hidden in hiddens:
-            logits = project_hidden_to_logits(
-                hidden, self.unembed_matrix, self.layer_norm
-            )  # (B, T, V)
-
-            # Top tokens (use last position)
-            top_ids, _ = get_top_tokens(logits, n_top=self.config.n_top_tokens)
-            # top_ids: (B, n_top) — take batch 0
-            layer_top_tokens.append(top_ids[0].tolist())
-
-            # Entropy
-            if self.config.track_entropy:
-                entropy = compute_layer_entropy(logits)  # (B, T)
-                layer_entropies.append(float(entropy.mean()))
-
-            # Answer rank
-            if self.config.track_rank and answer_token_id is not None:
-                ranks = compute_answer_rank(logits, answer_token_id)  # (B,)
-                answer_ranks.append(int(ranks[0]))
-
-        return {
-            "n_layers": len(hiddens),
-            "layer_entropies": layer_entropies,
-            "layer_top_tokens": layer_top_tokens,
-            "answer_ranks": answer_ranks,
-        }
-
-    def layer_prediction_agreement(self, results: dict) -> float:
-        """Fraction of layers where top-1 prediction matches the final layer's top-1.
-
-        Args:
-            results: Output from analyze().
-
-        Returns:
-            Float in [0, 1].
-        """
-        layer_top_tokens = results["layer_top_tokens"]
-        if not layer_top_tokens:
-            return 0.0
-
-        final_top1 = layer_top_tokens[-1][0]
-        n_agree = sum(1 for layer_tokens in layer_top_tokens if layer_tokens[0] == final_top1)
-        return n_agree / len(layer_top_tokens)
-
-
-def plot_logit_lens_text(
-    results: dict,
-    tokenizer_decode: Callable,
-    n_layers_show: int = 4,
-) -> str:
-    """Render a simple text representation of logit lens results.
-
-    Shows top-3 tokens at the first, middle, and last layers.
-
-    Args:
-        results: Output from LogitLens.analyze().
-        tokenizer_decode: Callable that maps token id (int) -> str.
-        n_layers_show: How many layers to show (not used beyond capping).
-
-    Returns:
-        Multi-line string representation.
-    """
-    layer_top_tokens = results["layer_top_tokens"]
-    layer_entropies = results["layer_entropies"]
-    n_layers = results["n_layers"]
-
-    if n_layers == 0:
-        return "(no layers captured)"
-
-    # Pick indices: first, middle, last
-    indices = sorted(
-        set([0, n_layers // 2, n_layers - 1])
-    )
-    # If there are more layers than n_layers_show, trim to evenly spaced
-    if len(indices) > n_layers_show:
-        indices = indices[:n_layers_show]
-
-    lines = [f"Logit Lens — {n_layers} layers"]
-    lines.append("-" * 40)
-
-    for idx in indices:
-        entropy_str = ""
-        if idx < len(layer_entropies):
-            entropy_str = f"  entropy={layer_entropies[idx]:.3f}"
-        top3 = layer_top_tokens[idx][:3]
-        decoded = [tokenizer_decode(tid) for tid in top3]
-        lines.append(f"Layer {idx:>3}{entropy_str}")
-        lines.append(f"  top-3: {decoded}")
-
-    lines.append("-" * 40)
-    return "\n".join(lines)
+    def clear(self) -> None:
+        """Discard all collected hidden states."""
+        self._hiddens.clear()
