@@ -1,132 +1,220 @@
 """GrokFast: Accelerated grokking by amplifying slow gradient components.
 
 Modifies gradients in-place before the optimizer step by amplifying
-the low-frequency (slow) component identified via EMA.
+the low-frequency (slow) component captured by an EMA or SMA filter.
 
-Reference: Lee et al. 2024, "GrokFast: Accelerated Grokking by Amplifying Slow Gradients"
+Reference: Liu et al. 2024, "GrokFast: Accelerated Grokking by Amplifying Slow Gradients"
 arXiv:2405.20233
 
-Usage:
+Usage (EMA variant):
     grokfast = GrokFastEMA(model, alpha=0.98, lamb=2.0)
 
     # In training loop, AFTER loss.backward() but BEFORE optimizer.step():
-    grokfast.apply(model)
+    grokfast.step()   # update() then amplify()
     optimizer.step()
+
+Usage (wrapped optimizer):
+    gf_opt = GrokFastOptimizer(optimizer, model, alpha=0.98, lamb=2.0)
+    gf_opt.step()     # applies grokfast then advances optimizer
 """
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass
+from typing import Any
 
 import torch
 import torch.nn as nn
 
 
-@dataclass
-class GrokFastConfig:
-    alpha: float = 0.98     # EMA decay factor (close to 1 = slow)
-    lamb: float = 2.0       # amplification factor for slow component
-    window_size: int = 100  # for GrokFastMA variant
-
-
 class GrokFastEMA:
     """GrokFast with Exponential Moving Average filter.
 
-    Maintains EMA of gradients and amplifies the slow (EMA) component.
+    Maintains a per-parameter EMA of gradients and amplifies the slow
+    (low-frequency) component.  Call ``step()`` after ``loss.backward()``
+    and before ``optimizer.step()``.
 
     Modified gradient = g + lamb * EMA(g)
-    where EMA(g) = alpha * EMA_prev + (1-alpha) * g
+    where EMA_t = alpha * EMA_{t-1} + (1 - alpha) * g_t
     """
 
     def __init__(
         self,
         model: nn.Module,
-        cfg: GrokFastConfig | None = None,
+        alpha: float = 0.98,
+        lamb: float = 2.0,
     ) -> None:
         self.model = model
-        self.cfg = cfg or GrokFastConfig()
-        # EMA state: param_name → EMA tensor (same shape as param)
-        self._ema: dict[str, torch.Tensor] = {}
+        self.alpha = alpha
+        self.lamb = lamb
+        # EMA state keyed by parameter id (avoids name collisions in shared params)
+        self._ema: dict[int, torch.Tensor] = {}
 
-    def apply(self, model: nn.Module | None = None) -> None:
-        """Amplify gradients in-place for all parameters with .grad.
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
-        Must be called after loss.backward() and before optimizer.step().
+    def update(self) -> None:
+        """Update the per-parameter EMA with the current gradients.
+
+        For each parameter with a non-None ``.grad``:
+            EMA_t = alpha * EMA_{t-1} + (1 - alpha) * grad
         """
-        model = model or self.model
-        for name, param in model.named_parameters():
+        for param in self.model.parameters():
             if param.grad is None:
                 continue
+            pid = id(param)
             g = param.grad.data
+            if pid not in self._ema:
+                self._ema[pid] = torch.zeros_like(g)
+            self._ema[pid] = self.alpha * self._ema[pid] + (1.0 - self.alpha) * g
 
-            # Initialize EMA on first call
-            if name not in self._ema:
-                self._ema[name] = torch.zeros_like(g)
+    def amplify(self) -> None:
+        """Add ``lamb * EMA`` to the current gradient in-place.
 
-            # Update EMA: α * prev + (1-α) * g
-            self._ema[name] = self.cfg.alpha * self._ema[name] + (1 - self.cfg.alpha) * g
+        Must be called *after* ``update()`` so that the EMA has been refreshed.
+        """
+        for param in self.model.parameters():
+            if param.grad is None:
+                continue
+            pid = id(param)
+            if pid not in self._ema:
+                continue
+            param.grad.data.add_(self.lamb * self._ema[pid])
 
-            # Amplify: g += λ * EMA(g)
-            param.grad.data = g + self.cfg.lamb * self._ema[name]
+    def step(self) -> None:
+        """Convenience method: calls ``update()`` then ``amplify()``."""
+        self.update()
+        self.amplify()
 
-    def reset(self) -> None:
-        """Reset EMA state (call when starting a new task)."""
-        self._ema.clear()
+    # ------------------------------------------------------------------
+    # Serialisation helpers
+    # ------------------------------------------------------------------
+
+    def state_dict(self) -> dict[str, Any]:
+        """Return a serialisable snapshot of the EMA state.
+
+        The EMA tensors are stored as a list parallel to the parameter order
+        returned by ``model.parameters()``, keeping only entries for params
+        that appear in the internal map.
+        """
+        param_list = list(self.model.parameters())
+        ema_entries: list[dict[str, Any]] = []
+        for idx, param in enumerate(param_list):
+            pid = id(param)
+            if pid in self._ema:
+                ema_entries.append({"param_idx": idx, "ema": self._ema[pid].clone()})
+        return {
+            "alpha": self.alpha,
+            "lamb": self.lamb,
+            "ema_entries": ema_entries,
+        }
+
+    def load_state_dict(self, state_dict: dict[str, Any]) -> None:
+        """Restore EMA state from a ``state_dict`` produced by ``state_dict()``."""
+        self.alpha = state_dict["alpha"]
+        self.lamb = state_dict["lamb"]
+        param_list = list(self.model.parameters())
+        self._ema = {}
+        for entry in state_dict["ema_entries"]:
+            idx = entry["param_idx"]
+            if idx < len(param_list):
+                pid = id(param_list[idx])
+                self._ema[pid] = entry["ema"].clone()
 
 
-class GrokFastMA:
-    """GrokFast with moving average over a fixed window.
+class GrokFastSMA:
+    """GrokFast with Simple Moving Average filter over the last K gradients.
 
-    More memory than EMA but potentially smoother slow component.
-    Modified gradient = g + lamb * MA(g)
-    where MA(g) = mean of last window_size gradients
+    Uses more memory than EMA but can give a smoother slow component.
+
+    Modified gradient = g + lamb * mean(last K gradients)
     """
 
     def __init__(
         self,
         model: nn.Module,
-        cfg: GrokFastConfig | None = None,
+        window: int = 5,
+        lamb: float = 2.0,
     ) -> None:
         self.model = model
-        self.cfg = cfg or GrokFastConfig()
-        self._windows: dict[str, deque] = {}
+        self.window = window
+        self.lamb = lamb
+        # Per-parameter deque of recent gradient tensors
+        self._buffers: dict[int, deque] = {}
 
-    def apply(self, model: nn.Module | None = None) -> None:
-        """Apply moving average gradient amplification in-place."""
-        model = model or self.model
-        for name, param in model.named_parameters():
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def update(self) -> None:
+        """Push current ``param.grad.data`` into the rolling window."""
+        for param in self.model.parameters():
             if param.grad is None:
                 continue
-            g = param.grad.data.clone()
+            pid = id(param)
+            if pid not in self._buffers:
+                self._buffers[pid] = deque(maxlen=self.window)
+            self._buffers[pid].append(param.grad.data.clone())
 
-            if name not in self._windows:
-                self._windows[name] = deque(maxlen=self.cfg.window_size)
+    def amplify(self) -> None:
+        """Add ``lamb * mean(window)`` to the current gradient in-place."""
+        for param in self.model.parameters():
+            if param.grad is None:
+                continue
+            pid = id(param)
+            if pid not in self._buffers or len(self._buffers[pid]) == 0:
+                continue
+            sma = torch.stack(list(self._buffers[pid])).mean(dim=0)
+            param.grad.data.add_(self.lamb * sma)
 
-            self._windows[name].append(g)
-            ma = torch.stack(list(self._windows[name])).mean(dim=0)
-            param.grad.data = param.grad.data + self.cfg.lamb * ma
-
-    def reset(self) -> None:
-        self._windows.clear()
+    def step(self) -> None:
+        """Convenience method: calls ``update()`` then ``amplify()``."""
+        self.update()
+        self.amplify()
 
 
-def apply_grokfast(
-    model: nn.Module,
-    ema_state: dict[str, torch.Tensor],
-    alpha: float = 0.98,
-    lamb: float = 2.0,
-) -> dict[str, torch.Tensor]:
-    """Functional interface for GrokFast EMA.
+class GrokFastOptimizer:
+    """Wraps any ``torch.optim.Optimizer`` with GrokFast EMA gradient amplification.
 
-    Updates EMA state and modifies gradients in-place.
-    Returns updated ema_state dict.
+    Call ``zero_grad()`` as normal, then after ``loss.backward()`` call
+    ``step()`` — it applies GrokFast and then advances the inner optimizer.
+
+    Example::
+
+        opt = GrokFastOptimizer(torch.optim.AdamW(model.parameters()), model)
+        loss.backward()
+        opt.step()
+        opt.zero_grad()
     """
-    for name, param in model.named_parameters():
-        if param.grad is None:
-            continue
-        g = param.grad.data
-        if name not in ema_state:
-            ema_state[name] = torch.zeros_like(g)
-        ema_state[name] = alpha * ema_state[name] + (1 - alpha) * g
-        param.grad.data = g + lamb * ema_state[name]
-    return ema_state
+
+    def __init__(
+        self,
+        optimizer: torch.optim.Optimizer,
+        model: nn.Module,
+        alpha: float = 0.98,
+        lamb: float = 2.0,
+    ) -> None:
+        self.optimizer = optimizer
+        self.grokfast = GrokFastEMA(model, alpha=alpha, lamb=lamb)
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def step(self) -> None:
+        """Apply GrokFast amplification, then advance the inner optimizer."""
+        self.grokfast.step()
+        self.optimizer.step()
+
+    def zero_grad(self, set_to_none: bool = False) -> None:
+        """Delegate ``zero_grad`` to the inner optimizer."""
+        self.optimizer.zero_grad(set_to_none=set_to_none)
+
+    # ------------------------------------------------------------------
+    # Passthrough properties
+    # ------------------------------------------------------------------
+
+    @property
+    def param_groups(self):
+        """Expose inner optimizer's ``param_groups`` directly."""
+        return self.optimizer.param_groups

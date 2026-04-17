@@ -1,17 +1,21 @@
 """Speculative decoding: draft model proposes tokens, target model verifies in parallel.
 
+Classic speculative decoding following:
+  - Leviathan et al. 2023 ("Fast Inference from Transformers via Speculative Decoding")
+  - Chen et al. 2023 ("Accelerating Large Language Model Decoding with Speculative Sampling")
+
 Public API
 ----------
 SpeculativeConfig   — configuration dataclass
-draft_tokens        — autoregressively sample n tokens from a callable draft model
-verify_draft        — run target model once; rejection-sample accepted tokens
-speculative_decode_step — one draft + verify step
-SpeculativeDecoder  — full decode loop with statistics
+DraftModel          — wraps a callable model_fn, autoregressively proposes K tokens
+SpeculativeVerifier — implements rejection-sampling accept/reject step
+SpeculativeDecoder  — full draft + verify loop
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Dict, Tuple
+import math
+from dataclasses import dataclass
+from typing import Callable, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -26,222 +30,203 @@ from torch import Tensor
 class SpeculativeConfig:
     """Configuration for speculative decoding."""
 
-    n_draft_tokens: int = 4
+    n_draft_tokens: int = 5
     temperature: float = 1.0
-    max_new_tokens: int = 50
-    vocab_size: int = 32000
+    top_p: float = 1.0          # nucleus sampling for target; 1.0 means no filtering
+    max_new_tokens: int = 128
 
 
 # ---------------------------------------------------------------------------
-# Draft phase
+# Draft Model
 # ---------------------------------------------------------------------------
 
-def draft_tokens(
-    draft_model_fn: Callable[[Tensor], Tensor],
-    token_ids: Tensor,
-    n: int,
-    temperature: float,
-) -> Tuple[Tensor, Tensor]:
-    """Autoregressively sample *n* tokens from *draft_model_fn*.
+class DraftModel:
+    """Wraps a callable draft model function for autoregressive token proposal.
+
+    Parameters
+    ----------
+    model_fn:
+        Callable that accepts ``input_ids: LongTensor(1, T)`` and returns
+        ``logits: FloatTensor(1, T, V)``.
+    vocab_size:
+        Vocabulary size ``V``.
+    """
+
+    def __init__(
+        self,
+        model_fn: Callable[[Tensor], Tensor],
+        vocab_size: int,
+    ) -> None:
+        self.model_fn = model_fn
+        self.vocab_size = vocab_size
+
+    def autoregressive_draft(
+        self,
+        input_ids: Tensor,
+        n_tokens: int,
+    ) -> Tuple[Tensor, Tensor]:
+        """Greedily generate ``n_tokens`` tokens from the draft model.
+
+        Parameters
+        ----------
+        input_ids:
+            ``(1, T)`` int64 prompt tensor.
+        n_tokens:
+            Number of tokens to draft.
+
+        Returns
+        -------
+        token_ids : ``LongTensor(n_tokens,)`` — greedy draft token ids.
+        logits_per_step : ``FloatTensor(n_tokens, V)`` — raw logits at each step.
+        """
+        token_ids_list: list[Tensor] = []
+        logits_list: list[Tensor] = []
+
+        current = input_ids  # (1, T)
+
+        with torch.no_grad():
+            for _ in range(n_tokens):
+                logits = self.model_fn(current)          # (1, T, V)
+                last_logits = logits[0, -1, :]           # (V,)
+
+                # Greedy selection
+                next_tok = last_logits.argmax(dim=-1)    # scalar
+
+                token_ids_list.append(next_tok)
+                logits_list.append(last_logits)
+
+                current = torch.cat(
+                    [current, next_tok.unsqueeze(0).unsqueeze(0)], dim=1
+                )  # (1, T+1)
+
+        token_ids = torch.stack(token_ids_list, dim=0)       # (n_tokens,)
+        logits_per_step = torch.stack(logits_list, dim=0)    # (n_tokens, V)
+        return token_ids, logits_per_step
+
+
+# ---------------------------------------------------------------------------
+# Speculative Verifier
+# ---------------------------------------------------------------------------
+
+class SpeculativeVerifier:
+    """Implements the rejection sampling accept/reject criterion.
+
+    Parameters
+    ----------
+    vocab_size:
+        Vocabulary size ``V``.
+    temperature:
+        Temperature applied when sampling from distributions.
+    """
+
+    def __init__(self, vocab_size: int, temperature: float = 1.0) -> None:
+        self.vocab_size = vocab_size
+        self.temperature = temperature
+
+    def verify(
+        self,
+        draft_ids: Tensor,
+        draft_probs: Tensor,
+        target_probs: Tensor,
+    ) -> Tuple[Tensor, int]:
+        """Apply rejection sampling to accept/reject draft tokens.
+
+        For each position ``i``:
+        * Compute ``accept_prob = min(1, p_target[i, draft_ids[i]] / p_draft[i, draft_ids[i]])``.
+        * Draw ``u ~ Uniform(0, 1)``.
+        * If ``u <= accept_prob``: accept the draft token.
+        * Else: sample corrected token from ``q = max(0, p_t - p_d) / Z``; stop.
+
+        If all draft tokens are accepted, a bonus token is sampled from the
+        target distribution at the last position.
+
+        Parameters
+        ----------
+        draft_ids:
+            ``LongTensor(K,)`` — draft token indices.
+        draft_probs:
+            ``FloatTensor(K, V)`` — draft probability distributions.
+        target_probs:
+            ``FloatTensor(K, V)`` — target probability distributions.
+
+        Returns
+        -------
+        accepted_tokens : ``LongTensor(m,)`` — accepted token ids; includes
+            corrected token on rejection or bonus token when all accepted.
+        n_accepted : int — number of original draft tokens accepted (0..K).
+        """
+        K = draft_ids.shape[0]
+        accepted_list: list[Tensor] = []
+        n_accepted = 0
+
+        for i in range(K):
+            tok = draft_ids[i]                         # scalar
+            p_d = draft_probs[i, tok]                  # scalar
+            p_t = target_probs[i, tok]                 # scalar
+
+            # Acceptance probability
+            accept_prob = torch.clamp(p_t / (p_d + 1e-10), max=1.0)
+            u = torch.rand(1, device=draft_ids.device).squeeze()
+
+            if u.item() <= accept_prob.item():
+                accepted_list.append(tok)
+                n_accepted += 1
+            else:
+                # Corrected distribution: q = max(0, p_target - p_draft) / Z
+                q = (target_probs[i] - draft_probs[i]).clamp(min=0.0)
+                q_sum = q.sum()
+                if q_sum.item() < 1e-10:
+                    # Degenerate fallback: sample from target
+                    q = target_probs[i].clone()
+                    q_sum = q.sum()
+                q = q / (q_sum + 1e-10)
+                corrected = torch.multinomial(q, num_samples=1).squeeze()
+                accepted_list.append(corrected)
+                break
+        else:
+            # All K draft tokens accepted — sample bonus from last target dist
+            bonus = torch.multinomial(target_probs[K - 1], num_samples=1).squeeze()
+            accepted_list.append(bonus)
+
+        if accepted_list:
+            accepted_tokens = torch.stack(accepted_list, dim=0)  # (m,)
+        else:
+            accepted_tokens = torch.zeros(0, dtype=torch.long, device=draft_ids.device)
+
+        return accepted_tokens, n_accepted
+
+    def sample_from_logits(self, logits: Tensor) -> int:
+        """Sample a token from logits using temperature softmax.
+
+        Parameters
+        ----------
+        logits : ``(V,)`` raw logits.
+
+        Returns
+        -------
+        int — sampled token id in ``[0, V)``.
+        """
+        temp = max(float(self.temperature), 1e-8)
+        probs = F.softmax(logits / temp, dim=-1)  # (V,)
+        tok = torch.multinomial(probs, num_samples=1).squeeze()
+        return int(tok.item())
+
+
+# ---------------------------------------------------------------------------
+# Full Speculative Decoder
+# ---------------------------------------------------------------------------
+
+class SpeculativeDecoder:
+    """Full speculative decoding loop.
 
     Parameters
     ----------
     draft_model_fn:
-        Callable that accepts ``(B, T)`` int64 tensor and returns
-        ``(B, T, V)`` logits.
-    token_ids:
-        ``(B, T)`` int64 prompt tensor.
-    n:
-        Number of tokens to draft.
-    temperature:
-        Sampling temperature (values ≤ 1e-8 treated as greedy).
-
-    Returns
-    -------
-    draft_ids : ``(B, n)`` int64 — sampled draft token ids.
-    draft_probs : ``(B, n)`` float — probability of each selected token
-        under the draft distribution.
-    """
-    batch_size = token_ids.shape[0]
-    all_ids: list[Tensor] = []
-    all_probs: list[Tensor] = []
-
-    current = token_ids
-    temp = max(float(temperature), 1e-8)
-
-    with torch.no_grad():
-        for _ in range(n):
-            logits = draft_model_fn(current)          # (B, T, V)
-            last_logits = logits[:, -1, :]            # (B, V)
-
-            if temp < 1e-7:
-                next_tok = last_logits.argmax(dim=-1)  # (B,)
-            else:
-                probs_full = F.softmax(last_logits / temp, dim=-1)  # (B, V)
-                next_tok = torch.multinomial(probs_full, num_samples=1).squeeze(-1)  # (B,)
-
-            probs_full = F.softmax(last_logits / temp, dim=-1)  # (B, V)
-            chosen_prob = probs_full[torch.arange(batch_size, device=token_ids.device), next_tok]  # (B,)
-
-            all_ids.append(next_tok)
-            all_probs.append(chosen_prob)
-
-            current = torch.cat([current, next_tok.unsqueeze(1)], dim=1)
-
-    draft_ids = torch.stack(all_ids, dim=1)    # (B, n)
-    draft_probs = torch.stack(all_probs, dim=1)  # (B, n)
-    return draft_ids, draft_probs
-
-
-# ---------------------------------------------------------------------------
-# Verification phase
-# ---------------------------------------------------------------------------
-
-def verify_draft(
-    target_model_fn: Callable[[Tensor], Tensor],
-    token_ids: Tensor,
-    draft_ids: Tensor,
-    draft_probs: Tensor,
-    temperature: float,
-) -> Tuple[Tensor, int]:
-    """Run target model on ``[token_ids | draft_ids]`` and apply rejection sampling.
-
-    For each draft position *i* with draft token *t*:
-
-    * Compute ``accept_prob = min(1, p_target[t] / p_draft[t])``.
-    * Draw ``u ~ Uniform(0, 1)``.
-    * If ``u < accept_prob``: accept *t*.
-    * Else: sample from the corrected distribution
-      ``max(0, p_target - p_draft)`` (normalised), then stop.
-
-    If all draft tokens are accepted a bonus token is sampled from the
-    target distribution at the next position.
-
-    Parameters
-    ----------
+        Callable ``(1, T) -> (1, T, V)`` for the small draft model.
     target_model_fn:
-        Callable ``(B, T) -> (B, T, V)``.
-    token_ids:
-        ``(B, prompt_len)`` int64.
-    draft_ids:
-        ``(B, n_draft)`` int64.
-    draft_probs:
-        ``(B, n_draft)`` float — draft probability for each selected token.
-    temperature:
-        Sampling temperature.
-
-    Returns
-    -------
-    accepted_ids : ``(B, k)`` int64 — accepted new tokens (k ≥ 0).
-    n_accepted : int — number of draft tokens that were accepted.
-    """
-    batch_size = token_ids.shape[0]
-    prompt_len = token_ids.shape[1]
-    n_draft = draft_ids.shape[1]
-
-    # Single forward pass over [prompt | draft]
-    full_ids = torch.cat([token_ids, draft_ids], dim=1)  # (B, prompt_len + n_draft)
-
-    with torch.no_grad():
-        target_logits = target_model_fn(full_ids)          # (B, prompt_len + n_draft, V)
-
-    temp = max(float(temperature), 1e-8)
-    accepted: list[Tensor] = []
-    n_accepted = 0
-
-    for i in range(n_draft):
-        # Target logit at position (prompt_len - 1 + i) predicts token at
-        # position (prompt_len + i), which is draft_ids[:, i].
-        target_pos = prompt_len - 1 + i
-        t_logits = target_logits[:, target_pos, :]           # (B, V)
-        t_probs = F.softmax(t_logits / temp, dim=-1)         # (B, V)
-
-        draft_tok = draft_ids[:, i]                          # (B,)
-        d_prob = draft_probs[:, i]                           # (B,)
-
-        p_target = t_probs[torch.arange(batch_size, device=token_ids.device), draft_tok]  # (B,)
-
-        # Acceptance probability: min(1, p_target / p_draft)
-        accept_prob = torch.clamp(p_target / (d_prob + 1e-10), max=1.0)  # (B,)
-
-        u = torch.rand(batch_size, device=token_ids.device)
-
-        # Scalar decision driven by batch index 0 (standard single-batch inference).
-        if u[0].item() <= accept_prob[0].item():
-            accepted.append(draft_tok)
-            n_accepted += 1
-        else:
-            # Corrected distribution: max(0, p_target - p_draft)
-            adj = (t_probs - d_prob.unsqueeze(-1)).clamp(min=0.0)  # (B, V)
-            adj_sum = adj.sum(dim=-1, keepdim=True)
-            # Fall back to target distribution if adjusted is degenerate
-            adj = torch.where(adj_sum < 1e-10, t_probs, adj / (adj_sum + 1e-10))
-            fallback_tok = torch.multinomial(adj, num_samples=1).squeeze(-1)  # (B,)
-            accepted.append(fallback_tok)
-            break
-
-    if n_accepted == n_draft:
-        # Bonus token from target at the position after all drafts
-        bonus_pos = prompt_len + n_draft - 1
-        bonus_logits = target_logits[:, bonus_pos, :]
-        bonus_probs = F.softmax(bonus_logits / temp, dim=-1)
-        bonus_tok = torch.multinomial(bonus_probs, num_samples=1).squeeze(-1)
-        accepted.append(bonus_tok)
-
-    if accepted:
-        accepted_ids = torch.stack(accepted, dim=1)  # (B, k)
-    else:
-        accepted_ids = torch.zeros(batch_size, 0, dtype=torch.long, device=token_ids.device)
-
-    return accepted_ids, n_accepted
-
-
-# ---------------------------------------------------------------------------
-# One speculative decode step
-# ---------------------------------------------------------------------------
-
-def speculative_decode_step(
-    draft_model_fn: Callable[[Tensor], Tensor],
-    target_model_fn: Callable[[Tensor], Tensor],
-    token_ids: Tensor,
-    config: SpeculativeConfig,
-) -> Tuple[Tensor, int]:
-    """Draft *K* tokens then verify them; return the new accepted tokens.
-
-    Parameters
-    ----------
-    draft_model_fn, target_model_fn:
-        Callables ``(B, T) -> (B, T, V)``.
-    token_ids:
-        ``(B, T)`` current context.
-    config:
-        :class:`SpeculativeConfig` instance.
-
-    Returns
-    -------
-    new_token_ids : ``(B, k)`` int64 — newly accepted tokens (k ≥ 0).
-    n_accepted : int — number of draft tokens accepted (before bonus).
-    """
-    draft_ids, draft_probs = draft_tokens(
-        draft_model_fn, token_ids, config.n_draft_tokens, config.temperature
-    )
-    new_token_ids, n_accepted = verify_draft(
-        target_model_fn, token_ids, draft_ids, draft_probs, config.temperature
-    )
-    return new_token_ids, n_accepted
-
-
-# ---------------------------------------------------------------------------
-# Full decode loop
-# ---------------------------------------------------------------------------
-
-class SpeculativeDecoder:
-    """Full speculative decoding loop with statistics.
-
-    Parameters
-    ----------
-    draft_model_fn, target_model_fn:
-        Callables ``(B, T) -> (B, T, V)``.
+        Callable ``(1, T) -> (1, T, V)`` for the large target model.
+    vocab_size:
+        Vocabulary size ``V``.
     config:
         :class:`SpeculativeConfig` instance.
     """
@@ -250,84 +235,130 @@ class SpeculativeDecoder:
         self,
         draft_model_fn: Callable[[Tensor], Tensor],
         target_model_fn: Callable[[Tensor], Tensor],
+        vocab_size: int,
         config: SpeculativeConfig,
     ) -> None:
-        self.draft_model_fn = draft_model_fn
+        self.draft_model = DraftModel(draft_model_fn, vocab_size)
         self.target_model_fn = target_model_fn
+        self.vocab_size = vocab_size
         self.config = config
+        self.verifier = SpeculativeVerifier(vocab_size, config.temperature)
 
-        self._total_draft_tokens: int = 0
-        self._total_accepted: int = 0
-        self._n_steps: int = 0
-
-    def decode(self, prompt_ids: Tensor, max_new_tokens: int) -> Tensor:
-        """Generate up to *max_new_tokens* tokens using speculative decoding.
-
-        Falls back to a single target-model sample when ``n_accepted == 0``.
+    def generate(
+        self,
+        prompt_ids: Tensor,
+        max_new_tokens: int,
+    ) -> Tensor:
+        """Generate tokens using speculative decoding.
 
         Parameters
         ----------
-        prompt_ids : ``(B, T)`` int64.
-        max_new_tokens : int — maximum tokens to generate.
+        prompt_ids:
+            ``LongTensor(1, T)`` prompt tensor.
+        max_new_tokens:
+            Maximum number of new tokens to generate.
 
         Returns
         -------
-        ``(B, T + generated)`` int64.
+        ``LongTensor(max_new_tokens,)`` — the generated token ids (not including
+        the prompt), truncated to exactly ``max_new_tokens``.
         """
         cfg = self.config
         temp = max(float(cfg.temperature), 1e-8)
-        generated = prompt_ids.clone()
-        tokens_generated = 0
-        batch_size = prompt_ids.shape[0]
+        K = cfg.n_draft_tokens
 
-        while tokens_generated < max_new_tokens:
-            remaining = max_new_tokens - tokens_generated
-            # Temporarily cap n_draft_tokens to avoid overshooting
-            orig_n_draft = cfg.n_draft_tokens
-            cfg.n_draft_tokens = min(orig_n_draft, remaining)
+        context = prompt_ids.clone()  # (1, T)
+        generated: list[Tensor] = []  # list of 1-D token tensors
+        tokens_so_far = 0
 
-            new_toks, n_accepted = speculative_decode_step(
-                self.draft_model_fn, self.target_model_fn, generated, cfg
-            )
+        with torch.no_grad():
+            while tokens_so_far < max_new_tokens:
+                remaining = max_new_tokens - tokens_so_far
+                k = min(K, remaining)
 
-            cfg.n_draft_tokens = orig_n_draft  # restore
+                # --- Draft phase ---
+                draft_ids, draft_logits = self.draft_model.autoregressive_draft(
+                    context, k
+                )  # (k,), (k, V)
+                draft_probs = F.softmax(draft_logits / temp, dim=-1)  # (k, V)
 
-            self._total_draft_tokens += cfg.n_draft_tokens
-            self._total_accepted += n_accepted
-            self._n_steps += 1
+                # --- Target scoring phase (one parallel forward pass) ---
+                # Append draft tokens to context for a single forward pass
+                full_ids = torch.cat(
+                    [context, draft_ids.unsqueeze(0)], dim=1
+                )  # (1, T+k)
+                target_logits_all = self.target_model_fn(full_ids)  # (1, T+k, V)
 
-            if new_toks.shape[1] == 0 or n_accepted == 0:
-                # Fallback: sample one token from the target model directly
-                with torch.no_grad():
-                    t_logits = self.target_model_fn(generated)  # (B, T, V)
-                    last_logits = t_logits[:, -1, :]             # (B, V)
-                    t_probs = F.softmax(last_logits / temp, dim=-1)
-                    fallback = torch.multinomial(t_probs, num_samples=1)  # (B, 1)
-                generated = torch.cat([generated, fallback], dim=1)
-                tokens_generated += 1
-            else:
-                # Accept up to `remaining` of the returned tokens
-                n_to_add = min(new_toks.shape[1], remaining)
-                generated = torch.cat([generated, new_toks[:, :n_to_add]], dim=1)
-                tokens_generated += n_to_add
+                # The target prediction at position (T-1 + i) predicts draft_ids[i]
+                # for i in 0..k-1.
+                prompt_len = context.shape[1]
+                # Extract target logits at the k draft positions
+                target_logits_draft = target_logits_all[
+                    0, prompt_len - 1 : prompt_len - 1 + k, :
+                ]  # (k, V)
+                target_probs_draft = F.softmax(
+                    target_logits_draft / temp, dim=-1
+                )  # (k, V)
 
-        return generated
+                # Apply top-p (nucleus) filtering to target probs if configured
+                if cfg.top_p < 1.0:
+                    target_probs_draft = _apply_top_p(target_probs_draft, cfg.top_p)
 
-    def get_stats(self) -> Dict[str, float]:
-        """Return decoding statistics.
+                # --- Verification phase ---
+                accepted_tokens, n_accepted = self.verifier.verify(
+                    draft_ids, draft_probs, target_probs_draft
+                )
+                # accepted_tokens: (m,), m >= 1 (always at least corrected/bonus)
 
-        Returns
-        -------
-        dict with keys:
-            ``total_draft_tokens``, ``total_accepted``, ``acceptance_rate``,
-            ``n_steps``.
-        """
-        total_draft = float(self._total_draft_tokens)
-        total_acc = float(self._total_accepted)
-        rate = total_acc / total_draft if total_draft > 0 else 0.0
-        return {
-            "total_draft_tokens": total_draft,
-            "total_accepted": total_acc,
-            "acceptance_rate": rate,
-            "n_steps": float(self._n_steps),
-        }
+                # Truncate to remaining budget
+                n_to_add = min(accepted_tokens.shape[0], remaining)
+                new_toks = accepted_tokens[:n_to_add]
+
+                generated.append(new_toks)
+                tokens_so_far += n_to_add
+
+                # Advance context
+                context = torch.cat(
+                    [context, new_toks.unsqueeze(0)], dim=1
+                )  # (1, T + n_to_add)
+
+        if generated:
+            result = torch.cat(generated, dim=0)
+        else:
+            result = torch.zeros(0, dtype=torch.long, device=prompt_ids.device)
+
+        # Always return exactly max_new_tokens tokens
+        return result[:max_new_tokens]
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _apply_top_p(probs: Tensor, top_p: float) -> Tensor:
+    """Apply nucleus (top-p) filtering to a batch of probability distributions.
+
+    Parameters
+    ----------
+    probs : ``(K, V)`` probability distributions.
+    top_p : float in (0, 1].
+
+    Returns
+    -------
+    Filtered and renormalized ``(K, V)`` distributions.
+    """
+    sorted_probs, sorted_indices = torch.sort(probs, dim=-1, descending=True)
+    cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
+
+    # Remove tokens with cumulative probability > top_p
+    # (shift by one to keep first token that crosses the threshold)
+    sorted_indices_to_remove = cumulative_probs - sorted_probs > top_p
+    sorted_probs = sorted_probs.masked_fill(sorted_indices_to_remove, 0.0)
+
+    # Scatter back to original ordering
+    filtered = torch.zeros_like(probs)
+    filtered.scatter_(-1, sorted_indices, sorted_probs)
+
+    # Renormalize
+    filtered = filtered / (filtered.sum(dim=-1, keepdim=True) + 1e-10)
+    return filtered

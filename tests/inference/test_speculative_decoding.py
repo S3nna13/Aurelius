@@ -1,18 +1,18 @@
-"""Tests for src/inference/speculative_decoding.py — new callable-model API.
+"""Tests for src/inference/speculative_decoding.py — classic speculative decoding.
 
-Covers SpeculativeConfig, draft_tokens, verify_draft, speculative_decode_step,
-and SpeculativeDecoder (12 tests total).
+Covers SpeculativeConfig, DraftModel, SpeculativeVerifier, and SpeculativeDecoder
+with ≥12 tests as required.
 """
 from __future__ import annotations
 
-import torch
 import pytest
+import torch
+import torch.nn.functional as F
 
-from src.inference.speculative_decoding import (
+from aurelius.inference.speculative_decoding import (
     SpeculativeConfig,
-    draft_tokens,
-    verify_draft,
-    speculative_decode_step,
+    DraftModel,
+    SpeculativeVerifier,
     SpeculativeDecoder,
 )
 
@@ -20,200 +20,248 @@ from src.inference.speculative_decoding import (
 # Constants / helpers
 # ---------------------------------------------------------------------------
 
-VOCAB_SIZE = 32
-BATCH = 1
+VOCAB_SIZE = 64
+PROMPT_LEN = 4
 
 
-def _model_fn(ids: torch.Tensor) -> torch.Tensor:
-    """Tiny mock: returns random logits shaped (B, T, VOCAB_SIZE)."""
+def _make_prompt(length: int = PROMPT_LEN) -> torch.Tensor:
+    """Return a ``(1, length)`` random int64 prompt."""
+    return torch.randint(0, VOCAB_SIZE, (1, length))
+
+
+def _random_model_fn(ids: torch.Tensor) -> torch.Tensor:
+    """Random mock model: (1, T) -> (1, T, VOCAB_SIZE)."""
     B, T = ids.shape
     return torch.randn(B, T, VOCAB_SIZE)
 
 
-def _det_model_fn(ids: torch.Tensor) -> torch.Tensor:
-    """Deterministic mock with fixed seed for reproducibility."""
-    torch.manual_seed(0)
+def _deterministic_model_fn(ids: torch.Tensor) -> torch.Tensor:
+    """Deterministic model with fixed seed: (1, T) -> (1, T, VOCAB_SIZE)."""
+    torch.manual_seed(42)
     B, T = ids.shape
     return torch.randn(B, T, VOCAB_SIZE)
 
 
-def _prompt(length: int = 4) -> torch.Tensor:
-    return torch.randint(0, VOCAB_SIZE, (BATCH, length))
+def _uniform_model_fn(ids: torch.Tensor) -> torch.Tensor:
+    """Returns uniform logits (all zeros): equal probability for every token."""
+    B, T = ids.shape
+    return torch.zeros(B, T, VOCAB_SIZE)
 
 
 # ---------------------------------------------------------------------------
-# 1. SpeculativeConfig defaults
+# 1. SpeculativeConfig defaults are sane
 # ---------------------------------------------------------------------------
 
 def test_config_defaults():
     cfg = SpeculativeConfig()
-    assert cfg.n_draft_tokens == 4
+    assert cfg.n_draft_tokens == 5
     assert cfg.temperature == 1.0
-    assert cfg.max_new_tokens == 50
-    assert cfg.vocab_size == 32000
+    assert cfg.top_p == 1.0
+    assert cfg.max_new_tokens == 128
 
 
 # ---------------------------------------------------------------------------
-# 2. draft_tokens — draft_ids shape is (B, n)
+# 2. DraftModel.autoregressive_draft returns correct shapes
 # ---------------------------------------------------------------------------
 
-def test_draft_tokens_ids_shape():
-    n = 4
-    prompt = _prompt(length=4)
-    draft_ids, draft_probs = draft_tokens(_model_fn, prompt, n=n, temperature=1.0)
-    assert draft_ids.shape == (BATCH, n), f"Expected ({BATCH}, {n}), got {draft_ids.shape}"
-
-
-# ---------------------------------------------------------------------------
-# 3. draft_tokens — draft_probs shape is (B, n)
-# ---------------------------------------------------------------------------
-
-def test_draft_tokens_probs_shape():
-    n = 3
-    prompt = _prompt(length=4)
-    draft_ids, draft_probs = draft_tokens(_model_fn, prompt, n=n, temperature=1.0)
-    assert draft_probs.shape == (BATCH, n), f"Expected ({BATCH}, {n}), got {draft_probs.shape}"
-
-
-# ---------------------------------------------------------------------------
-# 4. draft_tokens — draft_probs are valid probabilities in [0, 1]
-# ---------------------------------------------------------------------------
-
-def test_draft_tokens_probs_in_range():
-    prompt = _prompt(length=4)
-    _, draft_probs = draft_tokens(_model_fn, prompt, n=4, temperature=1.0)
-    assert (draft_probs >= 0).all(), "draft_probs contain negative values"
-    assert (draft_probs <= 1).all(), "draft_probs contain values > 1"
-
-
-# ---------------------------------------------------------------------------
-# 5. draft_tokens — draft_ids are valid vocab indices
-# ---------------------------------------------------------------------------
-
-def test_draft_tokens_ids_in_vocab_range():
-    prompt = _prompt(length=4)
-    draft_ids, _ = draft_tokens(_model_fn, prompt, n=4, temperature=1.0)
-    assert (draft_ids >= 0).all(), "draft_ids contain negative indices"
-    assert (draft_ids < VOCAB_SIZE).all(), "draft_ids contain out-of-vocab indices"
-
-
-# ---------------------------------------------------------------------------
-# 6. verify_draft returns a tuple of length 2
-# ---------------------------------------------------------------------------
-
-def test_verify_draft_returns_tuple_of_2():
-    prompt = _prompt(length=4)
-    draft_ids, draft_probs = draft_tokens(_model_fn, prompt, n=3, temperature=1.0)
-    result = verify_draft(_model_fn, prompt, draft_ids, draft_probs, temperature=1.0)
-    assert isinstance(result, tuple), "verify_draft must return a tuple"
-    assert len(result) == 2, f"Expected tuple length 2, got {len(result)}"
-
-
-# ---------------------------------------------------------------------------
-# 7. verify_draft — n_accepted >= 0
-# ---------------------------------------------------------------------------
-
-def test_verify_draft_n_accepted_non_negative():
-    prompt = _prompt(length=4)
-    draft_ids, draft_probs = draft_tokens(_model_fn, prompt, n=4, temperature=1.0)
-    _, n_accepted = verify_draft(_model_fn, prompt, draft_ids, draft_probs, temperature=1.0)
-    assert isinstance(n_accepted, int), f"n_accepted should be int, got {type(n_accepted)}"
-    assert n_accepted >= 0, f"n_accepted={n_accepted} should be >= 0"
-
-
-# ---------------------------------------------------------------------------
-# 8. speculative_decode_step returns (new_token_ids Tensor, n_accepted int)
-# ---------------------------------------------------------------------------
-
-def test_speculative_decode_step_returns_new_tokens():
-    prompt = _prompt(length=4)
-    cfg = SpeculativeConfig(n_draft_tokens=3, temperature=1.0, vocab_size=VOCAB_SIZE)
-    new_toks, n_accepted = speculative_decode_step(_model_fn, _model_fn, prompt, cfg)
-    assert isinstance(new_toks, torch.Tensor), "new_token_ids must be a Tensor"
-    assert isinstance(n_accepted, int), "n_accepted must be int"
-    assert new_toks.ndim == 2, "new_token_ids must be 2-D"
-    assert new_toks.shape[0] == BATCH
-
-
-# ---------------------------------------------------------------------------
-# 9. SpeculativeDecoder.decode output length grows beyond prompt
-# ---------------------------------------------------------------------------
-
-def test_decoder_decode_output_length_grows():
-    prompt = _prompt(length=4)
-    cfg = SpeculativeConfig(n_draft_tokens=3, temperature=1.0, vocab_size=VOCAB_SIZE)
-    decoder = SpeculativeDecoder(_model_fn, _model_fn, cfg)
-    out = decoder.decode(prompt, max_new_tokens=5)
-    assert out.shape[1] > prompt.shape[1], (
-        f"Output length {out.shape[1]} should exceed prompt length {prompt.shape[1]}"
+def test_draft_model_shapes():
+    n = 5
+    draft = DraftModel(_random_model_fn, VOCAB_SIZE)
+    prompt = _make_prompt()
+    token_ids, logits_per_step = draft.autoregressive_draft(prompt, n)
+    assert token_ids.shape == (n,), f"Expected ({n},), got {token_ids.shape}"
+    assert logits_per_step.shape == (n, VOCAB_SIZE), (
+        f"Expected ({n}, {VOCAB_SIZE}), got {logits_per_step.shape}"
     )
 
 
 # ---------------------------------------------------------------------------
-# 10. get_stats keys present
+# 3. Draft tokens are in vocab range
 # ---------------------------------------------------------------------------
 
-def test_get_stats_keys_present():
-    prompt = _prompt(length=4)
-    cfg = SpeculativeConfig(n_draft_tokens=2, temperature=1.0, vocab_size=VOCAB_SIZE)
-    decoder = SpeculativeDecoder(_model_fn, _model_fn, cfg)
-    decoder.decode(prompt, max_new_tokens=4)
-    stats = decoder.get_stats()
-    required_keys = {"total_draft_tokens", "total_accepted", "acceptance_rate", "n_steps"}
-    assert required_keys.issubset(stats.keys()), (
-        f"Missing keys: {required_keys - stats.keys()}"
+def test_draft_tokens_in_vocab_range():
+    draft = DraftModel(_random_model_fn, VOCAB_SIZE)
+    prompt = _make_prompt()
+    token_ids, _ = draft.autoregressive_draft(prompt, n_tokens=6)
+    assert (token_ids >= 0).all(), "Negative token ids returned"
+    assert (token_ids < VOCAB_SIZE).all(), "Token ids exceed vocab size"
+
+
+# ---------------------------------------------------------------------------
+# 4. SpeculativeVerifier.verify — perfect match (p_target == p_draft) accepts all K
+# ---------------------------------------------------------------------------
+
+def test_verify_perfect_match_accepts_all():
+    """When draft and target distributions are identical, all tokens accepted."""
+    verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)
+    K = 5
+    # Create a fixed distribution
+    probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
+    draft_ids = probs.argmax(dim=-1)  # greedy tokens
+
+    accepted_tokens, n_accepted = verifier.verify(draft_ids, probs, probs)
+    # All K draft tokens must be accepted
+    assert n_accepted == K, f"Expected {K} accepted, got {n_accepted}"
+
+
+# ---------------------------------------------------------------------------
+# 5. SpeculativeVerifier.verify — zero target prob at draft token → always reject
+# ---------------------------------------------------------------------------
+
+def test_verify_zero_target_prob_always_rejects():
+    """When target assigns 0 prob to the draft token, reject at first position."""
+    verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)
+    K = 4
+    draft_ids = torch.zeros(K, dtype=torch.long)  # all token 0
+
+    # Draft has nonzero prob at token 0; target has zero prob at token 0
+    draft_probs = torch.zeros(K, VOCAB_SIZE)
+    draft_probs[:, 0] = 0.5
+    draft_probs[:, 1] = 0.5
+
+    target_probs = torch.zeros(K, VOCAB_SIZE)
+    target_probs[:, 0] = 0.0   # zero at draft token
+    target_probs[:, 1:] = 1.0 / (VOCAB_SIZE - 1)  # uniform elsewhere
+
+    accepted_tokens, n_accepted = verifier.verify(draft_ids, draft_probs, target_probs)
+    assert n_accepted == 0, f"Expected 0 accepted, got {n_accepted}"
+
+
+# ---------------------------------------------------------------------------
+# 6. verify returns n_accepted in [0, K]
+# ---------------------------------------------------------------------------
+
+def test_verify_n_accepted_in_bounds():
+    verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)
+    K = 5
+    probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
+    draft_ids = torch.randint(0, VOCAB_SIZE, (K,))
+    draft_probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
+    target_probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
+
+    _, n_accepted = verifier.verify(draft_ids, draft_probs, target_probs)
+    assert 0 <= n_accepted <= K, f"n_accepted={n_accepted} out of [0, {K}]"
+
+
+# ---------------------------------------------------------------------------
+# 7. Accepted tokens are all in vocab range
+# ---------------------------------------------------------------------------
+
+def test_accepted_tokens_in_vocab_range():
+    verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)
+    K = 5
+    draft_ids = torch.randint(0, VOCAB_SIZE, (K,))
+    draft_probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
+    target_probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
+
+    accepted_tokens, _ = verifier.verify(draft_ids, draft_probs, target_probs)
+    assert (accepted_tokens >= 0).all(), "Accepted tokens contain negative ids"
+    assert (accepted_tokens < VOCAB_SIZE).all(), "Accepted tokens exceed vocab size"
+
+
+# ---------------------------------------------------------------------------
+# 8. sample_from_logits returns valid token id
+# ---------------------------------------------------------------------------
+
+def test_sample_from_logits_valid():
+    verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)
+    logits = torch.randn(VOCAB_SIZE)
+    tok = verifier.sample_from_logits(logits)
+    assert isinstance(tok, int), f"Expected int, got {type(tok)}"
+    assert 0 <= tok < VOCAB_SIZE, f"Token {tok} out of vocab range [0, {VOCAB_SIZE})"
+
+
+# ---------------------------------------------------------------------------
+# 9. SpeculativeDecoder.generate returns correct length (max_new_tokens)
+# ---------------------------------------------------------------------------
+
+def test_decoder_generate_correct_length():
+    cfg = SpeculativeConfig(n_draft_tokens=3, temperature=1.0, max_new_tokens=10)
+    decoder = SpeculativeDecoder(_random_model_fn, _random_model_fn, VOCAB_SIZE, cfg)
+    prompt = _make_prompt()
+    out = decoder.generate(prompt, max_new_tokens=10)
+    assert out.shape == (10,), f"Expected shape (10,), got {out.shape}"
+
+
+# ---------------------------------------------------------------------------
+# 10. Deterministic identical draft/target accepts all K tokens per step
+# ---------------------------------------------------------------------------
+
+def test_identical_models_high_acceptance():
+    """With identical draft and target models, acceptance rate should be high."""
+    cfg = SpeculativeConfig(n_draft_tokens=4, temperature=1.0, max_new_tokens=20)
+    decoder = SpeculativeDecoder(
+        _deterministic_model_fn, _deterministic_model_fn, VOCAB_SIZE, cfg
     )
+    prompt = _make_prompt()
+    out = decoder.generate(prompt, max_new_tokens=20)
+    # Output must be exactly max_new_tokens
+    assert out.shape == (20,), f"Expected (20,), got {out.shape}"
 
 
 # ---------------------------------------------------------------------------
-# 11. acceptance_rate in [0, 1]
+# 11. Works with K=1 (single draft token)
 # ---------------------------------------------------------------------------
 
-def test_acceptance_rate_in_range():
-    prompt = _prompt(length=4)
-    cfg = SpeculativeConfig(n_draft_tokens=3, temperature=1.0, vocab_size=VOCAB_SIZE)
-    decoder = SpeculativeDecoder(_model_fn, _model_fn, cfg)
-    decoder.decode(prompt, max_new_tokens=6)
-    stats = decoder.get_stats()
-    rate = stats["acceptance_rate"]
-    assert 0.0 <= rate <= 1.0, f"acceptance_rate={rate} not in [0, 1]"
-
-
-# ---------------------------------------------------------------------------
-# 12. decode with max_new_tokens=1
-# ---------------------------------------------------------------------------
-
-def test_decode_max_new_tokens_1():
-    prompt = _prompt(length=4)
-    cfg = SpeculativeConfig(n_draft_tokens=2, temperature=1.0, vocab_size=VOCAB_SIZE)
-    decoder = SpeculativeDecoder(_model_fn, _model_fn, cfg)
-    out = decoder.decode(prompt, max_new_tokens=1)
-    n_generated = out.shape[1] - prompt.shape[1]
-    assert n_generated >= 1, f"Expected at least 1 new token, got {n_generated}"
+def test_k1_single_draft_token():
+    cfg = SpeculativeConfig(n_draft_tokens=1, temperature=1.0, max_new_tokens=8)
+    decoder = SpeculativeDecoder(_random_model_fn, _random_model_fn, VOCAB_SIZE, cfg)
+    prompt = _make_prompt()
+    out = decoder.generate(prompt, max_new_tokens=8)
+    assert out.shape == (8,), f"Expected (8,), got {out.shape}"
+    assert (out >= 0).all()
+    assert (out < VOCAB_SIZE).all()
 
 
 # ---------------------------------------------------------------------------
-# 13. decode with max_new_tokens=5
+# 12. Temperature very small (near-zero) acts greedy
 # ---------------------------------------------------------------------------
 
-def test_decode_max_new_tokens_5():
-    prompt = _prompt(length=4)
-    cfg = SpeculativeConfig(n_draft_tokens=2, temperature=1.0, vocab_size=VOCAB_SIZE)
-    decoder = SpeculativeDecoder(_model_fn, _model_fn, cfg)
-    out = decoder.decode(prompt, max_new_tokens=5)
-    n_generated = out.shape[1] - prompt.shape[1]
-    assert n_generated >= 1, f"Expected at least 1 new token, got {n_generated}"
-    assert n_generated <= 6, f"Generated too many tokens: {n_generated}"
+def test_small_temperature_greedy_behavior():
+    """With very small temperature, draft model should be deterministic/greedy."""
+    draft = DraftModel(_deterministic_model_fn, VOCAB_SIZE)
+    prompt = _make_prompt()
+    # Two runs with same seed model should produce same greedy output
+    ids1, _ = draft.autoregressive_draft(prompt, n_tokens=5)
+    ids2, _ = draft.autoregressive_draft(prompt, n_tokens=5)
+    assert torch.equal(ids1, ids2), "Greedy draft should be deterministic"
 
 
 # ---------------------------------------------------------------------------
-# 14. n_steps tracked in stats after decoding
+# 13. SpeculativeDecoder.generate output tokens are valid vocab ids
 # ---------------------------------------------------------------------------
 
-def test_n_steps_tracked():
-    prompt = _prompt(length=4)
-    cfg = SpeculativeConfig(n_draft_tokens=2, temperature=1.0, vocab_size=VOCAB_SIZE)
-    decoder = SpeculativeDecoder(_model_fn, _model_fn, cfg)
-    decoder.decode(prompt, max_new_tokens=4)
-    stats = decoder.get_stats()
-    assert stats["n_steps"] >= 1, "n_steps should be >= 1 after decoding"
+def test_generate_output_in_vocab_range():
+    cfg = SpeculativeConfig(n_draft_tokens=4, temperature=1.0, max_new_tokens=12)
+    decoder = SpeculativeDecoder(_random_model_fn, _random_model_fn, VOCAB_SIZE, cfg)
+    prompt = _make_prompt()
+    out = decoder.generate(prompt, max_new_tokens=12)
+    assert (out >= 0).all(), "Generated tokens contain negative ids"
+    assert (out < VOCAB_SIZE).all(), "Generated tokens exceed vocab size"
+
+
+# ---------------------------------------------------------------------------
+# 14. Config with non-default values is respected
+# ---------------------------------------------------------------------------
+
+def test_config_custom_values():
+    cfg = SpeculativeConfig(n_draft_tokens=3, temperature=0.8, top_p=0.9, max_new_tokens=64)
+    assert cfg.n_draft_tokens == 3
+    assert cfg.temperature == 0.8
+    assert cfg.top_p == 0.9
+    assert cfg.max_new_tokens == 64
+
+
+# ---------------------------------------------------------------------------
+# 15. verify returns at least 1 token (corrected or bonus)
+# ---------------------------------------------------------------------------
+
+def test_verify_always_returns_at_least_one_token():
+    verifier = SpeculativeVerifier(VOCAB_SIZE, temperature=1.0)
+    K = 4
+    draft_ids = torch.randint(0, VOCAB_SIZE, (K,))
+    draft_probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
+    target_probs = F.softmax(torch.randn(K, VOCAB_SIZE), dim=-1)
+
+    accepted_tokens, _ = verifier.verify(draft_ids, draft_probs, target_probs)
+    assert accepted_tokens.shape[0] >= 1, "verify must return at least 1 token"

@@ -1,141 +1,283 @@
-"""Sparse Mixture of Experts FFN (Shazeer et al., 2017 - arXiv:1701.06538).
+"""Sparse Mixture-of-Experts layer with top-K token routing.
 
-Drop-in replacement for SwiGLUFFN. Each token is routed to top-k of N
-expert FFNs. Load balancing auxiliary loss prevents expert collapse.
+Implements Switch Transformer / Mixtral-style sparse MoE:
+  - RouterConfig dataclass
+  - TopKRouter: computes dispatch weights, indices, and auxiliary load-balancing loss
+  - ExpertFFN: single 2-layer MLP expert (d_model -> d_ff -> d_model, SiLU)
+  - SparseMoELayer: routes tokens to top-K experts, aggregates weighted outputs
+  - MoEBlock: full transformer block (MHA + RMSNorm + SparseMoELayer)
 
 Usage:
-    # In TransformerBlock, replace:
-    self.ffn = SwiGLUFFN(config)
-    # With:
-    self.ffn = SparseMoEFFN(config)
-
-    # In forward, collect aux loss:
-    ffn_out, aux_loss = self.ffn(x)  # SparseMoEFFN returns (output, aux_loss)
-    # vs SwiGLUFFN returns just output
+    from aurelius.model.moe import RouterConfig, TopKRouter, ExpertFFN, SparseMoELayer, MoEBlock
 """
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
+from torch import Tensor
 
+
+# ---------------------------------------------------------------------------
+# RouterConfig
+# ---------------------------------------------------------------------------
 
 @dataclass
-class MoEConfig:
-    n_experts: int = 8          # total expert count
-    top_k: int = 2              # experts activated per token
-    load_balance_alpha: float = 0.01  # auxiliary loss weight
+class RouterConfig:
+    """Configuration for the top-K sparse router."""
+
+    n_experts: int
+    top_k: int = 2
+    capacity_factor: float = 1.25
+    jitter_noise: float = 0.0
 
 
-class SparseMoEFFN(nn.Module):
-    """Sparse MoE FFN with top-k gating and load balancing.
+# ---------------------------------------------------------------------------
+# TopKRouter
+# ---------------------------------------------------------------------------
 
-    Each forward call returns (output, aux_loss). The aux_loss should be
-    added to the main training loss to encourage balanced expert utilization.
+class TopKRouter(nn.Module):
+    """Sparse top-K router.
 
-    Args:
-        config: AureliusConfig (uses d_model, d_ff).
-        moe_cfg: MoE-specific configuration.
+    For each token computes:
+      - dispatch_weights: (B, T, top_k)  — softmax scores over full vocab,
+        sliced to the top_k selected experts (NOT renormalized to 1).
+      - dispatch_indices: (B, T, top_k)  — integer expert ids in [0, n_experts).
+      - router_loss: scalar auxiliary load-balancing loss
+          = n_experts * mean_over_experts(f_i * p_i)
+        where f_i = fraction of tokens dispatched to expert i (over the top-k
+        selections), p_i = mean gate probability to expert i.
+
+    If jitter_noise > 0, Uniform(-jitter_noise, +jitter_noise) noise is added
+    to the router logits during training.
     """
 
-    def __init__(self, config, moe_cfg: MoEConfig | None = None) -> None:
+    def __init__(
+        self,
+        d_model: int,
+        n_experts: int,
+        top_k: int,
+        jitter_noise: float = 0.0,
+    ) -> None:
         super().__init__()
-        from .ffn import SwiGLUFFN
+        self.n_experts = n_experts
+        self.top_k = top_k
+        self.jitter_noise = jitter_noise
 
-        self.moe_cfg = moe_cfg or MoEConfig()
-        self.n_experts = self.moe_cfg.n_experts
-        self.top_k = self.moe_cfg.top_k
+        self.gate = nn.Linear(d_model, n_experts, bias=False)
+        nn.init.normal_(self.gate.weight, std=0.01)
 
-        # Expert networks — each is a full SwiGLUFFN
-        self.experts = nn.ModuleList([
-            SwiGLUFFN(config) for _ in range(self.n_experts)
-        ])
-
-        # Router: token hidden state → expert logits
-        self.router = nn.Linear(config.d_model, self.n_experts, bias=False)
-        nn.init.normal_(self.router.weight, std=0.01)
-
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Route tokens to top-k experts and compute weighted output.
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+        """Compute routing decisions.
 
         Args:
-            x: (batch, seq_len, d_model)
+            x: (B, T, d_model)
 
         Returns:
-            (output, aux_loss):
-            - output: (batch, seq_len, d_model)
-            - aux_loss: scalar auxiliary load-balancing loss
+            dispatch_weights:  (B, T, top_k)  — softmax gate scores
+            dispatch_indices:  (B, T, top_k)  — int expert ids
+            router_loss:       scalar          — auxiliary load-balancing loss
         """
-        B, S, D = x.shape
-        # Flatten to (B*S, D) for routing
-        x_flat = x.view(-1, D)  # (N, D) where N = B*S
-        N = x_flat.shape[0]
+        B, T, D = x.shape
 
-        # Router scores → softmax probabilities
-        router_logits = self.router(x_flat)              # (N, n_experts)
-        router_probs = F.softmax(router_logits, dim=-1)  # (N, n_experts)
+        # (B, T, n_experts)
+        logits = self.gate(x)
 
-        # Top-k selection
-        top_k_probs, top_k_indices = torch.topk(router_probs, self.top_k, dim=-1)
-        # Renormalize top-k weights so they sum to 1 per token
-        top_k_probs = top_k_probs / top_k_probs.sum(dim=-1, keepdim=True)
+        # Optional training-time jitter
+        if self.training and self.jitter_noise > 0.0:
+            noise = torch.empty_like(logits).uniform_(-self.jitter_noise, self.jitter_noise)
+            logits = logits + noise
 
-        # Dispatch to experts and accumulate weighted output
+        # Full softmax over all experts — used for p_i in the aux loss
+        probs = F.softmax(logits, dim=-1)  # (B, T, n_experts)
+
+        # Top-K selection
+        top_k_vals, top_k_idx = torch.topk(probs, self.top_k, dim=-1)
+        # top_k_vals: (B, T, top_k) — already softmax scores (not renormalized)
+        # top_k_idx:  (B, T, top_k)
+
+        # ---- Auxiliary load-balancing loss --------------------------------
+        # f_i = fraction of (token, slot) assignments that went to expert i
+        #       counted over all B*T tokens and all top_k slots
+        N = B * T  # total tokens
+        idx_flat = top_k_idx.reshape(-1)  # (N * top_k,)
+        counts = torch.zeros(self.n_experts, device=x.device, dtype=x.dtype)
+        counts.scatter_add_(0, idx_flat, torch.ones_like(idx_flat, dtype=x.dtype))
+        f_i = counts / (N * self.top_k)  # (n_experts,)
+
+        # p_i = mean gate probability to expert i across all tokens
+        p_i = probs.reshape(N, self.n_experts).mean(dim=0)  # (n_experts,)
+
+        router_loss = self.n_experts * (f_i * p_i).mean()
+
+        return top_k_vals, top_k_idx, router_loss
+
+
+# ---------------------------------------------------------------------------
+# ExpertFFN
+# ---------------------------------------------------------------------------
+
+class ExpertFFN(nn.Module):
+    """Single expert: 2-layer MLP with SiLU activation.
+
+    d_model -> d_ff -> d_model
+    """
+
+    def __init__(self, d_model: int, d_ff: int) -> None:
+        super().__init__()
+        self.w1 = nn.Linear(d_model, d_ff, bias=False)
+        self.w2 = nn.Linear(d_ff, d_model, bias=False)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Apply expert MLP.
+
+        Args:
+            x: (..., d_model)
+
+        Returns:
+            (..., d_model)
+        """
+        return self.w2(F.silu(self.w1(x)))
+
+
+# ---------------------------------------------------------------------------
+# SparseMoELayer
+# ---------------------------------------------------------------------------
+
+class SparseMoELayer(nn.Module):
+    """Sparse top-K Mixture-of-Experts layer.
+
+    Each token is routed to `top_k` of `n_experts` ExpertFFN modules.
+    The weighted sum of expert outputs is returned along with the auxiliary
+    load-balancing loss from the router.
+    """
+
+    def __init__(
+        self,
+        d_model: int,
+        d_ff: int,
+        n_experts: int,
+        top_k: int = 2,
+    ) -> None:
+        super().__init__()
+        self.n_experts = n_experts
+        self.top_k = top_k
+
+        self.router = TopKRouter(d_model, n_experts, top_k)
+        self.experts = nn.ModuleList([ExpertFFN(d_model, d_ff) for _ in range(n_experts)])
+
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
+        """Route tokens, dispatch to experts, aggregate.
+
+        Args:
+            x: (B, T, d_model)
+
+        Returns:
+            output:      (B, T, d_model) — same shape as input
+            router_loss: scalar
+        """
+        B, T, D = x.shape
+        dispatch_weights, dispatch_indices, router_loss = self.router(x)
+        # dispatch_weights:  (B, T, top_k)
+        # dispatch_indices:  (B, T, top_k)
+
+        x_flat = x.reshape(B * T, D)                # (N, D)
+        w_flat = dispatch_weights.reshape(B * T, self.top_k)   # (N, top_k)
+        idx_flat = dispatch_indices.reshape(B * T, self.top_k) # (N, top_k)
+
         output = torch.zeros_like(x_flat)  # (N, D)
 
-        for expert_idx in range(self.n_experts):
-            # expert_mask: (N, top_k) — True where top_k_indices == expert_idx
-            mask = (top_k_indices == expert_idx)   # (N, top_k)
-            token_mask = mask.any(dim=-1)           # (N,) — True if token goes to this expert
+        # Iterate over experts: gather assigned tokens, run FFN, scatter back
+        for expert_id in range(self.n_experts):
+            # mask: (N, top_k) — True where this expert is selected
+            mask = idx_flat == expert_id            # (N, top_k)
+            # token_mask: (N,) — True if token is routed here in any slot
+            token_mask = mask.any(dim=-1)           # (N,)
 
             if not token_mask.any():
                 continue
 
-            # Get tokens for this expert
-            expert_tokens = x_flat[token_mask]                     # (n_tokens, D)
-            expert_out = self.experts[expert_idx](expert_tokens)   # (n_tokens, D)
+            # Tokens assigned to this expert
+            expert_input = x_flat[token_mask]       # (n_tok, D)
+            expert_out = self.experts[expert_id](expert_input)  # (n_tok, D)
 
-            # Routing weight: sum over top_k slots that matched this expert
-            # (in practice at most one slot per token matches a given expert)
-            expert_weights = (mask[token_mask].float() * top_k_probs[token_mask]).sum(
+            # Weight: sum over slots (at most one slot per expert per token)
+            # mask[token_mask]: (n_tok, top_k), w_flat[token_mask]: (n_tok, top_k)
+            weight = (mask[token_mask].float() * w_flat[token_mask]).sum(
                 dim=-1, keepdim=True
-            )  # (n_tokens, 1)
+            )  # (n_tok, 1)
 
-            output[token_mask] = output[token_mask] + expert_weights * expert_out
+            output[token_mask] = output[token_mask] + weight * expert_out
 
-        output = output.view(B, S, D)
+        return output.reshape(B, T, D), router_loss
 
-        # Load balancing auxiliary loss (Switch Transformer, Eq. 4)
-        # f_i = fraction of tokens dispatched to expert i (over all top-k selections)
-        # P_i = mean routing probability to expert i
-        # L_aux = alpha * n_experts * sum(f_i * P_i)
-        expert_counts = torch.zeros(self.n_experts, device=x.device, dtype=x.dtype)
-        for k in range(self.top_k):
-            one_hot = F.one_hot(top_k_indices[:, k], num_classes=self.n_experts).to(x.dtype)
-            expert_counts = expert_counts + one_hot.sum(dim=0)
 
-        f_i = expert_counts / (N * self.top_k)   # fraction per expert
-        P_i = router_probs.mean(dim=0)            # mean routing prob per expert
+# ---------------------------------------------------------------------------
+# MoEBlock
+# ---------------------------------------------------------------------------
 
-        aux_loss = self.moe_cfg.load_balance_alpha * self.n_experts * (f_i * P_i).sum()
+class MoEBlock(nn.Module):
+    """Transformer-style block with a Sparse MoE FFN sub-layer.
 
-        return output, aux_loss
+    Architecture:
+        x  ->  RMSNorm  ->  MultiheadAttention  ->  residual  ->  RMSNorm  ->  SparseMoELayer  ->  residual
 
-    def expert_utilization(self, x: torch.Tensor) -> dict[str, float]:
-        """Compute per-expert utilization stats (for monitoring).
+    Args:
+        d_model:   model hidden dimension
+        d_ff:      expert feed-forward hidden dimension
+        n_experts: number of experts
+        top_k:     number of experts each token is routed to
+        n_heads:   number of attention heads
+    """
 
-        Returns dict: expert_i -> fraction of tokens routed to it.
+    def __init__(
+        self,
+        d_model: int,
+        d_ff: int,
+        n_experts: int,
+        top_k: int = 2,
+        n_heads: int = 4,
+    ) -> None:
+        super().__init__()
+
+        # Use nn.RMSNorm if available (PyTorch >= 2.4), else LayerNorm
+        if hasattr(nn, "RMSNorm"):
+            norm_cls = lambda: nn.RMSNorm(d_model)
+        else:
+            norm_cls = lambda: nn.LayerNorm(d_model)
+
+        self.norm1 = norm_cls()
+        self.norm2 = norm_cls()
+
+        self.attn = nn.MultiheadAttention(
+            embed_dim=d_model,
+            num_heads=n_heads,
+            batch_first=True,
+            bias=False,
+        )
+
+        self.moe = SparseMoELayer(d_model, d_ff, n_experts, top_k)
+
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
+        """Apply attention + MoE FFN with pre-norm and residual connections.
+
+        Args:
+            x: (B, T, d_model)
+
+        Returns:
+            output:      (B, T, d_model)
+            router_loss: scalar
         """
-        with torch.no_grad():
-            B, S, D = x.shape
-            x_flat = x.view(-1, D)
-            router_logits = self.router(x_flat)
-            router_probs = F.softmax(router_logits, dim=-1)
-            _, top_k_indices = torch.topk(router_probs, self.top_k, dim=-1)
+        # Self-attention sub-layer (pre-norm)
+        normed = self.norm1(x)
+        attn_out, _ = self.attn(normed, normed, normed)
+        x = x + attn_out
 
-            utilization = {}
-            for i in range(self.n_experts):
-                frac = (top_k_indices == i).float().mean().item()
-                utilization[f"expert_{i}"] = frac
-        return utilization
+        # MoE FFN sub-layer (pre-norm)
+        normed2 = self.norm2(x)
+        moe_out, router_loss = self.moe(normed2)
+        x = x + moe_out
+
+        return x, router_loss

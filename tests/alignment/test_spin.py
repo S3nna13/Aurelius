@@ -1,4 +1,9 @@
-"""Tests for SPIN: Self-Play Fine-Tuning implementation."""
+"""Tests for SPIN: Self-Play Fine-Tuning (Chen et al. 2024).
+
+Covers SPINLoss, SPINDataCollector, and SPINTrainer with >= 12 tests.
+All models are pure PyTorch; no external dependencies.
+"""
+
 from __future__ import annotations
 
 import copy
@@ -7,58 +12,54 @@ import pytest
 import torch
 import torch.nn as nn
 
-from src.alignment.spin import (
+from aurelius.alignment.spin import (
     SPINLoss,
+    SPINDataCollector,
     SPINTrainer,
-    SPINDataCollator,
-    compute_token_log_probs,
 )
-from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 
 
 # ---------------------------------------------------------------------------
-# Shared fixtures
+# Tiny helper model (pure PyTorch)
 # ---------------------------------------------------------------------------
 
-@pytest.fixture
-def tiny_cfg():
-    return AureliusConfig(
-        n_layers=2,
-        d_model=64,
-        n_heads=4,
-        n_kv_heads=2,
-        head_dim=16,
-        d_ff=128,
-        vocab_size=256,
-        max_seq_len=64,
-    )
+class _TinyModel(nn.Module):
+    """Minimal causal-LM-like model for tests.
+
+    input_ids (B, T) -> logits (B, T, V)
+    """
+
+    def __init__(self, V: int) -> None:
+        super().__init__()
+        self.embed = nn.Embedding(V, V)
+        self.proj  = nn.Linear(V, V)
+
+    def forward(self, x: torch.LongTensor) -> torch.Tensor:  # x: (B, T) -> (B, T, V)
+        return self.proj(self.embed(x).float())
 
 
-@pytest.fixture
-def policy_model(tiny_cfg):
+V = 8    # vocabulary size used throughout tests
+B = 4    # default batch size
+T = 6    # default sequence length
+
+
+def make_model() -> _TinyModel:
     torch.manual_seed(0)
-    return AureliusTransformer(tiny_cfg)
+    return _TinyModel(V)
 
 
-@pytest.fixture
-def ref_model(tiny_cfg):
-    torch.manual_seed(0)
-    model = AureliusTransformer(tiny_cfg)
-    for p in model.parameters():
-        p.requires_grad_(False)
-    return model
-
-
-@pytest.fixture
-def spin_trainer(policy_model, ref_model):
-    optimizer = torch.optim.AdamW(policy_model.parameters(), lr=1e-4)
+def make_trainer(policy: nn.Module | None = None, ref: nn.Module | None = None):
+    if policy is None:
+        policy = make_model()
+    if ref is None:
+        ref = copy.deepcopy(policy)
+    optimizer = torch.optim.SGD(policy.parameters(), lr=1e-3)
+    loss_fn   = SPINLoss(beta=0.1)
     return SPINTrainer(
-        policy_model=policy_model,
-        ref_model=ref_model,
+        policy_model=policy,
+        ref_model=ref,
         optimizer=optimizer,
-        beta=0.1,
-        max_gen_tokens=4,
+        loss_fn=loss_fn,
     )
 
 
@@ -66,181 +67,241 @@ def spin_trainer(policy_model, ref_model):
 # SPINLoss tests
 # ---------------------------------------------------------------------------
 
-def test_spin_loss_scalar():
-    """SPINLoss forward must return a scalar loss."""
+def test_spin_loss_returns_scalar_and_dict():
+    """SPINLoss.forward must return a 0-d tensor and a dict."""
     loss_fn = SPINLoss(beta=0.1)
-    B = 4
-    policy_chosen   = torch.randn(B)
-    policy_rejected = torch.randn(B)
-    ref_chosen      = torch.randn(B)
-    ref_rejected    = torch.randn(B)
+    pi_real  = torch.randn(B)
+    pi_gen   = torch.randn(B)
+    ref_real = torch.randn(B)
+    ref_gen  = torch.randn(B)
 
-    loss, _, _ = loss_fn(policy_chosen, policy_rejected, ref_chosen, ref_rejected)
+    loss, metrics = loss_fn(pi_real, pi_gen, ref_real, ref_gen)
 
-    assert loss.ndim == 0, f"Expected scalar (0-d tensor), got shape {loss.shape}"
-    assert torch.isfinite(loss), "Loss must be finite"
+    assert loss.ndim == 0, f"Expected 0-d scalar, got shape {loss.shape}"
+    assert isinstance(metrics, dict), "Second return value must be a dict"
 
 
-def test_spin_loss_positive():
-    """SPINLoss must be >= 0 (it is -log_sigmoid which is always non-negative)."""
+def test_spin_loss_dict_keys():
+    """metrics dict must contain exactly the required keys."""
     loss_fn = SPINLoss(beta=0.1)
-    torch.manual_seed(42)
-    B = 8
-    policy_chosen   = torch.randn(B)
-    policy_rejected = torch.randn(B)
-    ref_chosen      = torch.randn(B)
-    ref_rejected    = torch.randn(B)
+    pi_real  = torch.randn(B)
+    pi_gen   = torch.randn(B)
+    ref_real = torch.randn(B)
+    ref_gen  = torch.randn(B)
 
-    loss, _, _ = loss_fn(policy_chosen, policy_rejected, ref_chosen, ref_rejected)
+    _, metrics = loss_fn(pi_real, pi_gen, ref_real, ref_gen)
 
-    assert loss.item() >= 0.0, f"Loss must be >= 0, got {loss.item()}"
-
-
-def test_spin_chosen_rewards_shape():
-    """chosen_rewards must be a (B,) tensor."""
-    loss_fn = SPINLoss(beta=0.1)
-    B = 6
-    policy_chosen   = torch.randn(B)
-    policy_rejected = torch.randn(B)
-    ref_chosen      = torch.randn(B)
-    ref_rejected    = torch.randn(B)
-
-    _, chosen_rewards, _ = loss_fn(policy_chosen, policy_rejected, ref_chosen, ref_rejected)
-
-    assert chosen_rewards.shape == (B,), (
-        f"chosen_rewards shape should be ({B},), got {chosen_rewards.shape}"
+    required = {"accuracy", "reward_real", "reward_gen", "margin"}
+    assert set(metrics.keys()) == required, (
+        f"Expected keys {required}, got {set(metrics.keys())}"
     )
 
 
-def test_spin_reward_margin():
-    """When chosen log-prob is clearly better, reward margin should be > 0."""
+def test_spin_loss_is_finite():
+    """Loss must be finite for random inputs."""
     loss_fn = SPINLoss(beta=0.1)
-    B = 4
-    # Policy much prefers the chosen; ref assigns same log-probs to both
-    policy_chosen   = torch.full((B,), -1.0)   # higher log-prob for chosen
-    policy_rejected = torch.full((B,), -5.0)   # lower log-prob for rejected
-    ref_chosen      = torch.full((B,), -3.0)
-    ref_rejected    = torch.full((B,), -3.0)
+    torch.manual_seed(7)
+    pi_real  = torch.randn(B)
+    pi_gen   = torch.randn(B)
+    ref_real = torch.randn(B)
+    ref_gen  = torch.randn(B)
 
-    _, chosen_rewards, rejected_rewards = loss_fn(
-        policy_chosen, policy_rejected, ref_chosen, ref_rejected
+    loss, _ = loss_fn(pi_real, pi_gen, ref_real, ref_gen)
+
+    assert torch.isfinite(loss), f"Loss is not finite: {loss.item()}"
+
+
+def test_spin_loss_perfect_separation_accuracy():
+    """When reward_real >> reward_gen for all samples, accuracy must be 1.0."""
+    loss_fn = SPINLoss(beta=1.0)
+    # pi_real - ref_real >> pi_gen - ref_gen  =>  reward_real > reward_gen
+    pi_real  = torch.full((B,), 10.0)
+    pi_gen   = torch.full((B,), -10.0)
+    ref_real = torch.zeros(B)
+    ref_gen  = torch.zeros(B)
+
+    _, metrics = loss_fn(pi_real, pi_gen, ref_real, ref_gen)
+
+    assert metrics["accuracy"] == 1.0, (
+        f"Expected accuracy=1.0 for perfect separation, got {metrics['accuracy']}"
     )
-    margin = (chosen_rewards - rejected_rewards).mean().item()
 
-    assert margin > 0.0, f"Expected positive reward margin, got {margin}"
+
+def test_spin_loss_gradients_flow():
+    """Loss.backward() must produce non-None, non-zero gradients on pi_real."""
+    loss_fn = SPINLoss(beta=0.1)
+    pi_real  = torch.randn(B, requires_grad=True)
+    pi_gen   = torch.randn(B)
+    ref_real = torch.randn(B)
+    ref_gen  = torch.randn(B)
+
+    loss, _ = loss_fn(pi_real, pi_gen, ref_real, ref_gen)
+    loss.backward()
+
+    assert pi_real.grad is not None, "No gradient on pi_real"
+    assert pi_real.grad.abs().sum().item() > 0, "Zero gradient on pi_real"
+
+
+def test_spin_loss_margin_sign():
+    """When real completions are clearly better, margin must be positive."""
+    loss_fn = SPINLoss(beta=0.1)
+    pi_real  = torch.full((B,), 0.0)
+    pi_gen   = torch.full((B,), -10.0)
+    ref_real = torch.full((B,), -5.0)
+    ref_gen  = torch.full((B,), -5.0)
+
+    _, metrics = loss_fn(pi_real, pi_gen, ref_real, ref_gen)
+
+    assert metrics["margin"] > 0.0, (
+        f"Expected positive margin, got {metrics['margin']}"
+    )
 
 
 # ---------------------------------------------------------------------------
-# compute_token_log_probs tests
+# SPINDataCollector tests
 # ---------------------------------------------------------------------------
 
-def test_compute_token_log_probs_shape(policy_model):
-    """compute_token_log_probs must return a (B,) tensor."""
-    torch.manual_seed(1)
-    B, S, R = 2, 8, 4
-    input_ids    = torch.randint(0, 256, (B, S))
-    response_ids = torch.randint(0, 256, (B, R))
+def test_data_collector_sequence_log_prob_shape_1d():
+    """sequence_log_prob on a 1-D input must return a scalar (0-d) tensor."""
+    collector = SPINDataCollector(beta=0.1)
+    lp = torch.randn(T)
 
-    log_probs = compute_token_log_probs(policy_model, input_ids, response_ids)
+    out = collector.sequence_log_prob(lp)
 
-    assert log_probs.shape == (B,), (
-        f"Expected shape ({B},), got {log_probs.shape}"
-    )
+    assert out.ndim == 0, f"Expected 0-d tensor, got shape {out.shape}"
 
 
-def test_compute_token_log_probs_negative(policy_model):
-    """Log probs of actual tokens must be <= 0."""
-    torch.manual_seed(2)
-    B, S, R = 2, 8, 4
-    input_ids    = torch.randint(0, 256, (B, S))
-    response_ids = torch.randint(0, 256, (B, R))
+def test_data_collector_sequence_log_prob_shape_2d():
+    """sequence_log_prob on (B, T) input must return shape (B,)."""
+    collector = SPINDataCollector(beta=0.1)
+    lp = torch.randn(B, T)
 
-    log_probs = compute_token_log_probs(policy_model, input_ids, response_ids)
+    out = collector.sequence_log_prob(lp)
 
-    assert (log_probs <= 0).all(), (
-        f"All log probs must be <= 0, got max={log_probs.max().item()}"
-    )
+    assert out.shape == (B,), f"Expected ({B},), got {out.shape}"
+
+
+def test_data_collector_build_pairs_length():
+    """build_pairs must return a list with the same length as the inputs."""
+    collector = SPINDataCollector(beta=0.1)
+    N = 5
+    real_lps = [torch.randn(T) for _ in range(N)]
+    gen_lps  = [torch.randn(T) for _ in range(N)]
+
+    pairs = collector.build_pairs(real_lps, gen_lps)
+
+    assert len(pairs) == N, f"Expected {N} pairs, got {len(pairs)}"
+
+
+def test_data_collector_build_pairs_elements_are_scalars():
+    """Each element of build_pairs must be a (scalar, scalar) tuple."""
+    collector = SPINDataCollector(beta=0.1)
+    real_lps = [torch.randn(T) for _ in range(3)]
+    gen_lps  = [torch.randn(T) for _ in range(3)]
+
+    pairs = collector.build_pairs(real_lps, gen_lps)
+
+    for i, (r, g) in enumerate(pairs):
+        assert r.ndim == 0, f"Pair {i}: real element should be scalar, got shape {r.shape}"
+        assert g.ndim == 0, f"Pair {i}: gen element should be scalar, got shape {g.shape}"
 
 
 # ---------------------------------------------------------------------------
 # SPINTrainer tests
 # ---------------------------------------------------------------------------
 
-def test_spin_trainer_step_keys(spin_trainer):
-    """train_step must return dict with required keys."""
-    torch.manual_seed(3)
-    prompt_ids        = torch.randint(0, 256, (1, 6))
-    real_response_ids = torch.randint(0, 256, (1, 4))
+def test_trainer_freeze_ref_freezes_all_params():
+    """After freeze_ref(), every ref model parameter must have requires_grad=False."""
+    trainer = make_trainer()
+    trainer.freeze_ref()
 
-    result = spin_trainer.train_step(prompt_ids, real_response_ids)
+    for name, p in trainer.ref_model.named_parameters():
+        assert not p.requires_grad, (
+            f"Parameter '{name}' still requires grad after freeze_ref()"
+        )
 
-    required_keys = {'loss', 'chosen_reward', 'rejected_reward', 'reward_margin'}
-    assert required_keys == set(result.keys()), (
-        f"Missing or extra keys. Expected {required_keys}, got {set(result.keys())}"
+
+def test_trainer_compute_sequence_log_prob_shape():
+    """compute_sequence_log_prob must return a (B,) tensor."""
+    model     = make_model()
+    input_ids = torch.randint(0, V, (B, T))
+    labels    = torch.randint(0, V, (B, T))
+
+    trainer = make_trainer(policy=model)
+    out = trainer.compute_sequence_log_prob(model, input_ids, labels)
+
+    assert out.shape == (B,), f"Expected ({B},), got {out.shape}"
+
+
+def test_trainer_compute_sequence_log_prob_masking():
+    """Positions where labels==-100 must not affect the sum (masking test)."""
+    model = make_model()
+
+    input_ids      = torch.randint(0, V, (1, T))
+    labels_full    = torch.randint(0, V, (1, T))
+    labels_partial = labels_full.clone()
+    labels_partial[0, -2:] = -100  # mask last 2 tokens
+
+    trainer = make_trainer(policy=model)
+
+    lp_full    = trainer.compute_sequence_log_prob(model, input_ids, labels_full)
+    lp_partial = trainer.compute_sequence_log_prob(model, input_ids, labels_partial)
+
+    # Partial sum (T-2 tokens) must be <= full sum (T tokens) in absolute value
+    # but they must differ (unless all last tokens had log-prob 0, which is impossible)
+    assert not torch.allclose(lp_full, lp_partial), (
+        "Masking labels=-100 had no effect on the sequence log prob"
     )
-    for k, v in result.items():
-        assert isinstance(v, float), f"Key '{k}' should be float, got {type(v)}"
 
 
-def test_spin_trainer_generates_synthetic(spin_trainer):
-    """generate_synthetic must return a tensor of shape (1, max_gen_tokens)."""
-    torch.manual_seed(4)
-    prompt_ids = torch.randint(0, 256, (1, 6))
+def test_trainer_spin_step_metric_keys():
+    """spin_step must return a dict with the required metric keys."""
+    trainer   = make_trainer()
+    real_ids  = torch.randint(0, V, (B, T))
+    gen_ids   = torch.randint(0, V, (B, T))
+    labels    = torch.randint(0, V, (B, T))
 
-    synth = spin_trainer.generate_synthetic(prompt_ids)
+    _, metrics = trainer.spin_step(real_ids, gen_ids, labels)
 
-    assert isinstance(synth, torch.Tensor), "generate_synthetic must return a Tensor"
-    assert synth.shape == (1, spin_trainer.max_gen_tokens), (
-        f"Expected shape (1, {spin_trainer.max_gen_tokens}), got {synth.shape}"
+    required = {"accuracy", "reward_real", "reward_gen", "margin"}
+    assert set(metrics.keys()) == required, (
+        f"Expected keys {required}, got {set(metrics.keys())}"
     )
-    assert synth.dtype == torch.long, f"Expected dtype torch.long, got {synth.dtype}"
 
 
-def test_spin_update_reference_copies_weights(spin_trainer):
-    """After update_reference_model, ref_model must have the same weights as policy_model."""
-    # Perturb the policy model so ref and policy differ
-    with torch.no_grad():
-        for p in spin_trainer.policy_model.parameters():
-            p.add_(torch.randn_like(p) * 0.1)
+def test_trainer_spin_step_loss_is_finite():
+    """spin_step must return a finite loss."""
+    trainer  = make_trainer()
+    real_ids = torch.randint(0, V, (B, T))
+    gen_ids  = torch.randint(0, V, (B, T))
+    labels   = torch.randint(0, V, (B, T))
 
-    spin_trainer.update_reference_model()
+    loss, _ = trainer.spin_step(real_ids, gen_ids, labels)
 
-    for (name, p_param), (_, r_param) in zip(
-        spin_trainer.policy_model.named_parameters(),
-        spin_trainer.ref_model.named_parameters(),
-    ):
-        assert torch.allclose(p_param, r_param), (
-            f"Parameter '{name}' differs between policy and ref after update_reference_model"
-        )
-
-    # Ref model must remain frozen
-    for p in spin_trainer.ref_model.parameters():
-        assert not p.requires_grad, "ref_model parameters must not require grad after update"
+    assert torch.isfinite(loss), f"spin_step loss is not finite: {loss.item()}"
 
 
-# ---------------------------------------------------------------------------
-# SPINDataCollator tests
-# ---------------------------------------------------------------------------
+def test_trainer_spin_step_updates_policy_weights():
+    """Policy model weights must change after spin_step (grad != 0)."""
+    trainer  = make_trainer()
+    real_ids = torch.randint(0, V, (B, T))
+    gen_ids  = torch.randint(0, V, (B, T))
+    labels   = torch.randint(0, V, (B, T))
 
-def test_spin_data_collator():
-    """collate must return a list of dicts with 'prompt_ids' and 'real_response_ids'."""
-    collator = SPINDataCollator()
+    weights_before = {
+        name: p.clone().detach()
+        for name, p in trainer.policy_model.named_parameters()
+    }
 
-    prompts = [torch.randint(0, 256, (1, 6)) for _ in range(3)]
-    responses = [torch.randint(0, 256, (1, 4)) for _ in range(3)]
+    trainer.spin_step(real_ids, gen_ids, labels)
 
-    batch = collator.collate(prompts, responses)
+    weights_after = {
+        name: p.clone().detach()
+        for name, p in trainer.policy_model.named_parameters()
+    }
 
-    assert isinstance(batch, list), "collate must return a list"
-    assert len(batch) == 3, f"Expected 3 items, got {len(batch)}"
-
-    for i, item in enumerate(batch):
-        assert isinstance(item, dict), f"Item {i} must be a dict"
-        assert 'prompt_ids' in item, f"Item {i} missing 'prompt_ids'"
-        assert 'real_response_ids' in item, f"Item {i} missing 'real_response_ids'"
-        assert torch.equal(item['prompt_ids'], prompts[i]), (
-            f"Item {i} prompt_ids mismatch"
-        )
-        assert torch.equal(item['real_response_ids'], responses[i]), (
-            f"Item {i} real_response_ids mismatch"
-        )
+    changed = any(
+        not torch.allclose(weights_before[n], weights_after[n])
+        for n in weights_before
+    )
+    assert changed, "Policy model weights did not change after spin_step"
