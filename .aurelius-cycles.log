@@ -34,3 +34,4 @@ cycle-56 | 2026-04-17 | vim, tuned_lens, medusa_heads, reward_uncertainty, activ
 cycle-57 | 2026-04-17 | grokfast, dora, speculative_decoding, spin, moe, beam_search_v4 | 100 tests | 5c9259d
 cycle-58 | 2026-04-17 | kv_cache_h2o, implicit_cot, constitutional_ai, rope_extensions, ppo_trainer, logit_lens, rlvr, data_loaders, ponder_net | 222 tests | d42b7e6
 cycle-59 | 2026-04-17 | online_dpo, grouped_query_attention, mixture_of_depths, gradient_checkpointing, compute_scaling, loss_landscape | 119 tests | 55c2b79
+cycle-60 | 2026-04-17 | prefix_tuning, multi_token_prediction, orpo, lookahead_decoding, knowledge_distillation, model_merging | 126 tests | 37438b0
