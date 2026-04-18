@@ -281,3 +281,80 @@ class MoEBlock(nn.Module):
         x = x + moe_out
 
         return x, router_loss
+
+
+# ---------------------------------------------------------------------------
+# MoEConfig  (used by SparseMoEFFN, BalancedMoEFFN, upcycle helpers)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MoEConfig:
+    """Configuration for Sparse MoE FFN layers.
+
+    Attributes:
+        n_experts:           Total number of expert FFNs.
+        top_k:               Experts activated per token.
+        load_balance_alpha:  Scale applied to the router auxiliary loss.
+        jitter_noise:        Uniform noise added to router logits during training.
+        bias_update_rate:    Step size for the bias-based load balancer (BalancedMoEFFN).
+    """
+
+    n_experts: int = 8
+    top_k: int = 2
+    load_balance_alpha: float = 0.01
+    jitter_noise: float = 0.0
+    bias_update_rate: float = 0.001
+
+
+# ---------------------------------------------------------------------------
+# SparseMoEFFN  (drop-in SwiGLUFFN replacement; returns (output, aux_loss))
+# ---------------------------------------------------------------------------
+
+class SparseMoEFFN(nn.Module):
+    """Sparse MoE FFN layer — drop-in replacement for SwiGLUFFN.
+
+    Wraps SparseMoELayer and exposes ``self.experts`` so that weight
+    copying (e.g. during dense-to-MoE upcycling) works directly.
+
+    Args:
+        config:  AureliusConfig — uses ``d_model`` and ``d_ff``.
+        moe_cfg: MoEConfig — uses ``n_experts``, ``top_k``,
+                 ``load_balance_alpha``, and ``jitter_noise``.
+
+    Returns (from forward):
+        output:   (B, T, d_model)
+        aux_loss: scalar = load_balance_alpha * router_loss
+    """
+
+    def __init__(self, config, moe_cfg: "MoEConfig | None" = None) -> None:
+        super().__init__()
+        self.moe_cfg = moe_cfg if moe_cfg is not None else MoEConfig()
+        self.load_balance_alpha = self.moe_cfg.load_balance_alpha
+
+        self._layer = SparseMoELayer(
+            d_model=config.d_model,
+            d_ff=config.d_ff,
+            n_experts=self.moe_cfg.n_experts,
+            top_k=self.moe_cfg.top_k,
+        )
+        # Expose the expert ModuleList and router gate for inspection / upcycling.
+        # router is the inner nn.Linear gate so that moe.router.weight matches
+        # the same interface as BalancedMoEFFN.router.
+        self.experts: nn.ModuleList = self._layer.experts
+        self.router: nn.Linear = self._layer.router.gate
+
+        # Router initialized with small std so all experts start equal
+        nn.init.normal_(self._layer.router.gate.weight, std=0.01)
+
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
+        """Apply sparse MoE FFN.
+
+        Args:
+            x: (B, T, d_model)
+
+        Returns:
+            output:   (B, T, d_model)
+            aux_loss: scalar
+        """
+        output, router_loss = self._layer(x)
+        return output, self.load_balance_alpha * router_loss
