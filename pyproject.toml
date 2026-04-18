@@ -45,6 +45,9 @@ dev = [
     "ruff>=0.7.0",
 ]
 
+[project.scripts]
+aurelius = "src.cli.main:main"
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
