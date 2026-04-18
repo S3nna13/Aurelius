@@ -5,3 +5,11 @@ cycle-79 | router_zloss, attention_sink_prefill | blocked-baseline-red | deferre
 cycle-84 | token_level_rl, world_model_planning, constitutional_constraints, mixture_of_recursions, causal_inference_eval, federated_dp | GREEN 162 tests | commit=fbc8eab | push=pending(cycle-83=6cffccf)
 cycle-85 | came, adopt, leace_eraser, polysemanticity, dr_grpo, qura_scorer (+moe.py fix unblocking 30 tests) | GREEN 15372 passed | commit=b2f7fb5 | push=b2f7fb5 | deferred=[]
 cycle-86 | fadam, fira, function_vectors, distributed_alignment_search, rlcd, nesterov_adan (+3 bug fixes: isotropy/circuit_discovery) | GREEN 15484 passed 0 failed | commit=fe08349 | push=fe08349 | deferred=[]
+cycle-87 | entropix_sampler, patchscopes, prime, ttt_layer, lottery_ticket, vendi_score | GREEN 15556 passed 0 failed | commit=9b8d718 | push=9b8d718 | deferred=[]
+cycle-88: mingru, gated_delta_net, chain_of_draft, sae_trainer, signum, odin | GREEN 15629 | commit=fb213b0 | push=fb213b0
+cycle-89: gradient_inversion, model_extraction, backdoor_detector, gcg_attack, canary_auditor, prompt_injection_detector (new src/security/ namespace) | GREEN 82 security tests | commit=6cda2ad | push=6cda2ad
+cycle-90: randomized_smoothing, privacy_accountant, output_scanner, adversarial_text_augment, network_intrusion_detector, semantic_similarity_defense | GREEN 85 new tests | commit=add57a0 | push=add57a0
+cycle-89: gradient_inversion, model_extraction, backdoor_detector, gcg_attack, canary_auditor, prompt_injection_detector (new src/security/ namespace) | GREEN 82 security tests | commit=6cda2ad | push=6cda2ad
+cycle-90: randomized_smoothing, privacy_accountant, output_scanner, adversarial_text_augment, network_intrusion_detector, semantic_similarity_defense | GREEN 85 new tests | commit=add57a0 | push=add57a0
+cycle-91: federated_aggregator, per_sample_grad_clip, model_fingerprint, robustness_evaluator, red_team_dataset_gen, secret_sharing | GREEN 79 tests | commit=8ca89c0 | push=8ca89c0
+cycle-92: terminal_chat, api_server, web_ui, tool_executor, conversation_store, response_formatter (assistant product layer) | GREEN 73 tests | commit=ccec18c | push=ccec18c
