@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Optional
 
 import torch
 import torch.nn as nn
@@ -18,19 +18,52 @@ import torch.utils.checkpoint
 
 @dataclass
 class CheckpointConfig:
-    """Configuration for gradient checkpointing.
+    """Configuration for gradient checkpointing."""
 
-    Attributes:
-        enabled: Whether gradient checkpointing is active.
-        checkpoint_every_n_layers: Wrap every Nth layer. 1 = all layers,
-            2 = every other, etc.
-        use_reentrant: Passed to torch.utils.checkpoint.checkpoint. False is
-            recommended for newer PyTorch versions and torch.compile compatibility.
-    """
-
+    checkpoint_every: int = 2
     enabled: bool = True
+    # Legacy alias kept for backward compat
     checkpoint_every_n_layers: int = 1
     use_reentrant: bool = False
+
+
+class CheckpointedModule(nn.Module):
+    """Wraps any nn.Module with gradient checkpointing."""
+
+    def __init__(self, module: nn.Module, config: CheckpointConfig) -> None:
+        super().__init__()
+        self.module = module
+        self.config = config
+
+    def forward(self, *args, **kwargs):
+        if self.config.enabled:
+            return torch.utils.checkpoint.checkpoint(
+                self.module, *args, use_reentrant=False, **kwargs
+            )
+        return self.module(*args, **kwargs)
+
+
+def apply_checkpointing(
+    model: nn.Module,
+    config: CheckpointConfig,
+    layer_names: Optional[List[str]] = None,
+) -> nn.Module:
+    """Wrap every nn.ModuleList layer (or layers matching layer_names) in CheckpointedModule."""
+    for name, child in list(model.named_children()):
+        if layer_names is not None:
+            if name in layer_names:
+                setattr(model, name, CheckpointedModule(child, config))
+            else:
+                apply_checkpointing(child, config, layer_names)
+        else:
+            if isinstance(child, nn.ModuleList):
+                wrapped = nn.ModuleList(
+                    [CheckpointedModule(layer, config) for layer in child]
+                )
+                setattr(model, name, wrapped)
+            else:
+                apply_checkpointing(child, config, layer_names)
+    return model
 
 
 def checkpoint_forward(fn: Callable, *args, enabled: bool = True) -> Any:

@@ -16,7 +16,9 @@ import torch.nn as nn
 from src.training.gradient_checkpointing import (
     CheckpointConfig,
     CheckpointedLayer,
+    CheckpointedModule,
     CheckpointedSequential,
+    apply_checkpointing,
     checkpoint_forward,
     estimate_activation_memory,
     estimate_checkpointed_memory,
@@ -277,3 +279,108 @@ def test_checkpointed_sequential_backward_completes():
 
     assert x.grad is not None
     assert x.grad.shape == x.shape
+
+
+# ---------------------------------------------------------------------------
+# CheckpointedModule + apply_checkpointing tests (spec requirements)
+# ---------------------------------------------------------------------------
+
+def _fresh_16d_module():
+    torch.manual_seed(0)
+    return nn.Sequential(nn.Linear(16, 16), nn.ReLU())
+
+
+def _fresh_16d_input():
+    torch.manual_seed(1)
+    return torch.randn(4, 16)
+
+
+def test_checkpoint_config_instantiates():
+    cfg = CheckpointConfig()
+    assert cfg.checkpoint_every == 2
+    assert cfg.enabled is True
+
+
+def test_checkpointed_module_instantiates():
+    cfg = CheckpointConfig()
+    m = _fresh_16d_module()
+    cm = CheckpointedModule(m, cfg)
+    assert cm is not None
+
+
+def test_checkpointed_module_forward_same_as_unwrapped():
+    cfg = CheckpointConfig(enabled=False)
+    m = _fresh_16d_module()
+    x = _fresh_16d_input()
+    cm = CheckpointedModule(m, cfg)
+    assert torch.allclose(m(x), cm(x))
+
+
+def test_checkpointed_module_output_is_finite():
+    cfg = CheckpointConfig()
+    cm = CheckpointedModule(_fresh_16d_module(), cfg)
+    out = cm(_fresh_16d_input())
+    assert torch.all(torch.isfinite(out))
+
+
+def test_checkpointed_module_gradient_flows():
+    cfg = CheckpointConfig(enabled=True)
+    m = _fresh_16d_module()
+    cm = CheckpointedModule(m, cfg)
+    x = _fresh_16d_input().requires_grad_(True)
+    cm(x).sum().backward()
+    assert x.grad is not None
+
+
+def test_checkpointed_module_disabled_still_works():
+    cfg = CheckpointConfig(enabled=False)
+    cm = CheckpointedModule(_fresh_16d_module(), cfg)
+    x = _fresh_16d_input()
+    out = cm(x)
+    assert out.shape == x.shape
+
+
+def test_checkpointed_matches_non_checkpointed_same_weights():
+    torch.manual_seed(42)
+    m1 = nn.Sequential(nn.Linear(16, 16), nn.ReLU())
+    m2 = nn.Sequential(nn.Linear(16, 16), nn.ReLU())
+    m2.load_state_dict(m1.state_dict())
+    x = torch.randn(4, 16)
+    cm_on = CheckpointedModule(m1, CheckpointConfig(enabled=True))
+    cm_off = CheckpointedModule(m2, CheckpointConfig(enabled=False))
+    assert torch.allclose(cm_on(x), cm_off(x), atol=1e-6)
+
+
+def test_apply_checkpointing_returns_nn_module():
+    class SimpleModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.layers = nn.ModuleList([nn.Linear(16, 16) for _ in range(4)])
+
+        def forward(self, x):
+            for layer in self.layers:
+                x = layer(x)
+            return x
+
+    cfg = CheckpointConfig()
+    result = apply_checkpointing(SimpleModel(), cfg)
+    assert isinstance(result, nn.Module)
+
+
+def test_apply_checkpointing_works_with_simple_linear():
+    cfg = CheckpointConfig()
+    model = nn.Sequential(nn.Linear(16, 16), nn.ReLU())
+    result = apply_checkpointing(model, cfg, layer_names=["0"])
+    assert isinstance(result, nn.Module)
+    out = result(torch.randn(2, 16))
+    assert out.shape == (2, 16)
+
+
+def test_checkpointed_module_finite_gradients():
+    cfg = CheckpointConfig(enabled=True)
+    m = _fresh_16d_module()
+    cm = CheckpointedModule(m, cfg)
+    cm(_fresh_16d_input()).sum().backward()
+    for p in m.parameters():
+        assert p.grad is not None
+        assert torch.all(torch.isfinite(p.grad))
