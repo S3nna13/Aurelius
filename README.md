@@ -1,6 +1,6 @@
 # Aurelius
 
-Aurelius is a pure-PyTorch research platform for building, training, aligning, evaluating, and serving a 1.395B-parameter decoder-only language model. Every algorithm is implemented from scratch — no HuggingFace, no einops, no framework wrappers at runtime. All module implementations reference their originating papers (primarily arXiv).
+Aurelius is a pure-PyTorch research platform for building, training, aligning, evaluating, and securing a 1.395B-parameter decoder-only language model. Every algorithm is implemented from scratch — no HuggingFace, no einops, no framework wrappers at runtime.
 
 ## Architecture
 
@@ -33,6 +33,7 @@ Model forward signature: `(loss, logits, present_key_values)` — plain tuple.
 | `src/eval/` | LM harness, BERTScore, LLM-as-judge, causal tracing, ROME weight editing, calibration suite, OOD detection, conformal prediction, probing classifiers, logit lens, tuned lens, membership inference, MT-Bench, faithfulness metrics, model-written evals, and 100+ eval modules |
 | `src/data/` | BPE + byte tokenizers, Magpie, FIM, sequence packing, data mixing, curriculum sampling, difficulty scoring, quality filtering, QuRating scorer, synthetic instruction generation, augmentation, deduplication, and 80+ data modules |
 | `src/interpretability/` | Activation patching, circuit discovery, LEACE concept erasure, polysemanticity/superposition detector, function vectors, distributed alignment search (DAS), sparse autoencoder, logit lens, probing, neuron analysis, representation engineering, and 20+ interpretability tools |
+| `src/security/` | Gradient inversion attack, model extraction (knockoff nets), STRIP backdoor detector, GCG adversarial suffix search, canary memorization auditor, prompt injection detector, randomized smoothing (certified robustness), Rényi DP privacy accountant, PII/toxicity output scanner, adversarial text augmentation, transformer-based network intrusion detector, semantic similarity defense — 12 security modules |
 | `src/serving/` | Chat session manager and local client |
 | `configs/` | Training, tokenizer, merge (SLERP), curriculum, and Ollama configs |
 | `scripts/` | Data prep, training, SFT, DPO, model merging, GGUF conversion, local serving |
@@ -156,6 +157,6 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **86 implementation cycles** completed
-- **15 400+ tests** passing (full suite runs in ~15 min on CPU)
-- **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, and optimizer modules
+- **90 implementation cycles** completed
+- **15 700+ tests** passing (full suite runs in ~15 min on CPU)
+- **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, and security modules
