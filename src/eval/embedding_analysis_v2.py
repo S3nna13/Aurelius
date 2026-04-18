@@ -67,16 +67,16 @@ class IsotropyMetrics:
         # Scores: (n_dirs, n)
         scores = c @ x.T  # (n_dirs, n)
 
-        # Z(c) = sum_i exp(c·e_i)
-        # For numerical stability subtract per-direction max before exp
-        scores_max = scores.max(dim=1, keepdim=True).values
-        z = (scores - scores_max).exp().sum(dim=1)  # (n_dirs,)
+        # log Z(c) = log sum_i exp(c·e_i)
+        # Compare Z values in log-space so different directions are on the same scale.
+        # Per-direction max subtraction makes z values incomparable across directions.
+        log_z = torch.logsumexp(scores, dim=1)  # (n_dirs,)
 
-        z_min = z.min().item()
-        z_max = z.max().item()
-        if z_max == 0.0:
-            return 0.0
-        return float(z_min / z_max)
+        log_z_min = log_z.min()
+        log_z_max = log_z.max()
+        if log_z_min == log_z_max:
+            return 1.0
+        return float((log_z_min - log_z_max).exp().item())
 
     # ------------------------------------------------------------------
     # compute_average_cosine_similarity

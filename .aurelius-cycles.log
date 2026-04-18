@@ -3,3 +3,4 @@ cycle-77 | process_supervision, optimizer_state_sharding, weight_decay_schedulin
 cycle-78 | sliding_window_sink, router_collapse_prevention, best_of_n_reranking, sam_sharpness | blocked-baseline-red | deferred=[commit,push]
 cycle-79 | router_zloss, attention_sink_prefill | blocked-baseline-red | deferred=[commit,push]
 cycle-84 | token_level_rl, world_model_planning, constitutional_constraints, mixture_of_recursions, causal_inference_eval, federated_dp | GREEN 162 tests | commit=fbc8eab | push=pending(cycle-83=6cffccf)
+cycle-85 | came, adopt, leace_eraser, polysemanticity, dr_grpo, qura_scorer (+moe.py fix unblocking 30 tests) | GREEN 15372 passed | commit=b2f7fb5 | push=b2f7fb5 | deferred=[]

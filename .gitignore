@@ -37,3 +37,4 @@ runs/
 # Logs
 *.log
 wandb/
+.aurelius-meta-prompt.md

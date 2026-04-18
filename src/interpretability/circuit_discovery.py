@@ -291,7 +291,12 @@ class CircuitDiscoverer:
             for head_idx in range(self.n_heads):
                 key = f"attn_layer_{layer_idx}_head_{head_idx}"
                 metric_patched = self.patch_activation(corrupted_ids, clean_acts, key)
-                raw_score = (metric_patched - metric_corrupted) / (denom + 1e-8)
+                if abs(denom) < 1e-6:
+                    raw_score = 0.0
+                else:
+                    raw_score = float(
+                        max(0.0, min(1.0, (metric_patched - metric_corrupted) / denom))
+                    )
                 scores.append(ComponentScore(
                     component_type="attention_head",
                     layer=layer_idx,
@@ -303,7 +308,12 @@ class CircuitDiscoverer:
             # MLP
             key = f"mlp_layer_{layer_idx}"
             metric_patched = self.patch_activation(corrupted_ids, clean_acts, key)
-            raw_score = (metric_patched - metric_corrupted) / (denom + 1e-8)
+            if abs(denom) < 1e-6:
+                raw_score = 0.0
+            else:
+                raw_score = float(
+                    max(0.0, min(1.0, (metric_patched - metric_corrupted) / denom))
+                )
             scores.append(ComponentScore(
                 component_type="mlp",
                 layer=layer_idx,
