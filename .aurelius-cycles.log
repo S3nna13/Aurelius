@@ -13,3 +13,5 @@ cycle-89: gradient_inversion, model_extraction, backdoor_detector, gcg_attack, c
 cycle-90: randomized_smoothing, privacy_accountant, output_scanner, adversarial_text_augment, network_intrusion_detector, semantic_similarity_defense | GREEN 85 new tests | commit=add57a0 | push=add57a0
 cycle-91: federated_aggregator, per_sample_grad_clip, model_fingerprint, robustness_evaluator, red_team_dataset_gen, secret_sharing | GREEN 79 tests | commit=8ca89c0 | push=8ca89c0
 cycle-92: terminal_chat, api_server, web_ui, tool_executor, conversation_store, response_formatter (assistant product layer) | GREEN 73 tests | commit=ccec18c | push=ccec18c
+cycle-93: streaming, system_prompts, tool_chain | GREEN 32 tests | commit=b27b52f | push=b27b52f
+cycle-94: dynamic_sparse_attention, sliding_window_attn_v2, async_rl_trainer, double_sided_is, memory_manager, session_router | GREEN 68 tests | commit=ec4b0d4 | push=ec4b0d4
