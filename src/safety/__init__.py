@@ -37,6 +37,10 @@ from src.safety.output_safety_filter import (
     OutputSafetyFilter,
     OutputSafetyPolicy,
 )
+from src.safety.prompt_integrity_checker import (
+    IntegrityReport,
+    PromptIntegrityChecker,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -45,6 +49,7 @@ SAFETY_FILTER_REGISTRY["jailbreak"] = JailbreakDetector
 SAFETY_FILTER_REGISTRY["prompt_injection"] = PromptInjectionScanner
 SAFETY_FILTER_REGISTRY["pii"] = PIIDetector
 SAFETY_FILTER_REGISTRY["output_filter"] = OutputSafetyFilter
+SAFETY_FILTER_REGISTRY["prompt_integrity"] = PromptIntegrityChecker
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 
@@ -64,4 +69,6 @@ __all__ = [
     "FilterDecision",
     "OutputSafetyFilter",
     "OutputSafetyPolicy",
+    "IntegrityReport",
+    "PromptIntegrityChecker",
 ]

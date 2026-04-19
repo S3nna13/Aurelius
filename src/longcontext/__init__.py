@@ -29,6 +29,7 @@ from .kv_cache_quantization import (
     pack_int4,
     unpack_int4,
 )
+from .infini_attention import InfiniAttention
 
 LONGCONTEXT_STRATEGY_REGISTRY: dict = {}
 LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] = KVInt8Compressor
@@ -36,6 +37,7 @@ LONGCONTEXT_STRATEGY_REGISTRY["attention_sinks"] = AttentionSinkCache
 LONGCONTEXT_STRATEGY_REGISTRY["ring_attention"] = RingAttention
 LONGCONTEXT_STRATEGY_REGISTRY["context_compaction"] = ContextCompactor
 LONGCONTEXT_STRATEGY_REGISTRY["kv_kivi_int4"] = KIVIQuantizer
+LONGCONTEXT_STRATEGY_REGISTRY["infini"] = InfiniAttention
 
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
@@ -51,4 +53,5 @@ __all__ = [
     "CompressedKIVI",
     "pack_int4",
     "unpack_int4",
+    "InfiniAttention",
 ]

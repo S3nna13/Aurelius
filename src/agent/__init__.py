@@ -108,3 +108,17 @@ __all__ += [
     "RecoveryPolicy",
     "RecoveryStrategy",
 ]
+
+
+# --- repo context packer (additive) -----------------------------------------
+from .repo_context_packer import (  # noqa: E402
+    FileSnippet,
+    RepoContext,
+    RepoContextPacker,
+)
+
+__all__ += [
+    "FileSnippet",
+    "RepoContext",
+    "RepoContextPacker",
+]

@@ -120,3 +120,39 @@ __all__ = list(__all__) + [
     "mbpp_score_single",
     "mbpp_score_problems",
 ]
+
+# --- Additive registration for SWE-bench-lite agentic coding benchmark -------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves the "niah", "ruler", "humaneval", and "mbpp" entries untouched.
+from .swebench_lite_scorer import (
+    SWEProblem as _SWEProblem,
+    SWEResult as _SWEResult,
+    score_single as _swebench_score_single,
+    score_problems as _swebench_score_problems,
+    apply_patch_via_python as _swebench_apply_patch_via_python,
+    materialize_repo as _swebench_materialize_repo,
+    run_tests as _swebench_run_tests,
+)
+
+SWEProblem = _SWEProblem
+SWEResult = _SWEResult
+swebench_score_single = _swebench_score_single
+swebench_score_problems = _swebench_score_problems
+swebench_apply_patch_via_python = _swebench_apply_patch_via_python
+swebench_materialize_repo = _swebench_materialize_repo
+swebench_run_tests = _swebench_run_tests
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("swebench_lite", _swebench_score_problems)
+BENCHMARK_REGISTRY.setdefault("swebench_lite", _SWEProblem)
+
+__all__ = list(__all__) + [
+    "SWEProblem",
+    "SWEResult",
+    "swebench_score_single",
+    "swebench_score_problems",
+    "swebench_apply_patch_via_python",
+    "swebench_materialize_repo",
+    "swebench_run_tests",
+]

@@ -50,6 +50,12 @@ from .dense_embedding_trainer import (  # noqa: E402
 
 EMBEDDING_REGISTRY["dense"] = DenseEmbedder
 
+from .code_aware_tokenizer import (  # noqa: E402
+    KEYWORDS,
+    SUPPORTED_LANGUAGES,
+    CodeAwareTokenizer,
+)
+
 __all__ = [
     "BM25Retriever",
     "HybridRetriever",
@@ -66,4 +72,7 @@ __all__ = [
     "EmbedderConfig",
     "EmbeddingTrainer",
     "InfoNCELoss",
+    "CodeAwareTokenizer",
+    "KEYWORDS",
+    "SUPPORTED_LANGUAGES",
 ]

@@ -265,17 +265,17 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **104 implementation cycles** completed
-- **16 900+ tests** passing (full suite ~16-21 min on CPU)
+- **105 implementation cycles** completed
+- **17 000+ tests** passing (full suite ~16-21 min on CPU)
 - **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
 - `aurelius` works as a terminal command after `pip install -e .`
 - Frontier-tier surfaces wired in cycles 100–103:
-  - **agent** — tool-call parser (XML + JSON), ReAct loop, safe tool-registry dispatcher (rate-limit + timeout + budget), beam-search Tree-of-Thoughts planner, tool-error-recovery strategy (retry/backoff/fallback/escalate)
-  - **chat** — ChatML, Llama-3, Harmony (OpenAI gpt-oss format) templates, tool-message formatter, persistent conversation memory (in-memory + atomic-JSON backends with BM25 retrieval)
-  - **longcontext** — INT8 KV cache, attention sinks, ring attention, context compaction, INT4 KIVI quantization (per-channel K, per-token V)
-  - **retrieval** — BM25, hybrid RRF retriever, standalone fusion suite (RRF / Borda / CombSUM / CombMNZ), cross-encoder reranker architecture, contrastive dense-embedding trainer (SimCSE / BGE)
-  - **safety** — jailbreak detector, prompt-injection scanner, harm-taxonomy classifier (Llama-Guard + malicious-code), PII detector (+ Luhn / IBAN validation), unified output safety filter with streaming chunk support
-  - **eval** — NIAH, RULER, HumanEval (pass@k subprocess sandbox), MBPP
+  - **agent** — tool-call parser (XML + JSON), ReAct loop, safe tool-registry dispatcher, beam-search Tree-of-Thoughts planner, tool-error-recovery strategy, repo-level context packer (tree + BM25 snippets + imports summary)
+  - **chat** — ChatML, Llama-3, Harmony (OpenAI gpt-oss format) templates, tool-message formatter, persistent conversation memory, synthetic instruction-tuning data (Magpie / Self-Instruct / Evol-Instruct)
+  - **longcontext** — INT8 KV cache, attention sinks, ring attention, context compaction, INT4 KIVI quantization, Infini-attention (compressive memory with gating)
+  - **retrieval** — BM25, hybrid RRF retriever, standalone fusion suite, cross-encoder reranker, contrastive dense-embedding trainer, code-aware tokenizer (camel/snake/dotted + language keywords)
+  - **safety** — jailbreak detector, prompt-injection scanner, harm-taxonomy classifier, PII detector, unified output safety filter, prompt-integrity checker (SHA-256 + round-trip)
+  - **eval** — NIAH, RULER, HumanEval, MBPP, SWE-bench-lite (pure-python unified-diff applier + subprocess test runner)
   - **inference** additions — Orca-style continuous-batching scheduler for multi-request decoding
 
 ---

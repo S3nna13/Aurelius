@@ -50,3 +50,17 @@ __all__ += [
     "InMemoryStore",
     "JSONFileStore",
 ]
+
+from .instruction_tuning_data import (  # noqa: E402
+    EvolInstructGenerator,
+    InstructionSample,
+    MagpieGenerator,
+    SelfInstructGenerator,
+)
+
+__all__ += [
+    "EvolInstructGenerator",
+    "InstructionSample",
+    "MagpieGenerator",
+    "SelfInstructGenerator",
+]
