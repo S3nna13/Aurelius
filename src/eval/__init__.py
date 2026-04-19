@@ -348,3 +348,30 @@ __all__ = list(__all__) + [
     "MMLUScorer",
     "mmlu_parse_answer_letter",
 ]
+
+# --- Additive registration for HumanEval+ augmented benchmark ---------------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves all prior entries untouched.
+from .humaneval_plus_scorer import (
+    HumanEvalPlusProblem as _HumanEvalPlusProblem,
+    HumanEvalPlusResult as _HumanEvalPlusResult,
+    score_single as _humaneval_plus_score_single,
+    score_problems as _humaneval_plus_score_problems,
+)
+
+HumanEvalPlusProblem = _HumanEvalPlusProblem
+HumanEvalPlusResult = _HumanEvalPlusResult
+humaneval_plus_score_single = _humaneval_plus_score_single
+humaneval_plus_score_problems = _humaneval_plus_score_problems
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("humaneval_plus", _humaneval_plus_score_problems)
+BENCHMARK_REGISTRY.setdefault("humaneval_plus", _HumanEvalPlusProblem)
+
+__all__ = list(__all__) + [
+    "HumanEvalPlusProblem",
+    "HumanEvalPlusResult",
+    "humaneval_plus_score_single",
+    "humaneval_plus_score_problems",
+]

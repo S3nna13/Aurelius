@@ -1,5 +1,6 @@
 from src.training.fsdp_lite import FSDPLite, ShardSpec, gather_tensor, shard_tensor
 from src.training.loss_variance_monitor import LossStats, LossVarianceMonitor
+from src.training.lr_range_test import LRRangeTest, LRRangeTestResult
 from src.training.token_dropout import TokenDropout
 
 __all__ = [
@@ -10,4 +11,6 @@ __all__ = [
     "TokenDropout",
     "LossStats",
     "LossVarianceMonitor",
+    "LRRangeTest",
+    "LRRangeTestResult",
 ]

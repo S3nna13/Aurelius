@@ -216,3 +216,15 @@ __all__ += [
     "MCPToolCallResult",
     "MCPToolSpec",
 ]
+
+
+# --- code refactor tool (additive) ------------------------------------------
+from .code_refactor_tool import (  # noqa: E402
+    CodeRefactorTool,
+    RefactorResult,
+)
+
+__all__ += [
+    "CodeRefactorTool",
+    "RefactorResult",
+]

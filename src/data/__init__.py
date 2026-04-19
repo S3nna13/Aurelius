@@ -29,6 +29,11 @@ try:
     from src.data.pipeline import PipelineConfig, run_full_pipeline
 except ImportError:
     pass  # datatrove not installed; pipeline unavailable
+from src.data.tokenizer_trainer import (
+    BPEConfig,
+    BPETokenizer,
+    BPETrainer,
+)
 
 __all__ = [
     # dataset_config
@@ -57,4 +62,8 @@ __all__ = [
     # pipeline
     "PipelineConfig",
     "run_full_pipeline",
+    # tokenizer_trainer
+    "BPEConfig",
+    "BPETokenizer",
+    "BPETrainer",
 ]
