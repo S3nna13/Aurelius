@@ -56,6 +56,11 @@ from .code_aware_tokenizer import (  # noqa: E402
     CodeAwareTokenizer,
 )
 
+from .instruction_prefix_embedder import (  # noqa: E402
+    INSTRUCTION_PREFIXES,
+    InstructionPrefixEmbedder,
+)
+
 __all__ = [
     "BM25Retriever",
     "HybridRetriever",
@@ -75,4 +80,6 @@ __all__ = [
     "CodeAwareTokenizer",
     "KEYWORDS",
     "SUPPORTED_LANGUAGES",
+    "INSTRUCTION_PREFIXES",
+    "InstructionPrefixEmbedder",
 ]

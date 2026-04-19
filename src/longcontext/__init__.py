@@ -30,6 +30,14 @@ from .kv_cache_quantization import (
     unpack_int4,
 )
 from .infini_attention import InfiniAttention
+from .yarn_position_extension import (
+    YarnConfig,
+    apply_rotary as yarn_apply_rotary,
+    build_yarn_rotary_cache,
+    yarn_inv_freq,
+    yarn_linear_ramp_mask,
+    yarn_mscale,
+)
 
 LONGCONTEXT_STRATEGY_REGISTRY: dict = {}
 LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] = KVInt8Compressor
@@ -54,4 +62,10 @@ __all__ = [
     "pack_int4",
     "unpack_int4",
     "InfiniAttention",
+    "YarnConfig",
+    "yarn_apply_rotary",
+    "build_yarn_rotary_cache",
+    "yarn_inv_freq",
+    "yarn_linear_ramp_mask",
+    "yarn_mscale",
 ]

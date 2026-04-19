@@ -156,3 +156,31 @@ __all__ = list(__all__) + [
     "swebench_materialize_repo",
     "swebench_run_tests",
 ]
+
+# --- Additive registration for IFEval instruction-following benchmark --------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves the "niah", "ruler", "humaneval", "mbpp", and "swebench_lite" entries
+# untouched.
+from .ifeval_scorer import (
+    IFEvalConstraint as _IFEvalConstraint,
+    IFEvalProblem as _IFEvalProblem,
+    IFEvalResult as _IFEvalResult,
+    IFEvalScorer as _IFEvalScorer,
+)
+
+IFEvalConstraint = _IFEvalConstraint
+IFEvalProblem = _IFEvalProblem
+IFEvalResult = _IFEvalResult
+IFEvalScorer = _IFEvalScorer
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("ifeval", _IFEvalScorer)
+BENCHMARK_REGISTRY.setdefault("ifeval", _IFEvalProblem)
+
+__all__ = list(__all__) + [
+    "IFEvalConstraint",
+    "IFEvalProblem",
+    "IFEvalResult",
+    "IFEvalScorer",
+]

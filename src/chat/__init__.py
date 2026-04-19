@@ -64,3 +64,21 @@ __all__ += [
     "MagpieGenerator",
     "SelfInstructGenerator",
 ]
+
+from .role_attention_mask import (  # noqa: E402
+    MASK_VALUE,
+    RoleSpan,
+    RoleSpanError,
+    build_loss_mask,
+    build_role_mask,
+    validate_spans,
+)
+
+__all__ += [
+    "MASK_VALUE",
+    "RoleSpan",
+    "RoleSpanError",
+    "build_loss_mask",
+    "build_role_mask",
+    "validate_spans",
+]

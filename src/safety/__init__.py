@@ -41,6 +41,11 @@ from src.safety.prompt_integrity_checker import (
     IntegrityReport,
     PromptIntegrityChecker,
 )
+from src.safety.refusal_classifier import (
+    REFUSAL_PHRASES,
+    RefusalClassifier,
+    RefusalScore,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -52,6 +57,7 @@ SAFETY_FILTER_REGISTRY["output_filter"] = OutputSafetyFilter
 SAFETY_FILTER_REGISTRY["prompt_integrity"] = PromptIntegrityChecker
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
+HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
 
 __all__ = [
     "SAFETY_FILTER_REGISTRY",
@@ -71,4 +77,7 @@ __all__ = [
     "OutputSafetyPolicy",
     "IntegrityReport",
     "PromptIntegrityChecker",
+    "REFUSAL_PHRASES",
+    "RefusalClassifier",
+    "RefusalScore",
 ]

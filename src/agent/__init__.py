@@ -122,3 +122,15 @@ __all__ += [
     "RepoContext",
     "RepoContextPacker",
 ]
+
+
+# --- unified diff generator (additive) --------------------------------------
+from .unified_diff_generator import (  # noqa: E402
+    DiffResult,
+    UnifiedDiffGenerator,
+)
+
+__all__ += [
+    "DiffResult",
+    "UnifiedDiffGenerator",
+]
