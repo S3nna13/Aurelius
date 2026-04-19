@@ -7,6 +7,7 @@ from .adafactor import (
 )
 from .lamb import LAMB, lamb_trust_ratio
 from .lookahead import Lookahead
+from .prodigy import Prodigy
 from .radam import RAdam, radam_rectification, radam_rho_inf, radam_rho_t
 from .schedule_free_adamw import ScheduleFreeAdamW
 
@@ -17,6 +18,7 @@ __all__ = [
     "LAMB",
     "lamb_trust_ratio",
     "Lookahead",
+    "Prodigy",
     "RAdam",
     "radam_rectification",
     "radam_rho_inf",
