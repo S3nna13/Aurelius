@@ -46,6 +46,12 @@ from src.safety.refusal_classifier import (
     RefusalClassifier,
     RefusalScore,
 )
+from src.safety.constitutional_principles_scorer import (
+    DEFAULT_PRINCIPLES,
+    ConstitutionalPrinciplesScorer,
+    ConstitutionalReport,
+    PrincipleScore,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -58,6 +64,7 @@ SAFETY_FILTER_REGISTRY["prompt_integrity"] = PromptIntegrityChecker
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
+HARM_CLASSIFIER_REGISTRY["constitutional"] = ConstitutionalPrinciplesScorer
 
 __all__ = [
     "SAFETY_FILTER_REGISTRY",
@@ -80,4 +87,8 @@ __all__ = [
     "REFUSAL_PHRASES",
     "RefusalClassifier",
     "RefusalScore",
+    "DEFAULT_PRINCIPLES",
+    "ConstitutionalPrinciplesScorer",
+    "ConstitutionalReport",
+    "PrincipleScore",
 ]

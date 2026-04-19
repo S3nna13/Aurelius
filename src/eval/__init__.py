@@ -184,3 +184,31 @@ __all__ = list(__all__) + [
     "IFEvalResult",
     "IFEvalScorer",
 ]
+
+# --- Additive registration for MT-Bench LLM-as-judge harness -----------------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves the "niah", "ruler", "humaneval", "mbpp", "swebench_lite", and
+# "ifeval" entries untouched.
+from .mtbench_judge import (
+    MTBenchJudge as _MTBenchJudge,
+    MTBenchQuestion as _MTBenchQuestion,
+    SingleAnswerScore as _MTBenchSingleAnswerScore,
+    PairwiseResult as _MTBenchPairwiseResult,
+)
+
+MTBenchJudge = _MTBenchJudge
+MTBenchQuestion = _MTBenchQuestion
+SingleAnswerScore = _MTBenchSingleAnswerScore
+PairwiseResult = _MTBenchPairwiseResult
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("mtbench", _MTBenchJudge)
+BENCHMARK_REGISTRY.setdefault("mtbench", _MTBenchQuestion)
+
+__all__ = list(__all__) + [
+    "MTBenchJudge",
+    "MTBenchQuestion",
+    "SingleAnswerScore",
+    "PairwiseResult",
+]

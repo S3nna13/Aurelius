@@ -38,6 +38,7 @@ from .yarn_position_extension import (
     yarn_linear_ramp_mask,
     yarn_mscale,
 )
+from .chunked_prefill import ChunkedPrefill, ChunkedPrefillConfig
 
 LONGCONTEXT_STRATEGY_REGISTRY: dict = {}
 LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] = KVInt8Compressor
@@ -46,6 +47,7 @@ LONGCONTEXT_STRATEGY_REGISTRY["ring_attention"] = RingAttention
 LONGCONTEXT_STRATEGY_REGISTRY["context_compaction"] = ContextCompactor
 LONGCONTEXT_STRATEGY_REGISTRY["kv_kivi_int4"] = KIVIQuantizer
 LONGCONTEXT_STRATEGY_REGISTRY["infini"] = InfiniAttention
+LONGCONTEXT_STRATEGY_REGISTRY["chunked_prefill"] = ChunkedPrefill
 
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
@@ -68,4 +70,6 @@ __all__ = [
     "yarn_inv_freq",
     "yarn_linear_ramp_mask",
     "yarn_mscale",
+    "ChunkedPrefill",
+    "ChunkedPrefillConfig",
 ]

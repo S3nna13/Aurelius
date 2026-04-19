@@ -265,17 +265,17 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **106 implementation cycles** completed
-- **17 100+ tests** passing (full suite ~16-21 min on CPU)
+- **107 implementation cycles** completed
+- **17 300+ tests** passing (full suite ~16-21 min on CPU)
 - **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
 - `aurelius` works as a terminal command after `pip install -e .`
 - Frontier-tier surfaces wired in cycles 100–103:
-  - **agent** — tool-call parser (XML + JSON), ReAct loop, safe tool-registry dispatcher, Tree-of-Thoughts planner, tool-error-recovery, repo context packer, unified-diff generator (round-tripped through the SWE-bench applier)
-  - **chat** — ChatML, Llama-3, Harmony templates, tool-message formatter, conversation memory, synthetic instruction-tuning (Magpie / Self-Instruct / Evol-Instruct), role-aware attention-mask + loss-mask builder
-  - **longcontext** — INT8 KV cache, attention sinks, ring attention, context compaction, INT4 KIVI, Infini-attention, standalone YaRN rotary-extension utilities (NTK-by-parts, mscale, build_yarn_rotary_cache)
-  - **retrieval** — BM25, hybrid RRF retriever, RRF/Borda/CombSUM/CombMNZ fusion suite, cross-encoder reranker, contrastive dense embedder, code-aware tokenizer, instruction-prefix embedder wrapper (BGE/Instructor style)
-  - **safety** — jailbreak detector, prompt-injection scanner, harm-taxonomy classifier, PII detector, output safety filter, prompt-integrity checker, refusal classifier (over-refusal auditing)
-  - **eval** — NIAH, RULER, HumanEval, MBPP, SWE-bench-lite, IFEval (12 verifiable constraint types, strict + loose accuracy)
+  - **agent** — tool-call parser, ReAct loop, tool dispatcher, ToT planner, error-recovery, repo-context packer, unified-diff generator, shell-command planner (allow/deny-list classifier with forbidden-pattern detection)
+  - **chat** — ChatML + Llama-3 + Harmony templates, tool-message formatter, conversation memory, synthetic instruction-tuning, role-aware attention mask, fill-in-the-middle formatter (PSM + SPM, loss-mask helper)
+  - **longcontext** — INT8/INT4 KV cache, attention sinks, ring attention, context compaction, Infini-attention, YaRN utilities, Sarathi-style chunked prefill
+  - **retrieval** — BM25, hybrid RRF, fusion suite, cross-encoder reranker, dense embedder, code-aware tokenizer, instruction-prefix embedder, MMR + Jaccard diversity rerankers
+  - **safety** — jailbreak, prompt-injection, harm-taxonomy, PII, output safety filter, prompt-integrity, refusal classifier, constitutional-principles scorer (5 principles + custom extension)
+  - **eval** — NIAH, RULER, HumanEval, MBPP, SWE-bench-lite, IFEval, MT-Bench LLM-as-judge (single + pairwise + aggregation)
   - **inference** additions — Orca-style continuous-batching scheduler
 
 ---

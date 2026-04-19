@@ -82,3 +82,23 @@ __all__ += [
     "build_role_mask",
     "validate_spans",
 ]
+
+from .fim_formatter import (  # noqa: E402
+    FIM_MIDDLE,
+    FIM_PAD,
+    FIM_PREFIX,
+    FIM_SUFFIX,
+    FIMExample,
+    FIMFormatError,
+    FIMFormatter,
+)
+
+__all__ += [
+    "FIM_MIDDLE",
+    "FIM_PAD",
+    "FIM_PREFIX",
+    "FIM_SUFFIX",
+    "FIMExample",
+    "FIMFormatError",
+    "FIMFormatter",
+]

@@ -61,6 +61,16 @@ from .instruction_prefix_embedder import (  # noqa: E402
     InstructionPrefixEmbedder,
 )
 
+from .diversity_reranker import (  # noqa: E402
+    JaccardDiversityReranker,
+    MMRReranker,
+    cosine_similarity,
+    jaccard_similarity,
+)
+
+RERANKER_REGISTRY["mmr"] = MMRReranker
+RERANKER_REGISTRY["jaccard_mmr"] = JaccardDiversityReranker
+
 __all__ = [
     "BM25Retriever",
     "HybridRetriever",
@@ -82,4 +92,8 @@ __all__ = [
     "SUPPORTED_LANGUAGES",
     "INSTRUCTION_PREFIXES",
     "InstructionPrefixEmbedder",
+    "MMRReranker",
+    "JaccardDiversityReranker",
+    "cosine_similarity",
+    "jaccard_similarity",
 ]

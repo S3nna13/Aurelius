@@ -134,3 +134,21 @@ __all__ += [
     "DiffResult",
     "UnifiedDiffGenerator",
 ]
+
+
+# --- shell command planner (additive) ---------------------------------------
+from .shell_command_planner import (  # noqa: E402
+    ALLOWLIST as SHELL_ALLOWLIST,
+    DENYLIST as SHELL_DENYLIST,
+    ShellCommand,
+    ShellCommandPlanner,
+    ShellPlan,
+)
+
+__all__ += [
+    "SHELL_ALLOWLIST",
+    "SHELL_DENYLIST",
+    "ShellCommand",
+    "ShellCommandPlanner",
+    "ShellPlan",
+]
