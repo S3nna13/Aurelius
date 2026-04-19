@@ -22,12 +22,19 @@ from src.safety.prompt_injection_scanner import (
     InjectionScore,
     PromptInjectionScanner,
 )
+from src.safety.harm_taxonomy_classifier import (
+    HARM_CATEGORIES,
+    HarmClassification,
+    HarmTaxonomyClassifier,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
 
 SAFETY_FILTER_REGISTRY["jailbreak"] = JailbreakDetector
 SAFETY_FILTER_REGISTRY["prompt_injection"] = PromptInjectionScanner
+
+HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 
 __all__ = [
     "SAFETY_FILTER_REGISTRY",
@@ -36,4 +43,7 @@ __all__ = [
     "JailbreakScore",
     "PromptInjectionScanner",
     "InjectionScore",
+    "HARM_CATEGORIES",
+    "HarmClassification",
+    "HarmTaxonomyClassifier",
 ]

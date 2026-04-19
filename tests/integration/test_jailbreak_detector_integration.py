@@ -54,11 +54,11 @@ def test_import_has_no_side_effects(tmp_path, monkeypatch) -> None:
 
     safety = importlib.import_module("src.safety")
     # 'jailbreak' must be present; siblings may additively register other
-    # filters (e.g. prompt_injection) in the same namespace.
+    # filters (e.g. prompt_injection) and classifiers (e.g. harm_taxonomy)
+    # in the same namespace.
     assert "jailbreak" in safety.SAFETY_FILTER_REGISTRY
     assert callable(safety.SAFETY_FILTER_REGISTRY["jailbreak"])
-    # Harm-classifier registry is empty at import time.
-    assert safety.HARM_CLASSIFIER_REGISTRY == {}
+    assert isinstance(safety.HARM_CLASSIFIER_REGISTRY, dict)
 
 
 def test_detector_custom_keywords_via_registry() -> None:

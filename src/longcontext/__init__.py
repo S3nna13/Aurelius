@@ -21,10 +21,12 @@ from .kv_compression import (
     quantize_per_head_symmetric,
 )
 from .attention_sinks import AttentionSinkCache
+from .ring_attention import RingAttention, ring_attention
 
 LONGCONTEXT_STRATEGY_REGISTRY: dict = {}
 LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] = KVInt8Compressor
 LONGCONTEXT_STRATEGY_REGISTRY["attention_sinks"] = AttentionSinkCache
+LONGCONTEXT_STRATEGY_REGISTRY["ring_attention"] = RingAttention
 
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
@@ -32,4 +34,6 @@ __all__ = [
     "CompressedKV",
     "quantize_per_head_symmetric",
     "AttentionSinkCache",
+    "RingAttention",
+    "ring_attention",
 ]

@@ -25,10 +25,25 @@ RETRIEVER_REGISTRY["bm25"] = BM25Retriever
 from .hybrid_retriever import HybridRetriever  # noqa: E402
 RETRIEVER_REGISTRY["hybrid_rrf"] = HybridRetriever
 
+from .reciprocal_rank_fusion import (  # noqa: E402
+    FUSION_REGISTRY,
+    borda_count,
+    comb_mnz,
+    comb_sum,
+    fuse,
+    reciprocal_rank_fusion,
+)
+
 __all__ = [
     "BM25Retriever",
     "HybridRetriever",
     "RETRIEVER_REGISTRY",
     "EMBEDDING_REGISTRY",
     "RERANKER_REGISTRY",
+    "reciprocal_rank_fusion",
+    "borda_count",
+    "comb_sum",
+    "comb_mnz",
+    "fuse",
+    "FUSION_REGISTRY",
 ]

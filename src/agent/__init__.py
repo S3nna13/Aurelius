@@ -63,3 +63,21 @@ __all__ = [
     "parse_json",
     "parse_xml",
 ]
+
+
+# --- safe tool dispatcher (additive) ----------------------------------------
+from .tool_registry_dispatcher import (  # noqa: E402
+    SessionBudget,
+    ToolInvocationResult,
+    ToolRegistryDispatcher,
+    ToolSpec,
+)
+
+AGENT_LOOP_REGISTRY["safe_dispatch"] = ToolRegistryDispatcher
+
+__all__ += [
+    "SessionBudget",
+    "ToolInvocationResult",
+    "ToolRegistryDispatcher",
+    "ToolSpec",
+]

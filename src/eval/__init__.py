@@ -63,3 +63,33 @@ METRIC_REGISTRY.setdefault("ruler", RULERBenchmark)
 BENCHMARK_REGISTRY.setdefault("ruler", RULERBenchmark)
 
 __all__ = list(__all__) + ["RULERBenchmark"]
+
+# --- Additive registration for HumanEval functional-correctness benchmark ----
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above
+# and leaves the "niah" and "ruler" entries untouched.
+from .humaneval_scorer import (
+    HumanEvalProblem as _HumanEvalProblem,
+    SampleResult as _HumanEvalSampleResult,
+    score_single as _humaneval_score_single,
+    score_problems as _humaneval_score_problems,
+    pass_at_k as _humaneval_pass_at_k,
+)
+
+HumanEvalProblem = _HumanEvalProblem
+HumanEvalSampleResult = _HumanEvalSampleResult
+humaneval_score_single = _humaneval_score_single
+humaneval_score_problems = _humaneval_score_problems
+humaneval_pass_at_k = _humaneval_pass_at_k
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("humaneval", _humaneval_score_problems)
+BENCHMARK_REGISTRY.setdefault("humaneval", _HumanEvalProblem)
+
+__all__ = list(__all__) + [
+    "HumanEvalProblem",
+    "HumanEvalSampleResult",
+    "humaneval_score_single",
+    "humaneval_score_problems",
+    "humaneval_pass_at_k",
+]

@@ -25,3 +25,6 @@ __all__ = [
 
 from .llama3_template import Llama3Template  # noqa: E402
 CHAT_TEMPLATE_REGISTRY["llama3"] = Llama3Template()
+
+from .tool_message_formatter import ToolMessageFormatter, ToolResult  # noqa: E402
+MESSAGE_FORMAT_REGISTRY["tool_result"] = ToolMessageFormatter
