@@ -4,6 +4,7 @@ from .attention import GroupedQueryAttention, apply_rope, precompute_rope_freque
 from .chunked_local_attention import ChunkedLocalAttention
 from .config import AureliusConfig
 from .ffn import SwiGLUFFN
+from .parallel_attention import ParallelAttentionBlock
 from .rms_norm import RMSNorm
 from .transformer import AureliusTransformer, TransformerBlock, count_parameters
 
@@ -12,6 +13,7 @@ __all__ = [
     "AureliusTransformer",
     "ChunkedLocalAttention",
     "GroupedQueryAttention",
+    "ParallelAttentionBlock",
     "RMSNorm",
     "SwiGLUFFN",
     "TransformerBlock",

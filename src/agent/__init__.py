@@ -166,6 +166,18 @@ __all__ += [
 ]
 
 
+# --- code test runner (additive) --------------------------------------------
+from .code_test_runner import (  # noqa: E402
+    CodeTestRunner,
+    TestResult,
+)
+
+__all__ += [
+    "CodeTestRunner",
+    "TestResult",
+]
+
+
 # --- task decomposer (additive) ---------------------------------------------
 from .task_decomposer import (  # noqa: E402
     SubTask,

@@ -290,3 +290,34 @@ __all__ = list(__all__) + [
     "GPQAScorer",
     "gpqa_parse_answer_letter",
 ]
+
+# --- Additive registration for LiveCodeBench contamination-free coding ------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves the "niah", "ruler", "humaneval", "mbpp", "swebench_lite", "ifeval",
+# "mtbench", "alpacaeval", "arena_hard", and "gpqa" entries untouched.
+from .livecodebench_scorer import (
+    LiveCodeProblem as _LiveCodeProblem,
+    LiveCodeResult as _LiveCodeResult,
+    score_single as _livecodebench_score_single,
+    score_problems as _livecodebench_score_problems,
+    parse_date_filter as _livecodebench_parse_date_filter,
+)
+
+LiveCodeProblem = _LiveCodeProblem
+LiveCodeResult = _LiveCodeResult
+livecodebench_score_single = _livecodebench_score_single
+livecodebench_score_problems = _livecodebench_score_problems
+livecodebench_parse_date_filter = _livecodebench_parse_date_filter
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("livecodebench", _livecodebench_score_problems)
+BENCHMARK_REGISTRY.setdefault("livecodebench", _LiveCodeProblem)
+
+__all__ = list(__all__) + [
+    "LiveCodeProblem",
+    "LiveCodeResult",
+    "livecodebench_score_single",
+    "livecodebench_score_problems",
+    "livecodebench_parse_date_filter",
+]

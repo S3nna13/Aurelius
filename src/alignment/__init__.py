@@ -7,4 +7,5 @@ from .preference_ranking_loss import (
     ordinal_ranking_loss,
     dpo_pair_loss,
 )
+from .kto_v2 import KTOv2Loss, kto_v2_loss_functional
 
