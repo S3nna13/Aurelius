@@ -1,0 +1,32 @@
+"""Safety surface for the Aurelius LLM platform.
+
+Contains heuristic classifiers for pre-/post-generation guarding of user input
+and model output. This module intentionally carries no heavy ML dependencies:
+every classifier here is a deterministic, stdlib-only heuristic so it can be
+run in hot paths (request admission, tool-call gating, streaming filters).
+
+Two registries are exposed:
+
+* ``SAFETY_FILTER_REGISTRY`` — filters that operate on a single text turn and
+  produce a scalar risk score with triggered-signal attribution.
+* ``HARM_CLASSIFIER_REGISTRY`` — taxonomy-style harm classifiers in the spirit
+  of Llama-Guard (arXiv:2312.06674). Populated by downstream modules; left
+  empty here so that importing this package has no side effects beyond
+  populating these dicts with the filters defined in this file.
+"""
+
+from __future__ import annotations
+
+from src.safety.jailbreak_detector import JailbreakDetector, JailbreakScore
+
+SAFETY_FILTER_REGISTRY: dict = {}
+HARM_CLASSIFIER_REGISTRY: dict = {}
+
+SAFETY_FILTER_REGISTRY["jailbreak"] = JailbreakDetector
+
+__all__ = [
+    "SAFETY_FILTER_REGISTRY",
+    "HARM_CLASSIFIER_REGISTRY",
+    "JailbreakDetector",
+    "JailbreakScore",
+]

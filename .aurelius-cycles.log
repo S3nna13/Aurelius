@@ -15,3 +15,4 @@ cycle-91: federated_aggregator, per_sample_grad_clip, model_fingerprint, robustn
 cycle-92: terminal_chat, api_server, web_ui, tool_executor, conversation_store, response_formatter (assistant product layer) | GREEN 73 tests | commit=ccec18c | push=ccec18c
 cycle-93: streaming, system_prompts, tool_chain | GREEN 32 tests | commit=b27b52f | push=b27b52f
 cycle-94: dynamic_sparse_attention, sliding_window_attn_v2, async_rl_trainer, double_sided_is, memory_manager, session_router | GREEN 68 tests | commit=ec4b0d4 | push=ec4b0d4
+cycle-100: tool_call_parser, chatml_template, kv_compression, bm25_retriever, jailbreak_detector, needle_in_haystack (5 NEW surface dirs: agent, chat, longcontext, retrieval, safety + eval append) | GREEN 16369 passed 2 skipped | +142 tests | baseline 16227 → 16369
