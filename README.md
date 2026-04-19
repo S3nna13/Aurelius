@@ -101,7 +101,13 @@ Model forward signature: `(loss, logits, present_key_values)` — plain tuple.
 | `src/data/` | BPE + byte tokenizers, Magpie, FIM, sequence packing, data mixing, curriculum sampling, difficulty scoring, quality filtering, QuRating scorer, synthetic instruction generation, augmentation, deduplication, and 80+ data modules |
 | `src/interpretability/` | Activation patching, circuit discovery, LEACE concept erasure, polysemanticity/superposition detector, function vectors, distributed alignment search (DAS), JumpReLU sparse autoencoder, Patchscopes, logit lens, probing, neuron analysis, representation engineering, and 20+ interpretability tools |
 | `src/security/` | Gradient inversion attack, model extraction (knockoff nets), STRIP backdoor detector, GCG adversarial suffix search, canary memorization auditor, prompt injection detector, randomized smoothing (certified robustness), Rényi DP privacy accountant, PII/toxicity output scanner, adversarial text augmentation, transformer network intrusion detector, semantic similarity defense, federated aggregator (FedAvg + noise), per-sample gradient clipping, model fingerprinting, robustness evaluator, red-team dataset generator, additive secret sharing — **18 security modules** |
+| `src/agent/` | Tool-call parser (XML Anthropic-style + JSON OpenAI-style, injection-hardened state-machine scan), ReAct agent loop (plan → act → observe → reflect) with per-tool wall-clock timeouts, argument validation via `inspect.signature`, and budget-bounded termination |
+| `src/chat/` | ChatML template (injection-hardened encode/decode, role-break rejection), Llama-3 template (`<|begin_of_text|>` / `<|start_header_id|>` format, ipython + tool roles), pluggable tokenizer-agnostic token-id path |
+| `src/longcontext/` | INT8 symmetric per-head KV cache quantizer with streaming append, StreamingLLM attention-sinks windowing (sink + rolling buffer with shifted RoPE positions per Xiao 2023) |
+| `src/retrieval/` | BM25 (Robertson-Sparck Jones IDF, postings-walk scorer, pure stdlib), hybrid retriever (BM25 + dense cosine with Reciprocal Rank Fusion k=60 or min-max weighted fusion) |
+| `src/safety/` | Jailbreak detector (keyword + role-confusion + prompt-injection + repetition-burst, NFKC-normalized, weighted signal fusion), prompt-injection scanner for indirect injection via tool outputs / retrieved docs (HTML/script, homoglyph, zero-width char, embedded-instruction detection) |
 | `src/serving/` | `aurelius` CLI REPL, OpenAI-compatible HTTP API server, browser web UI, token-by-token SSE streaming, tool calling + multi-step tool chaining, 6 curated system prompt personas, conversation history (JSON persistence), semantic cross-session memory, session router (consistent hash ring + LRU), response formatter, runtime safety guardrails, ChatML session manager |
+| `src/eval/` additions | Needle-in-a-Haystack benchmark (Kamradt protocol, model-agnostic generate_fn), RULER (Hsieh 2024) with multi-key NIAH, multi-value NIAH, variable tracking, common-words extraction, aggregation tasks |
 | `configs/` | Training, tokenizer, merge (SLERP/TIES), curriculum, and Ollama configs |
 | `scripts/` | Data prep, training, SFT, DPO, model merging, GGUF conversion, local serving |
 
@@ -259,7 +265,14 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **95 implementation cycles** completed
-- **16 000+ tests** passing
-- **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, and CLI modules
+- **101 implementation cycles** completed
+- **16 500+ tests** passing (full suite ~14 min on CPU)
+- **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
 - `aurelius` works as a terminal command after `pip install -e .`
+- Five new frontier-tier surfaces wired in cycles 100–101: tool-call parsing, ReAct agent loop, ChatML + Llama-3 chat templates, INT8 KV cache + attention sinks, BM25 + hybrid RRF retrieval, jailbreak + prompt-injection detection, NIAH + RULER long-context evals
+
+---
+
+## License
+
+Aurelius is released under the [MIT License](LICENSE). You may use, modify, and distribute this code freely with attribution.

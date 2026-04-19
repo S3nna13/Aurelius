@@ -53,8 +53,10 @@ def test_import_has_no_side_effects(tmp_path, monkeypatch) -> None:
             del sys.modules[modname]
 
     safety = importlib.import_module("src.safety")
-    # Only 'jailbreak' is registered by this module.
-    assert set(safety.SAFETY_FILTER_REGISTRY.keys()) == {"jailbreak"}
+    # 'jailbreak' must be present; siblings may additively register other
+    # filters (e.g. prompt_injection) in the same namespace.
+    assert "jailbreak" in safety.SAFETY_FILTER_REGISTRY
+    assert callable(safety.SAFETY_FILTER_REGISTRY["jailbreak"])
     # Harm-classifier registry is empty at import time.
     assert safety.HARM_CLASSIFIER_REGISTRY == {}
 

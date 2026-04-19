@@ -38,8 +38,18 @@ TOOL_CALL_PARSER_REGISTRY["xml"] = parse_xml
 TOOL_CALL_PARSER_REGISTRY["json"] = parse_json
 
 
+# Register the ReAct loop under its canonical key. Import is deferred
+# until after the registries exist so that cycles cannot form.
+from .react_loop import AgentStep, AgentTrace, ReActLoop  # noqa: E402
+
+AGENT_LOOP_REGISTRY["react"] = ReActLoop
+
+
 __all__ = [
     "AGENT_LOOP_REGISTRY",
+    "AgentStep",
+    "AgentTrace",
+    "ReActLoop",
     "JSONToolCallParser",
     "ParsedToolCall",
     "ParseResult",

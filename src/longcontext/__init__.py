@@ -20,13 +20,16 @@ from .kv_compression import (
     KVInt8Compressor,
     quantize_per_head_symmetric,
 )
+from .attention_sinks import AttentionSinkCache
 
 LONGCONTEXT_STRATEGY_REGISTRY: dict = {}
 LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] = KVInt8Compressor
+LONGCONTEXT_STRATEGY_REGISTRY["attention_sinks"] = AttentionSinkCache
 
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
     "KVInt8Compressor",
     "CompressedKV",
     "quantize_per_head_symmetric",
+    "AttentionSinkCache",
 ]

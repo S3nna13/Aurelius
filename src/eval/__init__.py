@@ -49,3 +49,17 @@ __all__ = list(__all__) + [
     "METRIC_REGISTRY",
     "BENCHMARK_REGISTRY",
 ]
+
+# --- Additive registration for RULER long-context benchmark ------------------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above
+# and leaves the "niah" entries untouched.
+from .ruler_benchmark import RULERBenchmark as _RULERBenchmark
+
+RULERBenchmark = _RULERBenchmark
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("ruler", RULERBenchmark)
+BENCHMARK_REGISTRY.setdefault("ruler", RULERBenchmark)
+
+__all__ = list(__all__) + ["RULERBenchmark"]

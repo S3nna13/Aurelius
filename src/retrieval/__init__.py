@@ -22,8 +22,12 @@ RERANKER_REGISTRY: dict[str, type] = {}
 
 RETRIEVER_REGISTRY["bm25"] = BM25Retriever
 
+from .hybrid_retriever import HybridRetriever  # noqa: E402
+RETRIEVER_REGISTRY["hybrid_rrf"] = HybridRetriever
+
 __all__ = [
     "BM25Retriever",
+    "HybridRetriever",
     "RETRIEVER_REGISTRY",
     "EMBEDDING_REGISTRY",
     "RERANKER_REGISTRY",

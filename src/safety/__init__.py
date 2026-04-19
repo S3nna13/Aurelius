@@ -18,15 +18,22 @@ Two registries are exposed:
 from __future__ import annotations
 
 from src.safety.jailbreak_detector import JailbreakDetector, JailbreakScore
+from src.safety.prompt_injection_scanner import (
+    InjectionScore,
+    PromptInjectionScanner,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
 
 SAFETY_FILTER_REGISTRY["jailbreak"] = JailbreakDetector
+SAFETY_FILTER_REGISTRY["prompt_injection"] = PromptInjectionScanner
 
 __all__ = [
     "SAFETY_FILTER_REGISTRY",
     "HARM_CLASSIFIER_REGISTRY",
     "JailbreakDetector",
     "JailbreakScore",
+    "PromptInjectionScanner",
+    "InjectionScore",
 ]

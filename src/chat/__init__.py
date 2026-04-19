@@ -22,3 +22,6 @@ __all__ = [
     "ChatMLTemplate",
     "Message",
 ]
+
+from .llama3_template import Llama3Template  # noqa: E402
+CHAT_TEMPLATE_REGISTRY["llama3"] = Llama3Template()
