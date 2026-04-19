@@ -31,12 +31,22 @@ from src.inference.json_mode_decoder import (
     is_valid_json_prefix,
 )
 
+# ---------------------------------------------------------------------------
+# Multi-sample voting / self-consistency (Wang 2022, Chen 2024)
+# ---------------------------------------------------------------------------
+from src.inference.multi_sample_voting import (
+    MultiSampleVoter,
+    VoteResult,
+)
+
 __all__ = [
     "BatchStep",
     "ContinuousBatchingScheduler",
     "InferenceRequest",
     "JSONDecoderState",
     "JSONMaskBuilder",
+    "MultiSampleVoter",
     "SCHEDULER_REGISTRY",
+    "VoteResult",
     "is_valid_json_prefix",
 ]
