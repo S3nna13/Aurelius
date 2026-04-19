@@ -52,6 +52,12 @@ from src.safety.constitutional_principles_scorer import (
     ConstitutionalReport,
     PrincipleScore,
 )
+from src.safety.malicious_code_detector import (
+    CATEGORIES as MALICIOUS_CODE_CATEGORIES,
+    CodeThreat,
+    CodeThreatReport,
+    MaliciousCodeDetector,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -61,6 +67,7 @@ SAFETY_FILTER_REGISTRY["prompt_injection"] = PromptInjectionScanner
 SAFETY_FILTER_REGISTRY["pii"] = PIIDetector
 SAFETY_FILTER_REGISTRY["output_filter"] = OutputSafetyFilter
 SAFETY_FILTER_REGISTRY["prompt_integrity"] = PromptIntegrityChecker
+SAFETY_FILTER_REGISTRY["malicious_code"] = MaliciousCodeDetector
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
@@ -91,4 +98,8 @@ __all__ = [
     "ConstitutionalPrinciplesScorer",
     "ConstitutionalReport",
     "PrincipleScore",
+    "MALICIOUS_CODE_CATEGORIES",
+    "CodeThreat",
+    "CodeThreatReport",
+    "MaliciousCodeDetector",
 ]

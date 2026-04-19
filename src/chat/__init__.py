@@ -102,3 +102,10 @@ __all__ += [
     "FIMFormatError",
     "FIMFormatter",
 ]
+
+from .multi_turn_state import ConversationState, ConversationTurn  # noqa: E402
+
+__all__ += [
+    "ConversationState",
+    "ConversationTurn",
+]

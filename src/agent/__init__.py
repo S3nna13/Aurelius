@@ -152,3 +152,15 @@ __all__ += [
     "ShellCommandPlanner",
     "ShellPlan",
 ]
+
+
+# --- code execution sandbox (additive) --------------------------------------
+from .code_execution_sandbox import (  # noqa: E402
+    CodeExecutionSandbox,
+    ExecutionResult,
+)
+
+__all__ += [
+    "CodeExecutionSandbox",
+    "ExecutionResult",
+]

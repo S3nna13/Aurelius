@@ -39,6 +39,11 @@ from .yarn_position_extension import (
     yarn_mscale,
 )
 from .chunked_prefill import ChunkedPrefill, ChunkedPrefillConfig
+from .paged_kv_cache import (
+    PagedKVCache,
+    PagedKVOutOfMemory,
+    PageTable,
+)
 
 LONGCONTEXT_STRATEGY_REGISTRY: dict = {}
 LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] = KVInt8Compressor
@@ -48,6 +53,7 @@ LONGCONTEXT_STRATEGY_REGISTRY["context_compaction"] = ContextCompactor
 LONGCONTEXT_STRATEGY_REGISTRY["kv_kivi_int4"] = KIVIQuantizer
 LONGCONTEXT_STRATEGY_REGISTRY["infini"] = InfiniAttention
 LONGCONTEXT_STRATEGY_REGISTRY["chunked_prefill"] = ChunkedPrefill
+LONGCONTEXT_STRATEGY_REGISTRY["paged_kv"] = PagedKVCache
 
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
@@ -72,4 +78,7 @@ __all__ = [
     "yarn_mscale",
     "ChunkedPrefill",
     "ChunkedPrefillConfig",
+    "PagedKVCache",
+    "PagedKVOutOfMemory",
+    "PageTable",
 ]

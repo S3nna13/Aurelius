@@ -212,3 +212,28 @@ __all__ = list(__all__) + [
     "SingleAnswerScore",
     "PairwiseResult",
 ]
+
+# --- Additive registration for AlpacaEval LLM-as-judge harness ---------------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves the "niah", "ruler", "humaneval", "mbpp", "swebench_lite", "ifeval",
+# and "mtbench" entries untouched.
+from .alpacaeval_scorer import (
+    AlpacaEvalScorer as _AlpacaEvalScorer,
+    AlpacaProblem as _AlpacaProblem,
+    AlpacaComparison as _AlpacaComparison,
+)
+
+AlpacaEvalScorer = _AlpacaEvalScorer
+AlpacaProblem = _AlpacaProblem
+AlpacaComparison = _AlpacaComparison
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("alpacaeval", _AlpacaEvalScorer)
+BENCHMARK_REGISTRY.setdefault("alpacaeval", _AlpacaProblem)
+
+__all__ = list(__all__) + [
+    "AlpacaEvalScorer",
+    "AlpacaProblem",
+    "AlpacaComparison",
+]

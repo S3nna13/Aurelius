@@ -71,8 +71,12 @@ from .diversity_reranker import (  # noqa: E402
 RERANKER_REGISTRY["mmr"] = MMRReranker
 RERANKER_REGISTRY["jaccard_mmr"] = JaccardDiversityReranker
 
+from .corpus_indexer import Chunk, CorpusIndexer  # noqa: E402
+
 __all__ = [
     "BM25Retriever",
+    "Chunk",
+    "CorpusIndexer",
     "HybridRetriever",
     "RETRIEVER_REGISTRY",
     "EMBEDDING_REGISTRY",
