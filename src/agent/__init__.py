@@ -194,3 +194,25 @@ __all__ += [
     "TaskDecomposer",
     "TaskDecompositionError",
 ]
+
+
+# --- MCP client (additive) --------------------------------------------------
+from .mcp_client import (  # noqa: E402
+    MCP_PROTOCOL_VERSION,
+    MCPClient,
+    MCPPrompt,
+    MCPProtocolError,
+    MCPResource,
+    MCPToolCallResult,
+    MCPToolSpec,
+)
+
+__all__ += [
+    "MCP_PROTOCOL_VERSION",
+    "MCPClient",
+    "MCPPrompt",
+    "MCPProtocolError",
+    "MCPResource",
+    "MCPToolCallResult",
+    "MCPToolSpec",
+]

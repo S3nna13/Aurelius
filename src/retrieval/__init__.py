@@ -79,6 +79,13 @@ from .hard_negative_miner import (  # noqa: E402
     HardNegativeMiner,
 )
 
+from .colbert_late_interaction import (  # noqa: E402
+    ColBERTConfig,
+    ColBERTScorer,
+)
+
+RERANKER_REGISTRY["colbert"] = ColBERTScorer
+
 __all__ = [
     "BM25Retriever",
     "Chunk",

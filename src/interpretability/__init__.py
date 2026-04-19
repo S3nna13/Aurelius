@@ -6,3 +6,4 @@ from .attribution_graphs import (
     AttributionGraph,
     AttributionGraphBuilder,
 )
+from .dictionary_learning import DictionaryLearner, DictionaryResult

@@ -321,3 +321,30 @@ __all__ = list(__all__) + [
     "livecodebench_score_problems",
     "livecodebench_parse_date_filter",
 ]
+
+# --- Additive registration for MMLU 57-subject MC benchmark -----------------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves prior entries untouched.
+from .mmlu_scorer import (
+    MMLUProblem as _MMLUProblem,
+    MMLUResult as _MMLUResult,
+    MMLUScorer as _MMLUScorer,
+    parse_answer_letter as _mmlu_parse_answer_letter,
+)
+
+MMLUProblem = _MMLUProblem
+MMLUResult = _MMLUResult
+MMLUScorer = _MMLUScorer
+mmlu_parse_answer_letter = _mmlu_parse_answer_letter
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("mmlu", _MMLUScorer)
+BENCHMARK_REGISTRY.setdefault("mmlu", _MMLUProblem)
+
+__all__ = list(__all__) + [
+    "MMLUProblem",
+    "MMLUResult",
+    "MMLUScorer",
+    "mmlu_parse_answer_letter",
+]

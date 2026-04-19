@@ -45,6 +45,7 @@ from .paged_kv_cache import (
     PageTable,
 )
 from .prefix_cache import PrefixCache, PrefixEntry
+from .compressive_transformer import CompressiveMemory, CompressiveMemoryState
 
 LONGCONTEXT_STRATEGY_REGISTRY: dict = {}
 LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] = KVInt8Compressor
@@ -56,6 +57,7 @@ LONGCONTEXT_STRATEGY_REGISTRY["infini"] = InfiniAttention
 LONGCONTEXT_STRATEGY_REGISTRY["chunked_prefill"] = ChunkedPrefill
 LONGCONTEXT_STRATEGY_REGISTRY["paged_kv"] = PagedKVCache
 LONGCONTEXT_STRATEGY_REGISTRY["prefix_cache"] = PrefixCache
+LONGCONTEXT_STRATEGY_REGISTRY["compressive_memory"] = CompressiveMemory
 
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
@@ -85,4 +87,6 @@ __all__ = [
     "PageTable",
     "PrefixCache",
     "PrefixEntry",
+    "CompressiveMemory",
+    "CompressiveMemoryState",
 ]
