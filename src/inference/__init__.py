@@ -25,9 +25,18 @@ except NameError:
 
 SCHEDULER_REGISTRY["continuous_batching"] = ContinuousBatchingScheduler
 
+from src.inference.json_mode_decoder import (
+    JSONDecoderState,
+    JSONMaskBuilder,
+    is_valid_json_prefix,
+)
+
 __all__ = [
     "BatchStep",
     "ContinuousBatchingScheduler",
     "InferenceRequest",
+    "JSONDecoderState",
+    "JSONMaskBuilder",
     "SCHEDULER_REGISTRY",
+    "is_valid_json_prefix",
 ]

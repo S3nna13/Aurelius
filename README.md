@@ -265,8 +265,8 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **109 implementation cycles** completed
-- **17 500+ tests** passing (full suite ~16-25 min on CPU)
+- **110 implementation cycles** completed
+- **17 600+ tests** passing (full suite ~16-28 min on CPU)
 - **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
 - `aurelius` works as a terminal command after `pip install -e .`
 - Frontier-tier surfaces wired in cycles 100–103:
@@ -276,7 +276,12 @@ from aurelius.model.transformer import AureliusTransformer
   - **retrieval** — 10 modules: BM25, hybrid RRF, fusion suite, cross-encoder + MMR/Jaccard rerankers, dense embedder, code-aware tokenizer, instruction-prefix embedder, corpus indexer, hard-negative miner (bm25-hard / embedding-hard / in-batch)
   - **safety** — 10 modules: jailbreak, prompt-injection, harm-taxonomy, PII, output filter, prompt-integrity, refusal, constitutional, malicious-code, policy engine (declarative rule pipeline over all sub-filters)
   - **eval** — 9 modules: NIAH, RULER, HumanEval, MBPP, SWE-bench-lite, IFEval, MT-Bench, AlpacaEval, Arena-Hard (Bradley-Terry + bootstrap CIs)
-  - **inference** additions — Orca-style continuous-batching scheduler
+  - **inference** additions — Orca-style continuous-batching scheduler, JSON-mode constrained decoder (structural JSON validity via stack parser)
+  - **training** additions — FSDP-lite sharded-DDP wrapper (single-process simulation)
+  - **serving** additions — OpenAI Chat Completions request/response validator + API_SHAPE_REGISTRY
+  - **optimizers** additions — Schedule-Free AdamW (Defazio 2024, no LR schedule required)
+  - **data** additions — instruction-dataset packer with FFD bin-packing + block-diagonal attention mask + response-only loss mask
+  - **eval** additions — GPQA (graduate-level MCQ scorer)
 
 ---
 

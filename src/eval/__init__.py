@@ -262,3 +262,31 @@ __all__ = list(__all__) + [
     "ArenaProblem",
     "ArenaComparison",
 ]
+
+# --- Additive registration for GPQA graduate-level MC benchmark --------------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves the "niah", "ruler", "humaneval", "mbpp", "swebench_lite", "ifeval",
+# "mtbench", "alpacaeval", and "arena_hard" entries untouched.
+from .gpqa_scorer import (
+    GPQAProblem as _GPQAProblem,
+    GPQAResult as _GPQAResult,
+    GPQAScorer as _GPQAScorer,
+    parse_answer_letter as _gpqa_parse_answer_letter,
+)
+
+GPQAProblem = _GPQAProblem
+GPQAResult = _GPQAResult
+GPQAScorer = _GPQAScorer
+gpqa_parse_answer_letter = _gpqa_parse_answer_letter
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("gpqa", _GPQAScorer)
+BENCHMARK_REGISTRY.setdefault("gpqa", _GPQAProblem)
+
+__all__ = list(__all__) + [
+    "GPQAProblem",
+    "GPQAResult",
+    "GPQAScorer",
+    "gpqa_parse_answer_letter",
+]

@@ -8,6 +8,7 @@ from .adafactor import (
 from .lamb import LAMB, lamb_trust_ratio
 from .lookahead import Lookahead
 from .radam import RAdam, radam_rectification, radam_rho_inf, radam_rho_t
+from .schedule_free_adamw import ScheduleFreeAdamW
 
 __all__ = [
     "Adafactor",
@@ -20,4 +21,13 @@ __all__ = [
     "radam_rectification",
     "radam_rho_inf",
     "radam_rho_t",
+    "ScheduleFreeAdamW",
 ]
+
+# Register in OPTIMIZER_REGISTRY if the project exposes one.
+try:
+    OPTIMIZER_REGISTRY  # type: ignore[name-defined]  # noqa: F821
+except NameError:
+    pass
+else:
+    OPTIMIZER_REGISTRY["schedule_free_adamw"] = ScheduleFreeAdamW  # type: ignore[name-defined]  # noqa: F821
