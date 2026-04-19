@@ -92,3 +92,19 @@ __all__ += [
     "BeamPlanner",
     "PlanNode",
 ]
+
+
+# --- tool error recovery (additive) -----------------------------------------
+from .tool_error_recovery import (  # noqa: E402
+    RecoveringDispatcher,
+    RecoveryDecision,
+    RecoveryPolicy,
+    RecoveryStrategy,
+)
+
+__all__ += [
+    "RecoveringDispatcher",
+    "RecoveryDecision",
+    "RecoveryPolicy",
+    "RecoveryStrategy",
+]

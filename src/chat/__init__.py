@@ -36,3 +36,17 @@ from .harmony_template import (  # noqa: E402
 )
 CHAT_TEMPLATE_REGISTRY["harmony"] = HarmonyTemplate()
 MESSAGE_FORMAT_REGISTRY["harmony"] = HarmonyMessage
+
+from .conversation_memory import (  # noqa: E402
+    ConversationMemory,
+    Fact,
+    InMemoryStore,
+    JSONFileStore,
+)
+
+__all__ += [
+    "ConversationMemory",
+    "Fact",
+    "InMemoryStore",
+    "JSONFileStore",
+]

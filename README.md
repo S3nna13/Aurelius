@@ -265,17 +265,18 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **103 implementation cycles** completed
-- **16 775+ tests** passing (full suite ~16 min on CPU)
+- **104 implementation cycles** completed
+- **16 900+ tests** passing (full suite ~16-21 min on CPU)
 - **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
 - `aurelius` works as a terminal command after `pip install -e .`
 - Frontier-tier surfaces wired in cycles 100–103:
-  - **agent** — tool-call parser (XML + JSON), ReAct loop, safe tool-registry dispatcher (rate-limit + timeout + budget), beam-search Tree-of-Thoughts planner
-  - **chat** — ChatML, Llama-3, Harmony (OpenAI gpt-oss format) templates, tool-message formatter
-  - **longcontext** — INT8 KV cache, attention sinks, ring attention, context compaction
-  - **retrieval** — BM25, hybrid RRF retriever, standalone fusion suite (RRF / Borda / CombSUM / CombMNZ), cross-encoder reranker architecture
-  - **safety** — jailbreak detector, prompt-injection scanner, harm-taxonomy classifier (Llama-Guard + malicious-code), PII detector (+ Luhn / IBAN validation)
+  - **agent** — tool-call parser (XML + JSON), ReAct loop, safe tool-registry dispatcher (rate-limit + timeout + budget), beam-search Tree-of-Thoughts planner, tool-error-recovery strategy (retry/backoff/fallback/escalate)
+  - **chat** — ChatML, Llama-3, Harmony (OpenAI gpt-oss format) templates, tool-message formatter, persistent conversation memory (in-memory + atomic-JSON backends with BM25 retrieval)
+  - **longcontext** — INT8 KV cache, attention sinks, ring attention, context compaction, INT4 KIVI quantization (per-channel K, per-token V)
+  - **retrieval** — BM25, hybrid RRF retriever, standalone fusion suite (RRF / Borda / CombSUM / CombMNZ), cross-encoder reranker architecture, contrastive dense-embedding trainer (SimCSE / BGE)
+  - **safety** — jailbreak detector, prompt-injection scanner, harm-taxonomy classifier (Llama-Guard + malicious-code), PII detector (+ Luhn / IBAN validation), unified output safety filter with streaming chunk support
   - **eval** — NIAH, RULER, HumanEval (pass@k subprocess sandbox), MBPP
+  - **inference** additions — Orca-style continuous-batching scheduler for multi-request decoding
 
 ---
 

@@ -32,6 +32,11 @@ from src.safety.pii_detector import (
     PIIMatch,
     PIIResult,
 )
+from src.safety.output_safety_filter import (
+    FilterDecision,
+    OutputSafetyFilter,
+    OutputSafetyPolicy,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -39,6 +44,7 @@ HARM_CLASSIFIER_REGISTRY: dict = {}
 SAFETY_FILTER_REGISTRY["jailbreak"] = JailbreakDetector
 SAFETY_FILTER_REGISTRY["prompt_injection"] = PromptInjectionScanner
 SAFETY_FILTER_REGISTRY["pii"] = PIIDetector
+SAFETY_FILTER_REGISTRY["output_filter"] = OutputSafetyFilter
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 
@@ -55,4 +61,7 @@ __all__ = [
     "PIIDetector",
     "PIIMatch",
     "PIIResult",
+    "FilterDecision",
+    "OutputSafetyFilter",
+    "OutputSafetyPolicy",
 ]

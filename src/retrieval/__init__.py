@@ -41,6 +41,15 @@ from .cross_encoder_reranker import (  # noqa: E402
 
 RERANKER_REGISTRY["cross_encoder"] = CrossEncoderReranker
 
+from .dense_embedding_trainer import (  # noqa: E402
+    DenseEmbedder,
+    EmbedderConfig,
+    EmbeddingTrainer,
+    InfoNCELoss,
+)
+
+EMBEDDING_REGISTRY["dense"] = DenseEmbedder
+
 __all__ = [
     "BM25Retriever",
     "HybridRetriever",
@@ -53,4 +62,8 @@ __all__ = [
     "comb_mnz",
     "fuse",
     "FUSION_REGISTRY",
+    "DenseEmbedder",
+    "EmbedderConfig",
+    "EmbeddingTrainer",
+    "InfoNCELoss",
 ]
