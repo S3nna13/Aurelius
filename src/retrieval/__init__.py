@@ -34,6 +34,13 @@ from .reciprocal_rank_fusion import (  # noqa: E402
     reciprocal_rank_fusion,
 )
 
+from .cross_encoder_reranker import (  # noqa: E402
+    CrossEncoderConfig,
+    CrossEncoderReranker,
+)
+
+RERANKER_REGISTRY["cross_encoder"] = CrossEncoderReranker
+
 __all__ = [
     "BM25Retriever",
     "HybridRetriever",

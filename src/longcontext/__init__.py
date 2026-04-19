@@ -22,11 +22,13 @@ from .kv_compression import (
 )
 from .attention_sinks import AttentionSinkCache
 from .ring_attention import RingAttention, ring_attention
+from .context_compaction import ContextCompactor, Turn as CompactionTurn
 
 LONGCONTEXT_STRATEGY_REGISTRY: dict = {}
 LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] = KVInt8Compressor
 LONGCONTEXT_STRATEGY_REGISTRY["attention_sinks"] = AttentionSinkCache
 LONGCONTEXT_STRATEGY_REGISTRY["ring_attention"] = RingAttention
+LONGCONTEXT_STRATEGY_REGISTRY["context_compaction"] = ContextCompactor
 
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
@@ -36,4 +38,6 @@ __all__ = [
     "AttentionSinkCache",
     "RingAttention",
     "ring_attention",
+    "ContextCompactor",
+    "CompactionTurn",
 ]

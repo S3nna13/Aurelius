@@ -16,9 +16,10 @@ def test_registry_entry_is_class_and_usable():
     cls = retrieval.RETRIEVER_REGISTRY["bm25"]
     assert isinstance(cls, type), "registry entry must be a class"
 
-    # Empty sibling registries: importing should not populate them.
-    assert retrieval.EMBEDDING_REGISTRY == {}
-    assert retrieval.RERANKER_REGISTRY == {}
+    # Sibling registries: dicts; siblings (e.g. cross_encoder) may
+    # additively register entries.
+    assert isinstance(retrieval.EMBEDDING_REGISTRY, dict)
+    assert isinstance(retrieval.RERANKER_REGISTRY, dict)
 
     r = cls()
     docs = [

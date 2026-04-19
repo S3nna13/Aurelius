@@ -81,3 +81,14 @@ __all__ += [
     "ToolRegistryDispatcher",
     "ToolSpec",
 ]
+
+
+# --- tree-of-thoughts beam planner (additive) -------------------------------
+from .agent_planner import BeamPlanner, PlanNode  # noqa: E402
+
+AGENT_LOOP_REGISTRY["beam_plan"] = BeamPlanner
+
+__all__ += [
+    "BeamPlanner",
+    "PlanNode",
+]

@@ -265,11 +265,17 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **101 implementation cycles** completed
-- **16 500+ tests** passing (full suite ~14 min on CPU)
+- **103 implementation cycles** completed
+- **16 775+ tests** passing (full suite ~16 min on CPU)
 - **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
 - `aurelius` works as a terminal command after `pip install -e .`
-- Five new frontier-tier surfaces wired in cycles 100–101: tool-call parsing, ReAct agent loop, ChatML + Llama-3 chat templates, INT8 KV cache + attention sinks, BM25 + hybrid RRF retrieval, jailbreak + prompt-injection detection, NIAH + RULER long-context evals
+- Frontier-tier surfaces wired in cycles 100–103:
+  - **agent** — tool-call parser (XML + JSON), ReAct loop, safe tool-registry dispatcher (rate-limit + timeout + budget), beam-search Tree-of-Thoughts planner
+  - **chat** — ChatML, Llama-3, Harmony (OpenAI gpt-oss format) templates, tool-message formatter
+  - **longcontext** — INT8 KV cache, attention sinks, ring attention, context compaction
+  - **retrieval** — BM25, hybrid RRF retriever, standalone fusion suite (RRF / Borda / CombSUM / CombMNZ), cross-encoder reranker architecture
+  - **safety** — jailbreak detector, prompt-injection scanner, harm-taxonomy classifier (Llama-Guard + malicious-code), PII detector (+ Luhn / IBAN validation)
+  - **eval** — NIAH, RULER, HumanEval (pass@k subprocess sandbox), MBPP
 
 ---
 

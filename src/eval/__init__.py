@@ -93,3 +93,30 @@ __all__ = list(__all__) + [
     "humaneval_score_problems",
     "humaneval_pass_at_k",
 ]
+
+# --- Additive registration for MBPP functional-correctness benchmark ---------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves the "niah", "ruler", and "humaneval" entries untouched.
+from .mbpp_scorer import (
+    MBPPProblem as _MBPPProblem,
+    MBPPSampleResult as _MBPPSampleResult,
+    score_single as _mbpp_score_single,
+    score_problems as _mbpp_score_problems,
+)
+
+MBPPProblem = _MBPPProblem
+MBPPSampleResult = _MBPPSampleResult
+mbpp_score_single = _mbpp_score_single
+mbpp_score_problems = _mbpp_score_problems
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("mbpp", _mbpp_score_problems)
+BENCHMARK_REGISTRY.setdefault("mbpp", _MBPPProblem)
+
+__all__ = list(__all__) + [
+    "MBPPProblem",
+    "MBPPSampleResult",
+    "mbpp_score_single",
+    "mbpp_score_problems",
+]

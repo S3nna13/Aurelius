@@ -28,3 +28,11 @@ CHAT_TEMPLATE_REGISTRY["llama3"] = Llama3Template()
 
 from .tool_message_formatter import ToolMessageFormatter, ToolResult  # noqa: E402
 MESSAGE_FORMAT_REGISTRY["tool_result"] = ToolMessageFormatter
+
+from .harmony_template import (  # noqa: E402
+    HarmonyFormatError,
+    HarmonyMessage,
+    HarmonyTemplate,
+)
+CHAT_TEMPLATE_REGISTRY["harmony"] = HarmonyTemplate()
+MESSAGE_FORMAT_REGISTRY["harmony"] = HarmonyMessage
