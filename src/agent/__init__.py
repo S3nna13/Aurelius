@@ -164,3 +164,21 @@ __all__ += [
     "CodeExecutionSandbox",
     "ExecutionResult",
 ]
+
+
+# --- task decomposer (additive) ---------------------------------------------
+from .task_decomposer import (  # noqa: E402
+    SubTask,
+    TaskDAG,
+    TaskDecomposer,
+    TaskDecompositionError,
+)
+
+AGENT_LOOP_REGISTRY["task_decompose"] = TaskDecomposer
+
+__all__ += [
+    "SubTask",
+    "TaskDAG",
+    "TaskDecomposer",
+    "TaskDecompositionError",
+]

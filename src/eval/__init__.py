@@ -237,3 +237,28 @@ __all__ = list(__all__) + [
     "AlpacaProblem",
     "AlpacaComparison",
 ]
+
+# --- Additive registration for Arena-Hard LLM-as-judge harness ---------------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves the "niah", "ruler", "humaneval", "mbpp", "swebench_lite", "ifeval",
+# "mtbench", and "alpacaeval" entries untouched.
+from .arena_hard_scorer import (
+    ArenaHardScorer as _ArenaHardScorer,
+    ArenaProblem as _ArenaProblem,
+    ArenaComparison as _ArenaComparison,
+)
+
+ArenaHardScorer = _ArenaHardScorer
+ArenaProblem = _ArenaProblem
+ArenaComparison = _ArenaComparison
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("arena_hard", _ArenaHardScorer)
+BENCHMARK_REGISTRY.setdefault("arena_hard", _ArenaProblem)
+
+__all__ = list(__all__) + [
+    "ArenaHardScorer",
+    "ArenaProblem",
+    "ArenaComparison",
+]

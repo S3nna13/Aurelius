@@ -73,10 +73,19 @@ RERANKER_REGISTRY["jaccard_mmr"] = JaccardDiversityReranker
 
 from .corpus_indexer import Chunk, CorpusIndexer  # noqa: E402
 
+from .hard_negative_miner import (  # noqa: E402
+    STRATEGIES as HARD_NEGATIVE_STRATEGIES,
+    HardNegative,
+    HardNegativeMiner,
+)
+
 __all__ = [
     "BM25Retriever",
     "Chunk",
     "CorpusIndexer",
+    "HardNegative",
+    "HardNegativeMiner",
+    "HARD_NEGATIVE_STRATEGIES",
     "HybridRetriever",
     "RETRIEVER_REGISTRY",
     "EMBEDDING_REGISTRY",

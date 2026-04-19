@@ -265,17 +265,17 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **108 implementation cycles** completed
-- **17 400+ tests** passing (full suite ~16-21 min on CPU)
+- **109 implementation cycles** completed
+- **17 500+ tests** passing (full suite ~16-25 min on CPU)
 - **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
 - `aurelius` works as a terminal command after `pip install -e .`
 - Frontier-tier surfaces wired in cycles 100–103:
-  - **agent** — 9 modules incl. tool-call parsers, ReAct loop, dispatcher, ToT planner, error recovery, repo-context packer, unified-diff generator, shell planner, code-execution sandbox (subprocess + setrlimit)
-  - **chat** — 9 modules incl. ChatML/Llama-3/Harmony, tool-message formatter, conversation memory, instruction-tuning data, role-aware masks, FIM formatter, multi-turn state manager
-  - **longcontext** — 9 modules incl. INT8/INT4 KV cache, attention sinks, ring attention, context compaction, Infini-attention, YaRN utilities, Sarathi chunked prefill, vLLM-style paged KV cache with prefix sharing + COW
-  - **retrieval** — 9 modules incl. BM25, hybrid RRF, fusion suite, cross-encoder reranker, dense embedder, code-aware tokenizer, instruction-prefix embedder, MMR/Jaccard rerankers, corpus indexer (atomic JSON persist)
-  - **safety** — 9 modules incl. jailbreak, prompt-injection, harm-taxonomy, PII, output filter, prompt-integrity, refusal, constitutional principles, malicious-code detector (8 categories)
-  - **eval** — 8 modules incl. NIAH, RULER, HumanEval, MBPP, SWE-bench-lite, IFEval, MT-Bench, AlpacaEval (pairwise with position-bias swap + simplified LC winrate)
+  - **agent** — 10 modules: tool-call parsers, ReAct loop, dispatcher, ToT planner, error recovery, repo-context packer, unified-diff generator, shell planner, code-execution sandbox, task decomposer (DAG + topo sort + parallelizable-group extraction)
+  - **chat** — 10 modules: ChatML/Llama-3/Harmony, tool-message formatter, conversation memory, instruction-tuning data, role-aware masks, FIM, multi-turn state, 5-strategy message-truncation policy
+  - **longcontext** — 10 modules: INT8/INT4 KV, attention sinks, ring/Infini attention, context compaction, YaRN utilities, chunked prefill, paged KV cache, prefix cache (block-trie + LRU + refcount pinning)
+  - **retrieval** — 10 modules: BM25, hybrid RRF, fusion suite, cross-encoder + MMR/Jaccard rerankers, dense embedder, code-aware tokenizer, instruction-prefix embedder, corpus indexer, hard-negative miner (bm25-hard / embedding-hard / in-batch)
+  - **safety** — 10 modules: jailbreak, prompt-injection, harm-taxonomy, PII, output filter, prompt-integrity, refusal, constitutional, malicious-code, policy engine (declarative rule pipeline over all sub-filters)
+  - **eval** — 9 modules: NIAH, RULER, HumanEval, MBPP, SWE-bench-lite, IFEval, MT-Bench, AlpacaEval, Arena-Hard (Bradley-Terry + bootstrap CIs)
   - **inference** additions — Orca-style continuous-batching scheduler
 
 ---

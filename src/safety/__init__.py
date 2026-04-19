@@ -58,6 +58,11 @@ from src.safety.malicious_code_detector import (
     CodeThreatReport,
     MaliciousCodeDetector,
 )
+from src.safety.policy_engine import (
+    PolicyDecision,
+    PolicyEngine,
+    PolicyRule,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -68,6 +73,7 @@ SAFETY_FILTER_REGISTRY["pii"] = PIIDetector
 SAFETY_FILTER_REGISTRY["output_filter"] = OutputSafetyFilter
 SAFETY_FILTER_REGISTRY["prompt_integrity"] = PromptIntegrityChecker
 SAFETY_FILTER_REGISTRY["malicious_code"] = MaliciousCodeDetector
+SAFETY_FILTER_REGISTRY["policy_engine"] = PolicyEngine
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
@@ -102,4 +108,7 @@ __all__ = [
     "CodeThreat",
     "CodeThreatReport",
     "MaliciousCodeDetector",
+    "PolicyDecision",
+    "PolicyEngine",
+    "PolicyRule",
 ]
