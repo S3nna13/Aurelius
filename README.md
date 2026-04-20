@@ -265,9 +265,12 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **116 implementation cycles** completed
-- **18 300+ tests** passing (full suite ~16-28 min on CPU)
+- **118 implementation cycles** completed
+- **18 700+ tests** passing (full suite ~14-28 min on CPU)
 - **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
+- Recent cycles:
+  - **cycle-117** — Toolformer-style self-supervised tool-learning data-gen, tau-bench scorer, dynamic NTK-aware context-window extension, grammar-constrained structured-output decoder, step-level Process Reward Model
+  - **cycle-118** — hallucination guard (claim-vs-evidence validator), skill scanner (agent-skill supply-chain), canary-token guard (runtime prompt-injection defense), Mythos 6-dim coding rubric + anti-reward-hack system prompt, adversarial code battle (red-vs-blue self-play → DPO pairs), CWE synthetic-bug recipe catalog
 - `aurelius` works as a terminal command after `pip install -e .`
 - Frontier-tier surfaces wired in cycles 100–103:
   - **agent** — 10 modules: tool-call parsers, ReAct loop, dispatcher, ToT planner, error recovery, repo-context packer, unified-diff generator, shell planner, code-execution sandbox, task decomposer (DAG + topo sort + parallelizable-group extraction)
