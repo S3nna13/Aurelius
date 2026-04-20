@@ -50,3 +50,25 @@ DECODER_REGISTRY: dict = {
     "json_schema": StructuredOutputDecoder,
     "grammar": GrammarConstrainedDecoder,
 }
+
+# Additive: resilience primitives (circuit breaker). Exposed under a
+# dedicated ``RESILIENCE_REGISTRY`` because a circuit breaker is a
+# serving-layer resilience primitive, distinct from stream handlers or
+# API-shape validators.
+from .circuit_breaker import (  # noqa: E402,F401
+    CircuitBreaker,
+    CircuitOpenError,
+    CircuitState,
+    CircuitStateTransition,
+)
+
+RESILIENCE_REGISTRY: dict = {
+    "circuit_breaker": CircuitBreaker,
+}
+
+# --- SSE streaming frame encoder (additive) ---------------------------------
+from .sse_stream_encoder import SSEStreamEncoder, split_sse_records  # noqa: E402
+
+STREAM_HANDLER_REGISTRY: dict = {
+    "sse": SSEStreamEncoder,
+}

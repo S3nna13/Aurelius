@@ -250,3 +250,39 @@ __all__ += [
     "ToolformerDataGenerator",
     "ToolformerTool",
 ]
+
+
+# --- dispatch task (additive) -----------------------------------------------
+from .dispatch_task import (  # noqa: E402
+    DispatchOutcome,
+    DispatchReport,
+    DispatchTask,
+    Dispatcher,
+    classify_error,
+)
+
+AGENT_LOOP_REGISTRY["dispatch_task"] = Dispatcher
+
+__all__ += [
+    "DispatchOutcome",
+    "DispatchReport",
+    "DispatchTask",
+    "Dispatcher",
+    "classify_error",
+]
+
+
+# --- budget-bounded ReAct wrapper (additive) --------------------------------
+from .budget_bounded_loop import (  # noqa: E402
+    BudgetBoundedLoop,
+    BudgetState,
+    ToolInvocationBudgetError,
+)
+
+AGENT_LOOP_REGISTRY["budget_bounded"] = BudgetBoundedLoop
+
+__all__ += [
+    "BudgetBoundedLoop",
+    "BudgetState",
+    "ToolInvocationBudgetError",
+]

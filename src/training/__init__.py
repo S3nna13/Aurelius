@@ -14,3 +14,10 @@ __all__ = [
     "LRRangeTest",
     "LRRangeTestResult",
 ]
+
+from src.training.tool_call_supervision_loss import ToolCallSupervisionLoss  # noqa: E402
+
+AUXILIARY_LOSS_REGISTRY: dict[str, type] = {}
+AUXILIARY_LOSS_REGISTRY.setdefault("tool_call_supervision", ToolCallSupervisionLoss)
+
+__all__ += ["ToolCallSupervisionLoss", "AUXILIARY_LOSS_REGISTRY"]

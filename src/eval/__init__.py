@@ -442,3 +442,112 @@ __all__ = list(__all__) + [
     "mythos_format_trajectory",
     "eval_mythos_coding_rubric_enabled",
 ]
+
+# --- Additive registration for Crescendo multi-turn jailbreak probe ----------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched. Default config flag is OFF.
+from .crescendo_probe import (
+    CrescendoProbe as _CrescendoProbe,
+    CrescendoResult as _CrescendoResult,
+    CrescendoTurn as _CrescendoTurn,
+    ESCALATION_TEMPLATES as _CRESCENDO_ESCALATION_TEMPLATES,
+    stub_target_fn as _crescendo_stub_target_fn,
+    stub_judge_fn as _crescendo_stub_judge_fn,
+)
+
+CrescendoProbe = _CrescendoProbe
+CrescendoResult = _CrescendoResult
+CrescendoTurn = _CrescendoTurn
+CRESCENDO_ESCALATION_TEMPLATES = _CRESCENDO_ESCALATION_TEMPLATES
+crescendo_stub_target_fn = _crescendo_stub_target_fn
+crescendo_stub_judge_fn = _crescendo_stub_judge_fn
+
+# Config flag, default OFF.
+eval_crescendo_probe_enabled: bool = False
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("crescendo_probe", _CrescendoProbe)
+BENCHMARK_REGISTRY.setdefault("crescendo_probe", _CrescendoProbe)
+
+__all__ = list(__all__) + [
+    "CrescendoProbe",
+    "CrescendoResult",
+    "CrescendoTurn",
+    "CRESCENDO_ESCALATION_TEMPLATES",
+    "crescendo_stub_target_fn",
+    "crescendo_stub_judge_fn",
+    "eval_crescendo_probe_enabled",
+]
+
+# --- Additive registration for 40-dim behavioral-audit taxonomy --------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched. Default config flag is OFF.
+from .behavioral_audit_taxonomy import (
+    BehaviorCategory as _BehaviorCategory,
+    BehaviorDimension as _BehaviorDimension,
+    BEHAVIORAL_AUDIT_TAXONOMY as _BEHAVIORAL_AUDIT_TAXONOMY,
+    DimensionScore as _BATDimensionScore,
+    AuditResult as _BATAuditResult,
+    BehavioralAuditRegistry as _BehavioralAuditRegistry,
+    by_id as _bat_by_id,
+    by_category as _bat_by_category,
+)
+
+BehaviorCategory = _BehaviorCategory
+BehaviorDimension = _BehaviorDimension
+BEHAVIORAL_AUDIT_TAXONOMY = _BEHAVIORAL_AUDIT_TAXONOMY
+BATDimensionScore = _BATDimensionScore
+BATAuditResult = _BATAuditResult
+BehavioralAuditRegistry = _BehavioralAuditRegistry
+bat_by_id = _bat_by_id
+bat_by_category = _bat_by_category
+
+# Config flag, default OFF.
+eval_behavioral_audit_taxonomy_enabled: bool = False
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault(
+    "behavioral_audit_taxonomy", _BehavioralAuditRegistry
+)
+BENCHMARK_REGISTRY.setdefault(
+    "behavioral_audit_taxonomy", _BehavioralAuditRegistry
+)
+
+__all__ = list(__all__) + [
+    "BehaviorCategory",
+    "BehaviorDimension",
+    "BEHAVIORAL_AUDIT_TAXONOMY",
+    "BATDimensionScore",
+    "BATAuditResult",
+    "BehavioralAuditRegistry",
+    "bat_by_id",
+    "bat_by_category",
+    "eval_behavioral_audit_taxonomy_enabled",
+]
+
+# --- Additive registration for synthetic jailbreak probe generator ----------
+from .synthetic_jailbreak_generator import (  # noqa: E402
+    SyntheticJailbreakGenerator as _SyntheticJailbreakGenerator,
+    SyntheticProbe as _SyntheticProbe,
+    score_probe_naive_refusal as _score_probe_naive_refusal,
+)
+
+SyntheticJailbreakGenerator = _SyntheticJailbreakGenerator
+SyntheticProbe = _SyntheticProbe
+score_probe_naive_refusal = _score_probe_naive_refusal
+
+eval_synthetic_jailbreak_generator_enabled: bool = False
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("synthetic_jailbreak", _SyntheticJailbreakGenerator)
+BENCHMARK_REGISTRY.setdefault("synthetic_jailbreak", _SyntheticJailbreakGenerator)
+
+__all__ = list(__all__) + [
+    "SyntheticJailbreakGenerator",
+    "SyntheticProbe",
+    "score_probe_naive_refusal",
+    "eval_synthetic_jailbreak_generator_enabled",
+]

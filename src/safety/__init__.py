@@ -78,6 +78,12 @@ from src.safety.skill_scanner import (
     SkillScanReport,
     SkillScanner,
 )
+from src.safety.reward_hack_detector import (
+    PATTERN_DETECTORS as REWARD_HACK_PATTERN_DETECTORS,
+    RewardHackDetector,
+    RewardHackReport,
+    RewardHackSignal,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -92,6 +98,7 @@ SAFETY_FILTER_REGISTRY["policy_engine"] = PolicyEngine
 SAFETY_FILTER_REGISTRY["hallucination_guard"] = HallucinationGuard
 SAFETY_FILTER_REGISTRY["canary_token_guard"] = CanaryTokenGuard
 SAFETY_FILTER_REGISTRY["skill_scanner"] = SkillScanner
+SAFETY_FILTER_REGISTRY["reward_hack_detector"] = RewardHackDetector
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
@@ -138,4 +145,8 @@ __all__ = [
     "SkillFinding",
     "SkillScanReport",
     "SkillScanner",
+    "REWARD_HACK_PATTERN_DETECTORS",
+    "RewardHackDetector",
+    "RewardHackReport",
+    "RewardHackSignal",
 ]

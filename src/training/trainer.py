@@ -306,7 +306,13 @@ class CheckpointManager:
         unwrapped = accelerator.unwrap_model(model)
 
         # Save model weights
-        state_dict = {k: v.contiguous().cpu() for k, v in unwrapped.state_dict().items()}
+        # ``safetensors`` rejects shared storage, which is common when the
+        # model ties ``embed.weight`` and ``lm_head.weight``. Clone each tensor
+        # so checkpointing stays compatible with tied-embedding models.
+        state_dict = {
+            k: v.detach().contiguous().cpu().clone()
+            for k, v in unwrapped.state_dict().items()
+        }
         save_file(state_dict, ckpt_dir / "model.safetensors")
 
         # Save optimizer + scheduler state (torch format for complex state)

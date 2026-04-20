@@ -81,6 +81,42 @@ class AureliusConfig:
     # CWE synthetic (vulnerable, secure) pair generator (default OFF)
     data_cwe_synthesis_enabled: bool = False
 
+    # Reward-hacking trajectory detector (default OFF)
+    safety_reward_hack_detector_enabled: bool = False
+
+    # Parallel fan-out dispatch-task agent primitive (default OFF)
+    agent_dispatch_task_enabled: bool = False
+
+    # Serving-layer circuit breaker resilience primitive (default OFF)
+    serving_circuit_breaker_enabled: bool = False
+
+    # Crescendo multi-turn jailbreak probe (llm_red_team eval; default OFF)
+    eval_crescendo_probe_enabled: bool = False
+
+    # Behavioral-audit 40-dimension taxonomy (eval; default OFF)
+    eval_behavioral_audit_taxonomy_enabled: bool = False
+
+    # Threat-intelligence analyst persona for chat surface (default OFF)
+    chat_threat_intel_persona_enabled: bool = False
+
+    # Budget-bounded ReAct wrapper (tool-call cap; default OFF registry flag)
+    agent_budget_bounded_loop_enabled: bool = False
+    agent_budget_max_tool_invocations: int = 8
+
+    # Tool-span supervision loss head (default OFF)
+    training_tool_call_supervision_enabled: bool = False
+
+    # Synthetic jailbreak probe generator for eval harnesses (default OFF)
+    eval_synthetic_jailbreak_generator_enabled: bool = False
+
+    # SSE wire encoder for streaming responses (default OFF)
+    serving_sse_stream_encoder_enabled: bool = False
+
+    # Sink-token logit bias helper for decoding (default OFF)
+    inference_sink_logit_bias_enabled: bool = False
+    inference_sink_logit_bonus: float = 1.0
+    inference_sink_last_n_positions: int = 4
+
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (
             f"d_model ({self.d_model}) must equal n_heads ({self.n_heads}) "

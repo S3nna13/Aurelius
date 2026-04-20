@@ -50,3 +50,18 @@ __all__ = [
     "VoteResult",
     "is_valid_json_prefix",
 ]
+
+from src.inference.sink_logit_bias import (  # noqa: E402
+    SinkLogitBiasApplier,
+    apply_sink_token_logit_bias,
+)
+
+LOGIT_BIAS_REGISTRY: dict[str, type] = {
+    "sink_tokens": SinkLogitBiasApplier,
+}
+
+__all__ += [
+    "SinkLogitBiasApplier",
+    "apply_sink_token_logit_bias",
+    "LOGIT_BIAS_REGISTRY",
+]

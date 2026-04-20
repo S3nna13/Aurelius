@@ -121,3 +121,23 @@ __all__ += [
     "TruncatedResult",
     "MESSAGE_TRUNCATION_STRATEGIES",
 ]
+
+from .threat_intel_persona import (  # noqa: E402
+    ACTOR_SCHEMA,
+    CVE_SCHEMA,
+    IOC_SCHEMA,
+    MITRE_SCHEMA,
+    THREAT_INTEL_SYSTEM_PROMPT,
+    ThreatIntelPersona,
+)
+CHAT_TEMPLATE_REGISTRY["threat_intel_persona"] = ThreatIntelPersona()
+MESSAGE_FORMAT_REGISTRY["threat_intel_persona"] = ThreatIntelPersona
+
+__all__ += [
+    "ACTOR_SCHEMA",
+    "CVE_SCHEMA",
+    "IOC_SCHEMA",
+    "MITRE_SCHEMA",
+    "THREAT_INTEL_SYSTEM_PROMPT",
+    "ThreatIntelPersona",
+]
