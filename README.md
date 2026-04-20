@@ -100,7 +100,7 @@ Model forward signature: `(loss, logits, present_key_values)` — plain tuple.
 | `src/eval/` | LM harness, BERTScore, LLM-as-judge, causal tracing, ROME weight editing, calibration suite, OOD detection, conformal prediction, probing classifiers, logit lens, tuned lens, membership inference, Vendi score, MT-Bench, faithfulness metrics, model-written evals, and 100+ eval modules |
 | `src/data/` | BPE + byte tokenizers, Magpie, FIM, sequence packing, data mixing, curriculum sampling, difficulty scoring, quality filtering, QuRating scorer, synthetic instruction generation, augmentation, deduplication, and 80+ data modules |
 | `src/interpretability/` | Activation patching, circuit discovery, LEACE concept erasure, polysemanticity/superposition detector, function vectors, distributed alignment search (DAS), JumpReLU sparse autoencoder, Patchscopes, logit lens, probing, neuron analysis, representation engineering, and 20+ interpretability tools |
-| `src/security/` | Gradient inversion attack, model extraction (knockoff nets), STRIP backdoor detector, GCG adversarial suffix search, canary memorization auditor, prompt injection detector, randomized smoothing (certified robustness), Rényi DP privacy accountant, PII/toxicity output scanner, adversarial text augmentation, transformer network intrusion detector, semantic similarity defense, federated aggregator (FedAvg + noise), per-sample gradient clipping, model fingerprinting, robustness evaluator, red-team dataset generator, additive secret sharing — **18 security modules** |
+| `src/security/` | 24 security modules: gradient inversion, model extraction, STRIP backdoor detector, GCG adversarial suffix search, canary memorization auditor, prompt injection detector, randomized smoothing, Rényi DP privacy accountant, PII/toxicity output scanner, adversarial text augmentation, network intrusion detector, semantic similarity defense, federated aggregator, per-sample gradient clipping, model fingerprinting, robustness evaluator, red-team dataset generator, additive secret sharing, model-stealing defense, threat-intel correlator, MITRE ATT&CK taxonomy classifier (81 techniques, all 12 enterprise tactics, kill-chain ordering), IOC extractor (IPs / domains / URLs / email / hashes / CVE / paths / registry / Bitcoin, with defang/refang), YARA-like rule engine (text + hex + regex strings, AND/OR/NOT, count, filesize), PE file analyzer (DOS + NT + sections + entropy for packer detection), log anomaly detector (volume spike, rare-token, high-entropy URL, off-hours, auth-cluster) |
 | `src/agent/` | Tool-call parser (XML Anthropic-style + JSON OpenAI-style, injection-hardened state-machine scan), ReAct agent loop (plan → act → observe → reflect) with per-tool wall-clock timeouts, argument validation via `inspect.signature`, and budget-bounded termination |
 | `src/chat/` | ChatML template (injection-hardened encode/decode, role-break rejection), Llama-3 template (`<|begin_of_text|>` / `<|start_header_id|>` format, ipython + tool roles), pluggable tokenizer-agnostic token-id path |
 | `src/longcontext/` | INT8 symmetric per-head KV cache quantizer with streaming append, StreamingLLM attention-sinks windowing (sink + rolling buffer with shifted RoPE positions per Xiao 2023) |
@@ -265,8 +265,8 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **115 implementation cycles** completed
-- **18 200+ tests** passing (full suite ~16-28 min on CPU)
+- **116 implementation cycles** completed
+- **18 300+ tests** passing (full suite ~16-28 min on CPU)
 - **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
 - `aurelius` works as a terminal command after `pip install -e .`
 - Frontier-tier surfaces wired in cycles 100–103:
