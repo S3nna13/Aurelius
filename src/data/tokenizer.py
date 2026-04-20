@@ -6,6 +6,7 @@ Designed for a 128 000-token vocabulary with 512 reserved special-token slots.
 
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 from pathlib import Path
@@ -18,6 +19,17 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 logger = logging.getLogger(__name__)
+
+
+def _load_dataset(*args, **kwargs):
+    """Import ``datasets`` lazily and call ``load_dataset`` with the given args."""
+    try:
+        datasets_mod = importlib.import_module("datasets")
+    except ImportError as exc:  # pragma: no cover - dependency not installed in tests
+        raise ImportError(
+            "The 'datasets' package is required to stream HuggingFace datasets."
+        ) from exc
+    return datasets_mod.load_dataset(*args, **kwargs)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -323,15 +335,13 @@ def stream_hf_dataset(
     max_samples:
         Stop after this many samples (``None`` = exhaust the stream).
     """
-    from datasets import load_dataset
-
     logger.info(
         "Streaming dataset %s (split=%s, max_samples=%s)",
         dataset_name,
         split,
         max_samples,
     )
-    ds = load_dataset(dataset_name, split=split, streaming=True)
+    ds = _load_dataset(dataset_name, split=split, streaming=True)
 
     count = 0
     for sample in ds:

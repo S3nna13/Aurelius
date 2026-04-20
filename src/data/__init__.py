@@ -46,6 +46,16 @@ LOADER_REGISTRY: dict[str, object] = {
     "cwe_synthesis": CWESyntheticGenerator,
 }
 
+from src.data.ngram_deduplication import (  # noqa: E402
+    NgramDeduplicationToolkit,
+    cluster_duplicates,
+    ngram_jaccard,
+)
+
+DEDUP_REGISTRY: dict[str, type] = {
+    "ngram_jaccard": NgramDeduplicationToolkit,
+}
+
 __all__ = [
     # dataset_config
     "AURELIUS_MIX",
@@ -82,4 +92,8 @@ __all__ = [
     "CWERecipe",
     "CWESyntheticGenerator",
     "LOADER_REGISTRY",
+    "NgramDeduplicationToolkit",
+    "cluster_duplicates",
+    "ngram_jaccard",
+    "DEDUP_REGISTRY",
 ]

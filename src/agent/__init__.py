@@ -286,3 +286,28 @@ __all__ += [
     "BudgetState",
     "ToolInvocationBudgetError",
 ]
+
+
+# --- tool sandbox denylist (additive) ---------------------------------------
+from .tool_sandbox_denylist import (  # noqa: E402
+    DEFAULT_DENYLIST as TOOL_SANDBOX_DEFAULT_DENYLIST,
+    DenyVerdict,
+    DenylistCategory,
+    DenylistRule,
+    ToolSandboxDenylist,
+)
+
+#: Registry of pre-tool-execution policy guards. Keys are identifiers;
+#: values are guard classes exposing ``evaluate(tool_name, tool_args)``.
+TOOL_GUARD_REGISTRY: dict[str, type] = {
+    "sandbox_denylist": ToolSandboxDenylist,
+}
+
+__all__ += [
+    "DenyVerdict",
+    "DenylistCategory",
+    "DenylistRule",
+    "TOOL_GUARD_REGISTRY",
+    "TOOL_SANDBOX_DEFAULT_DENYLIST",
+    "ToolSandboxDenylist",
+]

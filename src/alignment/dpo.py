@@ -7,18 +7,29 @@ chosen_score - rejected_score >= 1.0.
 
 from __future__ import annotations
 
+import importlib
 import copy
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from datasets import Dataset, load_dataset
 
 logger = logging.getLogger(__name__)
+
+
+def _load_dataset(*args: Any, **kwargs: Any) -> Any:
+    """Import ``datasets`` lazily and load a dataset with the same call signature."""
+    try:
+        datasets_mod = importlib.import_module("datasets")
+    except ImportError as exc:  # pragma: no cover - dependency not installed in tests
+        raise ImportError(
+            "The 'datasets' package is required for DPO dataset loading."
+        ) from exc
+    return datasets_mod.load_dataset(*args, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +86,7 @@ class DPORunConfig:
 # Dataset loading and filtering
 # ---------------------------------------------------------------------------
 
-def load_ultrafeedback(cfg: DPORunConfig) -> tuple[Dataset, Dataset]:
+def load_ultrafeedback(cfg: DPORunConfig) -> tuple[Any, Any]:
     """Load and filter UltraFeedback binarized dataset.
 
     Filters to pairs where the score gap between chosen and rejected
@@ -86,7 +97,7 @@ def load_ultrafeedback(cfg: DPORunConfig) -> tuple[Dataset, Dataset]:
         prompt, chosen, rejected.
     """
     logger.info("Loading UltraFeedback binarized dataset...")
-    ds = load_dataset(
+    ds = _load_dataset(
         "HuggingFaceH4/ultrafeedback_binarized",
         split="train_prefs",
     )

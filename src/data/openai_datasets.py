@@ -16,6 +16,7 @@ no HuggingFace model wrappers are imported.
 
 from __future__ import annotations
 
+import importlib
 import json
 import re
 from collections import Counter, defaultdict
@@ -24,6 +25,16 @@ from typing import Any
 
 import torch
 from torch.utils.data import Dataset
+
+
+def _datasets_module() -> Any:
+    """Import ``datasets`` lazily so the module has no static foreign import."""
+    try:
+        return importlib.import_module("datasets")
+    except ImportError as exc:  # pragma: no cover - dependency not installed in tests
+        raise ImportError(
+            "The 'datasets' package is required to load HuggingFace datasets."
+        ) from exc
 
 
 # ── GSM8K ─────────────────────────────────────────────────────────────────────
@@ -110,7 +121,7 @@ def load_gsm8k(
     cache_dir: str | None = None,
 ) -> GSM8KDataset:
     """Load openai/gsm8k from HuggingFace and return a GSM8KDataset."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset(
         "openai/gsm8k", config, split=split, cache_dir=cache_dir
@@ -166,7 +177,7 @@ def load_mmmlu(
     cache_dir: str | None = None,
 ) -> MMMLUDataset:
     """Load openai/MMMLU from HuggingFace and return an MMMLUDataset."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset(
         "openai/MMMLU", config, split=split, cache_dir=cache_dir
@@ -219,7 +230,7 @@ def load_mrcr(
     cache_dir: str | None = None,
 ) -> MRCRDataset:
     """Load openai/mrcr from HuggingFace and return an MRCRDataset."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset("openai/mrcr", split=split, cache_dir=cache_dir)
     return MRCRDataset(list(raw))
@@ -287,7 +298,7 @@ def load_graphwalks(
     cache_dir: str | None = None,
 ) -> GraphWalksDataset:
     """Load openai/graphwalks from HuggingFace and return a GraphWalksDataset."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset(
         "openai/graphwalks", split=split, cache_dir=cache_dir
@@ -334,7 +345,7 @@ def load_frontierscience(
     cache_dir: str | None = None,
 ) -> FrontierScienceDataset:
     """Load openai/frontierscience from HuggingFace and return a FrontierScienceDataset."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset(
         "openai/frontierscience", split=split, cache_dir=cache_dir
@@ -483,7 +494,7 @@ class CoValDataset(Dataset):
 
 def load_coval(cache_dir: str | None = None) -> CoValDataset:
     """Load openai/coval comparisons from HuggingFace and return a CoValDataset."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset(
         "openai/coval", data_files="comparisons.jsonl", cache_dir=cache_dir
@@ -534,7 +545,7 @@ def load_gdpval(
     cache_dir: str | None = None,
 ) -> GDPvalDataset:
     """Load openai/gdpval from HuggingFace and return a GDPvalDataset."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset("openai/gdpval", split=split, cache_dir=cache_dir)
     return GDPvalDataset(list(raw))
@@ -583,7 +594,7 @@ def load_healthbench(
     cache_dir: str | None = None,
 ) -> HealthBenchDataset:
     """Load openai/healthbench from HuggingFace and return a HealthBenchDataset."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset(
         "openai/healthbench", split=split, cache_dir=cache_dir

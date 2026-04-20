@@ -65,6 +65,10 @@ LONGCONTEXT_STRATEGY_REGISTRY["prefix_cache"] = PrefixCache
 LONGCONTEXT_STRATEGY_REGISTRY["compressive_memory"] = CompressiveMemory
 LONGCONTEXT_STRATEGY_REGISTRY["dynamic_context_scaler"] = DynamicContextScaler
 
+from .sliding_window_causal_mask import SlidingWindowCausalMaskBuilder  # noqa: E402
+
+LONGCONTEXT_STRATEGY_REGISTRY["swa_causal_mask"] = SlidingWindowCausalMaskBuilder
+
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
     "KVInt8Compressor",
@@ -98,4 +102,5 @@ __all__ = [
     "CONTEXT_EXTENSION_REGISTRY",
     "ContextWindowExtension",
     "DynamicContextScaler",
+    "SlidingWindowCausalMaskBuilder",
 ]

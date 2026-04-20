@@ -84,6 +84,19 @@ from src.safety.reward_hack_detector import (
     RewardHackReport,
     RewardHackSignal,
 )
+from src.safety.rule_engine import (
+    Rule,
+    RuleDomain,
+    RuleEngine,
+    RuleEvaluationReport,
+    RuleSeverity,
+    RuleViolation,
+    SEED_RULES as RULE_ENGINE_SEED_RULES,
+)
+from src.safety.lexical_entropy_anomaly import (
+    LexicalEntropyAnomalyDetector,
+    LexicalEntropyReport,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -99,6 +112,8 @@ SAFETY_FILTER_REGISTRY["hallucination_guard"] = HallucinationGuard
 SAFETY_FILTER_REGISTRY["canary_token_guard"] = CanaryTokenGuard
 SAFETY_FILTER_REGISTRY["skill_scanner"] = SkillScanner
 SAFETY_FILTER_REGISTRY["reward_hack_detector"] = RewardHackDetector
+SAFETY_FILTER_REGISTRY["rule_engine"] = RuleEngine
+SAFETY_FILTER_REGISTRY["lexical_entropy"] = LexicalEntropyAnomalyDetector
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
@@ -149,4 +164,13 @@ __all__ = [
     "RewardHackDetector",
     "RewardHackReport",
     "RewardHackSignal",
+    "Rule",
+    "RuleDomain",
+    "RuleEngine",
+    "RuleEvaluationReport",
+    "RuleSeverity",
+    "RuleViolation",
+    "RULE_ENGINE_SEED_RULES",
+    "LexicalEntropyAnomalyDetector",
+    "LexicalEntropyReport",
 ]

@@ -23,6 +23,7 @@ Usage
 
 from __future__ import annotations
 
+import importlib
 import argparse
 import logging
 import sys
@@ -32,9 +33,19 @@ from typing import Any, Iterator, Sequence
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from datasets import load_dataset
 
 logger = logging.getLogger(__name__)
+
+
+def _load_dataset(*args: Any, **kwargs: Any) -> Any:
+    """Import ``datasets`` lazily and call ``load_dataset`` with the given args."""
+    try:
+        datasets_mod = importlib.import_module("datasets")
+    except ImportError as exc:  # pragma: no cover - dependency not installed in tests
+        raise ImportError(
+            "The 'datasets' package is required to stream HuggingFace datasets."
+        ) from exc
+    return datasets_mod.load_dataset(*args, **kwargs)
 
 # ---------------------------------------------------------------------------
 # Token estimation
@@ -72,7 +83,7 @@ def stream_dataset(
     if subset:
         kwargs["name"] = subset
 
-    ds = load_dataset(**kwargs)
+    ds = _load_dataset(**kwargs)
     ds = ds.shuffle(seed=seed, buffer_size=10_000)
 
     for row in ds:

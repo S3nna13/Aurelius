@@ -141,3 +141,35 @@ __all__ += [
     "THREAT_INTEL_SYSTEM_PROMPT",
     "ThreatIntelPersona",
 ]
+
+from .security_personas import (  # noqa: E402
+    BLUE_TEAM_PERSONA,
+    DEFAULT_SECURITY_PERSONA_REGISTRY,
+    PURPLE_TEAM_PERSONA,
+    RED_TEAM_PERSONA,
+    SecurityPersona,
+    SecurityPersonaRegistry,
+)
+CHAT_TEMPLATE_REGISTRY["security_personas"] = DEFAULT_SECURITY_PERSONA_REGISTRY
+MESSAGE_FORMAT_REGISTRY["security_persona"] = SecurityPersona
+
+__all__ += [
+    "BLUE_TEAM_PERSONA",
+    "DEFAULT_SECURITY_PERSONA_REGISTRY",
+    "PURPLE_TEAM_PERSONA",
+    "RED_TEAM_PERSONA",
+    "SecurityPersona",
+    "SecurityPersonaRegistry",
+]
+
+from .token_budget_allocator import TokenAllocation, TokenBudgetAllocator  # noqa: E402
+
+CHAT_TOKEN_ALLOCATOR_REGISTRY: dict[str, type] = {
+    "token_budget": TokenBudgetAllocator,
+}
+
+__all__ += [
+    "CHAT_TOKEN_ALLOCATOR_REGISTRY",
+    "TokenAllocation",
+    "TokenBudgetAllocator",
+]

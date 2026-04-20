@@ -551,3 +551,89 @@ __all__ = list(__all__) + [
     "score_probe_naive_refusal",
     "eval_synthetic_jailbreak_generator_enabled",
 ]
+
+# --- Additive registration for SHADE-Arena sabotage-vs-monitor eval ---------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched. Default config flag is OFF.
+from .shade_arena import (  # noqa: E402
+    MainTaskSpec as _ShadeMainTaskSpec,
+    SideTaskSpec as _ShadeSideTaskSpec,
+    MonitorVerdict as _ShadeMonitorVerdict,
+    ShadeArenaResult as _ShadeArenaResult,
+    ShadeArenaHarness as _ShadeArenaHarness,
+    DEFAULT_SHADE_SCENARIOS as _DEFAULT_SHADE_SCENARIOS,
+    VALID_LABELS as _SHADE_VALID_LABELS,
+    stub_agent_fn as _shade_stub_agent_fn,
+    stub_monitor_fn as _shade_stub_monitor_fn,
+)
+
+MainTaskSpec = _ShadeMainTaskSpec
+SideTaskSpec = _ShadeSideTaskSpec
+MonitorVerdict = _ShadeMonitorVerdict
+ShadeArenaResult = _ShadeArenaResult
+ShadeArenaHarness = _ShadeArenaHarness
+DEFAULT_SHADE_SCENARIOS = _DEFAULT_SHADE_SCENARIOS
+SHADE_VALID_LABELS = _SHADE_VALID_LABELS
+stub_agent_fn = _shade_stub_agent_fn
+stub_monitor_fn = _shade_stub_monitor_fn
+
+# Config flag, default OFF.
+eval_shade_arena_enabled: bool = False
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("shade_arena", _ShadeArenaHarness)
+BENCHMARK_REGISTRY.setdefault("shade_arena", _ShadeArenaHarness)
+
+__all__ = list(__all__) + [
+    "MainTaskSpec",
+    "SideTaskSpec",
+    "MonitorVerdict",
+    "ShadeArenaResult",
+    "ShadeArenaHarness",
+    "DEFAULT_SHADE_SCENARIOS",
+    "SHADE_VALID_LABELS",
+    "stub_agent_fn",
+    "stub_monitor_fn",
+    "eval_shade_arena_enabled",
+]
+
+# --- Additive registration for intent-level vibe code reviewer --------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched. Default config flag is OFF.
+from .vibe_code_reviewer import (  # noqa: E402
+    VULNHUNTER_SYSTEM_PROMPT as _VULNHUNTER_SYSTEM_PROMPT,
+    NEGATIVE_EXAMPLES as _VIBE_NEGATIVE_EXAMPLES,
+    REQUIRED_FIELDS as _VIBE_REQUIRED_FIELDS,
+    VibeFinding as _VibeFinding,
+    VibeReviewReport as _VibeReviewReport,
+    VibeCodeReviewer as _VibeCodeReviewer,
+    stub_judge_fn as _vibe_stub_judge_fn,
+)
+
+VULNHUNTER_SYSTEM_PROMPT = _VULNHUNTER_SYSTEM_PROMPT
+VIBE_NEGATIVE_EXAMPLES = _VIBE_NEGATIVE_EXAMPLES
+VIBE_REQUIRED_FIELDS = _VIBE_REQUIRED_FIELDS
+VibeFinding = _VibeFinding
+VibeReviewReport = _VibeReviewReport
+VibeCodeReviewer = _VibeCodeReviewer
+vibe_stub_judge_fn = _vibe_stub_judge_fn
+
+# Config flag, default OFF.
+eval_vibe_code_reviewer_enabled: bool = False
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("vibe_code_reviewer", _VibeCodeReviewer)
+BENCHMARK_REGISTRY.setdefault("vibe_code_reviewer", _VibeCodeReviewer)
+
+__all__ = list(__all__) + [
+    "VULNHUNTER_SYSTEM_PROMPT",
+    "VIBE_NEGATIVE_EXAMPLES",
+    "VIBE_REQUIRED_FIELDS",
+    "VibeFinding",
+    "VibeReviewReport",
+    "VibeCodeReviewer",
+    "vibe_stub_judge_fn",
+    "eval_vibe_code_reviewer_enabled",
+]

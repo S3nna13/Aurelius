@@ -12,12 +12,23 @@ no HuggingFace model wrappers are imported.
 
 from __future__ import annotations
 
+import importlib
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
 import torch
 from torch.utils.data import Dataset
+
+
+def _datasets_module() -> Any:
+    """Import ``datasets`` lazily so the module has no static foreign import."""
+    try:
+        return importlib.import_module("datasets")
+    except ImportError as exc:  # pragma: no cover - dependency not installed in tests
+        raise ImportError(
+            "The 'datasets' package is required to load HuggingFace datasets."
+        ) from exc
 
 
 # ── hh-rlhf ──────────────────────────────────────────────────────────────────
@@ -64,7 +75,7 @@ class HHRLHFDataset(Dataset):
 
 def load_hh_rlhf(split: str = "train", cache_dir: str | None = None) -> HHRLHFDataset:
     """Load Anthropic/hh-rlhf from HuggingFace and return an HHRLHFDataset."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset("Anthropic/hh-rlhf", split=split, cache_dir=cache_dir)
 
@@ -130,7 +141,7 @@ class ModelWrittenEvalDataset(Dataset):
 
 def load_model_written_evals(cache_dir: str | None = None) -> ModelWrittenEvalDataset:
     """Load Anthropic/model-written-evals from HuggingFace."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset(
         "Anthropic/model-written-evals", split="train", cache_dir=cache_dir
@@ -188,7 +199,7 @@ class PersuasionDataset(Dataset):
 
 def load_persuasion(cache_dir: str | None = None) -> PersuasionDataset:
     """Load Anthropic/persuasion from HuggingFace."""
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset(
         "Anthropic/persuasion", split="train", cache_dir=cache_dir
@@ -279,7 +290,7 @@ def load_discrim_eval(
         config: "explicit" or "implicit" (9,450 rows each).
         cache_dir: Optional local cache directory.
     """
-    import datasets as hf_datasets
+    hf_datasets = _datasets_module()
 
     raw = hf_datasets.load_dataset(
         "Anthropic/discrim-eval", config, split="train", cache_dir=cache_dir

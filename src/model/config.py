@@ -72,6 +72,9 @@ class AureliusConfig:
     # Adversarial code battle: red-vs-blue code patching loop (default OFF)
     alignment_adversarial_code_battle_enabled: bool = False
 
+    # 15-dimension layered constitution scoring (alignment; default OFF)
+    alignment_constitution_dimensions_enabled: bool = False
+
     # Runtime canary-token guard for prompt-injection defense (default OFF)
     safety_canary_token_guard_enabled: bool = False
 
@@ -93,11 +96,20 @@ class AureliusConfig:
     # Crescendo multi-turn jailbreak probe (llm_red_team eval; default OFF)
     eval_crescendo_probe_enabled: bool = False
 
+    # Intent-level vibe code reviewer (eval; default OFF)
+    eval_vibe_code_reviewer_enabled: bool = False
+
     # Behavioral-audit 40-dimension taxonomy (eval; default OFF)
     eval_behavioral_audit_taxonomy_enabled: bool = False
 
+    # SHADE-Arena sabotage-vs-monitor long-horizon eval (default OFF)
+    eval_shade_arena_enabled: bool = False
+
     # Threat-intelligence analyst persona for chat surface (default OFF)
     chat_threat_intel_persona_enabled: bool = False
+
+    # Security-assistant personas (red/blue/purple) for chat surface (default OFF)
+    chat_security_personas_enabled: bool = False
 
     # Budget-bounded ReAct wrapper (tool-call cap; default OFF registry flag)
     agent_budget_bounded_loop_enabled: bool = False
@@ -116,6 +128,31 @@ class AureliusConfig:
     inference_sink_logit_bias_enabled: bool = False
     inference_sink_logit_bonus: float = 1.0
     inference_sink_last_n_positions: int = 4
+
+    # Pre-tool-execution policy denylist (Tracecat-inspired; default OFF)
+    agent_tool_sandbox_denylist_enabled: bool = False
+
+    # Guard0 declarative rule engine for agentic-safety checks (default OFF)
+    safety_rule_engine_enabled: bool = False
+
+    # Sliding-window causal additive mask builder (long-context; default OFF)
+    longcontext_sliding_window_causal_mask_enabled: bool = False
+    longcontext_sliding_window_size: int = 512
+
+    # PRF query expansion for retrieval (default OFF)
+    retrieval_prf_query_expander_enabled: bool = False
+
+    # Per-role token budget allocator for chat packing (default OFF)
+    chat_token_budget_allocator_enabled: bool = False
+
+    # Beam index selection from verifier scores (default OFF)
+    inference_beam_verifier_selector_enabled: bool = False
+
+    # N-gram Jaccard deduplication utilities (data; default OFF)
+    data_ngram_deduplication_enabled: bool = False
+
+    # Lexical entropy anomaly filter (safety; default OFF)
+    safety_lexical_entropy_anomaly_enabled: bool = False
 
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (

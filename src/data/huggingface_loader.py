@@ -14,11 +14,24 @@ network connection.
 
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable
 
 import torch
 from torch import Tensor
+
+
+def _load_dataset(*args: Any, **kwargs: Any) -> Any:
+    """Import ``datasets`` lazily and call ``load_dataset`` with the given args."""
+    try:
+        datasets_mod = importlib.import_module("datasets")
+    except ImportError as exc:  # pragma: no cover - dependency not installed in tests
+        raise ImportError(
+            "The 'datasets' package is required to load HuggingFace datasets. "
+            "Install it with: pip install datasets"
+        ) from exc
+    return datasets_mod.load_dataset(*args, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -204,19 +217,11 @@ class HuggingFaceLoader:
 
         Raises ``ImportError`` if the ``datasets`` package is not installed.
         """
-        try:
-            from datasets import load_dataset  # type: ignore[import]
-        except ImportError as exc:
-            raise ImportError(
-                "The 'datasets' package is required to load HuggingFace datasets. "
-                "Install it with: pip install datasets"
-            ) from exc
-
         kwargs: dict = {"split": self.config.split}
         if self.config.cache_dir is not None:
             kwargs["cache_dir"] = self.config.cache_dir
 
-        ds = load_dataset(self.config.dataset_name, **kwargs)
+        ds = _load_dataset(self.config.dataset_name, **kwargs)
         if self.config.max_samples is not None and self.config.max_samples > 0:
             ds = ds.select(range(min(self.config.max_samples, len(ds))))
 

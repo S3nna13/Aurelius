@@ -86,6 +86,12 @@ from .colbert_late_interaction import (  # noqa: E402
 
 RERANKER_REGISTRY["colbert"] = ColBERTScorer
 
+from .prf_query_expander import PRFExpansionResult, PRFQueryExpander  # noqa: E402
+
+QUERY_EXPANDER_REGISTRY: dict[str, type] = {
+    "prf": PRFQueryExpander,
+}
+
 __all__ = [
     "BM25Retriever",
     "Chunk",
@@ -116,4 +122,7 @@ __all__ = [
     "JaccardDiversityReranker",
     "cosine_similarity",
     "jaccard_similarity",
+    "PRFExpansionResult",
+    "PRFQueryExpander",
+    "QUERY_EXPANDER_REGISTRY",
 ]

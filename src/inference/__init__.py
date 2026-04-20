@@ -65,3 +65,11 @@ __all__ += [
     "apply_sink_token_logit_bias",
     "LOGIT_BIAS_REGISTRY",
 ]
+
+from src.inference.beam_verifier_selector import BeamVerifierSelector  # noqa: E402
+
+BEAM_VERIFIER_SELECTION_REGISTRY: dict[str, type] = {
+    "argmax": BeamVerifierSelector,
+}
+
+__all__ += ["BeamVerifierSelector", "BEAM_VERIFIER_SELECTION_REGISTRY"]

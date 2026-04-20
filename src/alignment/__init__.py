@@ -25,3 +25,16 @@ ALIGNMENT_REGISTRY: dict = {}
 ALIGNMENT_REGISTRY["prm"] = ProcessRewardModel
 ALIGNMENT_REGISTRY["adversarial_code_battle"] = AdversarialCodeBattle
 
+from .constitution_dimensions import (
+    ConstitutionScorer,
+    ConstitutionLevel,
+    ConstitutionDimension,
+    DimensionGrade,
+    ConstitutionReport,
+    CONSTITUTION_DIMENSIONS,
+    DEFAULT_CONSTITUTION_TEXT,
+    DEFAULT_GRADERS,
+)
+
+ALIGNMENT_REGISTRY["constitution_dimensions"] = ConstitutionScorer
+

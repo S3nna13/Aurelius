@@ -7,6 +7,7 @@ Format: ChatML with <|system|>, <|user|>, <|assistant|>, <|end|> tokens.
 
 from __future__ import annotations
 
+import importlib
 import logging
 import math
 import os
@@ -17,11 +18,19 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from datasets import Dataset, concatenate_datasets, load_dataset
-
 from src.alignment.dora import apply_dora_to_model
 
 logger = logging.getLogger(__name__)
+
+
+def _datasets_module() -> Any:
+    """Import ``datasets`` lazily so the module has no static foreign import."""
+    try:
+        return importlib.import_module("datasets")
+    except ImportError as exc:  # pragma: no cover - dependency not installed in tests
+        raise ImportError(
+            "The 'datasets' package is required for SFT dataset loading."
+        ) from exc
 
 # ---------------------------------------------------------------------------
 # ChatML formatting
@@ -107,13 +116,14 @@ class SFTConfig:
 # Dataset loading and processing
 # ---------------------------------------------------------------------------
 
-def _load_oasst2(min_score: float) -> Dataset:
+def _load_oasst2(min_score: float) -> Any:
     """Load OASST2 dataset, filtering to assistant replies with score > min_score.
 
     Extracts (instruction, response) pairs from the conversation tree.
     """
     logger.info("Loading OASST2 dataset (min_score > %.1f)...", min_score)
-    ds = load_dataset("OpenAssistant/oasst2", split="train")
+    hf_datasets = _datasets_module()
+    ds = hf_datasets.load_dataset("OpenAssistant/oasst2", split="train")
 
     # OASST2 has a tree structure. We extract prompter->assistant pairs.
     # Group messages by parent_id to reconstruct turns.
@@ -147,13 +157,14 @@ def _load_oasst2(min_score: float) -> Dataset:
         })
 
     logger.info("OASST2: extracted %d instruction-response pairs", len(pairs))
-    return Dataset.from_list(pairs)
+    return hf_datasets.Dataset.from_list(pairs)
 
 
-def _load_dolly() -> Dataset:
+def _load_dolly() -> Any:
     """Load Databricks Dolly-15k dataset."""
     logger.info("Loading Dolly-15k dataset...")
-    ds = load_dataset("databricks/databricks-dolly-15k", split="train")
+    hf_datasets = _datasets_module()
+    ds = hf_datasets.load_dataset("databricks/databricks-dolly-15k", split="train")
 
     pairs: list[dict[str, str]] = []
     for row in ds:
@@ -167,15 +178,16 @@ def _load_dolly() -> Dataset:
         })
 
     logger.info("Dolly-15k: loaded %d instruction-response pairs", len(pairs))
-    return Dataset.from_list(pairs)
+    return hf_datasets.Dataset.from_list(pairs)
 
 
-def build_sft_dataset(cfg: SFTConfig) -> Dataset:
+def build_sft_dataset(cfg: SFTConfig) -> Any:
     """Build combined SFT dataset from OASST2 + Dolly-15k."""
     oasst2 = _load_oasst2(min_score=cfg.oasst2_min_score)
     dolly = _load_dolly()
 
-    combined = concatenate_datasets([oasst2, dolly])
+    hf_datasets = _datasets_module()
+    combined = hf_datasets.concatenate_datasets([oasst2, dolly])
     combined = combined.shuffle(seed=cfg.seed)
 
     if cfg.max_train_samples is not None:

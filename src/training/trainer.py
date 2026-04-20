@@ -11,15 +11,15 @@ import json
 import logging
 import math
 import os
+import random
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+import importlib
 
 import torch
 import yaml
-from accelerate import Accelerator
-from accelerate.utils import set_seed
 from safetensors.torch import load_file, save_file
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
@@ -30,6 +30,25 @@ from src.training.muon import Muon
 from src.training.zclip import ZClip
 
 logger = logging.getLogger(__name__)
+
+
+def set_seed(seed: int) -> None:
+    """Seed Python, PyTorch, and NumPy when available."""
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():  # pragma: no cover - CUDA not used in tests
+        torch.cuda.manual_seed_all(seed)
+    try:
+        import numpy as np
+    except ImportError:  # pragma: no cover - optional dependency
+        return
+    np.random.seed(seed)
+
+
+def _make_accelerator(**kwargs: Any) -> Any:
+    """Import ``Accelerator`` lazily so the module has no static accelerate dep."""
+    accelerate_mod = importlib.import_module("accelerate")
+    return accelerate_mod.Accelerator(**kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +315,7 @@ class CheckpointManager:
         step: int,
         tokens_seen: int,
         loss: float,
-        accelerator: Accelerator,
+        accelerator: Any,
     ) -> Path:
         """Save checkpoint as safetensors + metadata JSON."""
         ckpt_dir = self.save_dir / f"step-{step:07d}"
@@ -424,11 +443,11 @@ class AureliusTrainer:
         # Accelerator (handles device placement, mixed precision, DeepSpeed)
         ds_plugin = None
         if cfg.deepspeed_config and os.path.exists(cfg.deepspeed_config):
-            from accelerate import DeepSpeedPlugin
-            ds_plugin = DeepSpeedPlugin(hf_ds_config=cfg.deepspeed_config)
+            accelerate_mod = importlib.import_module("accelerate")
+            ds_plugin = accelerate_mod.DeepSpeedPlugin(hf_ds_config=cfg.deepspeed_config)
 
         mixed_precision = "bf16" if cfg.dtype == "bf16" else "fp16" if cfg.dtype == "fp16" else "no"
-        self.accelerator = Accelerator(
+        self.accelerator = _make_accelerator(
             mixed_precision=mixed_precision,
             gradient_accumulation_steps=self._compute_grad_accum_steps(),
             deepspeed_plugin=ds_plugin,

@@ -4,7 +4,7 @@ The :class:`CodeExecutionSandbox` runs short Python snippets in a
 fresh child process launched via :mod:`subprocess`. It applies basic
 hardening:
 
-* Isolated interpreter mode (``python -I``) so site-packages, user
+* Isolated interpreter mode (``python -I -S``) so site-packages, user
   ``PYTHONSTARTUP`` files, and the current ``sys.path[0]`` are not
   injected into the child.
 * A temporary working directory that is torn down after the call so
@@ -160,7 +160,7 @@ class CodeExecutionSandbox:
         code: str,
         stdin_text: Optional[str] = None,
     ) -> ExecutionResult:
-        argv = [self.python_path, "-I", "-c", code]
+        argv = [self.python_path, "-I", "-S", "-c", code]
         return self._run(argv, stdin_text=stdin_text)
 
     def execute_file(
@@ -170,7 +170,7 @@ class CodeExecutionSandbox:
     ) -> ExecutionResult:
         if not os.path.isfile(path):
             raise FileNotFoundError(path)
-        argv = [self.python_path, "-I", path]
+        argv = [self.python_path, "-I", "-S", path]
         if args:
             argv.extend(str(a) for a in args)
         return self._run(argv, stdin_text=None)

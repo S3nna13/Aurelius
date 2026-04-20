@@ -11,6 +11,7 @@ Datasets covered:
 
 from __future__ import annotations
 
+import importlib
 import base64
 import json
 import math
@@ -20,6 +21,17 @@ from itertools import cycle
 from typing import Optional
 
 from torch.utils.data import Dataset
+
+
+def _load_dataset(*args, **kwargs):
+    """Import ``datasets`` lazily and call ``load_dataset`` with the given args."""
+    try:
+        datasets_mod = importlib.import_module("datasets")
+    except ImportError as exc:  # pragma: no cover - dependency not installed in tests
+        raise ImportError(
+            "The 'datasets' package is required to load HuggingFace datasets."
+        ) from exc
+    return datasets_mod.load_dataset(*args, **kwargs)
 
 # ── XOR decryption key ───────────────────────────────────────────────────────
 KEY = b"MO_transcripts_should_not_appear_in_pretraining_corpora"
@@ -63,9 +75,7 @@ def load_global_opinions(cache_dir: Optional[str] = None) -> GlobalOpinionsDatas
 
     Parses selections/options fields (stored as JSON strings in the raw data).
     """
-    from datasets import load_dataset  # type: ignore
-
-    raw = load_dataset(
+    raw = _load_dataset(
         "Anthropic/llm_global_opinions",
         split="train",
         cache_dir=cache_dir,
@@ -193,9 +203,7 @@ class ValuesTreeDataset(Dataset):
 
 def load_values_frequencies(cache_dir: Optional[str] = None) -> ValuesFrequencyDataset:
     """Load values_frequencies config from Anthropic/values-in-the-wild."""
-    from datasets import load_dataset  # type: ignore
-
-    raw = load_dataset(
+    raw = _load_dataset(
         "Anthropic/values-in-the-wild",
         "values_frequencies",
         split="train",
@@ -210,9 +218,7 @@ def load_values_frequencies(cache_dir: Optional[str] = None) -> ValuesFrequencyD
 
 def load_values_tree(cache_dir: Optional[str] = None) -> ValuesTreeDataset:
     """Load values_tree config from Anthropic/values-in-the-wild."""
-    from datasets import load_dataset  # type: ignore
-
-    raw = load_dataset(
+    raw = _load_dataset(
         "Anthropic/values-in-the-wild",
         "values_tree",
         split="train",
@@ -263,9 +269,7 @@ class ElectionQuestionsDataset(Dataset):
 
 def load_election_questions(cache_dir: Optional[str] = None) -> ElectionQuestionsDataset:
     """Load Anthropic/election_questions (test split)."""
-    from datasets import load_dataset  # type: ignore
-
-    raw = load_dataset(
+    raw = _load_dataset(
         "Anthropic/election_questions",
         split="test",
         cache_dir=cache_dir,
@@ -321,14 +325,12 @@ def load_interviews(
         splits: Which splits to load. None means all three.
         cache_dir: Optional HuggingFace cache directory.
     """
-    from datasets import load_dataset  # type: ignore
-
     if splits is None:
         splits = _ALL_INTERVIEW_SPLITS
 
     transcripts: list[InterviewTranscript] = []
     for split_name in splits:
-        raw = load_dataset(
+        raw = _load_dataset(
             "Anthropic/AnthropicInterviewer",
             split=split_name,
             cache_dir=cache_dir,
@@ -418,12 +420,10 @@ def load_alignment_faking(
         n_rows: Limit number of rows loaded (dataset is ~17 GB). Defaults to 10_000.
         cache_dir: Optional HuggingFace cache directory.
     """
-    from datasets import load_dataset  # type: ignore
-
     if n_rows is None:
         n_rows = 10_000
 
-    raw = load_dataset(
+    raw = _load_dataset(
         "Anthropic/alignment-faking-rl",
         split="train",
         streaming=True,
