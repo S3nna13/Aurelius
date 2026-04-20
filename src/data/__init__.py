@@ -34,6 +34,17 @@ from src.data.tokenizer_trainer import (
     BPETokenizer,
     BPETrainer,
 )
+from src.data.cwe_synthesis import (
+    CWE_CATALOG,
+    CWERecipe,
+    CWESyntheticGenerator,
+)
+
+# Registry of optional data loaders/generators. Integration tests discover
+# generators via this dict; additive-only.
+LOADER_REGISTRY: dict[str, object] = {
+    "cwe_synthesis": CWESyntheticGenerator,
+}
 
 __all__ = [
     # dataset_config
@@ -66,4 +77,9 @@ __all__ = [
     "BPEConfig",
     "BPETokenizer",
     "BPETrainer",
+    # cwe_synthesis
+    "CWE_CATALOG",
+    "CWERecipe",
+    "CWESyntheticGenerator",
+    "LOADER_REGISTRY",
 ]

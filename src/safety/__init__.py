@@ -63,6 +63,21 @@ from src.safety.policy_engine import (
     PolicyEngine,
     PolicyRule,
 )
+from src.safety.hallucination_guard import (
+    Claim as HallucinationClaim,
+    Evidence as HallucinationEvidence,
+    HallucinationGuard,
+    ValidationResult as HallucinationValidationResult,
+)
+from src.safety.canary_token_guard import (
+    CanaryDetection,
+    CanaryTokenGuard,
+)
+from src.safety.skill_scanner import (
+    Finding as SkillFinding,
+    SkillScanReport,
+    SkillScanner,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -74,6 +89,9 @@ SAFETY_FILTER_REGISTRY["output_filter"] = OutputSafetyFilter
 SAFETY_FILTER_REGISTRY["prompt_integrity"] = PromptIntegrityChecker
 SAFETY_FILTER_REGISTRY["malicious_code"] = MaliciousCodeDetector
 SAFETY_FILTER_REGISTRY["policy_engine"] = PolicyEngine
+SAFETY_FILTER_REGISTRY["hallucination_guard"] = HallucinationGuard
+SAFETY_FILTER_REGISTRY["canary_token_guard"] = CanaryTokenGuard
+SAFETY_FILTER_REGISTRY["skill_scanner"] = SkillScanner
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
@@ -111,4 +129,13 @@ __all__ = [
     "PolicyDecision",
     "PolicyEngine",
     "PolicyRule",
+    "HallucinationGuard",
+    "HallucinationClaim",
+    "HallucinationEvidence",
+    "HallucinationValidationResult",
+    "CanaryDetection",
+    "CanaryTokenGuard",
+    "SkillFinding",
+    "SkillScanReport",
+    "SkillScanner",
 ]

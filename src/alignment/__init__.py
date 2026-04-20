@@ -10,8 +10,18 @@ from .preference_ranking_loss import (
 from .kto_v2 import KTOv2Loss, kto_v2_loss_functional
 from .step_dpo import StepPreferenceExample, step_dpo_loss, StepDPOTrainer
 from src.training.process_reward_model import ProcessRewardModel
+from .adversarial_code_battle import (
+    AdversarialCodeBattle,
+    BattleTranscript,
+    BluePatch,
+    RedFinding,
+    Round as AdversarialCodeBattleRound,
+    heuristic_blue_fn,
+    heuristic_red_fn,
+)
 
 # Alignment component registry: maps string keys -> class
 ALIGNMENT_REGISTRY: dict = {}
 ALIGNMENT_REGISTRY["prm"] = ProcessRewardModel
+ALIGNMENT_REGISTRY["adversarial_code_battle"] = AdversarialCodeBattle
 

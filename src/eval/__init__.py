@@ -402,3 +402,43 @@ __all__ = list(__all__) + [
     "TauBenchScorer",
     "TauBenchDataset",
 ]
+
+# --- Additive registration for Mythos agentic-coding rubric ------------------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves all prior entries untouched. Default config flag is OFF.
+from .mythos_coding_rubric import (
+    MYTHOS_GUIDANCE_SYSTEM_PROMPT as _MYTHOS_GUIDANCE_SYSTEM_PROMPT,
+    DIMENSIONS as _MYTHOS_DIMENSIONS,
+    DimensionScore as _MythosDimensionScore,
+    RubricResult as _MythosRubricResult,
+    MythosCodingRubric as _MythosCodingRubric,
+    heuristic_judge as _mythos_heuristic_judge,
+    format_trajectory as _mythos_format_trajectory,
+)
+
+MYTHOS_GUIDANCE_SYSTEM_PROMPT = _MYTHOS_GUIDANCE_SYSTEM_PROMPT
+MYTHOS_DIMENSIONS = _MYTHOS_DIMENSIONS
+MythosDimensionScore = _MythosDimensionScore
+MythosRubricResult = _MythosRubricResult
+MythosCodingRubric = _MythosCodingRubric
+mythos_heuristic_judge = _mythos_heuristic_judge
+mythos_format_trajectory = _mythos_format_trajectory
+
+# Config flag, default OFF.
+eval_mythos_coding_rubric_enabled: bool = False
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("mythos_coding_rubric", _MythosCodingRubric)
+BENCHMARK_REGISTRY.setdefault("mythos_coding_rubric", _MythosCodingRubric)
+
+__all__ = list(__all__) + [
+    "MYTHOS_GUIDANCE_SYSTEM_PROMPT",
+    "MYTHOS_DIMENSIONS",
+    "MythosDimensionScore",
+    "MythosRubricResult",
+    "MythosCodingRubric",
+    "mythos_heuristic_judge",
+    "mythos_format_trajectory",
+    "eval_mythos_coding_rubric_enabled",
+]

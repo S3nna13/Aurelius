@@ -64,6 +64,23 @@ class AureliusConfig:
     prm_step_token_id: int = 50256   # token ID marking step boundaries
     prm_aggregation: str = "min"     # "min" or "mean" for best-of-N selection
 
+    # Hallucination guard: claim-vs-evidence validator (default OFF)
+    safety_hallucination_guard_enabled: bool = False
+    hallucination_similarity_threshold: float = 0.5
+    hallucination_confidence_decay: float = 0.5
+
+    # Adversarial code battle: red-vs-blue code patching loop (default OFF)
+    alignment_adversarial_code_battle_enabled: bool = False
+
+    # Runtime canary-token guard for prompt-injection defense (default OFF)
+    safety_canary_token_guard_enabled: bool = False
+
+    # Skill Markdown supply-chain scanner (default OFF)
+    safety_skill_scanner_enabled: bool = False
+
+    # CWE synthetic (vulnerable, secure) pair generator (default OFF)
+    data_cwe_synthesis_enabled: bool = False
+
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (
             f"d_model ({self.d_model}) must equal n_heads ({self.n_heads}) "
