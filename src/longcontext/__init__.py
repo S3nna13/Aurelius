@@ -46,6 +46,11 @@ from .paged_kv_cache import (
 )
 from .prefix_cache import PrefixCache, PrefixEntry
 from .compressive_transformer import CompressiveMemory, CompressiveMemoryState
+from .context_window_extension import (
+    CONTEXT_EXTENSION_REGISTRY,
+    ContextWindowExtension,
+    DynamicContextScaler,
+)
 
 LONGCONTEXT_STRATEGY_REGISTRY: dict = {}
 LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] = KVInt8Compressor
@@ -58,6 +63,7 @@ LONGCONTEXT_STRATEGY_REGISTRY["chunked_prefill"] = ChunkedPrefill
 LONGCONTEXT_STRATEGY_REGISTRY["paged_kv"] = PagedKVCache
 LONGCONTEXT_STRATEGY_REGISTRY["prefix_cache"] = PrefixCache
 LONGCONTEXT_STRATEGY_REGISTRY["compressive_memory"] = CompressiveMemory
+LONGCONTEXT_STRATEGY_REGISTRY["dynamic_context_scaler"] = DynamicContextScaler
 
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
@@ -89,4 +95,7 @@ __all__ = [
     "PrefixEntry",
     "CompressiveMemory",
     "CompressiveMemoryState",
+    "CONTEXT_EXTENSION_REGISTRY",
+    "ContextWindowExtension",
+    "DynamicContextScaler",
 ]

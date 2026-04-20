@@ -25,3 +25,28 @@ from .guardrail_middleware import (  # noqa: E402,F401
     MiddlewareDecision,
     REFUSAL_STRING,
 )
+
+# Additive: JSON schema–guided and grammar-constrained output decoders.
+# At each decoding step these compute a token mask that allows only tokens
+# leading to a valid parse state, enabling reliable structured outputs and
+# function-calling API shapes without importing Outlines / LMQL / Guidance.
+from .structured_output_decoder import (  # noqa: E402,F401
+    GrammarConstrainedDecoder,
+    JsonParseState,
+    StructuredOutputDecoder,
+    TokenTrie,
+    STRUCTURED_OUTPUT_REGISTRY,
+)
+
+# Merge structured-output decoders into the API shape registry so they are
+# discoverable alongside existing validators.
+API_SHAPE_REGISTRY.update({
+    "structured_output.json_schema": StructuredOutputDecoder,
+    "structured_output.grammar": GrammarConstrainedDecoder,
+})
+
+# Decoder registry — maps logical decoder names to classes.
+DECODER_REGISTRY: dict = {
+    "json_schema": StructuredOutputDecoder,
+    "grammar": GrammarConstrainedDecoder,
+}

@@ -228,3 +228,25 @@ __all__ += [
     "CodeRefactorTool",
     "RefactorResult",
 ]
+
+
+# --- toolformer data generation (additive) ----------------------------------
+from .toolformer_data_gen import (  # noqa: E402
+    Tool as ToolformerTool,
+    ToolCallAnnotation,
+    ToolformerConfig,
+    ToolformerDataGenerator,
+)
+
+#: Registry for Toolformer data-generation classes.
+TOOLFORMER_DATA_REGISTRY: dict[str, type] = {
+    "toolformer": ToolformerDataGenerator,
+}
+
+__all__ += [
+    "TOOLFORMER_DATA_REGISTRY",
+    "ToolCallAnnotation",
+    "ToolformerConfig",
+    "ToolformerDataGenerator",
+    "ToolformerTool",
+]

@@ -375,3 +375,30 @@ __all__ = list(__all__) + [
     "humaneval_plus_score_single",
     "humaneval_plus_score_problems",
 ]
+
+# --- Additive registration for τ-bench agentic tool-use benchmark -----------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves all prior entries untouched.
+from .taubench_scorer import (
+    TauBenchTask as _TauBenchTask,
+    TauBenchTrajectory as _TauBenchTrajectory,
+    TauBenchScorer as _TauBenchScorer,
+    TauBenchDataset as _TauBenchDataset,
+)
+
+TauBenchTask = _TauBenchTask
+TauBenchTrajectory = _TauBenchTrajectory
+TauBenchScorer = _TauBenchScorer
+TauBenchDataset = _TauBenchDataset
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("taubench", _TauBenchScorer)
+BENCHMARK_REGISTRY.setdefault("taubench", _TauBenchScorer)
+
+__all__ = list(__all__) + [
+    "TauBenchTask",
+    "TauBenchTrajectory",
+    "TauBenchScorer",
+    "TauBenchDataset",
+]

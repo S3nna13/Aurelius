@@ -43,6 +43,27 @@ class AureliusConfig:
     # Training efficiency
     use_gradient_checkpointing: bool = False
 
+    # Toolformer data generation (default OFF)
+    enable_toolformer_data_gen: bool = False
+    toolformer_utility_threshold: float = 0.1
+
+    # τ-bench evaluation (default OFF)
+    enable_taubench_eval: bool = False
+    taubench_domain: str = "coding"
+
+    # Structured output / grammar-constrained decoding (serving, default OFF)
+    enable_structured_output: bool = False
+    structured_output_type: str = "json_schema"
+
+    # Dynamic context window extension via NTK-aware / YaRN / LongRoPE (default OFF)
+    context_extension_strategy: str = "none"   # "none", "auto", "linear", "ntk", "yarn", "longrope"
+    context_target_len: int = 8192             # target inference context length
+
+    # Process Reward Model (PRM) -- step-level reward scoring (default OFF)
+    enable_prm_training: bool = False
+    prm_step_token_id: int = 50256   # token ID marking step boundaries
+    prm_aggregation: str = "min"     # "min" or "mean" for best-of-N selection
+
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (
             f"d_model ({self.d_model}) must equal n_heads ({self.n_heads}) "

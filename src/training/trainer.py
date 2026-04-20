@@ -33,6 +33,45 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# PRM-aware model factory (ADDITIVE -- does not modify AureliusTrainer)
+# ---------------------------------------------------------------------------
+
+def build_model_for_training(
+    config: "Any",
+    base_model: "torch.nn.Module | None" = None,
+) -> "torch.nn.Module":
+    """Return the appropriate model wrapper given training config.
+
+    This factory is ADDITIVE -- the core AureliusTrainer is unchanged.
+    Callers that need step-level reward training should use this helper
+    to construct the model before passing it to AureliusTrainer.
+
+    Config flag routing:
+        config.enable_prm_training == True   -> ProcessRewardModel
+        otherwise                            -> base_model (plain transformer)
+
+    Args:
+        config    : AureliusConfig (or compatible dataclass) with training flags.
+        base_model: Pre-built base model; only used when PRM is disabled.
+
+    Returns:
+        torch.nn.Module ready for the training loop.
+    """
+    # Lazy import to avoid circular deps
+    from src.model.config import AureliusConfig
+
+    if hasattr(config, "enable_prm_training") and config.enable_prm_training:
+        from src.training.process_reward_model import ProcessRewardModel
+        logger.info("PRM training enabled -- wrapping backbone in ProcessRewardModel")
+        return ProcessRewardModel(config)
+    elif base_model is not None:
+        return base_model
+    else:
+        from src.model.transformer import AureliusTransformer
+        return AureliusTransformer(config)
+
+
+# ---------------------------------------------------------------------------
 # Dataloader helpers
 # ---------------------------------------------------------------------------
 
