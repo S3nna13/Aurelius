@@ -70,3 +70,7 @@ from .online_rft import OnlineRFTTrainer, OnlineRFTConfig, RFTSample  # noqa: E4
 
 ALIGNMENT_REGISTRY["online_rft"] = OnlineRFTTrainer
 
+from .orpo_trainer import ORPOTrainer, ORPOConfig, ORPOBatch  # noqa: E402
+
+ALIGNMENT_REGISTRY["orpo"] = ORPOTrainer
+
