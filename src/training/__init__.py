@@ -95,3 +95,13 @@ from src.training.ipo_trainer import IPOBatch, IPOConfig, IPOTrainer  # noqa: E4
 # Registry entry is set inside ipo_trainer.py after import.
 
 __all__ += ["IPOConfig", "IPOBatch", "IPOTrainer"]
+
+# Token Credit Assignment — uniform/discounted/GAE/end-decay (Cycle 135-E)
+from src.training.token_credit_assignment import (  # noqa: E402
+    TokenCreditConfig,
+    TokenCreditAssigner,
+)
+
+# Registry entry is set inside token_credit_assignment.py after import.
+
+__all__ += ["TokenCreditConfig", "TokenCreditAssigner"]
