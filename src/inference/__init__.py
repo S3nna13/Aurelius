@@ -73,3 +73,25 @@ BEAM_VERIFIER_SELECTION_REGISTRY: dict[str, type] = {
 }
 
 __all__ += ["BeamVerifierSelector", "BEAM_VERIFIER_SELECTION_REGISTRY"]
+
+# ---------------------------------------------------------------------------
+# Reasoning Level Controller — GPT-OSS-120B (arXiv:2508.10925)
+# Maps system-prompt "Reasoning: low/medium/high" to generation hyperparams.
+# SWE-bench Verified: low=47.9%, medium=52.6%, high=62.4%.
+# ---------------------------------------------------------------------------
+from src.inference.reasoning_level_controller import (  # noqa: E402
+    LEVEL_CONFIGS,
+    apply_reasoning_level,
+    parse_reasoning_level,
+)
+
+DECODER_REGISTRY: dict[str, object] = {
+    "reasoning_level": parse_reasoning_level,
+}
+
+__all__ += [
+    "DECODER_REGISTRY",
+    "LEVEL_CONFIGS",
+    "apply_reasoning_level",
+    "parse_reasoning_level",
+]
