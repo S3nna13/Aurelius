@@ -53,3 +53,14 @@
 - `src/alignment/cpo_trainer.py` — CPOTrainer: contrastive preference opt w/o reference model (16 tests)
 - `src/eval/pass_at_k_eval.py` — PassAtKEvaluator: unbiased pass@k estimator (16 tests)
 **Tests added:** 100 | **Commits:** c0ae8b2 24d240f 4b1ad38 9a92525 6754882 f6bc386
+
+## Cycle 137 — 2026-04-21
+**Sources:** VisionCrossAttn (Flamingo/LLaVA), AdaptiveKVEviction (H2O/SnapKV), MCTS-RL (AlphaZero), MultiAgentDebate (Du et al. 2023), NCE/InfoNCE/NT-Xent (van den Oord 2018, SimCLR), Speculative eval
+**Modules:**
+- `src/model/vision_cross_attention.py` — VisionCrossAttention: GQA cross-attn for vision-language (16 tests)
+- `src/inference/adaptive_kv_eviction.py` — AdaptiveKVEvictionManager: attention-score dynamic eviction (20 tests)
+- `src/training/mcts_rl_trainer.py` — MCTSRLTrainer: AlphaZero-style MCTS policy+value training (15 tests)
+- `src/eval/multi_agent_debate_eval.py` — DebateEvaluator: drift/consensus/diversity scoring (17 tests)
+- `src/training/nce_objectives.py` — NCEObjectives: NCE/InfoNCE/NT-Xent contrastive losses (16 tests)
+- `src/eval/speculative_acceptance_eval.py` — SpeculativeAcceptanceEval: acceptance rate/speedup (17 tests)
+**Tests added:** 101 | **Commits:** de5bcbb 5cdf282 c70001e cd40ecd ad84a43 d320040
