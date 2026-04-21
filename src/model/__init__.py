@@ -88,6 +88,7 @@ from .release_track_router import (
     RouterPolicy,
 )
 from .dp_aware_moe_routing import DPAwareMoERouter
+from .flash_mla import FlashMLAAttention, FlashMLAConfig
 from .mla_256 import MLA256Attention, MLA256Config
 from .moonvit_patch_packer import MoonVitPatchPacker, MoonVitPatchPackerConfig
 from .rms_norm import RMSNorm
@@ -114,8 +115,11 @@ MODEL_COMPONENT_REGISTRY["mtp_shared"] = SharedMTPHead
 MODEL_COMPONENT_REGISTRY["dp_aware_moe_routing"] = DPAwareMoERouter
 MODEL_COMPONENT_REGISTRY["mla_256"] = MLA256Attention
 MODEL_COMPONENT_REGISTRY["moonvit_patch_packer"] = MoonVitPatchPacker
+MODEL_COMPONENT_REGISTRY["flash_mla"] = FlashMLAAttention
 
 __all__ = [
+    "FlashMLAAttention",
+    "FlashMLAConfig",
     "MoonVitPatchPacker",
     "MoonVitPatchPackerConfig",
     "DPAwareMoERouter",
