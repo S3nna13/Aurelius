@@ -46,3 +46,7 @@ from .toggle import ToggleReward  # noqa: E402
 
 ALIGNMENT_REGISTRY["toggle"] = ToggleReward
 
+from .grm import GenerativeRewardModel, GRMConfig  # noqa: E402
+
+ALIGNMENT_REGISTRY["grm"] = GenerativeRewardModel
+
