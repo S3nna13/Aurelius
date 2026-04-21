@@ -190,3 +190,24 @@ __all__ += [
     "Eagle3Drafter",
     "Eagle3Verifier",
 ]
+
+# ---------------------------------------------------------------------------
+# Radix Cache — prefix-sharing KV cache via radix tree (SGLang RadixAttention, 2024)
+# Nodes represent shared prefixes; leaves are per-request extensions.
+# Reduces redundant KV computation for requests with common prefixes.
+# ---------------------------------------------------------------------------
+from src.inference.radix_cache import (  # noqa: E402
+    CacheBlock,
+    RadixCache,
+    RadixCacheConfig,
+    RadixNode,
+)
+
+DECODER_REGISTRY["radix_cache"] = RadixCache
+
+__all__ += [
+    "CacheBlock",
+    "RadixCache",
+    "RadixCacheConfig",
+    "RadixNode",
+]
