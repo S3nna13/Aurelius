@@ -53,3 +53,14 @@ from src.training.still3_trainer import STILL3Config, STILL3Trainer  # noqa: E40
 TRAINING_REGISTRY["still3"] = STILL3Trainer
 
 __all__ += ["STILL3Config", "STILL3Trainer"]
+
+# Curriculum RL Sampler — difficulty-adaptive task sampling (Cycle 130-E)
+from src.training.curriculum_rl import (  # noqa: E402
+    CurriculumRLConfig,
+    CurriculumRLSampler,
+    TaskDifficulty,
+)
+
+TRAINING_REGISTRY["curriculum_rl"] = CurriculumRLSampler
+
+__all__ += ["TaskDifficulty", "CurriculumRLConfig", "CurriculumRLSampler"]
