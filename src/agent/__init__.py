@@ -337,6 +337,18 @@ __all__ += [
 ]
 
 
+# --- agent swarm (additive) -------------------------------------------------
+from .agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult  # noqa: E402
+
+AGENT_LOOP_REGISTRY["agent_swarm"] = AgentSwarm
+
+__all__ += [
+    "AgentSwarm",
+    "CriticalPathAnalyzer",
+    "SubAgentResult",
+]
+
+
 # --- web browse tool (additive) ---------------------------------------------
 from .web_browse_tool import (  # noqa: E402
     DEFAULT_TOOL_DESCRIPTOR as WEB_BROWSE_TOOL_DESCRIPTOR,
