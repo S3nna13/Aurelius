@@ -1,5 +1,6 @@
 """Aurelius 1.3B transformer model."""
 
+from .dsa_attention import DSAAttention, DSAConfig, LightningIndexer
 from .attention import GroupedQueryAttention, apply_rope, precompute_rope_frequencies
 from .checkpoint_migration import (
     MIGRATION_REGISTRY,
@@ -39,7 +40,29 @@ from .family import (
     register_variant,
 )
 from .ffn import SwiGLUFFN
+from .head_registry import (
+    HEAD_REGISTRY,
+    HeadFactoryError,
+    HeadKind,
+    HeadSpec,
+    build_head,
+    get_head,
+    heads_by_kind,
+    list_heads,
+    register_head,
+)
 from .lambda_attention import LambdaAttention
+from .model_merging import (
+    MERGING_REGISTRY,
+    MergeError,
+    MergeResult,
+    MergeStrategy,
+    ModelMerger,
+    dare_merge,
+    linear_merge,
+    slerp_merge,
+    ties_merge,
+)
 from .manifest import (
     AURELIUS_REFERENCE_MANIFEST,
     MODEL_MANIFEST_REGISTRY,
@@ -78,7 +101,17 @@ from .variant_adapter import (
     register_adapter,
 )
 
+# ---------------------------------------------------------------------------
+# Model component registry — additive, cycle-safe
+# ---------------------------------------------------------------------------
+MODEL_COMPONENT_REGISTRY: dict = {}
+MODEL_COMPONENT_REGISTRY["dsa_attention"] = DSAAttention
+
 __all__ = [
+    "DSAAttention",
+    "DSAConfig",
+    "LightningIndexer",
+    "MODEL_COMPONENT_REGISTRY",
     "AURELIUS_FAMILY",
     "AURELIUS_REFERENCE_MANIFEST",
     "AureliusConfig",
@@ -91,7 +124,20 @@ __all__ = [
     "FactoryError",
     "FamilyManifest",
     "GroupedQueryAttention",
+    "HEAD_REGISTRY",
+    "HeadFactoryError",
+    "HeadKind",
+    "HeadSpec",
     "LambdaAttention",
+    "MERGING_REGISTRY",
+    "MergeError",
+    "MergeResult",
+    "MergeStrategy",
+    "ModelMerger",
+    "dare_merge",
+    "linear_merge",
+    "slerp_merge",
+    "ties_merge",
     "MIGRATION_REGISTRY",
     "MODEL_FAMILY_REGISTRY",
     "MODEL_MANIFEST_REGISTRY",
@@ -118,20 +164,25 @@ __all__ = [
     "apply_rope",
     "assert_compatible",
     "build_backbone_from_manifest",
+    "build_head",
     "build_from_variant_id",
     "check_checkpoint_compatibility",
     "check_manifest_compatibility",
     "count_parameters",
     "dump_manifest",
     "get_family",
+    "get_head",
     "get_migration_path",
     "get_manifest",
     "get_variant_by_id",
+    "heads_by_kind",
+    "list_heads",
     "list_manifests",
     "load_manifest",
     "parse_semver",
     "precompute_rope_frequencies",
     "register_backbone_builder",
+    "register_head",
     "register_migration",
     "register_family",
     "register_manifest",
