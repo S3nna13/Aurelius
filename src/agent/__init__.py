@@ -392,3 +392,19 @@ __all__ += [
     "HOOK_REGISTRY",
     "PluginHookRegistry",
 ]
+
+
+# --- preserve thinking ring buffer (additive) --------------------------------
+from .preserve_thinking import (  # noqa: E402
+    PreserveThinkingBuffer,
+    PreserveThinkingConfig,
+    ThinkingSnapshot,
+)
+
+AGENT_LOOP_REGISTRY["preserve_thinking"] = PreserveThinkingBuffer
+
+__all__ += [
+    "PreserveThinkingBuffer",
+    "PreserveThinkingConfig",
+    "ThinkingSnapshot",
+]
