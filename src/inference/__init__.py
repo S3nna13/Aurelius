@@ -95,3 +95,28 @@ __all__ += [
     "apply_reasoning_level",
     "parse_reasoning_level",
 ]
+
+# ---------------------------------------------------------------------------
+# Multimodal Thinking Chain — Kimi K2.6-style interleaved think/tool/vision
+# ---------------------------------------------------------------------------
+from src.inference.multimodal_thinking_chain import (  # noqa: E402
+    ChainStep,
+    MultimodalThinkingChain,
+    MultimodalThinkingConfig,
+    StepLimitError,
+    StepType,
+    ThinkingBudgetError,
+    VisionStepLimitError,
+)
+
+DECODER_REGISTRY["multimodal_thinking_chain"] = MultimodalThinkingChain
+
+__all__ += [
+    "ChainStep",
+    "MultimodalThinkingChain",
+    "MultimodalThinkingConfig",
+    "StepLimitError",
+    "StepType",
+    "ThinkingBudgetError",
+    "VisionStepLimitError",
+]
