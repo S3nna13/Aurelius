@@ -52,6 +52,46 @@ def _make_accelerator(**kwargs: Any) -> Any:
 
 
 # ---------------------------------------------------------------------------
+# Async RL branch (ADDITIVE — feature-flagged, no existing code modified)
+# GLM-5 §4.1 (arXiv:2602.15763)
+# ---------------------------------------------------------------------------
+
+def build_async_rl_orchestrator(
+    heartbeat_timeout: float = 30.0,
+    max_concurrent: int = 1000,
+    *,
+    enabled: bool = False,
+) -> "Any":
+    """Return a ``RolloutOrchestrator`` when async RL is enabled.
+
+    This function is **additive only** — it is behind the ``enabled`` feature
+    flag and leaves the rest of the training stack untouched.
+
+    Parameters
+    ----------
+    heartbeat_timeout:
+        Seconds before an in-flight rollout task is considered stale and
+        re-queued (fault-tolerance knob).
+    max_concurrent:
+        Soft cap on simultaneous in-flight rollouts (GLM-5 supports 1000+).
+    enabled:
+        Feature flag.  When ``False`` (default) this function returns ``None``
+        so existing code paths are completely unaffected.
+
+    Returns
+    -------
+    RolloutOrchestrator | None
+    """
+    if not enabled:
+        return None
+    from src.training.async_rl_infra import RolloutOrchestrator
+    return RolloutOrchestrator(
+        heartbeat_timeout=heartbeat_timeout,
+        max_concurrent=max_concurrent,
+    )
+
+
+# ---------------------------------------------------------------------------
 # PRM-aware model factory (ADDITIVE -- does not modify AureliusTrainer)
 # ---------------------------------------------------------------------------
 
