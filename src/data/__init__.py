@@ -66,6 +66,16 @@ from src.data.tokenizer_contract import (  # noqa: E402
     register_identity,
 )
 
+from src.data.vision_token_mixer import (  # noqa: E402
+    VisionTokenMixer,
+    VisionTokenMixerConfig,
+)
+
+# Registry for vision-text mixing utilities (early-fusion pipeline components).
+VISION_MIXER_REGISTRY: dict[str, type] = {
+    "vision_token_mixer": VisionTokenMixer,
+}
+
 __all__ = [
     # dataset_config
     "AURELIUS_MIX",
@@ -114,4 +124,8 @@ __all__ = [
     "TokenizerIdentity",
     "compute_tokenizer_hash",
     "register_identity",
+    # vision_token_mixer
+    "VisionTokenMixer",
+    "VisionTokenMixerConfig",
+    "VISION_MIXER_REGISTRY",
 ]
