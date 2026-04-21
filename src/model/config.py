@@ -178,6 +178,12 @@ class AureliusConfig:
     # Agent Red Teaming (ART) benchmark (eval/llm_red_team; default OFF)
     eval_agent_red_team_bench_enabled: bool = False
 
+    # Structured web-browse / web-fetch tool descriptor (default OFF)
+    agent_web_browse_tool_enabled: bool = False
+
+    # Function-calling API shape validator (serving; default OFF)
+    serving_function_calling_api_enabled: bool = False
+
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (
             f"d_model ({self.d_model}) must equal n_heads ({self.n_heads}) "

@@ -56,6 +56,16 @@ DEDUP_REGISTRY: dict[str, type] = {
     "ngram_jaccard": NgramDeduplicationToolkit,
 }
 
+from src.data.tokenizer_contract import (  # noqa: E402
+    TOKENIZER_IDENTITY_REGISTRY,
+    ContractMismatch,
+    ContractVerdict,
+    TokenizerContractValidator,
+    TokenizerIdentity,
+    compute_tokenizer_hash,
+    register_identity,
+)
+
 __all__ = [
     # dataset_config
     "AURELIUS_MIX",
@@ -96,4 +106,12 @@ __all__ = [
     "cluster_duplicates",
     "ngram_jaccard",
     "DEDUP_REGISTRY",
+    # tokenizer_contract
+    "TOKENIZER_IDENTITY_REGISTRY",
+    "ContractMismatch",
+    "ContractVerdict",
+    "TokenizerContractValidator",
+    "TokenizerIdentity",
+    "compute_tokenizer_hash",
+    "register_identity",
 ]

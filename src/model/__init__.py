@@ -1,6 +1,14 @@
 """Aurelius 1.3B transformer model."""
 
 from .attention import GroupedQueryAttention, apply_rope, precompute_rope_frequencies
+from .checkpoint_migration import (
+    MIGRATION_REGISTRY,
+    CheckpointMigrator,
+    MigrationError,
+    MigrationStep,
+    get_migration_path,
+    register_migration,
+)
 from .chunked_local_attention import ChunkedLocalAttention
 from .compatibility import (
     CompatibilityError,
@@ -45,14 +53,37 @@ from .manifest import (
     register_manifest,
 )
 from .parallel_attention import ParallelAttentionBlock
+from .release_track_router import (
+    DEV_POLICY,
+    INTERNAL_POLICY,
+    POLICY_REGISTRY,
+    PRODUCTION_POLICY,
+    ReleaseTrackRouter,
+    RouteDecision,
+    RouterOverrideError,
+    RouterPolicy,
+)
 from .rms_norm import RMSNorm
 from .transformer import AureliusTransformer, TransformerBlock, count_parameters
+from .variant_adapter import (
+    VARIANT_ADAPTER_ATTACHMENTS,
+    VARIANT_ADAPTER_REGISTRY,
+    AdapterKind,
+    AdapterValidationError,
+    VariantAdapter,
+    adapters_for_variant,
+    attach_to_variant,
+    get_adapter,
+    list_adapters,
+    register_adapter,
+)
 
 __all__ = [
     "AURELIUS_FAMILY",
     "AURELIUS_REFERENCE_MANIFEST",
     "AureliusConfig",
     "AureliusTransformer",
+    "CheckpointMigrator",
     "ChunkedLocalAttention",
     "CompatibilityError",
     "CompatibilityVerdict",
@@ -61,15 +92,26 @@ __all__ = [
     "FamilyManifest",
     "GroupedQueryAttention",
     "LambdaAttention",
+    "MIGRATION_REGISTRY",
     "MODEL_FAMILY_REGISTRY",
     "MODEL_MANIFEST_REGISTRY",
     "MODEL_VARIANT_REGISTRY",
     "ManifestValidationError",
+    "MigrationError",
+    "MigrationStep",
     "ModelFamily",
     "ModelVariant",
+    "DEV_POLICY",
+    "INTERNAL_POLICY",
+    "POLICY_REGISTRY",
+    "PRODUCTION_POLICY",
     "ParallelAttentionBlock",
     "RMSNorm",
     "ReleaseTrack",
+    "ReleaseTrackRouter",
+    "RouteDecision",
+    "RouterOverrideError",
+    "RouterPolicy",
     "SemverParts",
     "SwiGLUFFN",
     "TransformerBlock",
@@ -82,6 +124,7 @@ __all__ = [
     "count_parameters",
     "dump_manifest",
     "get_family",
+    "get_migration_path",
     "get_manifest",
     "get_variant_by_id",
     "list_manifests",
@@ -89,7 +132,18 @@ __all__ = [
     "parse_semver",
     "precompute_rope_frequencies",
     "register_backbone_builder",
+    "register_migration",
     "register_family",
     "register_manifest",
     "register_variant",
+    "VARIANT_ADAPTER_ATTACHMENTS",
+    "VARIANT_ADAPTER_REGISTRY",
+    "AdapterKind",
+    "AdapterValidationError",
+    "VariantAdapter",
+    "adapters_for_variant",
+    "attach_to_variant",
+    "get_adapter",
+    "list_adapters",
+    "register_adapter",
 ]

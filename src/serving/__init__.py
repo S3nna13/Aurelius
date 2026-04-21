@@ -72,3 +72,17 @@ from .sse_stream_encoder import SSEStreamEncoder, split_sse_records  # noqa: E40
 STREAM_HANDLER_REGISTRY: dict = {
     "sse": SSEStreamEncoder,
 }
+
+# --- Function-calling API shape validator (additive) -----------------------
+from .function_calling_api import (  # noqa: E402,F401
+    ALLOWED_TYPES as FUNCTION_CALLING_ALLOWED_TYPES,
+    DEFAULT_TOOL_CHOICE,
+    FunctionCallError,
+    FunctionCallValidator,
+    FunctionSchema,
+    ToolCall,
+    ToolChoice,
+    ToolDefinition,
+)
+
+API_SHAPE_REGISTRY["function_calling.validator"] = FunctionCallValidator

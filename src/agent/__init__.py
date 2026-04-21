@@ -335,3 +335,32 @@ __all__ += [
     "ControllerEvent",
     "FiveStateController",
 ]
+
+
+# --- web browse tool (additive) ---------------------------------------------
+from .web_browse_tool import (  # noqa: E402
+    DEFAULT_TOOL_DESCRIPTOR as WEB_BROWSE_TOOL_DESCRIPTOR,
+    PrivateHostBlocked,
+    UrlValidationError,
+    WebBrowseTool,
+    WebFetchResult,
+    WebRequestSpec,
+)
+
+#: Registry of agent-invocable tool descriptors (JSON-schema style).
+#: Keys are the tool name; values are the descriptor dict consumable by
+#: the agent runtime / serving layer. Populated additively by sibling
+#: modules.
+TOOL_REGISTRY: dict[str, dict] = {
+    WEB_BROWSE_TOOL_DESCRIPTOR["name"]: WEB_BROWSE_TOOL_DESCRIPTOR,
+}
+
+__all__ += [
+    "PrivateHostBlocked",
+    "TOOL_REGISTRY",
+    "UrlValidationError",
+    "WEB_BROWSE_TOOL_DESCRIPTOR",
+    "WebBrowseTool",
+    "WebFetchResult",
+    "WebRequestSpec",
+]
