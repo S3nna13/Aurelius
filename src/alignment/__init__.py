@@ -42,3 +42,7 @@ from .parl import PARLReward, AnnealedLambda  # noqa: E402
 
 ALIGNMENT_REGISTRY["parl"] = PARLReward
 
+from .toggle import ToggleReward  # noqa: E402
+
+ALIGNMENT_REGISTRY["toggle"] = ToggleReward
+
