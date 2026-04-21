@@ -376,3 +376,19 @@ __all__ += [
     "WebFetchResult",
     "WebRequestSpec",
 ]
+
+
+# --- plugin hook registry (additive) ----------------------------------------
+from .plugin_hook import (  # noqa: E402
+    HOOK_POINTS,
+    HOOK_REGISTRY,
+    PluginHookRegistry,
+)
+
+AGENT_LOOP_REGISTRY["plugin_hook"] = PluginHookRegistry
+
+__all__ += [
+    "HOOK_POINTS",
+    "HOOK_REGISTRY",
+    "PluginHookRegistry",
+]

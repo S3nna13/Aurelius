@@ -173,3 +173,19 @@ __all__ += [
     "TokenAllocation",
     "TokenBudgetAllocator",
 ]
+
+from .system_prompt_priority import (  # noqa: E402
+    PrincipalHierarchyConflict,
+    SystemPromptFragment,
+    SystemPromptPriority,
+    SystemPromptPriorityEncoder,
+)
+CHAT_TEMPLATE_REGISTRY["system_prompt_priority"] = SystemPromptPriorityEncoder()
+MESSAGE_FORMAT_REGISTRY["system_prompt_fragment"] = SystemPromptFragment
+
+__all__ += [
+    "PrincipalHierarchyConflict",
+    "SystemPromptFragment",
+    "SystemPromptPriority",
+    "SystemPromptPriorityEncoder",
+]
