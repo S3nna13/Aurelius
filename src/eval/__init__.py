@@ -759,3 +759,29 @@ __all__ = list(__all__) + [
     "art_stub_judge_fn",
     "eval_agent_red_team_bench_enabled",
 ]
+
+# --- Additive registration for SwarmBench BrowseComp-style agent-swarm eval --
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched. Measures completion_rate, critical_steps,
+# speedup, and parallelism_ratio against mock BrowseComp-style tasks.
+# Based on Kimi K2.5 §3.2: single-agent 60.6% → swarm 78.4% on BrowseComp.
+from .swarm_bench import (
+    SwarmTask as _SwarmTask,
+    SwarmBenchResult as _SwarmBenchResult,
+    SwarmBench as _SwarmBench,
+)
+
+SwarmTask = _SwarmTask
+SwarmBenchResult = _SwarmBenchResult
+SwarmBench = _SwarmBench
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("swarm_bench", _SwarmBench)
+BENCHMARK_REGISTRY.setdefault("swarm_bench", _SwarmBench)
+
+__all__ = list(__all__) + [
+    "SwarmTask",
+    "SwarmBenchResult",
+    "SwarmBench",
+]

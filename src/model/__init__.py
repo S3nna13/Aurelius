@@ -88,6 +88,7 @@ from .release_track_router import (
     RouterPolicy,
 )
 from .dp_aware_moe_routing import DPAwareMoERouter
+from .mla_256 import MLA256Attention, MLA256Config
 from .rms_norm import RMSNorm
 from .transformer import AureliusTransformer, TransformerBlock, count_parameters
 from .variant_adapter import (
@@ -110,9 +111,12 @@ MODEL_COMPONENT_REGISTRY: dict = {}
 MODEL_COMPONENT_REGISTRY["dsa_attention"] = DSAAttention
 MODEL_COMPONENT_REGISTRY["mtp_shared"] = SharedMTPHead
 MODEL_COMPONENT_REGISTRY["dp_aware_moe_routing"] = DPAwareMoERouter
+MODEL_COMPONENT_REGISTRY["mla_256"] = MLA256Attention
 
 __all__ = [
     "DPAwareMoERouter",
+    "MLA256Attention",
+    "MLA256Config",
     "DSAAttention",
     "DSAConfig",
     "LightningIndexer",
