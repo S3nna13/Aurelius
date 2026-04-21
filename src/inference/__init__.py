@@ -289,3 +289,26 @@ __all__ += [
     "MinPConfig",
     "MinPSampler",
 ]
+
+# ---------------------------------------------------------------------------
+# Skeleton-of-Thought — plan-then-parallel-expand decoding (Bao et al. 2023)
+# Generates a structured skeleton (list of N points) then expands each point
+# independently, enabling batched parallel expansion for lower latency.
+# ---------------------------------------------------------------------------
+from src.inference.skeleton_of_thought import (  # noqa: E402
+    SkeletonOfThoughtDecoder,
+    SkeletonParser,
+    SkeletonPoint,
+    SoTConfig,
+    SoTResult,
+)
+
+DECODER_REGISTRY["skeleton_of_thought"] = SkeletonOfThoughtDecoder
+
+__all__ += [
+    "SkeletonOfThoughtDecoder",
+    "SkeletonParser",
+    "SkeletonPoint",
+    "SoTConfig",
+    "SoTResult",
+]
