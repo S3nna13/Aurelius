@@ -91,6 +91,7 @@ from .aqlm_quant import AQLMCodebook, AQLMConfig, AQLMLinear
 from .zamba_block import ZambaBlock, ZambaConfig, ZambaSSMLayer, ZambaSharedAttention
 from .colt5_conditional import CoLT5Config, CoLT5FFN, CoLT5Block
 from .linear_recurrent_unit import LRUConfig, LRULayer
+from .fim_lm import FIMConfig, FIMDocument, FIMTransformer, FIMLossFilter
 from .dp_aware_moe_routing import DPAwareMoERouter
 from .gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
 from .flash_mla import FlashMLAAttention, FlashMLAConfig
@@ -129,10 +130,15 @@ MODEL_COMPONENT_REGISTRY["gqa_absorbed"] = GQAAbsorbedAttention
 MODEL_COMPONENT_REGISTRY["colt5_ffn"] = CoLT5FFN
 MODEL_COMPONENT_REGISTRY["colt5_block"] = CoLT5Block
 MODEL_COMPONENT_REGISTRY["lru"] = LRULayer
+MODEL_COMPONENT_REGISTRY["fim_transformer"] = FIMTransformer
 
 __all__ = [
     "LRUConfig",
     "LRULayer",
+    "FIMConfig",
+    "FIMDocument",
+    "FIMTransformer",
+    "FIMLossFilter",
     "CoLT5Config",
     "CoLT5FFN",
     "CoLT5Block",
