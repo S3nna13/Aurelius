@@ -117,3 +117,15 @@ from src.training.offline_reward_modeling import (  # noqa: E402
 # Registry entry is set inside offline_reward_modeling.py after import.
 
 __all__ += ["RewardModelConfig", "RewardBatch", "RewardHead", "RewardModelTrainer"]
+
+# MCTS RL Trainer — AlphaZero-style MCTS policy/value training (Cycle 137-C)
+from src.training.mcts_rl_trainer import (  # noqa: E402
+    MCTSRLConfig,
+    MCTSNode,
+    MCTSStats,
+    MCTSRLTrainer,
+)
+
+# Registry entry is set inside mcts_rl_trainer.py after import.
+
+__all__ += ["MCTSRLConfig", "MCTSNode", "MCTSStats", "MCTSRLTrainer"]
