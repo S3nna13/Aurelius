@@ -265,8 +265,8 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **122 implementation cycles** completed
-- **19 400+ tests** passing (full suite ~15-28 min on CPU)
+- **123 implementation cycles** completed
+- **19 600+ tests** passing (full suite ~15-28 min on CPU)
 - **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
 - Recent cycles:
   - **cycle-117** — Toolformer-style self-supervised tool-learning data-gen, tau-bench scorer, dynamic NTK-aware context-window extension, grammar-constrained structured-output decoder, step-level Process Reward Model
@@ -275,6 +275,7 @@ from aurelius.model.transformer import AureliusTransformer
   - **cycle-120** — g0-style YAML rule engine (12 agentic domains, 6 check types), Mythos 15-dim constitution scorer (Spirit/Level-1/Level-2), SHADE-Arena long-horizon main+side-task eval, RED/BLUE/PURPLE security personas, tool-sandbox denylist (35 rules / 7 categories), s0cli-style vibe code reviewer with skepticism-rule filter
   - **cycle-121** — kNN known-bad prompt guard, PyRIT Tree-of-Attacks probe, many-shot jailbreak probe (Anil et al. 2024), 5-stage SOC pipeline (ingest→normalize→enrich→decide→route with blast-radius gate), PentestGPT-style 5-state agent controller, tiered compaction-trigger manager (Mythos 50k/200k thresholds)
   - **cycle-122** — model family infrastructure (v5 first cycle): FamilyManifest + ReleaseTrack + MODEL_MANIFEST_REGISTRY, ModelFamily + ModelVariant + MODEL_FAMILY/VARIANT_REGISTRY, family-aware backbone factory, semver compatibility gate (exact/minor_mismatch/major_break) for manifest + checkpoint + tokenizer contracts, plus Gray Swan ART benchmark (ASR@k) and RAG citation tracker
+  - **cycle-123** — model family infra expansion: VariantAdapter (LoRA/prompt/prefix/head-swap/full-delta) + CheckpointMigrator with BFS path-finder + ReleaseTrackRouter with production/internal/dev policies, TokenizerContract hash validator (sha256), OpenAI-compatible function-calling API shape (FunctionSchema/ToolCall/ToolChoice), web-browse tool descriptor with private-IP/localhost blocking
 - `aurelius` works as a terminal command after `pip install -e .`
 - Frontier-tier surfaces wired in cycles 100–103:
   - **agent** — 10 modules: tool-call parsers, ReAct loop, dispatcher, ToT planner, error recovery, repo-context packer, unified-diff generator, shell planner, code-execution sandbox, task decomposer (DAG + topo sort + parallelizable-group extraction)
