@@ -785,3 +785,27 @@ __all__ = list(__all__) + [
     "SwarmBenchResult",
     "SwarmBench",
 ]
+
+# --- Additive registration for MathEval MATH/AIME answer-extraction harness --
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.
+from .math_eval import (
+    MathEvalConfig as _MathEvalConfig,
+    MathAnswer as _MathAnswer,
+    MathEval as _MathEval,
+)
+
+MathEvalConfig = _MathEvalConfig
+MathAnswer = _MathAnswer
+MathEval = _MathEval
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("math_eval", _MathEval)
+BENCHMARK_REGISTRY.setdefault("math_eval", _MathEval)
+
+__all__ = list(__all__) + [
+    "MathEvalConfig",
+    "MathAnswer",
+    "MathEval",
+]

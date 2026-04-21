@@ -64,3 +64,16 @@ from src.training.curriculum_rl import (  # noqa: E402
 TRAINING_REGISTRY["curriculum_rl"] = CurriculumRLSampler
 
 __all__ += ["TaskDifficulty", "CurriculumRLConfig", "CurriculumRLSampler"]
+
+# SWE-RL Trainer — software engineering RL with test-verifier rewards (Cycle 131-B)
+from src.training.swe_rl import (  # noqa: E402
+    SWETask,
+    SWEPatch,
+    SWEResult,
+    SWERLConfig,
+    SWERLTrainer,
+)
+
+TRAINING_REGISTRY["swe_rl"] = SWERLTrainer
+
+__all__ += ["SWETask", "SWEPatch", "SWEResult", "SWERLConfig", "SWERLTrainer"]
