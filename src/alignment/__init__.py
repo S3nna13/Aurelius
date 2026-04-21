@@ -62,3 +62,7 @@ from .absolute_zero import AbsoluteZeroTrainer, AbsoluteZeroConfig  # noqa: E402
 
 ALIGNMENT_REGISTRY["absolute_zero"] = AbsoluteZeroTrainer
 
+from .length_reward import LengthReward, LengthRewardConfig  # noqa: E402
+
+ALIGNMENT_REGISTRY["length_reward"] = LengthReward
+
