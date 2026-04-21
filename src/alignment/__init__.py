@@ -50,3 +50,7 @@ from .grm import GenerativeRewardModel, GRMConfig  # noqa: E402
 
 ALIGNMENT_REGISTRY["grm"] = GenerativeRewardModel
 
+from .cross_stage_distillation import CrossStageDistillation  # noqa: E402
+
+ALIGNMENT_REGISTRY["cross_stage_distillation"] = CrossStageDistillation
+
