@@ -78,6 +78,10 @@ from .compaction_trigger import (  # noqa: E402
 
 LONGCONTEXT_STRATEGY_REGISTRY["compaction_trigger"] = CompactionTriggerManager
 
+from .hierarchical_context_mgr import HierarchicalContextManager  # noqa: E402
+
+LONGCONTEXT_STRATEGY_REGISTRY["hierarchical_context"] = HierarchicalContextManager
+
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
     "KVInt8Compressor",
@@ -116,4 +120,5 @@ __all__ = [
     "CompactionEvent",
     "CompactionTriggerManager",
     "COMPACTION_TRIGGER_DEFAULT_TIERS",
+    "HierarchicalContextManager",
 ]
