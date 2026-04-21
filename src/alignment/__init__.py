@@ -54,3 +54,7 @@ from .cross_stage_distillation import CrossStageDistillation  # noqa: E402
 
 ALIGNMENT_REGISTRY["cross_stage_distillation"] = CrossStageDistillation
 
+from .zero_vision_sft import ZeroVisionSFTTrainer, ZeroVisionSFTConfig  # noqa: E402
+
+ALIGNMENT_REGISTRY["zero_vision_sft"] = ZeroVisionSFTTrainer
+
