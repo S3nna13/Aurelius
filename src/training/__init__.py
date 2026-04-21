@@ -46,3 +46,10 @@ from src.training.slime_framework import SlimeTaskRouter  # noqa: E402
 TRAINING_REGISTRY["slime"] = SlimeTaskRouter
 
 __all__ += ["SlimeTaskRouter"]
+
+# STILL-3 Trainer — min-std filtering + entropy bonus (arXiv:2501.12599)
+from src.training.still3_trainer import STILL3Config, STILL3Trainer  # noqa: E402
+
+TRAINING_REGISTRY["still3"] = STILL3Trainer
+
+__all__ += ["STILL3Config", "STILL3Trainer"]
