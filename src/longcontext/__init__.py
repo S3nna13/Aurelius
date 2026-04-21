@@ -91,6 +91,14 @@ from .context_budget_controller import (  # noqa: E402
 
 LONGCONTEXT_STRATEGY_REGISTRY["context_budget"] = ContextBudgetController
 
+from .cross_layer_kv_sharing import (  # noqa: E402
+    CrossLayerKVConfig,
+    CrossLayerKVAttention,
+    CrossLayerKVStack,
+)
+
+LONGCONTEXT_STRATEGY_REGISTRY["cross_layer_kv"] = CrossLayerKVStack
+
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
     "KVInt8Compressor",
@@ -134,4 +142,7 @@ __all__ = [
     "ContextBudgetConfig",
     "ContextSegment",
     "SegmentPriority",
+    "CrossLayerKVConfig",
+    "CrossLayerKVAttention",
+    "CrossLayerKVStack",
 ]
