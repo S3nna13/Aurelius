@@ -39,3 +39,10 @@ from src.training.tito_gateway import TITOConfig, TITOGateway  # noqa: E402
 TRAINING_REGISTRY["tito"] = TITOGateway
 
 __all__ += ["TITOConfig", "TITOGateway"]
+
+# Slime RL Framework — GLM-5 §4 (arXiv:2602.15763)
+from src.training.slime_framework import SlimeTaskRouter  # noqa: E402
+
+TRAINING_REGISTRY["slime"] = SlimeTaskRouter
+
+__all__ += ["SlimeTaskRouter"]
