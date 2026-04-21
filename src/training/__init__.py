@@ -105,3 +105,15 @@ from src.training.token_credit_assignment import (  # noqa: E402
 # Registry entry is set inside token_credit_assignment.py after import.
 
 __all__ += ["TokenCreditConfig", "TokenCreditAssigner"]
+
+# Offline Reward Modeling — Bradley-Terry pairwise preference model (Cycle 136-D)
+from src.training.offline_reward_modeling import (  # noqa: E402
+    RewardModelConfig,
+    RewardBatch,
+    RewardHead,
+    RewardModelTrainer,
+)
+
+# Registry entry is set inside offline_reward_modeling.py after import.
+
+__all__ += ["RewardModelConfig", "RewardBatch", "RewardHead", "RewardModelTrainer"]
