@@ -88,3 +88,10 @@ from src.training.pcgrad_v2 import (  # noqa: E402
 TRAINING_REGISTRY["pcgrad_v2"] = PCGradV2
 
 __all__ += ["PCGradV2Config", "GradientBank", "PCGradV2"]
+
+# IPO Trainer — squared-loss regularised preference optimisation (Azar et al. 2024, Cycle 134-F)
+from src.training.ipo_trainer import IPOBatch, IPOConfig, IPOTrainer  # noqa: E402
+
+# Registry entry is set inside ipo_trainer.py after import.
+
+__all__ += ["IPOConfig", "IPOBatch", "IPOTrainer"]
