@@ -230,3 +230,26 @@ __all__ += [
     "HydraHead",
     "HydraSpeculative",
 ]
+
+# ---------------------------------------------------------------------------
+# Chunked Prefill Scheduler — Sarathi-Serve / vLLM 2024 interleaved scheduling
+# Splits long prompts into fixed-size chunks and interleaves prefill chunks
+# with decode steps, bounding decode latency while keeping utilization high.
+# ---------------------------------------------------------------------------
+from src.inference.chunk_prefill_scheduler import (  # noqa: E402
+    BatchSlot,
+    ChunkPrefillConfig,
+    ChunkPrefillScheduler,
+    Request as ChunkPrefillRequest,
+    RequestState as ChunkPrefillRequestState,
+)
+
+DECODER_REGISTRY["chunk_prefill"] = ChunkPrefillScheduler
+
+__all__ += [
+    "BatchSlot",
+    "ChunkPrefillConfig",
+    "ChunkPrefillRequest",
+    "ChunkPrefillRequestState",
+    "ChunkPrefillScheduler",
+]
