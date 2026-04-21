@@ -97,6 +97,12 @@ from src.safety.lexical_entropy_anomaly import (
     LexicalEntropyAnomalyDetector,
     LexicalEntropyReport,
 )
+from src.safety.knn_known_bad_guard import (
+    KnnKnownBadGuard,
+    KnnVerdict,
+    KnownBadEntry,
+    SEED_KNOWN_BAD,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -114,6 +120,7 @@ SAFETY_FILTER_REGISTRY["skill_scanner"] = SkillScanner
 SAFETY_FILTER_REGISTRY["reward_hack_detector"] = RewardHackDetector
 SAFETY_FILTER_REGISTRY["rule_engine"] = RuleEngine
 SAFETY_FILTER_REGISTRY["lexical_entropy"] = LexicalEntropyAnomalyDetector
+SAFETY_FILTER_REGISTRY["knn_known_bad_guard"] = KnnKnownBadGuard
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
@@ -173,4 +180,8 @@ __all__ = [
     "RULE_ENGINE_SEED_RULES",
     "LexicalEntropyAnomalyDetector",
     "LexicalEntropyReport",
+    "KnnKnownBadGuard",
+    "KnnVerdict",
+    "KnownBadEntry",
+    "SEED_KNOWN_BAD",
 ]

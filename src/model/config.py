@@ -96,6 +96,12 @@ class AureliusConfig:
     # Crescendo multi-turn jailbreak probe (llm_red_team eval; default OFF)
     eval_crescendo_probe_enabled: bool = False
 
+    # Many-shot jailbreak probe (llm_red_team eval; default OFF)
+    eval_many_shot_jailbreak_probe_enabled: bool = False
+
+    # Tree-of-Attacks-with-Pruning probe (llm_red_team eval; default OFF)
+    eval_tree_of_attacks_probe_enabled: bool = False
+
     # Intent-level vibe code reviewer (eval; default OFF)
     eval_vibe_code_reviewer_enabled: bool = False
 
@@ -139,6 +145,9 @@ class AureliusConfig:
     longcontext_sliding_window_causal_mask_enabled: bool = False
     longcontext_sliding_window_size: int = 512
 
+    # SOC-style defensive pipeline (ingest->normalize->enrich->decide->route; default OFF)
+    security_soc_pipeline_enabled: bool = False
+
     # PRF query expansion for retrieval (default OFF)
     retrieval_prf_query_expander_enabled: bool = False
 
@@ -153,6 +162,15 @@ class AureliusConfig:
 
     # Lexical entropy anomaly filter (safety; default OFF)
     safety_lexical_entropy_anomaly_enabled: bool = False
+
+    # kNN known-bad prompt guard (safety; default OFF)
+    safety_knn_known_bad_guard_enabled: bool = False
+
+    # PentestGPT-style five-state agent lifecycle controller (default OFF)
+    agent_five_state_controller_enabled: bool = False
+
+    # Tiered compaction trigger manager (longcontext; default OFF)
+    longcontext_compaction_trigger_enabled: bool = False
 
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (

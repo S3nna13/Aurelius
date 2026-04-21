@@ -311,3 +311,27 @@ __all__ += [
     "TOOL_SANDBOX_DEFAULT_DENYLIST",
     "ToolSandboxDenylist",
 ]
+
+
+# --- five-state lifecycle controller (additive) -----------------------------
+from .five_state_controller import (  # noqa: E402
+    AgentState,
+    ControlContext,
+    ControllerEvent,
+    FiveStateController,
+)
+
+#: Registry of agent lifecycle supervisors (orthogonal to AGENT_LOOP_REGISTRY
+#: which holds message-iteration loops). Keys are identifiers; values are the
+#: supervisor classes.
+AGENT_LIFECYCLE_REGISTRY: dict[str, type] = {
+    "five_state": FiveStateController,
+}
+
+__all__ += [
+    "AGENT_LIFECYCLE_REGISTRY",
+    "AgentState",
+    "ControlContext",
+    "ControllerEvent",
+    "FiveStateController",
+]

@@ -637,3 +637,86 @@ __all__ = list(__all__) + [
     "vibe_stub_judge_fn",
     "eval_vibe_code_reviewer_enabled",
 ]
+
+# --- Additive registration for Tree-of-Attacks-with-Pruning (TAP) probe -----
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched. Default config flag is OFF.
+from .tree_of_attacks_probe import (  # noqa: E402
+    TAPNode as _TAPNode,
+    TAPResult as _TAPResult,
+    TreeOfAttacksProbe as _TreeOfAttacksProbe,
+    MUTATION_STRATEGIES as _TAP_MUTATION_STRATEGIES,
+    heuristic_mutator as _tap_heuristic_mutator,
+    stub_target_fn as _tap_stub_target_fn,
+    stub_judge_fn as _tap_stub_judge_fn,
+)
+
+TAPNode = _TAPNode
+TAPResult = _TAPResult
+TreeOfAttacksProbe = _TreeOfAttacksProbe
+TAP_MUTATION_STRATEGIES = _TAP_MUTATION_STRATEGIES
+tap_heuristic_mutator = _tap_heuristic_mutator
+tap_stub_target_fn = _tap_stub_target_fn
+tap_stub_judge_fn = _tap_stub_judge_fn
+
+# Config flag, default OFF.
+eval_tree_of_attacks_probe_enabled: bool = False
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("tree_of_attacks_probe", _TreeOfAttacksProbe)
+BENCHMARK_REGISTRY.setdefault("tree_of_attacks_probe", _TreeOfAttacksProbe)
+
+__all__ = list(__all__) + [
+    "TAPNode",
+    "TAPResult",
+    "TreeOfAttacksProbe",
+    "TAP_MUTATION_STRATEGIES",
+    "tap_heuristic_mutator",
+    "tap_stub_target_fn",
+    "tap_stub_judge_fn",
+    "eval_tree_of_attacks_probe_enabled",
+]
+
+# --- Additive registration for Many-Shot Jailbreak probe ---------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched. Default config flag is OFF.
+from .many_shot_jailbreak_probe import (
+    MSShot as _MSShot,
+    MSJResult as _MSJResult,
+    MSJSweepResult as _MSJSweepResult,
+    ManyShotJailbreakProbe as _ManyShotJailbreakProbe,
+    DEFAULT_SHOT_LIBRARY as _MSJ_DEFAULT_SHOT_LIBRARY,
+    stub_target_fn as _msj_stub_target_fn,
+    stub_judge_fn as _msj_stub_judge_fn,
+)
+
+MSShot = _MSShot
+MSJResult = _MSJResult
+MSJSweepResult = _MSJSweepResult
+ManyShotJailbreakProbe = _ManyShotJailbreakProbe
+MSJ_DEFAULT_SHOT_LIBRARY = _MSJ_DEFAULT_SHOT_LIBRARY
+msj_stub_target_fn = _msj_stub_target_fn
+msj_stub_judge_fn = _msj_stub_judge_fn
+
+eval_many_shot_jailbreak_probe_enabled: bool = False
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault(
+    "many_shot_jailbreak_probe", _ManyShotJailbreakProbe
+)
+BENCHMARK_REGISTRY.setdefault(
+    "many_shot_jailbreak_probe", _ManyShotJailbreakProbe
+)
+
+__all__ = list(__all__) + [
+    "MSShot",
+    "MSJResult",
+    "MSJSweepResult",
+    "ManyShotJailbreakProbe",
+    "MSJ_DEFAULT_SHOT_LIBRARY",
+    "msj_stub_target_fn",
+    "msj_stub_judge_fn",
+    "eval_many_shot_jailbreak_probe_enabled",
+]

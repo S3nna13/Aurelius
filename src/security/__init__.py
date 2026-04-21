@@ -48,6 +48,29 @@ from src.security.log_anomaly_detector import (
     LogAnomalyDetector,
 )
 
+from src.security.soc_pipeline import (
+    DEFAULT_SOC_PIPELINE,
+    DecideStage,
+    EnrichStage,
+    Finding,
+    IngestStage,
+    NormalizeStage,
+    PipelineStage,
+    RouteStage,
+    Rule,
+    SOCPipeline,
+    SecurityEvent,
+    TriageDecision,
+    evidence_first_gate,
+)
+
+
+# Additive registry keyed by name; test suites and integrators can register
+# new defensive pipelines without touching downstream call sites.
+DEFENSIVE_PIPELINE_REGISTRY: dict = {
+    "default": DEFAULT_SOC_PIPELINE,
+}
+
 __all__ = [
     "ModelStealingDefense",
     "QueryAuditEntry",
@@ -73,4 +96,18 @@ __all__ = [
     "analyze_pe_file",
     "LogAnomaly",
     "LogAnomalyDetector",
+    "DEFAULT_SOC_PIPELINE",
+    "DEFENSIVE_PIPELINE_REGISTRY",
+    "DecideStage",
+    "EnrichStage",
+    "Finding",
+    "IngestStage",
+    "NormalizeStage",
+    "PipelineStage",
+    "RouteStage",
+    "Rule",
+    "SOCPipeline",
+    "SecurityEvent",
+    "TriageDecision",
+    "evidence_first_gate",
 ]

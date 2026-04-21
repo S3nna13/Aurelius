@@ -69,6 +69,15 @@ from .sliding_window_causal_mask import SlidingWindowCausalMaskBuilder  # noqa: 
 
 LONGCONTEXT_STRATEGY_REGISTRY["swa_causal_mask"] = SlidingWindowCausalMaskBuilder
 
+from .compaction_trigger import (  # noqa: E402
+    DEFAULT_TIERS as COMPACTION_TRIGGER_DEFAULT_TIERS,
+    CompactionEvent,
+    CompactionTier,
+    CompactionTriggerManager,
+)
+
+LONGCONTEXT_STRATEGY_REGISTRY["compaction_trigger"] = CompactionTriggerManager
+
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
     "KVInt8Compressor",
@@ -103,4 +112,8 @@ __all__ = [
     "ContextWindowExtension",
     "DynamicContextScaler",
     "SlidingWindowCausalMaskBuilder",
+    "CompactionTier",
+    "CompactionEvent",
+    "CompactionTriggerManager",
+    "COMPACTION_TRIGGER_DEFAULT_TIERS",
 ]
