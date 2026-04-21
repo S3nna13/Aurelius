@@ -76,6 +76,17 @@ VISION_MIXER_REGISTRY: dict[str, type] = {
     "vision_token_mixer": VisionTokenMixer,
 }
 
+from src.data.synthetic_math import (  # noqa: E402
+    MathProblem,
+    SyntheticMathConfig,
+    SyntheticMathGenerator,
+)
+
+# Registry for synthetic math problem generators (RL math-reasoning training).
+DATA_REGISTRY: dict[str, type] = {
+    "synthetic_math": SyntheticMathGenerator,
+}
+
 __all__ = [
     # dataset_config
     "AURELIUS_MIX",
@@ -128,4 +139,9 @@ __all__ = [
     "VisionTokenMixer",
     "VisionTokenMixerConfig",
     "VISION_MIXER_REGISTRY",
+    # synthetic_math
+    "MathProblem",
+    "SyntheticMathConfig",
+    "SyntheticMathGenerator",
+    "DATA_REGISTRY",
 ]
