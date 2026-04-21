@@ -426,3 +426,41 @@ __all__ += [
     "BackgroundTask",
     "TaskStatus",
 ]
+
+
+# --- swarm scaler (additive) ------------------------------------------------
+from .swarm_scaler import (  # noqa: E402
+    SwarmScaler,
+    SwarmScalerConfig,
+    WorkerStats,
+    WorkItem,
+)
+
+AGENT_LOOP_REGISTRY["swarm_scaler"] = SwarmScaler
+
+__all__ += [
+    "SwarmScaler",
+    "SwarmScalerConfig",
+    "WorkerStats",
+    "WorkItem",
+]
+
+
+# --- proactive trigger registry (additive) ----------------------------------
+from .proactive_trigger import (  # noqa: E402
+    ProactiveTriggerConfig,
+    ProactiveTriggerRegistry,
+    TriggerSpec,
+    condition_trigger,
+    interval_trigger,
+)
+
+AGENT_LOOP_REGISTRY["proactive_trigger"] = ProactiveTriggerRegistry
+
+__all__ += [
+    "ProactiveTriggerConfig",
+    "ProactiveTriggerRegistry",
+    "TriggerSpec",
+    "condition_trigger",
+    "interval_trigger",
+]
