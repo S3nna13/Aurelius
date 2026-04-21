@@ -809,3 +809,32 @@ __all__ = list(__all__) + [
     "MathAnswer",
     "MathEval",
 ]
+
+# --- Additive registration for ToolBench agent tool-use evaluation -----------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched. Measures tool_selection_accuracy,
+# parameter_accuracy, sequence_exact_match, and format_compliance.
+# Cycle 132-D.
+from .tool_bench import (
+    ToolCall as _ToolCall,
+    ToolBenchSample as _ToolBenchSample,
+    ToolBenchConfig as _ToolBenchConfig,
+    ToolBench as _ToolBench,
+)
+
+ToolCall = _ToolCall
+ToolBenchSample = _ToolBenchSample
+ToolBenchConfig = _ToolBenchConfig
+ToolBench = _ToolBench
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("tool_bench", _ToolBench)
+BENCHMARK_REGISTRY.setdefault("tool_bench", _ToolBench)
+
+__all__ = list(__all__) + [
+    "ToolCall",
+    "ToolBenchSample",
+    "ToolBenchConfig",
+    "ToolBench",
+]
