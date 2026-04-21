@@ -58,3 +58,7 @@ from .zero_vision_sft import ZeroVisionSFTTrainer, ZeroVisionSFTConfig  # noqa: 
 
 ALIGNMENT_REGISTRY["zero_vision_sft"] = ZeroVisionSFTTrainer
 
+from .absolute_zero import AbsoluteZeroTrainer, AbsoluteZeroConfig  # noqa: E402
+
+ALIGNMENT_REGISTRY["absolute_zero"] = AbsoluteZeroTrainer
+
