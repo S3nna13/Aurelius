@@ -90,6 +90,7 @@ from .release_track_router import (
 from .aqlm_quant import AQLMCodebook, AQLMConfig, AQLMLinear
 from .zamba_block import ZambaBlock, ZambaConfig, ZambaSSMLayer, ZambaSharedAttention
 from .colt5_conditional import CoLT5Config, CoLT5FFN, CoLT5Block
+from .linear_recurrent_unit import LRUConfig, LRULayer
 from .dp_aware_moe_routing import DPAwareMoERouter
 from .gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
 from .flash_mla import FlashMLAAttention, FlashMLAConfig
@@ -127,8 +128,11 @@ MODEL_COMPONENT_REGISTRY["zamba_block"] = ZambaBlock
 MODEL_COMPONENT_REGISTRY["gqa_absorbed"] = GQAAbsorbedAttention
 MODEL_COMPONENT_REGISTRY["colt5_ffn"] = CoLT5FFN
 MODEL_COMPONENT_REGISTRY["colt5_block"] = CoLT5Block
+MODEL_COMPONENT_REGISTRY["lru"] = LRULayer
 
 __all__ = [
+    "LRUConfig",
+    "LRULayer",
     "CoLT5Config",
     "CoLT5FFN",
     "CoLT5Block",
