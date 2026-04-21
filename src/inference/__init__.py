@@ -169,3 +169,24 @@ __all__ += [
     "CoCoNutConfig",
     "ContinuousReasoningStep",
 ]
+
+# ---------------------------------------------------------------------------
+# Eagle3 — confidence-gated speculative decoding (Cycle 130-A, 2025)
+# ---------------------------------------------------------------------------
+from src.inference.eagle3_decoding import (  # noqa: E402
+    ConfidenceHead,
+    Eagle3Config,
+    Eagle3Decoder,
+    Eagle3Drafter,
+    Eagle3Verifier,
+)
+
+DECODER_REGISTRY["eagle3"] = Eagle3Decoder
+
+__all__ += [
+    "ConfidenceHead",
+    "Eagle3Config",
+    "Eagle3Decoder",
+    "Eagle3Drafter",
+    "Eagle3Verifier",
+]
