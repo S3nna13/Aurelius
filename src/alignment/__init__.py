@@ -66,3 +66,7 @@ from .length_reward import LengthReward, LengthRewardConfig  # noqa: E402
 
 ALIGNMENT_REGISTRY["length_reward"] = LengthReward
 
+from .online_rft import OnlineRFTTrainer, OnlineRFTConfig, RFTSample  # noqa: E402
+
+ALIGNMENT_REGISTRY["online_rft"] = OnlineRFTTrainer
+
