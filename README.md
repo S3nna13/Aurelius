@@ -1,6 +1,6 @@
 # Aurelius
 
-Aurelius is a 1.395B-parameter conversational AI assistant and research platform built entirely in pure PyTorch — no HuggingFace Transformers, no einops, no framework wrappers at runtime. Every algorithm is written from scratch. Talk to it like ChatGPT or Claude, extend it like a research codebase.
+Aurelius is a **model family** — currently a 1.395B-parameter agentic coding LLM platform built entirely in pure PyTorch — no HuggingFace Transformers, no einops, no framework wrappers at runtime. Every algorithm is written from scratch. Talk to it like ChatGPT or Claude, extend it like a research codebase. The family architecture (FamilyManifest + ModelVariant + factory + version compatibility gate) lets specialized variants (base / chat / coding / long-context / retrieval / agent / safety / deployment-footprint) coexist under a stable contract.
 
 ---
 
@@ -265,8 +265,8 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **121 implementation cycles** completed
-- **19 300+ tests** passing (full suite ~15-28 min on CPU)
+- **122 implementation cycles** completed
+- **19 400+ tests** passing (full suite ~15-28 min on CPU)
 - **1 000+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, and the newer **agent / chat / longcontext / retrieval / safety** surface dirs
 - Recent cycles:
   - **cycle-117** — Toolformer-style self-supervised tool-learning data-gen, tau-bench scorer, dynamic NTK-aware context-window extension, grammar-constrained structured-output decoder, step-level Process Reward Model
@@ -274,6 +274,7 @@ from aurelius.model.transformer import AureliusTransformer
   - **cycle-119** — reward-hack detector (12 patterns from Mythos System Card p.65), PyRIT Crescendo multi-turn jailbreak probe, Raptor-style parallel dispatch-task abstraction, 3-state circuit breaker with exponential backoff, Mythos 40-dimension behavioral-audit taxonomy, threat-intel analyst persona with structured CVE/MITRE/actor/IOC output contracts
   - **cycle-120** — g0-style YAML rule engine (12 agentic domains, 6 check types), Mythos 15-dim constitution scorer (Spirit/Level-1/Level-2), SHADE-Arena long-horizon main+side-task eval, RED/BLUE/PURPLE security personas, tool-sandbox denylist (35 rules / 7 categories), s0cli-style vibe code reviewer with skepticism-rule filter
   - **cycle-121** — kNN known-bad prompt guard, PyRIT Tree-of-Attacks probe, many-shot jailbreak probe (Anil et al. 2024), 5-stage SOC pipeline (ingest→normalize→enrich→decide→route with blast-radius gate), PentestGPT-style 5-state agent controller, tiered compaction-trigger manager (Mythos 50k/200k thresholds)
+  - **cycle-122** — model family infrastructure (v5 first cycle): FamilyManifest + ReleaseTrack + MODEL_MANIFEST_REGISTRY, ModelFamily + ModelVariant + MODEL_FAMILY/VARIANT_REGISTRY, family-aware backbone factory, semver compatibility gate (exact/minor_mismatch/major_break) for manifest + checkpoint + tokenizer contracts, plus Gray Swan ART benchmark (ASR@k) and RAG citation tracker
 - `aurelius` works as a terminal command after `pip install -e .`
 - Frontier-tier surfaces wired in cycles 100–103:
   - **agent** — 10 modules: tool-call parsers, ReAct loop, dispatcher, ToT planner, error recovery, repo-context packer, unified-diff generator, shell planner, code-execution sandbox, task decomposer (DAG + topo sort + parallelizable-group extraction)
