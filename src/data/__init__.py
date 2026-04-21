@@ -87,6 +87,12 @@ DATA_REGISTRY: dict[str, type] = {
     "synthetic_math": SyntheticMathGenerator,
 }
 
+from src.data.coreset_selector import (  # noqa: E402
+    CoresetConfig,
+    CoresetSelector,
+)
+# CoresetSelector self-registers into DATA_REGISTRY on import.
+
 __all__ = [
     # dataset_config
     "AURELIUS_MIX",
@@ -144,4 +150,7 @@ __all__ = [
     "SyntheticMathConfig",
     "SyntheticMathGenerator",
     "DATA_REGISTRY",
+    # coreset_selector
+    "CoresetConfig",
+    "CoresetSelector",
 ]
