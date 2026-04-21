@@ -312,3 +312,24 @@ __all__ += [
     "SoTConfig",
     "SoTResult",
 ]
+
+# ---------------------------------------------------------------------------
+# Tree of Thought — BFS/DFS reasoning tree search (Yao et al. 2023)
+# Explores a tree of intermediate reasoning steps with value-based pruning.
+# BFS keeps the top-b frontier per level; DFS backtracks below threshold.
+# ---------------------------------------------------------------------------
+from src.inference.tree_of_thought import (  # noqa: E402
+    ThoughtNode,
+    ToTConfig,
+    ToTTree,
+    TreeOfThoughtDecoder,
+)
+
+# DECODER_REGISTRY["tree_of_thought"] is set inside tree_of_thought.py
+
+__all__ += [
+    "ThoughtNode",
+    "ToTConfig",
+    "ToTTree",
+    "TreeOfThoughtDecoder",
+]
