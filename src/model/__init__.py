@@ -89,6 +89,7 @@ from .release_track_router import (
 )
 from .dp_aware_moe_routing import DPAwareMoERouter
 from .mla_256 import MLA256Attention, MLA256Config
+from .moonvit_patch_packer import MoonVitPatchPacker, MoonVitPatchPackerConfig
 from .rms_norm import RMSNorm
 from .transformer import AureliusTransformer, TransformerBlock, count_parameters
 from .variant_adapter import (
@@ -112,8 +113,11 @@ MODEL_COMPONENT_REGISTRY["dsa_attention"] = DSAAttention
 MODEL_COMPONENT_REGISTRY["mtp_shared"] = SharedMTPHead
 MODEL_COMPONENT_REGISTRY["dp_aware_moe_routing"] = DPAwareMoERouter
 MODEL_COMPONENT_REGISTRY["mla_256"] = MLA256Attention
+MODEL_COMPONENT_REGISTRY["moonvit_patch_packer"] = MoonVitPatchPacker
 
 __all__ = [
+    "MoonVitPatchPacker",
+    "MoonVitPatchPackerConfig",
     "DPAwareMoERouter",
     "MLA256Attention",
     "MLA256Config",
