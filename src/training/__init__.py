@@ -129,3 +129,10 @@ from src.training.mcts_rl_trainer import (  # noqa: E402
 # Registry entry is set inside mcts_rl_trainer.py after import.
 
 __all__ += ["MCTSRLConfig", "MCTSNode", "MCTSStats", "MCTSRLTrainer"]
+
+# NCE Objectives — NCE / InfoNCE / NT-Xent contrastive objectives (Cycle 137-E)
+from src.training.nce_objectives import NCEConfig, NCEObjectives  # noqa: E402
+
+# Registry entry is set inside nce_objectives.py after import.
+
+__all__ += ["NCEConfig", "NCEObjectives"]
