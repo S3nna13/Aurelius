@@ -253,3 +253,39 @@ __all__ += [
     "ChunkPrefillRequestState",
     "ChunkPrefillScheduler",
 ]
+
+# ---------------------------------------------------------------------------
+# Reward-Guided Search — ARGS / value-guided beam search for reasoning (2025)
+# Scores candidates as (1-λ)*log_prob + λ*value_score with length penalty.
+# Used in MCTS reasoning, PRM-guided beam search, and math/code decoding.
+# ---------------------------------------------------------------------------
+from src.inference.reward_guided_search import (  # noqa: E402
+    RewardGuidedSearch,
+    SearchBeam,
+    SearchConfig,
+)
+
+DECODER_REGISTRY["reward_guided_search"] = RewardGuidedSearch
+
+__all__ += [
+    "RewardGuidedSearch",
+    "SearchBeam",
+    "SearchConfig",
+]
+
+# ---------------------------------------------------------------------------
+# Min-P Sampler — dynamic probability-floor adaptive sampling (Nguyen 2024)
+# p_min = min_p * max(p_tokens) adapts the threshold to the sharpness of
+# the distribution, unlike the fixed-cutoff of standard nucleus sampling.
+# ---------------------------------------------------------------------------
+from src.inference.minp_sampler import (  # noqa: E402
+    MinPConfig,
+    MinPSampler,
+)
+
+DECODER_REGISTRY["minp_sampler"] = MinPSampler
+
+__all__ += [
+    "MinPConfig",
+    "MinPSampler",
+]
