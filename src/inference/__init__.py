@@ -211,3 +211,22 @@ __all__ += [
     "RadixCacheConfig",
     "RadixNode",
 ]
+
+# ---------------------------------------------------------------------------
+# Hydra Speculative Decoding — multi-head parallel draft (Ankner et al. 2024)
+# N draft heads attached to the target model's hidden states; all heads run
+# in a single forward pass, eliminating a separate draft model entirely.
+# ---------------------------------------------------------------------------
+from src.inference.hydra_speculative import (  # noqa: E402
+    HydraConfig,
+    HydraHead,
+    HydraSpeculative,
+)
+
+DECODER_REGISTRY["hydra"] = HydraSpeculative
+
+__all__ += [
+    "HydraConfig",
+    "HydraHead",
+    "HydraSpeculative",
+]
