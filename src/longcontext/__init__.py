@@ -82,6 +82,15 @@ from .hierarchical_context_mgr import HierarchicalContextManager  # noqa: E402
 
 LONGCONTEXT_STRATEGY_REGISTRY["hierarchical_context"] = HierarchicalContextManager
 
+from .context_budget_controller import (  # noqa: E402
+    ContextBudgetConfig,
+    ContextBudgetController,
+    ContextSegment,
+    SegmentPriority,
+)
+
+LONGCONTEXT_STRATEGY_REGISTRY["context_budget"] = ContextBudgetController
+
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
     "KVInt8Compressor",
@@ -121,4 +130,8 @@ __all__ = [
     "CompactionTriggerManager",
     "COMPACTION_TRIGGER_DEFAULT_TIERS",
     "HierarchicalContextManager",
+    "ContextBudgetController",
+    "ContextBudgetConfig",
+    "ContextSegment",
+    "SegmentPriority",
 ]
