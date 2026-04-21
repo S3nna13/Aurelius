@@ -89,6 +89,7 @@ from .release_track_router import (
 )
 from .aqlm_quant import AQLMCodebook, AQLMConfig, AQLMLinear
 from .zamba_block import ZambaBlock, ZambaConfig, ZambaSSMLayer, ZambaSharedAttention
+from .colt5_conditional import CoLT5Config, CoLT5FFN, CoLT5Block
 from .dp_aware_moe_routing import DPAwareMoERouter
 from .gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
 from .flash_mla import FlashMLAAttention, FlashMLAConfig
@@ -124,8 +125,13 @@ MODEL_COMPONENT_REGISTRY["striped_attention"] = StripedAttention
 MODEL_COMPONENT_REGISTRY["aqlm_linear"] = AQLMLinear
 MODEL_COMPONENT_REGISTRY["zamba_block"] = ZambaBlock
 MODEL_COMPONENT_REGISTRY["gqa_absorbed"] = GQAAbsorbedAttention
+MODEL_COMPONENT_REGISTRY["colt5_ffn"] = CoLT5FFN
+MODEL_COMPONENT_REGISTRY["colt5_block"] = CoLT5Block
 
 __all__ = [
+    "CoLT5Config",
+    "CoLT5FFN",
+    "CoLT5Block",
     "GQAAbsorbedAttention",
     "GQAAbsorbedConfig",
     "AQLMCodebook",
