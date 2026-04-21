@@ -38,3 +38,7 @@ from .constitution_dimensions import (
 
 ALIGNMENT_REGISTRY["constitution_dimensions"] = ConstitutionScorer
 
+from .parl import PARLReward, AnnealedLambda  # noqa: E402
+
+ALIGNMENT_REGISTRY["parl"] = PARLReward
+
