@@ -464,3 +464,23 @@ __all__ += [
     "condition_trigger",
     "interval_trigger",
 ]
+
+
+# --- reflexion verbal RL agent (additive) -----------------------------------
+from .reflexion_agent import (  # noqa: E402
+    ReflexionAgent,
+    ReflexionAttempt,
+    ReflexionConfig,
+    ReflexionMemory,
+    ReflexionResult,
+)
+
+# AGENT_LOOP_REGISTRY["reflexion"] is set inside reflexion_agent.py itself.
+
+__all__ += [
+    "ReflexionAgent",
+    "ReflexionAttempt",
+    "ReflexionConfig",
+    "ReflexionMemory",
+    "ReflexionResult",
+]
