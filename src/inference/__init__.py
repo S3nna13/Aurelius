@@ -120,3 +120,52 @@ __all__ += [
     "ThinkingBudgetError",
     "VisionStepLimitError",
 ]
+
+# ---------------------------------------------------------------------------
+# Soft Thinking — differentiable probabilistic token embedding mixing (2025)
+# ---------------------------------------------------------------------------
+from src.inference.soft_thinking import (  # noqa: E402
+    SoftThinkingConfig,
+    SoftThinkingMixer,
+)
+
+DECODER_REGISTRY["soft_thinking"] = SoftThinkingMixer
+
+__all__ += [
+    "SoftThinkingConfig",
+    "SoftThinkingMixer",
+]
+
+# ---------------------------------------------------------------------------
+# Wait Token Forcer — S1 paper (2025) sequence-manipulation approach
+# ---------------------------------------------------------------------------
+from src.inference.wait_token_forcer import (  # noqa: E402
+    WaitTokenForcer,
+    WaitTokenForcerConfig,
+)
+
+DECODER_REGISTRY["wait_token_forcer"] = WaitTokenForcer
+
+__all__ += [
+    "WaitTokenForcer",
+    "WaitTokenForcerConfig",
+]
+
+# ---------------------------------------------------------------------------
+# CoCoNut — Chain of Continuous Thought (Hao et al. 2024)
+# Latent-space multi-step reasoning: hidden states are fed back directly,
+# bypassing the embedding lookup to avoid premature token commitment.
+# ---------------------------------------------------------------------------
+from src.inference.coconut import (  # noqa: E402
+    CoCoNut,
+    CoCoNutConfig,
+    ContinuousReasoningStep,
+)
+
+DECODER_REGISTRY["coconut"] = CoCoNut
+
+__all__ += [
+    "CoCoNut",
+    "CoCoNutConfig",
+    "ContinuousReasoningStep",
+]
