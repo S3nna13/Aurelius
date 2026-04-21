@@ -77,3 +77,14 @@ from src.training.swe_rl import (  # noqa: E402
 TRAINING_REGISTRY["swe_rl"] = SWERLTrainer
 
 __all__ += ["SWETask", "SWEPatch", "SWEResult", "SWERLConfig", "SWERLTrainer"]
+
+# PCGrad v2 — cosine-adaptive conflicting gradient projection (Cycle 132-E)
+from src.training.pcgrad_v2 import (  # noqa: E402
+    GradientBank,
+    PCGradV2,
+    PCGradV2Config,
+)
+
+TRAINING_REGISTRY["pcgrad_v2"] = PCGradV2
+
+__all__ += ["PCGradV2Config", "GradientBank", "PCGradV2"]
