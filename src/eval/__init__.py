@@ -867,3 +867,32 @@ __all__ = list(__all__) + [
     "TraceEvalResult",
     "ReasoningTraceEval",
 ]
+
+# --- Additive registration for Multi-Agent Debate Evaluator ------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.  Evaluates debate quality via position drift,
+# consensus, and argument diversity (Du et al. 2023).
+# Cycle 137-D.
+from .multi_agent_debate_eval import (
+    DebateConfig as _DebateConfig,
+    AgentTurn as _AgentTurn,
+    DebateEvalResult as _DebateEvalResult,
+    DebateEvaluator as _DebateEvaluator,
+)
+
+DebateConfig = _DebateConfig
+AgentTurn = _AgentTurn
+DebateEvalResult = _DebateEvalResult
+DebateEvaluator = _DebateEvaluator
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("multi_agent_debate", _DebateEvaluator)
+BENCHMARK_REGISTRY.setdefault("multi_agent_debate", _DebateEvaluator)
+
+__all__ = list(__all__) + [
+    "DebateConfig",
+    "AgentTurn",
+    "DebateEvalResult",
+    "DebateEvaluator",
+]
