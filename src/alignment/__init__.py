@@ -74,3 +74,12 @@ from .orpo_trainer import ORPOTrainer, ORPOConfig, ORPOBatch  # noqa: E402
 
 ALIGNMENT_REGISTRY["orpo"] = ORPOTrainer
 
+from .self_reward_trainer import (  # noqa: E402
+    SelfRewardTrainer,
+    SelfRewardConfig,
+    ScoredCandidate,
+    SelfRewardBatch,
+)
+
+ALIGNMENT_REGISTRY["self_reward"] = SelfRewardTrainer
+

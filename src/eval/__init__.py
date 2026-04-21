@@ -838,3 +838,32 @@ __all__ = list(__all__) + [
     "ToolBenchConfig",
     "ToolBench",
 ]
+
+# --- Additive registration for Reasoning Trace Evaluator --------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.  Evaluates chain-of-thought traces on
+# faithfulness, length efficiency, redundancy, and step consistency.
+# Cycle 135-F.
+from .reasoning_trace_eval import (
+    ReasoningTraceConfig as _ReasoningTraceConfig,
+    StepAnalysis as _StepAnalysis,
+    TraceEvalResult as _TraceEvalResult,
+    ReasoningTraceEval as _ReasoningTraceEval,
+)
+
+ReasoningTraceConfig = _ReasoningTraceConfig
+StepAnalysis = _StepAnalysis
+TraceEvalResult = _TraceEvalResult
+ReasoningTraceEval = _ReasoningTraceEval
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("reasoning_trace_eval", _ReasoningTraceEval)
+BENCHMARK_REGISTRY.setdefault("reasoning_trace_eval", _ReasoningTraceEval)
+
+__all__ = list(__all__) + [
+    "ReasoningTraceConfig",
+    "StepAnalysis",
+    "TraceEvalResult",
+    "ReasoningTraceEval",
+]
