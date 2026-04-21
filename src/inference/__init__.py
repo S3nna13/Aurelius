@@ -333,3 +333,21 @@ __all__ += [
     "ToTTree",
     "TreeOfThoughtDecoder",
 ]
+
+# ---------------------------------------------------------------------------
+# Adaptive KV Eviction — attention-score-based dynamic eviction
+# (H2O / PyramidKV / SnapKV, Cycle 137-B)
+# ---------------------------------------------------------------------------
+from src.inference.adaptive_kv_eviction import (  # noqa: E402
+    AdaptiveKVConfig,
+    AdaptiveKVEvictionManager,
+    KVCacheState,
+)
+
+DECODER_REGISTRY["adaptive_kv_eviction"] = AdaptiveKVEvictionManager
+
+__all__ += [
+    "AdaptiveKVConfig",
+    "AdaptiveKVEvictionManager",
+    "KVCacheState",
+]
