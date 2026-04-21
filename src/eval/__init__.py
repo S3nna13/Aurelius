@@ -720,3 +720,42 @@ __all__ = list(__all__) + [
     "msj_stub_judge_fn",
     "eval_many_shot_jailbreak_probe_enabled",
 ]
+
+# --- Additive registration for Agent Red Teaming (ART) benchmark ------------
+# Additive only; reuses the METRIC_REGISTRY / BENCHMARK_REGISTRY set above and
+# leaves all prior entries untouched. Default config flag is OFF.
+from .agent_red_team_bench import (
+    AttackAttempt as _ARTAttackAttempt,
+    AttackerProfile as _ARTAttackerProfile,
+    ARTResult as _ARTResult,
+    ARTBenchmark as _ARTBenchmark,
+    DEFAULT_ATTACKER_PROFILES as _ART_DEFAULT_ATTACKER_PROFILES,
+    stub_target_fn as _art_stub_target_fn,
+    stub_judge_fn as _art_stub_judge_fn,
+)
+
+AttackAttempt = _ARTAttackAttempt
+AttackerProfile = _ARTAttackerProfile
+ARTResult = _ARTResult
+ARTBenchmark = _ARTBenchmark
+ART_DEFAULT_ATTACKER_PROFILES = _ART_DEFAULT_ATTACKER_PROFILES
+art_stub_target_fn = _art_stub_target_fn
+art_stub_judge_fn = _art_stub_judge_fn
+
+eval_agent_red_team_bench_enabled: bool = False
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("agent_red_team_bench", _ARTBenchmark)
+BENCHMARK_REGISTRY.setdefault("agent_red_team_bench", _ARTBenchmark)
+
+__all__ = list(__all__) + [
+    "AttackAttempt",
+    "AttackerProfile",
+    "ARTResult",
+    "ARTBenchmark",
+    "ART_DEFAULT_ATTACKER_PROFILES",
+    "art_stub_target_fn",
+    "art_stub_judge_fn",
+    "eval_agent_red_team_bench_enabled",
+]

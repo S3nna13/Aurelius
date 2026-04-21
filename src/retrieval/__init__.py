@@ -92,6 +92,17 @@ QUERY_EXPANDER_REGISTRY: dict[str, type] = {
     "prf": PRFQueryExpander,
 }
 
+from .citation_tracker import (  # noqa: E402
+    CitationReport,
+    CitationSpan,
+    CitationTracker,
+    Source as CitationSource,
+)
+
+CITATION_REGISTRY: dict[str, type] = {
+    "basic": CitationTracker,
+}
+
 __all__ = [
     "BM25Retriever",
     "Chunk",
@@ -125,4 +136,9 @@ __all__ = [
     "PRFExpansionResult",
     "PRFQueryExpander",
     "QUERY_EXPANDER_REGISTRY",
+    "CitationReport",
+    "CitationSpan",
+    "CitationTracker",
+    "CitationSource",
+    "CITATION_REGISTRY",
 ]

@@ -151,6 +151,9 @@ class AureliusConfig:
     # PRF query expansion for retrieval (default OFF)
     retrieval_prf_query_expander_enabled: bool = False
 
+    # Citation tracker for RAG output audit trails (default OFF)
+    retrieval_citation_tracker_enabled: bool = False
+
     # Per-role token budget allocator for chat packing (default OFF)
     chat_token_budget_allocator_enabled: bool = False
 
@@ -171,6 +174,9 @@ class AureliusConfig:
 
     # Tiered compaction trigger manager (longcontext; default OFF)
     longcontext_compaction_trigger_enabled: bool = False
+
+    # Agent Red Teaming (ART) benchmark (eval/llm_red_team; default OFF)
+    eval_agent_red_team_bench_enabled: bool = False
 
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (

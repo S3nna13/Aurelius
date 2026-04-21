@@ -2,24 +2,94 @@
 
 from .attention import GroupedQueryAttention, apply_rope, precompute_rope_frequencies
 from .chunked_local_attention import ChunkedLocalAttention
+from .compatibility import (
+    CompatibilityError,
+    CompatibilityVerdict,
+    SemverParts,
+    assert_compatible,
+    check_checkpoint_compatibility,
+    check_manifest_compatibility,
+    parse_semver,
+)
 from .config import AureliusConfig
+from .factory import (
+    DEFAULT_BACKBONE_BUILDERS,
+    FactoryError,
+    build_backbone_from_manifest,
+    build_from_variant_id,
+    register_backbone_builder,
+)
+from .family import (
+    AURELIUS_FAMILY,
+    MODEL_FAMILY_REGISTRY,
+    MODEL_VARIANT_REGISTRY,
+    ModelFamily,
+    ModelVariant,
+    get_family,
+    get_variant_by_id,
+    register_family,
+    register_variant,
+)
 from .ffn import SwiGLUFFN
 from .lambda_attention import LambdaAttention
+from .manifest import (
+    AURELIUS_REFERENCE_MANIFEST,
+    MODEL_MANIFEST_REGISTRY,
+    FamilyManifest,
+    ManifestValidationError,
+    ReleaseTrack,
+    dump_manifest,
+    get_manifest,
+    list_manifests,
+    load_manifest,
+    register_manifest,
+)
 from .parallel_attention import ParallelAttentionBlock
 from .rms_norm import RMSNorm
 from .transformer import AureliusTransformer, TransformerBlock, count_parameters
 
 __all__ = [
+    "AURELIUS_FAMILY",
+    "AURELIUS_REFERENCE_MANIFEST",
     "AureliusConfig",
     "AureliusTransformer",
     "ChunkedLocalAttention",
+    "CompatibilityError",
+    "CompatibilityVerdict",
+    "DEFAULT_BACKBONE_BUILDERS",
+    "FactoryError",
+    "FamilyManifest",
     "GroupedQueryAttention",
     "LambdaAttention",
+    "MODEL_FAMILY_REGISTRY",
+    "MODEL_MANIFEST_REGISTRY",
+    "MODEL_VARIANT_REGISTRY",
+    "ManifestValidationError",
+    "ModelFamily",
+    "ModelVariant",
     "ParallelAttentionBlock",
     "RMSNorm",
+    "ReleaseTrack",
+    "SemverParts",
     "SwiGLUFFN",
     "TransformerBlock",
     "apply_rope",
+    "assert_compatible",
+    "build_backbone_from_manifest",
+    "build_from_variant_id",
+    "check_checkpoint_compatibility",
+    "check_manifest_compatibility",
     "count_parameters",
+    "dump_manifest",
+    "get_family",
+    "get_manifest",
+    "get_variant_by_id",
+    "list_manifests",
+    "load_manifest",
+    "parse_semver",
     "precompute_rope_frequencies",
+    "register_backbone_builder",
+    "register_family",
+    "register_manifest",
+    "register_variant",
 ]
