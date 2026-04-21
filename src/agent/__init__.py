@@ -408,3 +408,21 @@ __all__ += [
     "PreserveThinkingConfig",
     "ThinkingSnapshot",
 ]
+
+
+# --- background executor (additive) -----------------------------------------
+from .background_executor import (  # noqa: E402
+    BackgroundExecutor,
+    BackgroundExecutorConfig,
+    BackgroundTask,
+    TaskStatus,
+)
+
+AGENT_LOOP_REGISTRY["background_executor"] = BackgroundExecutor
+
+__all__ += [
+    "BackgroundExecutor",
+    "BackgroundExecutorConfig",
+    "BackgroundTask",
+    "TaskStatus",
+]
