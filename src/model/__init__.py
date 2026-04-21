@@ -87,9 +87,11 @@ from .release_track_router import (
     RouterOverrideError,
     RouterPolicy,
 )
+from .aqlm_quant import AQLMCodebook, AQLMConfig, AQLMLinear
 from .dp_aware_moe_routing import DPAwareMoERouter
 from .flash_mla import FlashMLAAttention, FlashMLAConfig
 from .mla_256 import MLA256Attention, MLA256Config
+from .striped_attention import StripedAttention, StripedAttentionConfig
 from .moonvit_patch_packer import MoonVitPatchPacker, MoonVitPatchPackerConfig
 from .rms_norm import RMSNorm
 from .transformer import AureliusTransformer, TransformerBlock, count_parameters
@@ -116,10 +118,17 @@ MODEL_COMPONENT_REGISTRY["dp_aware_moe_routing"] = DPAwareMoERouter
 MODEL_COMPONENT_REGISTRY["mla_256"] = MLA256Attention
 MODEL_COMPONENT_REGISTRY["moonvit_patch_packer"] = MoonVitPatchPacker
 MODEL_COMPONENT_REGISTRY["flash_mla"] = FlashMLAAttention
+MODEL_COMPONENT_REGISTRY["striped_attention"] = StripedAttention
+MODEL_COMPONENT_REGISTRY["aqlm_linear"] = AQLMLinear
 
 __all__ = [
+    "AQLMCodebook",
+    "AQLMConfig",
+    "AQLMLinear",
     "FlashMLAAttention",
     "FlashMLAConfig",
+    "StripedAttention",
+    "StripedAttentionConfig",
     "MoonVitPatchPacker",
     "MoonVitPatchPackerConfig",
     "DPAwareMoERouter",
