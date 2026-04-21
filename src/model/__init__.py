@@ -52,6 +52,7 @@ from .head_registry import (
     register_head,
 )
 from .lambda_attention import LambdaAttention
+from .mtp_shared import SharedMTPHead
 from .model_merging import (
     MERGING_REGISTRY,
     MergeError,
@@ -106,6 +107,7 @@ from .variant_adapter import (
 # ---------------------------------------------------------------------------
 MODEL_COMPONENT_REGISTRY: dict = {}
 MODEL_COMPONENT_REGISTRY["dsa_attention"] = DSAAttention
+MODEL_COMPONENT_REGISTRY["mtp_shared"] = SharedMTPHead
 
 __all__ = [
     "DSAAttention",
@@ -129,6 +131,7 @@ __all__ = [
     "HeadKind",
     "HeadSpec",
     "LambdaAttention",
+    "SharedMTPHead",
     "MERGING_REGISTRY",
     "MergeError",
     "MergeResult",
