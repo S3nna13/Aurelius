@@ -42,3 +42,14 @@
 - `src/training/token_credit_assignment.py` — TokenCreditAssigner: uniform/discounted/GAE/end-decay (17 tests)
 - `src/eval/reasoning_trace_eval.py` — ReasoningTraceEval: faithfulness/efficiency/redundancy CoT scoring (27 tests)
 **Tests added:** 107 | **Commits:** 7836263 b0660a7 5b2c96b 3cfb35e 7c6142b b0660a7
+
+## Cycle 136 — 2026-04-21
+**Sources:** Reflexion (Shinn et al. 2023), FIM (Bavarian et al. 2022), Tree of Thought (Yao et al. 2023), Bradley-Terry RM (Ziegler 2019), CPO (Xu et al. 2024), Pass@k (Chen et al. 2021)
+**Modules:**
+- `src/agent/reflexion_agent.py` — ReflexionAgent: verbal RL through failure reflection (15 tests)
+- `src/model/fim_lm.py` — FIMTransformer: SPM/PSM fill-in-the-middle reordering (17 tests)
+- `src/inference/tree_of_thought.py` — TreeOfThoughtDecoder: BFS/DFS reasoning tree (21 tests)
+- `src/training/offline_reward_modeling.py` — RewardModelTrainer: Bradley-Terry pairwise RM (15 tests)
+- `src/alignment/cpo_trainer.py` — CPOTrainer: contrastive preference opt w/o reference model (16 tests)
+- `src/eval/pass_at_k_eval.py` — PassAtKEvaluator: unbiased pass@k estimator (16 tests)
+**Tests added:** 100 | **Commits:** c0ae8b2 24d240f 4b1ad38 9a92525 6754882 f6bc386
