@@ -1,5 +1,7 @@
 """Aurelius 1.3B transformer model."""
 
+import sys
+
 from .dsa_attention import DSAAttention, DSAConfig, LightningIndexer
 from .attention import GroupedQueryAttention, apply_rope, precompute_rope_frequencies
 from .checkpoint_migration import (
@@ -76,6 +78,39 @@ from .manifest import (
     load_manifest,
     register_manifest,
 )
+from .manifest_v2 import (
+    MANIFEST_SCHEMA_VERSION,
+    compare_backend_contracts,
+    is_v2_manifest,
+    list_v2_manifests,
+    upgrade_to_v2,
+    v2_to_v1_dict,
+)
+from .interface_contract import (
+    InterfaceContractBundle,
+    InterfaceContractError,
+    InterfaceContractPaths,
+    load_interface_contract_bundle,
+    load_interface_contract_json,
+    load_interface_contract_markdown,
+    load_interface_contract_prompt_yaml_text,
+    load_interface_contract_schema,
+    resolve_interface_contract_paths,
+    validate_interface_contract,
+)
+from .interface_framework import (
+    ApprovalRequest,
+    AureliusInterfaceFramework,
+    BackgroundJob,
+    Checkpoint,
+    InterfaceFrameworkError,
+    MessageEnvelope,
+    ModePolicy,
+    SkillBundle,
+    TaskThread,
+    TaskThreadSpec,
+    Workstream,
+)
 from .parallel_attention import ParallelAttentionBlock
 from .release_track_router import (
     DEV_POLICY,
@@ -134,7 +169,23 @@ MODEL_COMPONENT_REGISTRY["lru"] = LRULayer
 MODEL_COMPONENT_REGISTRY["fim_transformer"] = FIMTransformer
 MODEL_COMPONENT_REGISTRY["vision_cross_attention"] = VisionCrossAttention
 
+from .matryoshka_embedding import MatryoshkaConfig, MatryoshkaEmbedding
+MODEL_COMPONENT_REGISTRY["matryoshka_embedding"] = MatryoshkaEmbedding
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("src.model", _module)
+sys.modules.setdefault("model", _module)
+
+from src.backends import (  # noqa: E402
+    BACKEND_REGISTRY,
+    ENGINE_ADAPTER_REGISTRY,
+    select_backend_for_manifest,
+)
+
 __all__ = [
+    "BACKEND_REGISTRY",
+    "ENGINE_ADAPTER_REGISTRY",
+    "select_backend_for_manifest",
     "VisionCrossAttention",
     "VisionCrossAttnConfig",
     "LRUConfig",
@@ -168,6 +219,8 @@ __all__ = [
     "DSAConfig",
     "LightningIndexer",
     "MODEL_COMPONENT_REGISTRY",
+    "MatryoshkaConfig",
+    "MatryoshkaEmbedding",
     "AURELIUS_FAMILY",
     "AURELIUS_REFERENCE_MANIFEST",
     "AureliusConfig",
@@ -254,4 +307,47 @@ __all__ = [
     "get_adapter",
     "list_adapters",
     "register_adapter",
+    "MANIFEST_SCHEMA_VERSION",
+    "is_v2_manifest",
+    "upgrade_to_v2",
+    "v2_to_v1_dict",
+    "compare_backend_contracts",
+    "list_v2_manifests",
+    "InterfaceContractBundle",
+    "InterfaceContractError",
+    "InterfaceContractPaths",
+    "resolve_interface_contract_paths",
+    "load_interface_contract_bundle",
+    "load_interface_contract_json",
+    "load_interface_contract_markdown",
+    "load_interface_contract_prompt_yaml_text",
+    "load_interface_contract_schema",
+    "validate_interface_contract",
+    "ApprovalRequest",
+    "AureliusInterfaceFramework",
+    "BackgroundJob",
+    "Checkpoint",
+    "InterfaceFrameworkError",
+    "MessageEnvelope",
+    "ModePolicy",
+    "SkillBundle",
+    "TaskThread",
+    "TaskThreadSpec",
+    "Workstream",
+    "SessionRecord",
 ]
+
+
+_LAZY_EXPORTS = {
+    "SessionRecord": ("src.agent.session_manager", "SessionRecord"),
+}
+
+
+def __getattr__(name: str):
+    if name not in _LAZY_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_name, attr_name = _LAZY_EXPORTS[name]
+    module = __import__(module_name, fromlist=[attr_name])
+    value = getattr(module, attr_name)
+    globals()[name] = value
+    return value

@@ -83,3 +83,7 @@ from .self_reward_trainer import (  # noqa: E402
 
 ALIGNMENT_REGISTRY["self_reward"] = SelfRewardTrainer
 
+from .cpo_trainer import CPOTrainer, CPOConfig, CPOBatch  # noqa: E402
+
+ALIGNMENT_REGISTRY["cpo"] = CPOTrainer
+

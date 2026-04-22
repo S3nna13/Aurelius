@@ -682,7 +682,12 @@ def _run_serve(
     try:
         from src.serving.web_ui import create_ui_server, make_mock_generate_fn as mk_ui
 
-        ui_server = create_ui_server(host, ui_port, mk_ui())
+        ui_server = create_ui_server(
+            host,
+            ui_port,
+            mk_ui(),
+            api_url=f"http://{host}:{port}/v1/chat/completions",
+        )
         threading.Thread(target=ui_server.serve_forever, daemon=True).start()
         if _RICH and _console:
             _console.print(
@@ -725,11 +730,13 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Aurelius -- 1.395B AI assistant",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(
-            """\
+        """\
         examples:
           aurelius                         start interactive chat
           aurelius chat -s coding          use the 'coding' persona
           aurelius chat --model-path ckpt  load trained weights
+          aurelius backend list            inspect backend adapters
+          aurelius session list            inspect persistent sessions
           aurelius serve                   API server + web UI
           aurelius serve --port 8080       API on custom port
           aurelius train --config ...      launch training
@@ -771,6 +778,16 @@ def _build_parser() -> argparse.ArgumentParser:
     eval_p = sub.add_parser("eval", help="run evaluation harness")
     eval_p.add_argument("checkpoint", nargs="?")
     eval_p.add_argument("--results-dir", default="results")
+
+    from src.cli.family_commands import build_family_parser
+    from src.cli.interface_commands import build_interface_parser
+    from src.cli.backend_commands import build_backend_parser
+    from src.cli.session_commands import build_session_parser
+
+    build_family_parser(sub)
+    build_interface_parser(sub)
+    build_backend_parser(sub)
+    build_session_parser(sub)
 
     return parser
 
@@ -863,6 +880,42 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(CYAN(BOLD("\n  Aurelius Evaluation\n")))
             print(DIM(f"  {' '.join(cmd)}\n"))
         return subprocess.call(cmd)
+
+    elif args.command == "family":
+        try:
+            from src.cli.family_commands import dispatch_family_command
+
+            return dispatch_family_command(args, sys.stdout)
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
+    elif args.command == "backend":
+        try:
+            from src.cli.backend_commands import dispatch_backend_command
+
+            return dispatch_backend_command(args, sys.stdout)
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
+    elif args.command == "session":
+        try:
+            from src.cli.session_commands import dispatch_session_command
+
+            return dispatch_session_command(args, sys.stdout)
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
+    elif args.command == "interface":
+        try:
+            from src.cli.interface_commands import dispatch_interface_command
+
+            return dispatch_interface_command(args, sys.stdout)
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
 
     return 0
 

@@ -289,6 +289,9 @@ class BeamMCTS:
 class TestTimeScaler:
     """Main interface for test-time compute scaling."""
 
+    # Prevent pytest from attempting to collect this utility class.
+    __test__ = False
+
     def __init__(
         self,
         model: nn.Module,

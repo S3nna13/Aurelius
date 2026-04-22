@@ -351,3 +351,27 @@ __all__ += [
     "AdaptiveKVEvictionManager",
     "KVCacheState",
 ]
+
+# ---------------------------------------------------------------------------
+# KV Cache Eviction — policy-agnostic eviction primitives (Cycle 132)
+# Pure-stdlib bookkeeping layer: LRU / LFU / FIFO / WEIGHTED / SINK_PRESERVING.
+# ---------------------------------------------------------------------------
+from src.inference.kv_cache_eviction import (  # noqa: E402
+    EVICTION_POLICY_REGISTRY,
+    CacheEntry,
+    EvictionDecision,
+    EvictionEngine,
+    EvictionError,
+    EvictionPolicy,
+    select_victims,
+)
+
+__all__ += [
+    "EVICTION_POLICY_REGISTRY",
+    "CacheEntry",
+    "EvictionDecision",
+    "EvictionEngine",
+    "EvictionError",
+    "EvictionPolicy",
+    "select_victims",
+]

@@ -1,0 +1,427 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Aurelius Canonical Interface Contract Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "metadata",
+    "purpose",
+    "contract_principles",
+    "canonical_nouns",
+    "lifecycle",
+    "mode_semantics",
+    "skill_contract",
+    "approval_contract",
+    "checkpoint_contract",
+    "host_adapters",
+    "source_product_patterns",
+    "aurelius_substrate",
+    "non_goals",
+    "implementation_sequence",
+    "open_questions"
+  ],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "title",
+        "date",
+        "status",
+        "scope",
+        "doc_path"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "review",
+            "approved",
+            "implemented",
+            "archived"
+          ]
+        },
+        "scope": {
+          "$ref": "#/$defs/stringList"
+        },
+        "doc_path": {
+          "type": "string"
+        }
+      }
+    },
+    "purpose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "target_hosts",
+        "shared_contract"
+      ],
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "target_hosts": {
+          "$ref": "#/$defs/stringList"
+        },
+        "shared_contract": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "contract_principles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/principle"
+      }
+    },
+    "canonical_nouns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_thread",
+        "mode",
+        "instruction_layer",
+        "skill",
+        "approval",
+        "checkpoint",
+        "subagent",
+        "background_job",
+        "tool_call"
+      ],
+      "properties": {
+        "task_thread": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "fields", "status_values"],
+          "properties": {
+            "description": {"type": "string"},
+            "fields": {"$ref": "#/$defs/stringList"},
+            "status_values": {"$ref": "#/$defs/stringList"}
+          }
+        },
+        "mode": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "canonical_names"],
+          "properties": {
+            "description": {"type": "string"},
+            "canonical_names": {"$ref": "#/$defs/stringList"}
+          }
+        },
+        "instruction_layer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "precedence_order"],
+          "properties": {
+            "description": {"type": "string"},
+            "precedence_order": {"$ref": "#/$defs/stringList"}
+          }
+        },
+        "skill": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "fields", "scope_values"],
+          "properties": {
+            "description": {"type": "string"},
+            "fields": {"$ref": "#/$defs/stringList"},
+            "scope_values": {"$ref": "#/$defs/stringList"}
+          }
+        },
+        "approval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "categories"],
+          "properties": {
+            "description": {"type": "string"},
+            "categories": {"$ref": "#/$defs/stringList"}
+          }
+        },
+        "checkpoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "minimum_contents"],
+          "properties": {
+            "description": {"type": "string"},
+            "minimum_contents": {"$ref": "#/$defs/stringList"}
+          }
+        },
+        "subagent": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "inherits", "inherits_by_default"],
+          "properties": {
+            "description": {"type": "string"},
+            "inherits": {"$ref": "#/$defs/stringList"},
+            "inherits_by_default": {"$ref": "#/$defs/stringList"}
+          }
+        },
+        "background_job": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "required_capabilities"],
+          "properties": {
+            "description": {"type": "string"},
+            "required_capabilities": {"$ref": "#/$defs/stringList"}
+          }
+        },
+        "tool_call": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "normalized_fields"],
+          "properties": {
+            "description": {"type": "string"},
+            "normalized_fields": {"$ref": "#/$defs/stringList"}
+          }
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "create",
+        "plan",
+        "approve",
+        "act",
+        "observe",
+        "checkpoint",
+        "resume",
+        "complete"
+      ],
+      "properties": {
+        "create": {"$ref": "#/$defs/stringList"},
+        "plan": {"$ref": "#/$defs/stringList"},
+        "approve": {"$ref": "#/$defs/stringList"},
+        "act": {"$ref": "#/$defs/stringList"},
+        "observe": {"$ref": "#/$defs/stringList"},
+        "checkpoint": {"$ref": "#/$defs/stringList"},
+        "resume": {"$ref": "#/$defs/stringList"},
+        "complete": {"$ref": "#/$defs/stringList"}
+      }
+    },
+    "mode_semantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ask",
+        "code",
+        "debug",
+        "architect",
+        "review",
+        "background",
+        "chat"
+      ],
+      "properties": {
+        "ask": {"$ref": "#/$defs/modeBehavior"},
+        "code": {"$ref": "#/$defs/modeBehavior"},
+        "debug": {"$ref": "#/$defs/modeBehavior"},
+        "architect": {"$ref": "#/$defs/modeBehavior"},
+        "review": {"$ref": "#/$defs/modeBehavior"},
+        "background": {"$ref": "#/$defs/modeBehavior"},
+        "chat": {"$ref": "#/$defs/modeBehavior"}
+      }
+    },
+    "skill_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packaging_shape",
+        "minimum_expectations",
+        "loading_order",
+        "openclaw_extensions"
+      ],
+      "properties": {
+        "packaging_shape": {"$ref": "#/$defs/stringList"},
+        "minimum_expectations": {"$ref": "#/$defs/stringList"},
+        "loading_order": {"$ref": "#/$defs/stringList"},
+        "openclaw_extensions": {"$ref": "#/$defs/stringList"}
+      }
+    },
+    "approval_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required_fields",
+        "decision_values",
+        "hard_rule"
+      ],
+      "properties": {
+        "required_fields": {"$ref": "#/$defs/stringList"},
+        "decision_values": {"$ref": "#/$defs/stringList"},
+        "hard_rule": {"type": "string"}
+      }
+    },
+    "checkpoint_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capabilities",
+        "recommended_state"
+      ],
+      "properties": {
+        "capabilities": {"$ref": "#/$defs/stringList"},
+        "recommended_state": {"$ref": "#/$defs/stringList"}
+      }
+    },
+    "host_adapters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cli",
+        "ide",
+        "web",
+        "plugin",
+        "gateway"
+      ],
+      "properties": {
+        "cli": {"$ref": "#/$defs/hostAdapter"},
+        "ide": {"$ref": "#/$defs/hostAdapter"},
+        "web": {"$ref": "#/$defs/hostAdapter"},
+        "plugin": {"$ref": "#/$defs/hostAdapter"},
+        "gateway": {"$ref": "#/$defs/hostAdapter"}
+      }
+    },
+    "source_product_patterns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cline",
+        "codex",
+        "codex_plugin_cc",
+        "openai_skills",
+        "openclaw",
+        "openclaw_clawhub",
+        "openclaw_skills_archive",
+        "openclaw_acpx",
+        "openclaw_lobster",
+        "openclaw_ansible",
+        "ironclaw"
+      ],
+      "properties": {
+        "cline": {"$ref": "#/$defs/productPattern"},
+        "codex": {"$ref": "#/$defs/productPattern"},
+        "codex_plugin_cc": {"$ref": "#/$defs/productPattern"},
+        "openai_skills": {"$ref": "#/$defs/productPattern"},
+        "openclaw": {"$ref": "#/$defs/productPattern"},
+        "openclaw_clawhub": {"$ref": "#/$defs/productPattern"},
+        "openclaw_skills_archive": {"$ref": "#/$defs/productPattern"},
+        "openclaw_acpx": {"$ref": "#/$defs/productPattern"},
+        "openclaw_lobster": {"$ref": "#/$defs/productPattern"},
+        "openclaw_ansible": {"$ref": "#/$defs/productPattern"},
+        "ironclaw": {"$ref": "#/$defs/productPattern"}
+      }
+    },
+    "aurelius_substrate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent",
+        "serving",
+        "ui",
+        "model_governance"
+      ],
+      "properties": {
+        "agent": {"$ref": "#/$defs/stringList"},
+        "serving": {"$ref": "#/$defs/stringList"},
+        "ui": {"$ref": "#/$defs/stringList"},
+        "model_governance": {"$ref": "#/$defs/stringList"}
+      }
+    },
+    "non_goals": {
+      "$ref": "#/$defs/stringList"
+    },
+    "implementation_sequence": {
+      "$ref": "#/$defs/stringList"
+    },
+    "open_questions": {
+      "$ref": "#/$defs/stringList"
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "principle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "statement"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "statement": {
+          "type": "string"
+        }
+      }
+    },
+    "modeBehavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intent",
+        "tool_policy",
+        "default_constraints"
+      ],
+      "properties": {
+        "intent": {
+          "type": "string"
+        },
+        "tool_policy": {
+          "type": "string"
+        },
+        "default_constraints": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "productPattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_url",
+        "patterns"
+      ],
+      "properties": {
+        "reference_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "patterns": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "hostAdapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "must_support"
+      ],
+      "properties": {
+        "must_support": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    }
+  }
+}

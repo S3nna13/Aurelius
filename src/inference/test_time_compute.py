@@ -212,6 +212,9 @@ def iterative_refine(
 class TestTimeScaler:
     """Unified interface for test-time compute scaling strategies."""
 
+    # Prevent pytest from attempting to collect this utility class.
+    __test__ = False
+
     def __init__(self, model: nn.Module, config: TTCConfig) -> None:
         self.model = model
         self.config = config

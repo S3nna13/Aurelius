@@ -161,6 +161,7 @@ def test_warmup_cosine_scheduler_step_changes_lr():
     lrs = []
     for _ in range(5):
         lrs.append(optimizer.param_groups[0]["lr"])
+        optimizer.step()
         scheduler.step()
 
     # Should not all be the same during warmup
@@ -251,6 +252,7 @@ def test_get_scheduler_linear_and_polynomial():
         assert isinstance(sched, LambdaLR), f"Expected LambdaLR for scheduler '{name}'"
         # Step through a few iterations without errors
         for _ in range(15):
+            optimizer.step()
             sched.step()
 
 

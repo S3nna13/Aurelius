@@ -4,7 +4,7 @@ Browser-based chat UI for Aurelius.
 Run: python -m src.serving.web_ui --port 7860
 
 Opens a browser chat interface at http://localhost:7860
-Chat messages are sent to the API server at http://localhost:8080/v1/chat/completions
+Chat messages are proxied to the configured API server.
 """
 
 import argparse
@@ -12,7 +12,9 @@ import json
 import logging
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Callable, List
+from typing import Any, Callable, List
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
 
@@ -221,6 +223,76 @@ HTML_TEMPLATE: str = """<!DOCTYPE html>
 </html>"""
 
 
+def _normalize_history(history: Any) -> list[dict[str, str]]:
+    if history is None:
+        return []
+    if not isinstance(history, list):
+        raise ValueError("history must be a list of message objects")
+
+    normalized: list[dict[str, str]] = []
+    for index, item in enumerate(history):
+        if not isinstance(item, dict):
+            raise ValueError(f"history[{index}] must be an object")
+        role = item.get("role")
+        content = item.get("content")
+        if not isinstance(role, str) or not role.strip():
+            raise ValueError(f"history[{index}].role must be a non-empty string")
+        if not isinstance(content, str):
+            raise ValueError(f"history[{index}].content must be a string")
+        normalized.append({"role": role, "content": content})
+    return normalized
+
+
+def _build_upstream_reply(api_url: str, message: str, history: Any) -> str:
+    messages = _normalize_history(history)
+    messages.append({"role": "user", "content": message})
+    request_body = json.dumps(
+        {
+            "model": "aurelius",
+            "messages": messages,
+            "stream": False,
+        }
+    ).encode("utf-8")
+    request = Request(
+        api_url,
+        data=request_body,
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=30) as response:
+            raw = response.read()
+    except HTTPError as exc:
+        raise RuntimeError(f"upstream API request failed with HTTP {exc.code}") from exc
+    except URLError as exc:
+        raise RuntimeError(f"upstream API request failed: {exc.reason}") from exc
+
+    payload = json.loads(raw.decode("utf-8"))
+    if isinstance(payload, dict):
+        response_text = payload.get("response")
+        if isinstance(response_text, str):
+            return response_text
+
+        choices = payload.get("choices")
+        if isinstance(choices, list) and choices:
+            first_choice = choices[0]
+            if isinstance(first_choice, dict):
+                message_payload = first_choice.get("message")
+                if isinstance(message_payload, dict):
+                    content = message_payload.get("content")
+                    if isinstance(content, str):
+                        return content
+
+        content = payload.get("content")
+        if isinstance(content, str):
+            return content
+
+    raise RuntimeError("upstream API response did not contain assistant content")
+
+
 class WebUIHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/":
@@ -249,7 +321,11 @@ class WebUIHandler(BaseHTTPRequestHandler):
                 payload = json.loads(raw)
                 message = payload.get("message", "")
                 history = payload.get("history", [])
-                reply = self.server.generate_fn(message, history)
+                api_url = getattr(self.server, "api_url", None)
+                if api_url:
+                    reply = _build_upstream_reply(str(api_url), message, history)
+                else:
+                    reply = self.server.generate_fn(message, history)
                 body = json.dumps({"response": reply}).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -259,7 +335,7 @@ class WebUIHandler(BaseHTTPRequestHandler):
             except Exception as exc:
                 logger.debug("Error in /api/chat: %s", exc)
                 body = json.dumps({"error": str(exc)}).encode("utf-8")
-                self.send_response(500)
+                self.send_response(502 if getattr(self.server, "api_url", None) else 500)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
@@ -273,9 +349,22 @@ class WebUIHandler(BaseHTTPRequestHandler):
 
 
 class WebUIServer(HTTPServer):
-    def __init__(self, host: str, port: int, generate_fn: Callable[[str, List], str]):
-        super().__init__((host, port), WebUIHandler)
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        generate_fn: Callable[[str, List], str],
+        *,
+        api_url: str | None = None,
+        bind_and_activate: bool = True,
+    ):
+        super().__init__(
+            (host, port),
+            WebUIHandler,
+            bind_and_activate=bind_and_activate,
+        )
         self.generate_fn = generate_fn
+        self.api_url = api_url
 
 
 def make_mock_generate_fn() -> Callable[[str, List], str]:
@@ -284,8 +373,21 @@ def make_mock_generate_fn() -> Callable[[str, List], str]:
     return _generate
 
 
-def create_ui_server(host: str, port: int, generate_fn: Callable[[str, List], str]) -> WebUIServer:
-    return WebUIServer(host, port, generate_fn)
+def create_ui_server(
+    host: str,
+    port: int,
+    generate_fn: Callable[[str, List], str],
+    *,
+    api_url: str | None = None,
+    bind_and_activate: bool = True,
+) -> WebUIServer:
+    return WebUIServer(
+        host,
+        port,
+        generate_fn,
+        api_url=api_url,
+        bind_and_activate=bind_and_activate,
+    )
 
 
 if __name__ == "__main__":
@@ -297,7 +399,12 @@ if __name__ == "__main__":
                         help="Upstream API URL (default: http://localhost:8080/v1/chat/completions)")
     args = parser.parse_args()
 
-    server = create_ui_server("0.0.0.0", args.port, make_mock_generate_fn())
+    server = create_ui_server(
+        "0.0.0.0",
+        args.port,
+        make_mock_generate_fn(),
+        api_url=args.api_url,
+    )
     url = f"http://localhost:{args.port}"
     logger.info("Serving Aurelius UI at %s", url)
     webbrowser.open(url)

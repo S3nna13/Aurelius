@@ -152,15 +152,35 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
 
 class AureliusServer(HTTPServer):
 
-    def __init__(self, host: str, port: int, generate_fn: Callable[["ChatRequest"], str]):
-        super().__init__((host, port), AureliusRequestHandler)
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        generate_fn: Callable[["ChatRequest"], str],
+        *,
+        bind_and_activate: bool = True,
+    ):
+        super().__init__(
+            (host, port),
+            AureliusRequestHandler,
+            bind_and_activate=bind_and_activate,
+        )
         self.generate_fn = generate_fn
 
 
 def create_server(
-    host: str, port: int, generate_fn: Callable[["ChatRequest"], str]
+    host: str,
+    port: int,
+    generate_fn: Callable[["ChatRequest"], str],
+    *,
+    bind_and_activate: bool = True,
 ) -> AureliusServer:
-    return AureliusServer(host, port, generate_fn)
+    return AureliusServer(
+        host,
+        port,
+        generate_fn,
+        bind_and_activate=bind_and_activate,
+    )
 
 
 def make_mock_generate_fn() -> Callable[["ChatRequest"], str]:

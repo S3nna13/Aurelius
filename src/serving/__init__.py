@@ -73,6 +73,17 @@ STREAM_HANDLER_REGISTRY: dict = {
     "sse": SSEStreamEncoder,
 }
 
+# --- OpenAI-compatible SSE chat-completion stream (additive) ---------------
+from .sse_chat_stream import (  # noqa: E402,F401
+    ChatCompletionChunk,
+    ChoiceDelta,
+    SSEChatStream,
+    SSEParseError,
+    parse_sse_event,
+)
+
+STREAM_HANDLER_REGISTRY["sse_chat"] = SSEChatStream
+
 # --- Function-calling API shape validator (additive) -----------------------
 from .function_calling_api import (  # noqa: E402,F401
     ALLOWED_TYPES as FUNCTION_CALLING_ALLOWED_TYPES,

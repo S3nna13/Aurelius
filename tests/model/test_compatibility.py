@@ -54,6 +54,11 @@ def test_manifest_exact_match():
     assert v.reasons == ()
 
 
+def test_manifest_compatibility_rejects_non_manifest_inputs():
+    with pytest.raises(CompatibilityError):
+        check_manifest_compatibility({}, _base())  # type: ignore[arg-type]
+
+
 def test_manifest_minor_mismatch_forward_compat():
     other = replace(_base(), compatibility_version="1.1.0")
     v = check_manifest_compatibility(_base(), other)
@@ -120,6 +125,35 @@ def test_manifest_backbone_class_mismatch_is_major():
     assert v.severity == "major_break"
 
 
+def test_manifest_backend_name_mismatch_is_major():
+    other = replace(_base(), backend_name="jax")
+    v = check_manifest_compatibility(_base(), other)
+    assert v.severity == "major_break"
+    assert v.compatible is False
+    assert any("backend contract" in r for r in v.reasons)
+
+
+def test_manifest_backend_contract_minor_drift_is_minor():
+    other = replace(_base(), engine_contract="1.1.0")
+    v = check_manifest_compatibility(_base(), other)
+    assert v.severity == "minor_mismatch"
+    assert v.compatible is True
+    assert any("backend contract" in r for r in v.reasons)
+
+
+def test_manifest_legacy_backend_gap_is_minor():
+    required = replace(
+        _base(),
+        backend_name=None,
+        engine_contract=None,
+        adapter_contract=None,
+    )
+    candidate = replace(_base(), backend_name="pytorch")
+    v = check_manifest_compatibility(required, candidate)
+    assert v.severity == "minor_mismatch"
+    assert v.compatible is True
+
+
 # ---------------------------------------------------------------------------
 # checkpoint compatibility
 # ---------------------------------------------------------------------------
@@ -134,6 +168,11 @@ def test_checkpoint_format_major_mismatch_is_major():
     v = check_checkpoint_compatibility(_base(), meta)
     assert v.severity == "major_break"
     assert v.compatible is False
+
+
+def test_checkpoint_compatibility_rejects_non_manifest_inputs():
+    with pytest.raises(CompatibilityError):
+        check_checkpoint_compatibility({}, {})  # type: ignore[arg-type]
 
 
 def test_checkpoint_config_minor_drift_is_minor():
@@ -176,6 +215,66 @@ def test_checkpoint_tokenizer_hash_none_is_permissive():
     }
     v = check_checkpoint_compatibility(man, meta)
     assert v.severity == "exact"
+
+
+def test_checkpoint_backend_contract_exact_when_all_fields_match():
+    man = _base()
+    meta = {
+        "checkpoint_format_version": "1.0.0",
+        "config_version": "1.0.0",
+        "tokenizer_hash": None,
+        "backend_name": man.backend_name,
+        "engine_contract": man.engine_contract,
+        "adapter_contract": man.adapter_contract,
+    }
+    v = check_checkpoint_compatibility(man, meta)
+    assert v.severity == "exact"
+    assert v.compatible is True
+
+
+def test_checkpoint_backend_contract_minor_drift_is_minor():
+    man = _base()
+    meta = {
+        "checkpoint_format_version": "1.0.0",
+        "config_version": "1.0.0",
+        "tokenizer_hash": None,
+        "backend_name": man.backend_name,
+        "engine_contract": "1.1.0",
+        "adapter_contract": man.adapter_contract,
+    }
+    v = check_checkpoint_compatibility(man, meta)
+    assert v.severity == "minor_mismatch"
+    assert v.compatible is True
+    assert any("checkpoint backend contract" in r for r in v.reasons)
+
+
+def test_checkpoint_backend_name_mismatch_is_major():
+    man = _base()
+    meta = {
+        "checkpoint_format_version": "1.0.0",
+        "config_version": "1.0.0",
+        "tokenizer_hash": None,
+        "backend_name": "jax",
+        "engine_contract": man.engine_contract,
+        "adapter_contract": man.adapter_contract,
+    }
+    v = check_checkpoint_compatibility(man, meta)
+    assert v.severity == "major_break"
+    assert v.compatible is False
+
+
+def test_checkpoint_backend_contract_invalid_semver_rejected():
+    man = _base()
+    meta = {
+        "checkpoint_format_version": "1.0.0",
+        "config_version": "1.0.0",
+        "tokenizer_hash": None,
+        "backend_name": man.backend_name,
+        "engine_contract": "not-semver",
+        "adapter_contract": man.adapter_contract,
+    }
+    with pytest.raises(CompatibilityError):
+        check_checkpoint_compatibility(man, meta)
 
 
 # ---------------------------------------------------------------------------
