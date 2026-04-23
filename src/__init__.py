@@ -14,6 +14,7 @@ _PUBLIC_SUBPACKAGES = (
     "data",
     "deployment",
     "eval",
+    "federation",
     "inference",
     "longcontext",
     "mcp",

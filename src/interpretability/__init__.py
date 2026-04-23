@@ -9,3 +9,6 @@ from .attribution_graphs import (
 from .dictionary_learning import DictionaryLearner, DictionaryResult
 from .attention_flow import AttentionFlowConfig, AttentionRollout, HeadImportance
 from .gradient_attribution import AttributionMethod, Attribution, GradientAttribution
+from .probing_classifier import ProbeTask, ProbeResult, LinearProbe, ProbingClassifier
+from .feature_visualization import PatchTarget, PatchResult, ActivationPatcher, FeatureDecomposer
+from .circuit_analyzer import CircuitNode, CircuitEdge, Circuit, CircuitAnalyzer

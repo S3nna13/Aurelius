@@ -105,3 +105,21 @@ from .reward_calibration import (  # noqa: E402
     REWARD_CALIBRATOR_REGISTRY,
 )
 
+from .rlhf_pipeline import (  # noqa: E402
+    RLHFPhase,
+    PhaseConfig,
+    PhaseResult,
+    RLHFPipeline,
+    RLHF_PIPELINE,
+)
+
+ALIGNMENT_REGISTRY["rlhf_pipeline"] = RLHFPipeline
+
+from .preference_collector import (  # noqa: E402
+    PreferenceItem,
+    PreferenceCollector,
+    PREFERENCE_COLLECTOR,
+)
+
+ALIGNMENT_REGISTRY["preference_collector"] = PreferenceCollector
+
