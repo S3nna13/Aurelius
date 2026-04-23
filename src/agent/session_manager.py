@@ -44,6 +44,8 @@ _SESSION_STATUSES = frozenset({"active", "paused", "completed", "canceled", "fai
 _WORKSTREAM_STATUSES = frozenset({"draft", "active", "blocked", "completed", "failed", "canceled"})
 _WORK_ITEM_STATUSES = frozenset({"queued", "running", "completed", "failed", "canceled"})
 _BACKGROUND_JOB_STATUSES = frozenset({"pending", "running", "completed", "failed", "canceled"})
+_SESSION_EXPORT_FORMAT = "aurelius.session.export"
+_SESSION_EXPORT_SCHEMA_VERSION = "1.0"
 
 
 def _utc_now() -> str:
@@ -278,6 +280,68 @@ class SessionRecord:
         if not isinstance(self.metadata, dict):
             raise InterfaceFrameworkError("metadata must be a dict")
 
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "SessionRecord":
+        if not isinstance(payload, Mapping):
+            raise InterfaceFrameworkError("session payload must be a mapping")
+        workstreams = {
+            key: _workstream_from_payload(value)
+            for key, value in dict(payload.get("workstreams", {})).items()
+        }
+        threads = {
+            key: _thread_from_payload(value)
+            for key, value in dict(payload.get("threads", {})).items()
+        }
+        approvals = {
+            key: ApprovalRequest(
+                approval_id=_require_non_empty(str(value["approval_id"]), "approval_id"),
+                thread_id=_require_non_empty(str(value["thread_id"]), "thread_id"),
+                category=_require_non_empty(str(value["category"]), "category"),
+                action_summary=_require_non_empty(str(value["action_summary"]), "action_summary"),
+                affected_resources=tuple(value.get("affected_resources", ())),
+                reason=_require_non_empty(str(value["reason"]), "reason"),
+                reversible=value.get("reversible", False),
+                minimum_scope=_require_non_empty(str(value.get("minimum_scope", "allow_once")), "minimum_scope"),
+                decision=str(value.get("decision", "pending")),
+                created_at=_require_non_empty(str(value.get("created_at", _utc_now())), "created_at"),
+                decided_at=value.get("decided_at"),
+                metadata=dict(value.get("metadata", {})),
+            )
+            for key, value in dict(payload.get("approvals", {})).items()
+        }
+        checkpoints = {
+            key: _checkpoint_from_payload(value)
+            for key, value in dict(payload.get("checkpoints", {})).items()
+        }
+        jobs = {
+            key: BackgroundJob(**value)
+            for key, value in dict(payload.get("jobs", {})).items()
+        }
+        messages = {
+            key: _message_from_payload(value)
+            for key, value in dict(payload.get("messages", {})).items()
+        }
+        queue = [WorkItem(**value) for value in payload.get("queue", [])]
+        return cls(
+            session_id=_require_non_empty(str(payload["session_id"]), "session_id"),
+            workspace=payload.get("workspace"),
+            status=str(payload.get("status", "active")),
+            created_at=_require_non_empty(str(payload.get("created_at", _utc_now())), "created_at"),
+            updated_at=_require_non_empty(str(payload.get("updated_at", _utc_now())), "updated_at"),
+            active_thread_id=payload.get("active_thread_id"),
+            active_workstream_id=payload.get("active_workstream_id"),
+            memory_summary=str(payload.get("memory_summary", "")),
+            workstreams=workstreams,
+            threads=threads,
+            approvals=approvals,
+            checkpoints=checkpoints,
+            jobs=jobs,
+            messages=messages,
+            tool_calls={k: [dict(entry) for entry in v] for k, v in dict(payload.get("tool_calls", {})).items()},
+            queue=queue,
+            metadata=dict(payload.get("metadata", {})),
+        )
+
 
 class SessionManager:
     """Manage local-first persistent Aurelius sessions and workstreams."""
@@ -338,6 +402,83 @@ class SessionManager:
             },
         )
         return record
+
+    def export_session(self, session_id: str) -> dict[str, Any]:
+        session = self._require_session(session_id)
+        journal = self.get_journal(session_id, create=False)
+        if journal is None:
+            journal = SessionJournal.create(
+                session.session_id,
+                created_at=session.created_at,
+                metadata={"workspace": session.workspace},
+            )
+        return {
+            "format": _SESSION_EXPORT_FORMAT,
+            "schema_version": _SESSION_EXPORT_SCHEMA_VERSION,
+            "exported_at": _utc_now(),
+            "session_id": session.session_id,
+            "state_dir": str(self.state_dir),
+            "session": self.snapshot(session),
+            "journal": journal.snapshot(),
+        }
+
+    def write_session_export(self, session_id: str, path: str | Path) -> Path:
+        target = Path(path).expanduser().resolve()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        payload = self.export_session(session_id)
+        try:
+            target.write_text(
+                json.dumps(payload, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+        except OSError as exc:  # pragma: no cover - filesystem failure
+            raise InterfaceFrameworkError(f"cannot write session export: {target}") from exc
+        return target
+
+    def import_session_export(
+        self,
+        payload_or_path: Mapping[str, Any] | str | Path,
+        *,
+        replace: bool = False,
+    ) -> SessionRecord:
+        if isinstance(payload_or_path, (str, Path)):
+            path = Path(payload_or_path).expanduser().resolve()
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except OSError as exc:  # pragma: no cover - filesystem failure
+                raise InterfaceFrameworkError(f"cannot read session export: {path}") from exc
+            except json.JSONDecodeError as exc:
+                raise InterfaceFrameworkError(f"session export is not valid JSON: {path}") from exc
+        elif isinstance(payload_or_path, Mapping):
+            payload = dict(payload_or_path)
+        else:
+            raise InterfaceFrameworkError(
+                "payload_or_path must be a mapping or a path to a JSON export"
+            )
+        if not isinstance(payload, dict):
+            raise InterfaceFrameworkError("session export payload must be an object")
+        if payload.get("format") != _SESSION_EXPORT_FORMAT:
+            raise InterfaceFrameworkError("session export format is not recognized")
+        if payload.get("schema_version") != _SESSION_EXPORT_SCHEMA_VERSION:
+            raise InterfaceFrameworkError("session export schema_version is not supported")
+        session_payload = payload.get("session")
+        journal_payload = payload.get("journal")
+        if not isinstance(session_payload, dict):
+            raise InterfaceFrameworkError("session export missing session payload")
+        if not isinstance(journal_payload, dict):
+            raise InterfaceFrameworkError("session export missing journal payload")
+        session = SessionRecord.from_dict(session_payload)
+        journal = SessionJournal.from_dict(journal_payload)
+        if session.session_id != journal.session_id:
+            raise InterfaceFrameworkError("session export session and journal ids do not match")
+        existing_session = self.get_session(session.session_id)
+        if existing_session is not None and not replace:
+            raise InterfaceFrameworkError(f"session already exists: {session.session_id!r}")
+        self._sessions[session.session_id] = session
+        self._journals[session.session_id] = journal
+        self._persist(session)
+        self._persist_journal(journal)
+        return session
 
     def ensure_session(
         self,
@@ -703,6 +844,56 @@ class SessionManager:
             return None
         return journal.get_entry(entry_id)
 
+    def list_journal_compactions(
+        self,
+        session_id: str,
+        *,
+        branch_id: str | None = None,
+    ) -> list[SessionJournalCompaction]:
+        journal = self.get_journal(session_id)
+        if journal is None:  # pragma: no cover - defensive
+            raise InterfaceFrameworkError(f"unknown session journal: {session_id!r}")
+        compactions = list(journal.compactions.values())
+        if branch_id is not None:
+            compactions = [item for item in compactions if item.branch_id == branch_id]
+        return sorted(compactions, key=lambda item: (item.created_at, item.compaction_id))
+
+    def journal_summary(self, session_id: str) -> dict[str, Any]:
+        journal = self.get_journal(session_id)
+        if journal is None:  # pragma: no cover - defensive
+            raise InterfaceFrameworkError(f"unknown session journal: {session_id!r}")
+        branches = self.list_journal_branches(session_id)
+        compactions = self.list_journal_compactions(session_id)
+        latest_compaction = compactions[-1] if compactions else None
+        return {
+            **journal.describe(),
+            "branches": [
+                {
+                    "branch_id": branch.branch_id,
+                    "name": branch.name,
+                    "head_entry_id": branch.head_entry_id,
+                    "base_entry_id": branch.base_entry_id,
+                    "entry_count": len(branch.entry_ids),
+                    "metadata": _json_safe(branch.metadata),
+                }
+                for branch in branches
+            ],
+            "compactions": [
+                {
+                    "compaction_id": compaction.compaction_id,
+                    "branch_id": compaction.branch_id,
+                    "policy": compaction.policy,
+                    "keep_last_n": compaction.keep_last_n,
+                    "dropped_count": len(compaction.dropped_entry_ids),
+                    "retained_count": len(compaction.retained_entry_ids),
+                    "summary_entry_id": compaction.summary_entry_id,
+                    "created_at": compaction.created_at,
+                }
+                for compaction in compactions
+            ],
+            "latest_compaction": _json_safe(asdict(latest_compaction)) if latest_compaction is not None else None,
+        }
+
     # ------------------------------------------------------------------
     # thread / approval / checkpoint / message / tool-call records
     # ------------------------------------------------------------------
@@ -848,6 +1039,32 @@ class SessionManager:
             payload={"message": _json_safe(asdict(message))},
         )
         return message
+
+    def get_message(self, session_id: str, envelope_id: str) -> MessageEnvelope | None:
+        session = self.get_session(session_id)
+        if session is None:
+            return None
+        return session.messages.get(envelope_id)
+
+    def list_messages(
+        self,
+        session_id: str,
+        *,
+        channel_id: str | None = None,
+        thread_id: str | None = None,
+        workstream_id: str | None = None,
+    ) -> list[MessageEnvelope]:
+        session = self.get_session(session_id)
+        if session is None:
+            return []
+        messages = list(session.messages.values())
+        if channel_id is not None:
+            messages = [message for message in messages if message.channel_id == channel_id]
+        if thread_id is not None:
+            messages = [message for message in messages if message.thread_id == thread_id]
+        if workstream_id is not None:
+            messages = [message for message in messages if message.workstream_id == workstream_id]
+        return sorted(messages, key=lambda item: (item.created_at, item.envelope_id))
 
     def register_tool_call(self, session_id: str, thread_id: str, entry: dict[str, Any]) -> dict[str, Any]:
         session = self._require_session(session_id)
@@ -1178,63 +1395,7 @@ class SessionManager:
         payload = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):
             raise InterfaceFrameworkError(f"session payload is not an object: {path}")
-        workstreams = {
-            key: _workstream_from_payload(value)
-            for key, value in dict(payload.get("workstreams", {})).items()
-        }
-        threads = {
-            key: _thread_from_payload(value)
-            for key, value in dict(payload.get("threads", {})).items()
-        }
-        approvals = {
-            key: ApprovalRequest(
-                approval_id=_require_non_empty(str(value["approval_id"]), "approval_id"),
-                thread_id=_require_non_empty(str(value["thread_id"]), "thread_id"),
-                category=_require_non_empty(str(value["category"]), "category"),
-                action_summary=_require_non_empty(str(value["action_summary"]), "action_summary"),
-                affected_resources=tuple(value.get("affected_resources", ())),
-                reason=_require_non_empty(str(value["reason"]), "reason"),
-                reversible=value.get("reversible", False),
-                minimum_scope=_require_non_empty(str(value.get("minimum_scope", "allow_once")), "minimum_scope"),
-                decision=str(value.get("decision", "pending")),
-                created_at=_require_non_empty(str(value.get("created_at", _utc_now())), "created_at"),
-                decided_at=value.get("decided_at"),
-                metadata=dict(value.get("metadata", {})),
-            )
-            for key, value in dict(payload.get("approvals", {})).items()
-        }
-        checkpoints = {
-            key: _checkpoint_from_payload(value)
-            for key, value in dict(payload.get("checkpoints", {})).items()
-        }
-        jobs = {
-            key: BackgroundJob(**value)
-            for key, value in dict(payload.get("jobs", {})).items()
-        }
-        messages = {
-            key: _message_from_payload(value)
-            for key, value in dict(payload.get("messages", {})).items()
-        }
-        queue = [WorkItem(**value) for value in payload.get("queue", [])]
-        return SessionRecord(
-            session_id=_require_non_empty(str(payload["session_id"]), "session_id"),
-            workspace=payload.get("workspace"),
-            status=str(payload.get("status", "active")),
-            created_at=_require_non_empty(str(payload.get("created_at", _utc_now())), "created_at"),
-            updated_at=_require_non_empty(str(payload.get("updated_at", _utc_now())), "updated_at"),
-            active_thread_id=payload.get("active_thread_id"),
-            active_workstream_id=payload.get("active_workstream_id"),
-            memory_summary=str(payload.get("memory_summary", "")),
-            workstreams=workstreams,
-            threads=threads,
-            approvals=approvals,
-            checkpoints=checkpoints,
-            jobs=jobs,
-            messages=messages,
-            tool_calls={k: [dict(entry) for entry in v] for k, v in dict(payload.get("tool_calls", {})).items()},
-            queue=queue,
-            metadata=dict(payload.get("metadata", {})),
-        )
+        return SessionRecord.from_dict(payload)
 
     def _require_session(self, session_id: str) -> SessionRecord:
         session = self.get_session(session_id)

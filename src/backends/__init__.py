@@ -23,6 +23,18 @@ from src.backends.registry import (
     register_engine_adapter,
     select_backend_for_manifest,
 )
+from src.backends.vllm_adapter import (
+    VLLMAdapter,
+    VLLMAdapterError,
+    VLLMEngineAdapter,
+    VLLMEngineConfig,
+)
+from src.backends.sglang_adapter import (
+    SGLangAdapter,
+    SGLangAdapterError,
+    SGLangEngineAdapter,
+    SGLangEngineConfig,
+)
 
 __all__ = [
     "BACKEND_REGISTRY",
@@ -32,6 +44,14 @@ __all__ = [
     "BackendBuildResult",
     "BackendContract",
     "EngineAdapter",
+    "SGLangAdapter",
+    "SGLangAdapterError",
+    "SGLangEngineAdapter",
+    "SGLangEngineConfig",
+    "VLLMAdapter",
+    "VLLMAdapterError",
+    "VLLMEngineAdapter",
+    "VLLMEngineConfig",
     "build_with_backend",
     "get_backend",
     "get_engine_adapter",

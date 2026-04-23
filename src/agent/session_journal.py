@@ -420,6 +420,68 @@ class SessionJournal:
             "entry_kinds": dict(sorted(counts.items())),
         }
 
+    def describe_branch(self, branch_id: str) -> dict[str, Any]:
+        branch = self.get_branch(branch_id)
+        if branch is None:
+            raise InterfaceFrameworkError(f"unknown journal branch: {branch_id!r}")
+        entries = list(self.entries_for_branch(branch_id))
+        latest_entry = entries[-1] if entries else None
+        compactions = [
+            item for item in self.compactions.values() if item.branch_id == branch_id
+        ]
+        latest_compaction = (
+            max(compactions, key=lambda item: (item.created_at, item.compaction_id))
+            if compactions
+            else None
+        )
+        return {
+            "branch_id": branch.branch_id,
+            "name": branch.name,
+            "base_entry_id": branch.base_entry_id,
+            "head_entry_id": branch.head_entry_id,
+            "entry_count": len(branch.entry_ids),
+            "latest_entry_id": latest_entry.entry_id if latest_entry is not None else None,
+            "latest_entry_kind": latest_entry.kind if latest_entry is not None else None,
+            "compaction_count": len(compactions),
+            "latest_compaction_id": (
+                latest_compaction.compaction_id if latest_compaction is not None else None
+            ),
+            "metadata": _json_safe(branch.metadata),
+        }
+
+    def describe_compaction(
+        self,
+        *,
+        compaction_id: str | None = None,
+        branch_id: str | None = None,
+    ) -> dict[str, Any]:
+        if compaction_id is not None:
+            compaction = self.compactions.get(compaction_id)
+            if compaction is None:
+                raise InterfaceFrameworkError(f"unknown journal compaction: {compaction_id!r}")
+        else:
+            compactions = list(self.compactions.values())
+            if branch_id is not None:
+                if self.get_branch(branch_id) is None:
+                    raise InterfaceFrameworkError(f"unknown journal branch: {branch_id!r}")
+                compactions = [item for item in compactions if item.branch_id == branch_id]
+            if not compactions:
+                raise InterfaceFrameworkError("no matching journal compactions")
+            compaction = max(compactions, key=lambda item: (item.created_at, item.compaction_id))
+        return {
+            "compaction_id": compaction.compaction_id,
+            "branch_id": compaction.branch_id,
+            "policy": compaction.policy,
+            "keep_last_n": compaction.keep_last_n,
+            "dropped_count": len(compaction.dropped_entry_ids),
+            "retained_count": len(compaction.retained_entry_ids),
+            "summary_entry_id": compaction.summary_entry_id,
+            "facts_count": len(compaction.facts),
+            "summary_text": compaction.summary_text,
+            "created_at": compaction.created_at,
+            "metadata": _json_safe(compaction.metadata),
+        }
+
     def get_entry(self, entry_id: str) -> SessionJournalEntry | None:
         if not isinstance(entry_id, str) or not entry_id.strip():
             raise InterfaceFrameworkError("entry_id must be a non-empty string")

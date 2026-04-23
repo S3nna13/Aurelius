@@ -116,12 +116,32 @@ def test_runtime_drives_the_full_thread_session_and_audit_lifecycle(tmp_path):
         status="completed",
         thread=resumed,
     )
+    runtime.register_message(
+        session.session_id,
+        channel_id="gateway",
+        sender="cli",
+        kind="message",
+        payload={"content": "persisted envelope"},
+        thread_id=resumed.thread_id,
+        recipient="user:demo",
+    )
+    runtime.session_manager.branch_journal(session.session_id, "review")
+    runtime.session_manager.compact_journal(session.session_id, branch_id="main", keep_last_n=1)
+    export_payload = runtime.export_session(session.session_id)
+    imported_runtime = _runtime(tmp_path / "imported")
+    imported_session = imported_runtime.import_session(export_payload, replace=True)
     reloaded_runtime = _runtime(tmp_path)
     thread_status = reloaded_runtime.thread_status(session.session_id, thread.thread_id)
     session_status = runtime.session_status(session.session_id)
+    messages = reloaded_runtime.list_messages(session.session_id, thread_id=resumed.thread_id)
+    branch_summary = runtime.journal_branch_summary(session.session_id, "main")
+    compaction_summary = runtime.journal_compaction_summary(session.session_id, branch_id="main")
+    capability_schema = runtime.capability_summary_schema()
+    capability = runtime.capability_summary(session.session_id)
     summary = runtime.describe()
     json.dumps(summary)
     json.dumps(thread_status)
+    json.dumps(export_payload)
 
     assert isinstance(approval, ApprovalRequest)
     assert isinstance(checkpoint, Checkpoint)
@@ -135,6 +155,15 @@ def test_runtime_drives_the_full_thread_session_and_audit_lifecycle(tmp_path):
     assert activated.metadata["active"] is True
     assert routing["envelope"]["kind"] == "routing"
     assert tool_call["call_id"] == "call-1"
+    assert messages[-1]["payload"]["content"] == "persisted envelope"
+    assert branch_summary["branch_id"] == "main"
+    assert compaction_summary["branch_id"] == "main"
+    assert export_payload["schema_version"] == "1.0"
+    assert imported_session.session_id == session.session_id
+    assert capability_schema["schema_version"] == "1.0"
+    assert capability["schema"]["schema_name"] == capability_schema["schema_name"]
+    assert capability["runtime"]["session_bound"] is True
+    assert capability["journal"]["entries"] >= 1
     assert thread_status["thread"]["thread_id"] == thread.thread_id
     assert thread_status["tool_calls"][0]["tool_name"] == "search_repo"
     assert reloaded_runtime.get_thread(session.session_id, thread.thread_id).thread_id == thread.thread_id
@@ -188,6 +217,37 @@ def test_runtime_normalizes_json_style_thread_specs_and_rejects_bare_skill_strin
 
     with pytest.raises(InterfaceFrameworkError, match="skill_ids must be a sequence"):
         runtime.attach_skills(thread, installed.skill_id)
+
+
+def test_runtime_archives_skills_and_reports_provenance_summary(tmp_path):
+    runtime = _runtime(tmp_path)
+
+    skill_root = tmp_path / "archive-source"
+    skill_root.mkdir()
+    (skill_root / "SKILL.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "skill_id: archive-skill",
+                "name: Archive Skill",
+                "scope: repo",
+                "---",
+                "Archive from runtime.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    installed = runtime.skill_catalog.install(skill_root, scope="repo")
+    runtime.activate_skill(installed.skill_id)
+    archived = runtime.archive_skill(installed.skill_id, reason="superseded")
+    summary = runtime.skill_provenance_summary()
+
+    assert archived.skill_id == installed.skill_id
+    assert archived.metadata["archived"] is True
+    assert archived.metadata["archived_reason"] == "superseded"
+    assert summary["archived_count"] == 1
+    assert summary["active_count"] == 0
 
 
 def test_runtime_rejects_unknown_modes_loudly(tmp_path):

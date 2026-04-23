@@ -153,6 +153,51 @@ def test_skill_catalog_install_activate_search_and_deactivate(tmp_path):
     assert any(entry.skill_id == "installed-skill" for entry in catalog.list(active=False))
 
 
+def test_skill_catalog_archive_and_provenance_summary(tmp_path):
+    repo_root = _repo_root(tmp_path)
+    source_root = tmp_path / "archive-source"
+    source_root.mkdir()
+    (source_root / "SKILL.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "skill_id: archive-me",
+                "name: Archive Me",
+                "scope: repo",
+                "---",
+                "Archiveable skill body.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    catalog = SkillCatalog(repo_root, state_dir=tmp_path / ".aurelius" / "skills")
+    installed = catalog.install(source_root, scope="repo")
+    catalog.activate(installed.skill_id)
+    summary_before = catalog.provenance_summary()
+    archived = catalog.archive(installed.skill_id, reason="superseded")
+    archived_entry = catalog.get(installed.skill_id)
+    summary_after = catalog.provenance_summary()
+    reloaded = SkillCatalog(repo_root, state_dir=tmp_path / ".aurelius" / "skills")
+    reloaded_entry = reloaded.get(installed.skill_id)
+
+    assert summary_before["active_count"] == 1
+    assert archived.skill_id == installed.skill_id
+    assert archived.metadata["archived"] is True
+    assert archived.metadata["archived_reason"] == "superseded"
+    assert archived_entry is not None
+    assert archived_entry.archived is True
+    assert archived_entry.active is False
+    assert archived_entry.source_kind == "archive"
+    assert reloaded_entry is not None
+    assert reloaded_entry.archived is True
+    assert reloaded_entry.source_kind == "archive"
+    assert summary_after["archived_count"] == 1
+    assert summary_after["active_count"] == 0
+    assert summary_after["source_kinds"]["archive"] == 1
+
+
 def test_skill_catalog_rejects_unknown_scope(tmp_path):
     repo_root = _repo_root(tmp_path)
     bad_root = repo_root / "skills" / "bad-scope"

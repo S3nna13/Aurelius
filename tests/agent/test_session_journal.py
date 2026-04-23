@@ -47,3 +47,11 @@ def test_session_journal_branch_and_compaction_round_trip_is_json_safe():
     assert loaded.get_entry(second.entry_id) is not None
     assert loaded.get_branch(branch.branch_id) is not None
     assert loaded.describe()["latest_compaction_id"] == compaction.compaction_id
+    branch_summary = loaded.describe_branch(branch.branch_id)
+    compaction_summary = loaded.describe_compaction(compaction_id=compaction.compaction_id)
+    assert branch_summary["branch_id"] == branch.branch_id
+    assert branch_summary["entry_count"] >= 2
+    assert branch_summary["latest_compaction_id"] == compaction.compaction_id
+    assert compaction_summary["compaction_id"] == compaction.compaction_id
+    assert compaction_summary["branch_id"] == branch.branch_id
+    assert compaction_summary["dropped_count"] >= 1

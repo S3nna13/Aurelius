@@ -29,6 +29,8 @@ def test_main_parser_includes_session_group():
     parser = cli_main._build_parser()
     ns = parser.parse_args(["session", "thread", "list", "session-1"])
     journal_ns = parser.parse_args(["session", "journal", "list", "session-1"])
+    export_ns = parser.parse_args(["session", "export", "session-1"])
+    import_ns = parser.parse_args(["session", "import", "session-export.json"])
 
     assert ns.command == "session"
     assert ns.session_command == "thread"
@@ -36,6 +38,8 @@ def test_main_parser_includes_session_group():
     assert journal_ns.command == "session"
     assert journal_ns.session_command == "journal"
     assert journal_ns.journal_command == "list"
+    assert export_ns.session_command == "export"
+    assert import_ns.session_command == "import"
 
 
 def test_main_parser_includes_session_workstream_show():
@@ -151,3 +155,74 @@ def test_main_session_workstream_show_command_runs_end_to_end(tmp_path, capsys):
     assert payload["session_id"] == session.session_id
     assert payload["workstream"]["workstream_id"] == workstream.workstream_id
     assert thread.thread_id in payload["workstream"]["thread_ids"]
+
+
+def test_main_session_export_and_import_commands_run_end_to_end(tmp_path, capsys):
+    runtime = _runtime(tmp_path)
+    session = runtime.create_session(workspace=tmp_path / "workspace")
+    workstream = runtime.create_workstream(session.session_id, "integration", workspace=tmp_path / "workspace")
+    thread = runtime.create_thread(
+        {
+            "title": "Integration export thread",
+            "mode": "code",
+            "task_prompt": "Export and import a session bundle.",
+            "host": "cli",
+            "session_id": session.session_id,
+            "workstream_name": workstream.name,
+            "workspace": tmp_path / "workspace",
+        }
+    )
+    runtime.register_message(
+        session.session_id,
+        channel_id="terminal",
+        sender="cli",
+        kind="message",
+        payload={"content": "export integration"},
+        thread_id=thread.thread_id,
+        workstream_id=workstream.workstream_id,
+    )
+    export_path = tmp_path / "exports" / "session-export.json"
+
+    rc = cli_main.main(
+        [
+            "session",
+            "export",
+            session.session_id,
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path),
+            "--path",
+            str(export_path),
+        ]
+    )
+    captured = capsys.readouterr()
+    export_payload = json.loads(captured.out)
+
+    assert rc == 0
+    assert export_payload["path"] == str(export_path.resolve())
+    assert export_payload["export"]["schema_version"] == "1.0"
+
+    imported_state_dir = tmp_path / "imported"
+    rc = cli_main.main(
+        [
+            "session",
+            "import",
+            str(export_path),
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(imported_state_dir),
+        ]
+    )
+    captured = capsys.readouterr()
+    import_payload = json.loads(captured.out)
+
+    assert rc == 0
+    assert import_payload["session_id"] == session.session_id
+    assert import_payload["journal"]["entries"] >= 1
+
+    imported_runtime = _runtime(imported_state_dir)
+    imported_session = imported_runtime.get_session(session.session_id)
+    assert imported_session is not None
+    assert imported_session.threads[thread.thread_id].thread_id == thread.thread_id

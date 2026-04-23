@@ -47,3 +47,20 @@ def test_main_backend_check_command_runs_end_to_end(capsys):
     assert rc == 0
     assert payload["severity"] == "exact"
     assert payload["compatible"] is True
+
+
+def test_main_backend_engine_commands_run_end_to_end(capsys):
+    rc = cli_main.main(["backend", "engine", "list"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert rc == 0
+    assert payload["engine_adapters"]["count"] >= 3
+    assert "vllm" in payload["engine_adapters"]["names"]
+
+    rc = cli_main.main(["backend", "engine", "show", "gguf"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert rc == 0
+    assert payload["engine"]["backend_name"] == "gguf"

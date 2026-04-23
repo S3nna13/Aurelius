@@ -97,3 +97,18 @@ from .function_calling_api import (  # noqa: E402,F401
 )
 
 API_SHAPE_REGISTRY["function_calling.validator"] = FunctionCallValidator
+
+# Additive: GPT-5-style agentic Responses API shape (stateful multi-turn,
+# tool calls, reasoning chains, SSE streaming events).
+from .responses_api import (  # noqa: E402,F401
+    ResponsesAPIHandler,
+    ResponsesAPIModel,
+    ResponsesAPIRequest,
+    ResponsesAPIResponse,
+    ResponsesAPIValidator,
+    RESPONSES_API_REGISTRY,
+)
+
+# Register the Responses API handler under the "responses" key so it sits
+# alongside all other API-shape validators in the shared registry.
+API_SHAPE_REGISTRY["responses"] = ResponsesAPIHandler

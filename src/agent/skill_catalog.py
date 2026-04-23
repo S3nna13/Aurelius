@@ -255,6 +255,28 @@ class SkillCatalog:
                 matches.append(entry)
         return matches
 
+    def provenance_summary(self) -> dict[str, Any]:
+        entries = self.list()
+        source_kinds: dict[str, int] = {}
+        provenances: dict[str, int] = {}
+        allow_levels: dict[str, int] = {}
+        scopes: dict[str, int] = {}
+        for entry in entries:
+            source_kinds[entry.source_kind] = source_kinds.get(entry.source_kind, 0) + 1
+            provenance_key = entry.provenance or "unknown"
+            provenances[provenance_key] = provenances.get(provenance_key, 0) + 1
+            allow_levels[entry.allow_level] = allow_levels.get(entry.allow_level, 0) + 1
+            scopes[entry.scope] = scopes.get(entry.scope, 0) + 1
+        return {
+            "count": len(entries),
+            "active_count": sum(1 for entry in entries if entry.active),
+            "archived_count": sum(1 for entry in entries if entry.archived),
+            "source_kinds": dict(sorted(source_kinds.items())),
+            "provenances": dict(sorted(provenances.items())),
+            "allow_levels": dict(sorted(allow_levels.items())),
+            "scopes": dict(sorted(scopes.items())),
+        }
+
     def get(self, skill_id: str) -> SkillCatalogEntry | None:
         if not self._entries:
             self.discover()
@@ -307,6 +329,43 @@ class SkillCatalog:
         )
         self._entries[skill_id] = updated
         return updated.to_bundle()
+
+    def archive(self, skill_id: str, *, reason: str | None = None) -> SkillBundle:
+        entry = self.get(skill_id)
+        if entry is None:
+            raise InterfaceFrameworkError(f"unknown skill: {skill_id!r}")
+        if entry.archived:
+            raise InterfaceFrameworkError(f"skill is already archived: {skill_id!r}")
+        source_root = Path(entry.source_path).expanduser().resolve()
+        if not source_root.exists() or not source_root.is_dir():
+            raise InterfaceFrameworkError(f"skill source does not exist: {source_root}")
+        archive_root = self._archive_install_root()
+        archive_root.mkdir(parents=True, exist_ok=True)
+        destination = archive_root / entry.skill_id
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.move(str(source_root), str(destination))
+        metadata_path = destination / "metadata.json"
+        metadata = dict(entry.metadata)
+        metadata.update(
+            {
+                "archived": True,
+                "archived_at": _utc_now(),
+                "archived_from": str(source_root),
+                "archived_reason": reason,
+                "source_kind": entry.source_kind,
+                "provenance": entry.provenance,
+            }
+        )
+        metadata_path.write_text(
+            json.dumps(_json_safe(metadata), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        self._active_skill_ids.discard(skill_id)
+        self._persist_active_skill_ids()
+        archived = self._build_entry(destination, source_kind="archive", archived=True)
+        self._entries[skill_id] = archived
+        return archived.to_bundle()
 
     def install(self, source_path: str | Path, *, scope: str = "repo") -> SkillBundle:
         source = Path(source_path).expanduser().resolve()
@@ -376,8 +435,11 @@ class SkillCatalog:
         if scope == "global":
             return self.global_root
         if scope == "archive":
-            return self.state_dir / "archive"
+            return self._archive_install_root()
         return self.state_dir
+
+    def _archive_install_root(self) -> Path:
+        return self.archive_roots[0] if self.archive_roots else (self.state_dir / "archive")
 
     def _discover_root(self, root: Path, *, source_kind: str) -> None:
         if not root.exists() or not root.is_dir():

@@ -23,6 +23,8 @@ __all__ = [
     "SESSION_COMMAND_HANDLERS",
     "build_session_parser",
     "dispatch_session_command",
+    "handle_session_export",
+    "handle_session_import",
     "handle_session_list",
     "handle_session_show",
     "handle_session_journal_append",
@@ -37,7 +39,7 @@ __all__ = [
 ]
 
 
-_SESSION_TOP_LEVEL_COMMANDS = ("list", "show", "journal", "thread", "workstream")
+_SESSION_TOP_LEVEL_COMMANDS = ("list", "show", "export", "import", "journal", "thread", "workstream")
 _SESSION_THREAD_COMMANDS = ("list", "show")
 _SESSION_JOURNAL_COMMANDS = ("list", "show", "append", "branch", "compact")
 _SESSION_WORKSTREAM_COMMANDS = ("list", "show")
@@ -137,6 +139,68 @@ def handle_session_show(
     except InterfaceFrameworkError as exc:
         return _error(stream, str(exc))
     _json_write(stream, payload)
+    return 0
+
+
+def handle_session_export(
+    args: argparse.Namespace,
+    out_stream: TextIO | None = None,
+    runtime: AureliusInterfaceRuntime | None = None,
+) -> int:
+    stream = out_stream if out_stream is not None else sys.stdout
+    session_id = getattr(args, "session_id", None)
+    if not session_id:
+        return _error(stream, "session export requires a session_id")
+    active_runtime = _build_runtime(args, runtime)
+    try:
+        export = active_runtime.export_session(session_id)
+        path = getattr(args, "path", None)
+        if path:
+            target = active_runtime.export_session_to_path(session_id, path)
+            _json_write(
+                stream,
+                {
+                    "session_id": session_id,
+                    "path": str(target),
+                    "export": export,
+                },
+            )
+            return 0
+    except InterfaceFrameworkError as exc:
+        return _error(stream, str(exc))
+    _json_write(
+        stream,
+        {
+            "session_id": session_id,
+            "export": export,
+        },
+    )
+    return 0
+
+
+def handle_session_import(
+    args: argparse.Namespace,
+    out_stream: TextIO | None = None,
+    runtime: AureliusInterfaceRuntime | None = None,
+) -> int:
+    stream = out_stream if out_stream is not None else sys.stdout
+    path = getattr(args, "path", None)
+    if not path:
+        return _error(stream, "session import requires a path")
+    active_runtime = _build_runtime(args, runtime)
+    try:
+        session = active_runtime.import_session(path, replace=getattr(args, "replace", False))
+        journal = active_runtime.session_manager.journal_summary(session.session_id)
+    except InterfaceFrameworkError as exc:
+        return _error(stream, str(exc))
+    _json_write(
+        stream,
+        {
+            "session_id": session.session_id,
+            "session": active_runtime.session_manager.snapshot(session),
+            "journal": journal,
+        },
+    )
     return 0
 
 
@@ -405,6 +469,8 @@ SESSION_COMMAND_HANDLERS: dict[
 ] = {
     "list": handle_session_list,
     "show": handle_session_show,
+    "export": handle_session_export,
+    "import": handle_session_import,
     "workstream_list": handle_session_workstream_list,
 }
 
@@ -430,6 +496,20 @@ def build_session_parser(
     show_p = session_sub.add_parser("show", help="show a session summary")
     _add_runtime_args(show_p)
     show_p.add_argument("session_id", help="session id")
+
+    export_p = session_sub.add_parser("export", help="export a portable session bundle")
+    _add_runtime_args(export_p)
+    export_p.add_argument("session_id", help="session id")
+    export_p.add_argument("--path", default=None, help="optional export path")
+
+    import_p = session_sub.add_parser("import", help="import a portable session bundle")
+    _add_runtime_args(import_p)
+    import_p.add_argument("path", help="session export path")
+    import_p.add_argument(
+        "--replace",
+        action="store_true",
+        help="replace an existing session if the export session id already exists",
+    )
 
     journal_p = session_sub.add_parser(
         "journal",
@@ -593,6 +673,10 @@ def dispatch_session_command(
             f"unknown session journal command: {journal_command!r}",
             known_subcommands=list(_SESSION_JOURNAL_COMMANDS),
         )
+    if name == "export":
+        return handle_session_export(args, stream, runtime)
+    if name == "import":
+        return handle_session_import(args, stream, runtime)
     if name == "workstream":
         workstream_command = getattr(args, "workstream_command", None)
         if workstream_command == "list":

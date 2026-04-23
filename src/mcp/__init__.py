@@ -1,0 +1,92 @@
+"""Aurelius MCP (Model Context Protocol) surface.
+
+Exposes the server registry, client registry, and tool schema registry for
+the Aurelius MCP integration layer.  All submodules are lazily imported to
+avoid circular dependencies and keep startup cost near zero.
+
+Inspired by cline/cline (MCP integration), continuedev/continue (context providers),
+Apache-2.0, clean-room reimplementation.
+"""
+
+from __future__ import annotations
+
+from importlib import import_module
+
+# ---------------------------------------------------------------------------
+# Lazy submodule loader
+# ---------------------------------------------------------------------------
+
+_MCP_SUBMODULES = (
+    "mcp_server",
+    "mcp_client",
+    "tool_schema_registry",
+    "sse_mcp_server",
+    "plugin_host",
+)
+
+__all__ = [
+    "MCP_SERVER_REGISTRY",
+    "MCP_CLIENT_REGISTRY",
+    "MCP_TOOL_SCHEMA_REGISTRY",
+    "SSEMCPServer",
+    "SSEMCPServerConfig",
+    "SSE_SERVER_REGISTRY",
+    "PluginHost",
+    "PluginManifest",
+    "PLUGIN_HOST_REGISTRY",
+    "DEFAULT_PLUGIN_HOST",
+    *_MCP_SUBMODULES,
+]
+
+
+def __getattr__(name: str):
+    # Expose top-level registry aliases.
+    if name == "MCP_SERVER_REGISTRY":
+        from .mcp_server import MCP_SERVER_REGISTRY  # noqa: PLC0415
+        globals()["MCP_SERVER_REGISTRY"] = MCP_SERVER_REGISTRY
+        return MCP_SERVER_REGISTRY
+    if name == "MCP_CLIENT_REGISTRY":
+        from .mcp_client import MCP_CLIENT_REGISTRY  # noqa: PLC0415
+        globals()["MCP_CLIENT_REGISTRY"] = MCP_CLIENT_REGISTRY
+        return MCP_CLIENT_REGISTRY
+    if name == "MCP_TOOL_SCHEMA_REGISTRY":
+        from .tool_schema_registry import MCP_TOOL_SCHEMA_REGISTRY  # noqa: PLC0415
+        globals()["MCP_TOOL_SCHEMA_REGISTRY"] = MCP_TOOL_SCHEMA_REGISTRY
+        return MCP_TOOL_SCHEMA_REGISTRY
+    if name == "SSEMCPServer":
+        from .sse_mcp_server import SSEMCPServer  # noqa: PLC0415
+        globals()["SSEMCPServer"] = SSEMCPServer
+        return SSEMCPServer
+    if name == "SSEMCPServerConfig":
+        from .sse_mcp_server import SSEMCPServerConfig  # noqa: PLC0415
+        globals()["SSEMCPServerConfig"] = SSEMCPServerConfig
+        return SSEMCPServerConfig
+    if name == "SSE_SERVER_REGISTRY":
+        from .sse_mcp_server import SSE_SERVER_REGISTRY  # noqa: PLC0415
+        globals()["SSE_SERVER_REGISTRY"] = SSE_SERVER_REGISTRY
+        return SSE_SERVER_REGISTRY
+    if name == "PluginHost":
+        from .plugin_host import PluginHost  # noqa: PLC0415
+        globals()["PluginHost"] = PluginHost
+        return PluginHost
+    if name == "PluginManifest":
+        from .plugin_host import PluginManifest  # noqa: PLC0415
+        globals()["PluginManifest"] = PluginManifest
+        return PluginManifest
+    if name == "PLUGIN_HOST_REGISTRY":
+        from .plugin_host import PLUGIN_HOST_REGISTRY  # noqa: PLC0415
+        globals()["PLUGIN_HOST_REGISTRY"] = PLUGIN_HOST_REGISTRY
+        return PLUGIN_HOST_REGISTRY
+    if name == "DEFAULT_PLUGIN_HOST":
+        from .plugin_host import DEFAULT_PLUGIN_HOST  # noqa: PLC0415
+        globals()["DEFAULT_PLUGIN_HOST"] = DEFAULT_PLUGIN_HOST
+        return DEFAULT_PLUGIN_HOST
+    if name in _MCP_SUBMODULES:
+        module = import_module(f"src.mcp.{name}")
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module 'src.mcp' has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

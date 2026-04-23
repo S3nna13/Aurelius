@@ -64,3 +64,28 @@ def test_shell_backend_commands_are_reachable_from_execute_command():
 
     backend_show = json.loads(shell.execute_command("backend show pytorch"))
     assert backend_show["backend"]["backend_name"] == "pytorch"
+
+    engine_list = json.loads(shell.execute_command("backend engine list"))
+    assert engine_list["engine_surface"]["count"] >= 3
+    assert "gguf" in engine_list["engine_surface"]["names"]
+
+    engine_show = json.loads(shell.execute_command("backend engine show vllm"))
+    assert engine_show["engine"]["backend_name"] == "vllm"
+
+
+def test_shell_capability_and_journal_commands_are_reachable_from_execute_command():
+    from src.ui import AureliusShell
+
+    shell = AureliusShell.from_repo_root(root_dir=_repo_root())
+    capability = json.loads(shell.execute_command("capability summary"))
+    schema = json.loads(shell.execute_command("capability schema"))
+    journal_branch = json.loads(shell.execute_command("journal branch main"))
+    surface = json.loads(shell.execute_command("surface summary"))
+    surface_schema = json.loads(shell.execute_command("surface schema"))
+
+    assert capability["capability"]["framework"]["title"] == "Aurelius Canonical Interface Contract"
+    assert "skills" in capability["capability"]
+    assert schema["schema"]["schema_version"] == "1.0"
+    assert journal_branch["journal"]["branch_id"] == "main"
+    assert surface["surface"]["engine_adapters"]["count"] >= 3
+    assert surface_schema["schema"]["schema_name"] == "aurelius.interface.surface-catalog"
