@@ -26,6 +26,7 @@ _PUBLIC_SUBPACKAGES = (
     "safety",
     "search",
     "serving",
+    "simulation",
     "tools",
     "training",
     "ui",
