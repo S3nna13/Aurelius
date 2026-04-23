@@ -243,6 +243,49 @@ def test_streaming_renderer_lifecycle() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_debug_panel_update_and_render() -> None:
+    """Update 2 metrics, render, verify to_dict contains updated values."""
+    from src.ui.debug_panel import DebugPanel
+
+    panel = DebugPanel()
+    panel.update_metric("Model", "loss", 0.4321)
+    panel.update_metric("Memory", "gpu_allocated_gb", 12.5)
+
+    console = Console(record=True)
+    panel.render(console)
+    output = console.export_text()
+    assert len(output) > 0
+
+    snapshot = panel.to_dict()
+    assert isinstance(snapshot, dict)
+    model_metrics = {m["name"]: m["value"] for m in snapshot["Model"]["metrics"]}
+    assert model_metrics["loss"] == pytest.approx(0.4321)
+    memory_metrics = {m["name"]: m["value"] for m in snapshot["Memory"]["metrics"]}
+    assert memory_metrics["gpu_allocated_gb"] == pytest.approx(12.5)
+
+
+def test_progress_renderer_lifecycle() -> None:
+    """Add task, advance 10 steps, render, remove."""
+    from src.ui.progress_renderer import ProgressRenderer, ProgressTask
+
+    renderer = ProgressRenderer()
+    task = ProgressTask(task_id="integ-pr-1", description="Integration Train", total=100)
+    renderer.add_task(task)
+
+    for _ in range(10):
+        renderer.advance("integ-pr-1")
+
+    assert renderer._tasks["integ-pr-1"].completed == 10
+
+    console = Console(record=True)
+    renderer.render(console)
+    output = console.export_text()
+    assert "Integration Train" in output
+
+    renderer.remove_task("integ-pr-1")
+    assert "integ-pr-1" not in renderer._tasks
+
+
 def test_session_manager_lifecycle() -> None:
     """Create 2 sessions, switch_to one, verify other paused, save/load round-trip."""
     from src.ui.session_manager import SessionManager, SessionState

@@ -2,6 +2,8 @@
 
 Production deployment patterns from Aurelius production_readiness_floor,
 SLSA supply-chain attestation spec, Apache-2.0.
+
+Includes integration tests for GitHub Actions CI YAML generator (additive).
 """
 
 from __future__ import annotations
@@ -165,3 +167,30 @@ def test_otel_tracer_lifecycle() -> None:
     assert recorded.attributes["tokens_generated"] == 256
     assert recorded.end_ns is not None
     assert recorded.end_ns >= recorded.start_ns
+
+
+# ---------------------------------------------------------------------------
+# GitHub Actions CI generator integration
+# ---------------------------------------------------------------------------
+
+
+def test_github_actions_generate(tmp_path: Path) -> None:
+    """Generate a CI workflow, write to tempdir, verify .github/workflows/ path."""
+    from src.deployment.github_actions import GHActionsGenerator, GHActionsWorkflow
+
+    gen = GHActionsGenerator()
+    workflow: GHActionsWorkflow = gen.default_ci_workflow(python_version="3.14")
+
+    out_path = gen.write_workflow(workflow, tmp_path)
+
+    # Verify it landed under .github/workflows/
+    assert out_path.parent.name == "workflows"
+    assert out_path.parent.parent.name == ".github"
+    assert out_path.suffix == ".yml"
+    assert out_path.exists()
+
+    content = out_path.read_text()
+    assert "actions/checkout" in content
+    assert "actions/setup-python" in content
+    assert "pytest" in content
+    assert "3.14" in content

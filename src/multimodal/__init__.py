@@ -156,6 +156,19 @@ from src.multimodal.audio_speech_fusion import (  # noqa: E402
 )
 
 # ---------------------------------------------------------------------------
+# Multimodal token fusion (late fusion: text + vision + audio)
+# ---------------------------------------------------------------------------
+
+from src.multimodal.multimodal_token_fusion import (  # noqa: E402
+    MULTIMODAL_FUSION_REGISTRY,
+    FusionStrategy,
+    GatedFusion,
+    MultimodalTokenFusion,
+    TokenFusionConfig,
+    WeightedSumFusion,
+)
+
+# ---------------------------------------------------------------------------
 # Document understanding (table/form/layout processor)
 # ---------------------------------------------------------------------------
 
@@ -239,4 +252,11 @@ __all__ = [
     "DocumentEmbedder",
     "DOCUMENT_PARSER_REGISTRY",
     "DOCUMENT_EMBEDDER_REGISTRY",
+    # Multimodal token fusion
+    "FusionStrategy",
+    "TokenFusionConfig",
+    "GatedFusion",
+    "WeightedSumFusion",
+    "MultimodalTokenFusion",
+    "MULTIMODAL_FUSION_REGISTRY",
 ]

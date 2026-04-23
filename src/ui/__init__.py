@@ -102,6 +102,20 @@ from src.ui.session_manager import (
     SESSION_MANAGER_REGISTRY,
     SessionManagerError,
 )
+from src.ui.debug_panel import (
+    DebugMetric,
+    DebugSection,
+    DebugPanel,
+    DebugPanelError,
+    DEBUG_PANEL_REGISTRY,
+)
+from src.ui.progress_renderer import (
+    ProgressTask,
+    ETAEstimator,
+    ProgressRenderer,
+    ProgressError,
+    PROGRESS_RENDERER_REGISTRY,
+)
 
 # Register new UI surfaces into the surface registry.
 _COMMAND_PALETTE_SURFACE = UISurface(
@@ -167,6 +181,20 @@ _SESSION_MANAGER_SURFACE = UISurface(
     default_layout="stoic-focus",
     keyboard_map={"esc": "cancel", "tab": "next_session"},
 )
+_DEBUG_PANEL_SURFACE = UISurface(
+    surface_id="debug-panel",
+    title="Debug Panel",
+    panels=("debug",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "c": "collapse"},
+)
+_PROGRESS_RENDERER_SURFACE = UISurface(
+    surface_id="progress-renderer",
+    title="Progress Renderer",
+    panels=("progress",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel"},
+)
 
 for _surface in (
     _COMMAND_PALETTE_SURFACE,
@@ -178,6 +206,8 @@ for _surface in (
     _TASK_PANEL_SURFACE,
     _STREAMING_RENDERER_SURFACE,
     _SESSION_MANAGER_SURFACE,
+    _DEBUG_PANEL_SURFACE,
+    _PROGRESS_RENDERER_SURFACE,
 ):
     if _surface.surface_id not in UI_SURFACE_REGISTRY:
         register_ui_surface(_surface)
@@ -265,4 +295,16 @@ __all__ = [
     "DEFAULT_SESSION_MANAGER",
     "SESSION_MANAGER_REGISTRY",
     "SessionManagerError",
+    # Debug panel
+    "DebugMetric",
+    "DebugSection",
+    "DebugPanel",
+    "DebugPanelError",
+    "DEBUG_PANEL_REGISTRY",
+    # Progress renderer
+    "ProgressTask",
+    "ETAEstimator",
+    "ProgressRenderer",
+    "ProgressError",
+    "PROGRESS_RENDERER_REGISTRY",
 ]

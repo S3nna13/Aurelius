@@ -929,3 +929,37 @@ __all__ = list(__all__) + [
     "MULTI_NEEDLE_REGISTRY",
     "register_depth_profile",
 ]
+
+# --- Additive registration for WebArena autonomous web-agent benchmark -------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.  Measures task-completion rate on realistic
+# web environments (Zhou et al. 2307.13854).
+from .webarena_scorer import (
+    WebArenaTask as _WebArenaTask,
+    WebArenaResult as _WebArenaResult,
+    WebArenaMetrics as _WebArenaMetrics,
+    WebArenaScorer as _WebArenaScorer,
+    WEBARENA_TASK_REGISTRY as _WEBARENA_TASK_REGISTRY,
+    WEBARENA_SCORER_REGISTRY as _WEBARENA_SCORER_REGISTRY,
+)
+
+WebArenaTask = _WebArenaTask
+WebArenaResult = _WebArenaResult
+WebArenaMetrics = _WebArenaMetrics
+WebArenaScorer = _WebArenaScorer
+WEBARENA_TASK_REGISTRY = _WEBARENA_TASK_REGISTRY
+WEBARENA_SCORER_REGISTRY = _WEBARENA_SCORER_REGISTRY
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("webarena", _WebArenaScorer)
+BENCHMARK_REGISTRY.setdefault("webarena", _WebArenaScorer)
+
+__all__ = list(__all__) + [
+    "WebArenaTask",
+    "WebArenaResult",
+    "WebArenaMetrics",
+    "WebArenaScorer",
+    "WEBARENA_TASK_REGISTRY",
+    "WEBARENA_SCORER_REGISTRY",
+]

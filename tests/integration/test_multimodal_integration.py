@@ -189,6 +189,26 @@ def test_speech_fusion_encoder():
     assert not out.isnan().any()
 
 
+def test_multimodal_token_fusion():
+    """Build MultimodalTokenFusion, run forward with text+vision, verify shape and no NaN."""
+    import torch
+    from src.multimodal.multimodal_token_fusion import (
+        FusionStrategy,
+        MultimodalTokenFusion,
+        TokenFusionConfig,
+    )
+
+    cfg = TokenFusionConfig(d_model=64, n_heads=4, strategy=FusionStrategy.GATED)
+    model = MultimodalTokenFusion.from_config(cfg)
+    model.train(False)
+    torch.manual_seed(42)
+    text = torch.randn(1, 4, 64)
+    vision = torch.randn(1, 8, 64)
+    out = model(text, vision=vision, audio=None)
+    assert out.shape == (1, 4, 64)
+    assert not out.isnan().any()
+
+
 def test_document_embedder_shapes():
     """Embed a page and verify output shape is (N_regions, d_model)."""
     import torch

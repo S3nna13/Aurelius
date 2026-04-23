@@ -27,6 +27,15 @@ if TYPE_CHECKING:
         Trajectory,
         TRAJECTORY_REGISTRY,
     )
+    from src.computer_use.webarena_eval import (  # noqa: F401
+        WebArenaHarness,
+        WebTask,
+        TaskResult,
+        SuccessEvaluator,
+        WebArenaError,
+        WEBARENA_HARNESS_REGISTRY,
+        WEBARENA_DEFAULT_TASKS,
+    )
 
 __all__ = [
     "SCREEN_PARSER_REGISTRY",
@@ -36,6 +45,7 @@ __all__ = [
     "action_verifier",
     "browser_driver",
     "trajectory_replay",
+    "webarena_eval",
     # browser_driver exports
     "BrowserDriver",
     "StubBrowserDriver",
@@ -46,15 +56,25 @@ __all__ = [
     "TrajectoryReplayer",
     "Trajectory",
     "TRAJECTORY_REGISTRY",
+    # webarena_eval exports
+    "WebArenaHarness",
+    "WebTask",
+    "TaskResult",
+    "SuccessEvaluator",
+    "WebArenaError",
+    "WEBARENA_HARNESS_REGISTRY",
+    "WEBARENA_DEFAULT_TASKS",
 ]
 
-_SUBMODULES = ("screen_parser", "gui_action", "action_verifier", "browser_driver", "trajectory_replay")
+_SUBMODULES = ("screen_parser", "gui_action", "action_verifier", "browser_driver", "trajectory_replay", "webarena_eval")
 
 _REGISTRY_ATTRS: dict[str, tuple[str, str]] = {
     "SCREEN_PARSER_REGISTRY": ("screen_parser", "SCREEN_PARSER_REGISTRY"),
     "GUI_ACTION_REGISTRY": ("gui_action", "GUI_ACTION_REGISTRY"),
     "BROWSER_DRIVER_REGISTRY": ("browser_driver", "BROWSER_DRIVER_REGISTRY"),
     "TRAJECTORY_REGISTRY": ("trajectory_replay", "TRAJECTORY_REGISTRY"),
+    "WEBARENA_HARNESS_REGISTRY": ("webarena_eval", "WEBARENA_HARNESS_REGISTRY"),
+    "WEBARENA_DEFAULT_TASKS": ("webarena_eval", "WEBARENA_DEFAULT_TASKS"),
 }
 
 _CLASS_ATTRS: dict[str, tuple[str, str]] = {
@@ -64,6 +84,11 @@ _CLASS_ATTRS: dict[str, tuple[str, str]] = {
     "TrajectoryRecorder": ("trajectory_replay", "TrajectoryRecorder"),
     "TrajectoryReplayer": ("trajectory_replay", "TrajectoryReplayer"),
     "Trajectory": ("trajectory_replay", "Trajectory"),
+    "WebArenaHarness": ("webarena_eval", "WebArenaHarness"),
+    "WebTask": ("webarena_eval", "WebTask"),
+    "TaskResult": ("webarena_eval", "TaskResult"),
+    "SuccessEvaluator": ("webarena_eval", "SuccessEvaluator"),
+    "WebArenaError": ("webarena_eval", "WebArenaError"),
 }
 
 

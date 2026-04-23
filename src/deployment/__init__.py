@@ -35,3 +35,30 @@ __all__ = [
     "PrometheusMetrics",
     "Tracer",
 ]
+
+# --- Additive registration for GitHub Actions CI YAML generator --------------
+# Additive only; reuses ARTIFACT_BUILDER_REGISTRY above and leaves all prior
+# entries untouched.
+from src.deployment.github_actions import (
+    GHActionsGenerator as _GHActionsGenerator,
+    GHActionsWorkflow as _GHActionsWorkflow,
+    GHActionsError as _GHActionsError,
+    GHActionsTrigger as _GHActionsTrigger,
+    GHActionsJob as _GHActionsJob,
+)
+
+GHActionsGenerator = _GHActionsGenerator
+GHActionsWorkflow = _GHActionsWorkflow
+GHActionsError = _GHActionsError
+GHActionsTrigger = _GHActionsTrigger
+GHActionsJob = _GHActionsJob
+
+ARTIFACT_BUILDER_REGISTRY.setdefault("github_actions", _GHActionsGenerator)
+
+__all__ = list(__all__) + [
+    "GHActionsGenerator",
+    "GHActionsWorkflow",
+    "GHActionsError",
+    "GHActionsTrigger",
+    "GHActionsJob",
+]
