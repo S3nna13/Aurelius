@@ -19,6 +19,7 @@ _PUBLIC_SUBPACKAGES = (
     "memory",
     "model",
     "multimodal",
+    "protocol",
     "reasoning",
     "retrieval",
     "safety",
