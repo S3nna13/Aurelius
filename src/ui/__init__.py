@@ -41,6 +41,70 @@ from src.ui.aurelius_shell import (
     WorkflowStep,
 )
 from src.ui.welcome import WelcomePanel, render_welcome
+from src.ui.command_palette import (
+    CommandEntry,
+    CommandPalette,
+    CommandPaletteError,
+    CommandPaletteState,
+    COMMAND_PALETTE_REGISTRY,
+)
+from src.ui.status_hierarchy import (
+    StatusLevel,
+    StatusState,
+    StatusNode,
+    StatusTree,
+    STATUS_TREE_REGISTRY,
+)
+from src.ui.keyboard_nav import (
+    KeyBinding,
+    KeyBindingError,
+    KeyboardNav,
+    KEYBOARD_NAV_REGISTRY,
+)
+from src.ui.onboarding import (
+    OnboardingStep,
+    OnboardingFlow,
+    ONBOARDING_REGISTRY,
+)
+
+# Register new UI surfaces into the surface registry.
+_COMMAND_PALETTE_SURFACE = UISurface(
+    surface_id="command-palette",
+    title="Command Palette",
+    panels=("palette",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "/": "search"},
+)
+_STATUS_HIERARCHY_SURFACE = UISurface(
+    surface_id="status-hierarchy",
+    title="Status Hierarchy",
+    panels=("status",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "up": "nav_up", "down": "nav_down"},
+)
+_KEYBOARD_NAV_SURFACE = UISurface(
+    surface_id="keyboard-nav",
+    title="Keyboard Navigation",
+    panels=("help",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel"},
+)
+_ONBOARDING_SURFACE = UISurface(
+    surface_id="onboarding",
+    title="Onboarding",
+    panels=("onboarding",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "enter": "confirm"},
+)
+
+for _surface in (
+    _COMMAND_PALETTE_SURFACE,
+    _STATUS_HIERARCHY_SURFACE,
+    _KEYBOARD_NAV_SURFACE,
+    _ONBOARDING_SURFACE,
+):
+    if _surface.surface_id not in UI_SURFACE_REGISTRY:
+        register_ui_surface(_surface)
 
 __all__ = [
     "UIError",
@@ -73,4 +137,25 @@ __all__ = [
     "WorkflowStep",
     "WelcomePanel",
     "render_welcome",
+    # Command palette
+    "CommandEntry",
+    "CommandPalette",
+    "CommandPaletteError",
+    "CommandPaletteState",
+    "COMMAND_PALETTE_REGISTRY",
+    # Status hierarchy
+    "StatusLevel",
+    "StatusState",
+    "StatusNode",
+    "StatusTree",
+    "STATUS_TREE_REGISTRY",
+    # Keyboard navigation
+    "KeyBinding",
+    "KeyBindingError",
+    "KeyboardNav",
+    "KEYBOARD_NAV_REGISTRY",
+    # Onboarding
+    "OnboardingStep",
+    "OnboardingFlow",
+    "ONBOARDING_REGISTRY",
 ]
