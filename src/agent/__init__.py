@@ -601,3 +601,37 @@ __all__ += [
     "PATCH_REGISTRY",
     "PatchSynthesizer",
 ]
+
+
+# --- plan executor (additive) -----------------------------------------------
+from .plan_executor import (  # noqa: E402
+    PLAN_EXECUTOR_REGISTRY,
+    PlanExecutor,
+    PlanStep,
+    StepStatus,
+)
+
+AGENT_LOOP_REGISTRY["plan_executor"] = PlanExecutor
+
+__all__ += [
+    "PLAN_EXECUTOR_REGISTRY",
+    "PlanExecutor",
+    "PlanStep",
+    "StepStatus",
+]
+
+
+# --- tool orchestrator (additive) -------------------------------------------
+from .tool_orchestrator import (  # noqa: E402
+    TOOL_ORCHESTRATOR,
+    ToolCall,
+    ToolCallOutcome,
+    ToolOrchestrator,
+)
+
+__all__ += [
+    "TOOL_ORCHESTRATOR",
+    "ToolCall",
+    "ToolCallOutcome",
+    "ToolOrchestrator",
+]
