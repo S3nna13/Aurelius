@@ -963,3 +963,39 @@ __all__ = list(__all__) + [
     "WEBARENA_TASK_REGISTRY",
     "WEBARENA_SCORER_REGISTRY",
 ]
+
+# --- Additive registration for OSWorld computer-use task scorer --------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.  Measures task completion rate for computer-use
+# tasks across apps and difficulty levels (Xie et al. 2024, 2406.14800).
+from .osworld_scorer import (  # noqa: E402
+    OSWorldTask as _OSWorldTask,
+    OSWorldResult as _OSWorldResult,
+    OSWorldMetrics as _OSWorldMetrics,
+    OSWorldScorer as _OSWorldScorer,
+    OSWORLD_TASK_REGISTRY as _OSWORLD_TASK_REGISTRY,
+)
+
+OSWorldTask = _OSWorldTask
+OSWorldResult = _OSWorldResult
+OSWorldMetrics = _OSWorldMetrics
+OSWorldScorer = _OSWorldScorer
+OSWORLD_TASK_REGISTRY = _OSWORLD_TASK_REGISTRY
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("osworld", _OSWorldScorer)
+BENCHMARK_REGISTRY.setdefault("osworld", _OSWorldScorer)
+
+# Create EVAL_HARNESS_REGISTRY if it doesn't exist yet, then register osworld.
+EVAL_HARNESS_REGISTRY: dict = globals().setdefault("EVAL_HARNESS_REGISTRY", {})
+EVAL_HARNESS_REGISTRY.setdefault("osworld", _OSWorldScorer)
+
+__all__ = list(__all__) + [
+    "OSWorldTask",
+    "OSWorldResult",
+    "OSWorldMetrics",
+    "OSWorldScorer",
+    "OSWORLD_TASK_REGISTRY",
+    "EVAL_HARNESS_REGISTRY",
+]

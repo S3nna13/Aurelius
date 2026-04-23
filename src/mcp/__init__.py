@@ -22,6 +22,8 @@ _MCP_SUBMODULES = (
     "tool_schema_registry",
     "sse_mcp_server",
     "plugin_host",
+    "skill_catalog",
+    "extension_manifest",
 )
 
 __all__ = [
@@ -35,6 +37,13 @@ __all__ = [
     "PluginManifest",
     "PLUGIN_HOST_REGISTRY",
     "DEFAULT_PLUGIN_HOST",
+    "SkillCatalog",
+    "SkillMetadata",
+    "DEFAULT_SKILL_CATALOG",
+    "SKILL_CATALOG_REGISTRY",
+    "ExtensionManifestValidator",
+    "ExtensionManifest",
+    "ManifestValidationResult",
     *_MCP_SUBMODULES,
 ]
 
@@ -81,6 +90,34 @@ def __getattr__(name: str):
         from .plugin_host import DEFAULT_PLUGIN_HOST  # noqa: PLC0415
         globals()["DEFAULT_PLUGIN_HOST"] = DEFAULT_PLUGIN_HOST
         return DEFAULT_PLUGIN_HOST
+    if name == "SkillCatalog":
+        from .skill_catalog import SkillCatalog  # noqa: PLC0415
+        globals()["SkillCatalog"] = SkillCatalog
+        return SkillCatalog
+    if name == "SkillMetadata":
+        from .skill_catalog import SkillMetadata  # noqa: PLC0415
+        globals()["SkillMetadata"] = SkillMetadata
+        return SkillMetadata
+    if name == "DEFAULT_SKILL_CATALOG":
+        from .skill_catalog import DEFAULT_SKILL_CATALOG  # noqa: PLC0415
+        globals()["DEFAULT_SKILL_CATALOG"] = DEFAULT_SKILL_CATALOG
+        return DEFAULT_SKILL_CATALOG
+    if name == "SKILL_CATALOG_REGISTRY":
+        from .skill_catalog import SKILL_CATALOG_REGISTRY  # noqa: PLC0415
+        globals()["SKILL_CATALOG_REGISTRY"] = SKILL_CATALOG_REGISTRY
+        return SKILL_CATALOG_REGISTRY
+    if name == "ExtensionManifestValidator":
+        from .extension_manifest import ExtensionManifestValidator  # noqa: PLC0415
+        globals()["ExtensionManifestValidator"] = ExtensionManifestValidator
+        return ExtensionManifestValidator
+    if name == "ExtensionManifest":
+        from .extension_manifest import ExtensionManifest  # noqa: PLC0415
+        globals()["ExtensionManifest"] = ExtensionManifest
+        return ExtensionManifest
+    if name == "ManifestValidationResult":
+        from .extension_manifest import ManifestValidationResult  # noqa: PLC0415
+        globals()["ManifestValidationResult"] = ManifestValidationResult
+        return ManifestValidationResult
     if name in _MCP_SUBMODULES:
         module = import_module(f"src.mcp.{name}")
         globals()[name] = module

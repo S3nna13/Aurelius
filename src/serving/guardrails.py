@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 class GuardrailPolicy:
     max_length: int = 4096
     block_patterns: List[str] = field(default_factory=list)
-    harm_threshold: float = 0.8
+    harm_threshold: float = 0.5
     allow_adult: bool = False
 
 
@@ -24,7 +24,7 @@ _SUSPICIOUS_SUBSTRINGS = ["INJECT", "OVERRIDE", "SYSTEM_BYPASS"]
 
 
 class ContentGuardrails:
-    def __init__(self, policy: GuardrailPolicy = None):
+    def __init__(self, policy: GuardrailPolicy | None = None):
         self.policy = policy if policy is not None else GuardrailPolicy()
 
     def _pattern_check(self, text: str) -> Tuple[bool, str]:
@@ -39,8 +39,8 @@ class ContentGuardrails:
     def _harm_score(self, text: str) -> float:
         if not _SUSPICIOUS_SUBSTRINGS:
             return 0.0
-        matched = sum(1 for s in _SUSPICIOUS_SUBSTRINGS if s in text)
-        return matched / len(_SUSPICIOUS_SUBSTRINGS)
+        # Return 1.0 on any single match so that harm_threshold < 1.0 blocks it.
+        return 1.0 if any(s in text for s in _SUSPICIOUS_SUBSTRINGS) else 0.0
 
     def check_input(self, text: str) -> GuardrailResult:
         if not self._length_check(text):

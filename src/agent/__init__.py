@@ -166,6 +166,24 @@ __all__ += [
 ]
 
 
+# --- code execution tool (additive) -----------------------------------------
+from .code_execution_tool import (  # noqa: E402
+    CODE_EXECUTION_TOOL_REGISTRY,
+    CodeExecutionTool,
+    ExecutionLanguage,
+    ExecutionRequest,
+    ExecutionResult as CodeExecutionResult,
+)
+
+__all__ += [
+    "CODE_EXECUTION_TOOL_REGISTRY",
+    "CodeExecutionTool",
+    "ExecutionLanguage",
+    "ExecutionRequest",
+    "CodeExecutionResult",
+]
+
+
 # --- code test runner (additive) --------------------------------------------
 from .code_test_runner import (  # noqa: E402
     CodeTestRunner,
@@ -545,3 +563,41 @@ def __getattr__(name: str):
     value = getattr(module, attr_name)
     globals()[name] = value
     return value
+
+
+# --- AST-aware FIM processor (additive) -------------------------------------
+from .ast_fim import (  # noqa: E402
+    ASTAnalyzer,
+    ASTNode,
+    AST_FIM_REGISTRY,
+    FIMFormat,
+    FIMSpan,
+    FIMTokenizer,
+)
+
+__all__ += [
+    "ASTAnalyzer",
+    "ASTNode",
+    "AST_FIM_REGISTRY",
+    "FIMFormat",
+    "FIMSpan",
+    "FIMTokenizer",
+]
+
+
+# --- patch synthesis engine (additive) --------------------------------------
+from .patch_synthesis import (  # noqa: E402
+    Patch,
+    PatchError,
+    PatchHunk,
+    PATCH_REGISTRY,
+    PatchSynthesizer,
+)
+
+__all__ += [
+    "Patch",
+    "PatchError",
+    "PatchHunk",
+    "PATCH_REGISTRY",
+    "PatchSynthesizer",
+]

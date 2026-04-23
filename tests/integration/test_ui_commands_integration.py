@@ -286,6 +286,80 @@ def test_progress_renderer_lifecycle() -> None:
     assert "integ-pr-1" not in renderer._tasks
 
 
+def test_hotkey_overlay_render() -> None:
+    """Render DEFAULT_HOTKEY_OVERLAY in both compact and full modes."""
+    from src.ui.hotkey_overlay import DEFAULT_HOTKEY_OVERLAY, HotkeyGroup, HotkeyOverlay
+
+    overlay = HotkeyOverlay()
+    overlay.add_group(HotkeyGroup(name="Test", bindings=[("ctrl+s", "save"), ("ctrl+z", "undo")]))
+
+    console = Console(record=True)
+    overlay.render(console, compact=True)
+    output = console.export_text()
+    assert len(output) > 0
+
+    console2 = Console(record=True)
+    DEFAULT_HOTKEY_OVERLAY.render(console2, compact=False)
+    output2 = console2.export_text()
+    assert len(output2) > 0
+
+
+def test_split_pane_lifecycle() -> None:
+    """Add 2 panes, hide one, resize the other, render with content_map."""
+    from src.ui.split_pane import PaneConfig, SplitPane, SplitPaneError
+
+    pane = SplitPane()
+    pane.add_pane(PaneConfig(pane_id="editor", title="Editor", weight=2.0))
+    pane.add_pane(PaneConfig(pane_id="terminal", title="Terminal", weight=1.0))
+
+    pane.hide("terminal")
+    assert pane._get_pane("terminal").visible is False
+
+    pane.resize("editor", 3.0)
+    assert pane._get_pane("editor").weight == 3.0
+
+    pane.show("terminal")
+    assert pane._get_pane("terminal").visible is True
+
+    console = Console(record=True)
+    pane.render(console, content_map={"editor": "print('hello')", "terminal": "$ ls"})
+    output = console.export_text()
+    assert len(output) > 0
+
+    snapshot = pane.to_dict()
+    assert isinstance(snapshot, dict)
+    assert snapshot["direction"] == "horizontal"
+
+
+def test_model_info_panel_update() -> None:
+    """Update manifest entries, render, verify to_dict round-trip."""
+    from src.ui.model_info_panel import ModelInfoPanel, ModelInfoError
+    import pytest
+
+    panel = ModelInfoPanel()
+    panel.update("family_name", "aurelius")
+    panel.update("vocab_size", 32768)
+    panel.update("n_parameters", 1_395_000_000)
+    panel.update("tokens_per_sec", 42.5)
+
+    assert panel.get("family_name").value == "aurelius"
+    assert panel.get("vocab_size").value == 32768
+
+    import pytest as _pytest
+    with _pytest.raises(ModelInfoError):
+        panel.update("nonexistent", 0)
+
+    console = Console(record=True)
+    panel.render(console)
+    output = console.export_text()
+    assert len(output) > 0
+
+    d = panel.to_dict()
+    assert isinstance(d, dict)
+    assert d["family_name"]["value"] == "aurelius"
+    assert d["vocab_size"]["value"] == 32768
+
+
 def test_session_manager_lifecycle() -> None:
     """Create 2 sessions, switch_to one, verify other paused, save/load round-trip."""
     from src.ui.session_manager import SessionManager, SessionState

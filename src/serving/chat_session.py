@@ -192,7 +192,8 @@ class ChatSession:
         generated = input_ids.clone()
 
         for _ in range(cfg.max_new_tokens):
-            _, logits, _ = self.model(generated)
+            output = self.model(generated)
+            logits = output[1] if isinstance(output, (tuple, list)) else output
             next_logits = logits[0, -1].clone()
 
             # Apply repetition penalty

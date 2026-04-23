@@ -46,6 +46,28 @@ def test_interface_describe_command_outputs_json():
     assert payload["framework"]["title"] == "Aurelius Canonical Interface Contract"
 
 
+def test_interface_surface_summary_and_schema_commands_output_json():
+    parser = _parser()
+    summary_args = parser.parse_args(["interface", "surface", "summary"])
+    summary_buf = io.StringIO()
+
+    rc = dispatch_interface_command(summary_args, summary_buf)
+    summary_payload = json.loads(summary_buf.getvalue())
+
+    assert rc == 0
+    assert summary_payload["surface"]["engine_adapters"]["count"] >= 3
+    assert summary_payload["surface"]["ui"]["ui_surfaces"]["count"] >= 1
+
+    schema_args = parser.parse_args(["interface", "surface", "schema"])
+    schema_buf = io.StringIO()
+
+    rc = dispatch_interface_command(schema_args, schema_buf)
+    schema_payload = json.loads(schema_buf.getvalue())
+
+    assert rc == 0
+    assert schema_payload["schema"]["schema_name"] == "aurelius.interface.surface-catalog"
+
+
 def test_interface_thread_workstream_job_and_status_commands_share_shell_state():
     parser = _parser()
     shell = AureliusShell.from_repo_root(root_dir=_repo_root())

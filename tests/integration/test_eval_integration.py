@@ -64,3 +64,41 @@ def test_webarena_scorer() -> None:
     report = scorer.format_report(metrics)
     assert len(report) > 0
     assert "WebArena" in report
+
+
+# ---------------------------------------------------------------------------
+# OSWorld scorer integration (additive)
+# OSWorld: Xie et al. 2024 (2406.14800, Apache-2.0), clean-room reimplementation.
+# ---------------------------------------------------------------------------
+
+from src.eval.osworld_scorer import (  # noqa: E402
+    OSWORLD_TASK_REGISTRY,
+    OSWorldResult,
+    OSWorldScorer,
+)
+
+
+def test_osworld_scorer_batch() -> None:
+    """Score 3 results against OSWORLD_TASK_REGISTRY and verify metrics."""
+    scorer = OSWorldScorer()
+
+    task_ids = list(OSWORLD_TASK_REGISTRY.keys())[:3]
+    tasks_subset = {tid: OSWORLD_TASK_REGISTRY[tid] for tid in task_ids}
+
+    results = [
+        OSWorldResult(task_id=task_ids[0], app=OSWORLD_TASK_REGISTRY[task_ids[0]].app, completed=True, steps_taken=2),
+        OSWorldResult(task_id=task_ids[1], app=OSWORLD_TASK_REGISTRY[task_ids[1]].app, completed=True, steps_taken=4),
+        OSWorldResult(task_id=task_ids[2], app=OSWORLD_TASK_REGISTRY[task_ids[2]].app, completed=False, steps_taken=1),
+    ]
+
+    metrics = scorer.score_batch(results, tasks_subset)
+
+    assert metrics.n_tasks == 3
+    assert metrics.n_completed == 2
+    assert abs(metrics.completion_rate - 2 / 3) < 1e-9
+    assert isinstance(metrics.by_app, dict)
+    assert isinstance(metrics.by_difficulty, dict)
+    assert metrics.avg_steps > 0
+
+    report = scorer.format_report(metrics)
+    assert len(report) > 0

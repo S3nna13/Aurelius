@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
 from src.agent.skill_catalog import SkillCatalog
+from src.agent.surface_catalog import describe_ui_surface
 from src.model.interface_framework import (
     ApprovalRequest,
     AureliusInterfaceFramework,
@@ -393,6 +394,7 @@ class AureliusShell:
             },
             "framework": framework_summary,
             "backend_surface": self._describe_backends(),
+            "surface_catalog": self.surface_catalog(),
             "shell_capabilities": {
                 "thread_status": True,
                 "workstream_status": True,
@@ -1180,6 +1182,20 @@ class AureliusShell:
                 },
                 sort_keys=True,
             )
+        if command == "backend" and len(argv) >= 3 and argv[1] == "engine" and argv[2] == "list":
+            return json.dumps(
+                {"engine_surface": self.surface_catalog()["engine_adapters"]},
+                sort_keys=True,
+            )
+        if command == "backend" and len(argv) >= 4 and argv[1] == "engine" and argv[2] == "show":
+            engine_name = argv[3]
+            engine_surface = self.surface_catalog()["engine_adapters"]
+            for record in engine_surface["engine_adapters"]:
+                if record["backend_name"] == engine_name:
+                    return json.dumps({"engine": record}, sort_keys=True)
+            raise AureliusShellError(
+                f"unknown engine adapter: {engine_name!r}; known: {engine_surface['names']}"
+            )
         if command == "skill" and len(argv) >= 2 and argv[1] == "summary":
             return json.dumps(
                 {"summary": self.catalog_skill_summary()},
@@ -1228,6 +1244,16 @@ class AureliusShell:
         if command == "capability" and len(argv) >= 2 and argv[1] == "schema":
             return json.dumps(
                 {"schema": self.capability_summary_schema()},
+                sort_keys=True,
+            )
+        if command == "surface" and len(argv) >= 2 and argv[1] == "summary":
+            return json.dumps(
+                {"surface": self.surface_catalog()},
+                sort_keys=True,
+            )
+        if command == "surface" and len(argv) >= 2 and argv[1] == "schema":
+            return json.dumps(
+                {"schema": self.surface_catalog_schema()},
                 sort_keys=True,
             )
         if command == "thread" and len(argv) >= 3 and argv[1] == "status":
@@ -1326,6 +1352,16 @@ class AureliusShell:
     def capability_summary_schema(self) -> dict[str, Any]:
         """Return the versioned schema for capability summaries."""
         return self._build_runtime().capability_summary_schema()
+
+    def surface_catalog(self) -> dict[str, Any]:
+        """Return a runtime-backed surface catalog with UI coverage added."""
+        catalog = self._build_runtime().surface_catalog()
+        catalog["ui"] = describe_ui_surface()
+        return catalog
+
+    def surface_catalog_schema(self) -> dict[str, Any]:
+        """Return the versioned schema for surface catalogs."""
+        return self._build_runtime().surface_catalog_schema()
 
     def _default_mode_name(self) -> str:
         if "chat" in self.framework.mode_catalog:

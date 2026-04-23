@@ -12,10 +12,15 @@ from __future__ import annotations
 
 import http.server
 import json
+import logging
 import socketserver
 import threading
 from dataclasses import dataclass, field
 from typing import Callable
+
+logger = logging.getLogger(__name__)
+
+_MAX_REQUEST_BODY = 1 * 1024 * 1024  # 1 MiB hard cap on incoming POST bodies
 
 from .mcp_server import MCPServer, register_mcp_server
 
@@ -31,7 +36,7 @@ class SSEMCPServerConfig:
     host: str = "127.0.0.1"
     port: int = 8765
     path: str = "/events"
-    cors_origins: list[str] = field(default_factory=lambda: ["*"])
+    cors_origins: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +82,15 @@ class _SSEHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             return
 
-        length = int(self.headers.get("Content-Length", 0))
+        try:
+            length = max(0, int(self.headers.get("Content-Length", 0)))
+        except ValueError:
+            length = 0
+        if length > _MAX_REQUEST_BODY:
+            self.send_response(413)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         body = self.rfile.read(length) if length else b"{}"
 
         try:
@@ -106,10 +119,13 @@ class _SSEHandler(http.server.BaseHTTPRequestHandler):
 
     def _send_cors_headers(self) -> None:
         origins = self._sse_server.config.cors_origins
-        origin_value = ", ".join(origins)
-        self.send_header("Access-Control-Allow-Origin", origin_value)
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        if not origins:
+            return
+        request_origin = self.headers.get("Origin", "")
+        if request_origin in origins:
+            self.send_header("Access-Control-Allow-Origin", request_origin)
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
     def log_message(self, fmt: str, *args: object) -> None:  # noqa: D401
         """Suppress default access log noise during tests."""
@@ -128,11 +144,17 @@ class SSEMCPServer(MCPServer):
     ``start()`` is non-blocking and ``stop()`` cleanly shuts it down.
     """
 
-    def __init__(self, config: SSEMCPServerConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: SSEMCPServerConfig | None = None,
+        *,
+        bind_and_activate: bool = False,
+    ) -> None:
         self.config: SSEMCPServerConfig = config or SSEMCPServerConfig()
         self._tool_handlers: dict[str, Callable[[dict], dict]] = {}
         self._tcp_server: socketserver.TCPServer | None = None
         self._thread: threading.Thread | None = None
+        self.bind_and_activate = bind_and_activate
 
     # ------------------------------------------------------------------
     # MCPServer protocol
@@ -153,8 +175,12 @@ class SSEMCPServer(MCPServer):
         server = socketserver.TCPServer(
             (self.config.host, self.config.port),
             handler_cls,
+            bind_and_activate=False,
         )
         server.allow_reuse_address = True
+        if self.bind_and_activate:
+            server.server_bind()
+            server.server_activate()
         self._tcp_server = server
 
         self._thread = threading.Thread(
@@ -186,8 +212,9 @@ class SSEMCPServer(MCPServer):
             return {"error": f"unknown tool: {tool_name!r}"}
         try:
             return handler(payload)
-        except Exception as exc:  # noqa: BLE001
-            return {"error": f"handler error: {exc}"}
+        except Exception:  # noqa: BLE001
+            logger.exception("Tool handler %r raised an exception", tool_name)
+            return {"error": "handler error"}
 
     # ------------------------------------------------------------------
     # Tool handler registration

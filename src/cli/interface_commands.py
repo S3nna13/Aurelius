@@ -43,6 +43,8 @@ __all__ = [
     "handle_interface_mode_list",
     "handle_interface_mode_set",
     "handle_interface_shell_status",
+    "handle_interface_surface_schema",
+    "handle_interface_surface_summary",
     "handle_interface_skill_attach",
     "handle_interface_skill_archive",
     "handle_interface_skill_list",
@@ -191,6 +193,38 @@ def handle_interface_capability_schema(
         stream,
         {
             "schema": runtime.capability_summary_schema(),
+        },
+    )
+    return 0
+
+
+def handle_interface_surface_summary(
+    args: argparse.Namespace,
+    out_stream: TextIO | None = None,
+    shell: AureliusShell | None = None,
+) -> int:
+    stream = out_stream if out_stream is not None else sys.stdout
+    active_shell = _build_shell(args, shell)
+    _json_write(
+        stream,
+        {
+            "surface": active_shell.surface_catalog(),
+        },
+    )
+    return 0
+
+
+def handle_interface_surface_schema(
+    args: argparse.Namespace,
+    out_stream: TextIO | None = None,
+    shell: AureliusShell | None = None,
+) -> int:
+    stream = out_stream if out_stream is not None else sys.stdout
+    active_shell = _build_shell(args, shell)
+    _json_write(
+        stream,
+        {
+            "schema": active_shell.surface_catalog_schema(),
         },
     )
     return 0
@@ -774,6 +808,8 @@ INTERFACE_COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace, TextIO, Aure
     "journal_branch_summary": handle_interface_journal_branch_summary,
     "journal_compaction_summary": handle_interface_journal_compaction_summary,
     "shell_status": handle_interface_shell_status,
+    "surface_schema": handle_interface_surface_schema,
+    "surface_summary": handle_interface_surface_summary,
     "workstream_create": handle_interface_workstream_create,
     "workstream_list": handle_interface_workstream_list,
     "workstream_status": handle_interface_workstream_status,
@@ -804,6 +840,8 @@ _NO_AUTO_SHELL_HANDLERS = {
     handle_interface_channel_send,
     handle_interface_journal_branch_summary,
     handle_interface_journal_compaction_summary,
+    handle_interface_surface_schema,
+    handle_interface_surface_summary,
     handle_interface_skill_search,
     handle_interface_skill_show,
     handle_interface_skill_summary,
@@ -853,6 +891,13 @@ def build_interface_parser(
     capability_summary_p.set_defaults(interface_handler=handle_interface_capability_summary)
     capability_schema_p = capability_sub.add_parser("schema", help="show capability summary schema")
     capability_schema_p.set_defaults(interface_handler=handle_interface_capability_schema)
+
+    surface_p = interface_sub.add_parser("surface", help="summarize exposed runtime surfaces")
+    surface_sub = surface_p.add_subparsers(dest="surface_command", metavar="surface_command")
+    surface_summary_p = surface_sub.add_parser("summary", help="show a surface catalog summary")
+    surface_summary_p.set_defaults(interface_handler=handle_interface_surface_summary)
+    surface_schema_p = surface_sub.add_parser("schema", help="show surface catalog schema")
+    surface_schema_p.set_defaults(interface_handler=handle_interface_surface_schema)
 
     channel_p = interface_sub.add_parser("channel", help="route and inspect channel envelopes")
     channel_sub = channel_p.add_subparsers(dest="channel_command", metavar="channel_command")

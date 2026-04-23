@@ -54,6 +54,32 @@ def test_backend_show_outputs_contract_and_runtime_info():
     assert payload["backend"]["runtime_info"]["available"] is True
 
 
+def test_backend_engine_list_outputs_known_engine_adapter_metadata():
+    parser = _parser()
+    args = parser.parse_args(["backend", "engine", "list"])
+    buf = io.StringIO()
+
+    rc = dispatch_backend_command(args, buf)
+    payload = json.loads(buf.getvalue())
+
+    assert rc == 0
+    assert payload["engine_adapters"]["count"] >= 3
+    assert "gguf" in payload["engine_adapters"]["names"]
+
+
+def test_backend_engine_show_outputs_engine_adapter_summary():
+    parser = _parser()
+    args = parser.parse_args(["backend", "engine", "show", "sglang"])
+    buf = io.StringIO()
+
+    rc = dispatch_backend_command(args, buf)
+    payload = json.loads(buf.getvalue())
+
+    assert rc == 0
+    assert payload["engine"]["backend_name"] == "sglang"
+    assert payload["engine"]["registered"] in {True, False}
+
+
 def test_backend_show_unknown_backend_returns_error():
     parser = _parser()
     args = parser.parse_args(["backend", "show", "no-such-backend"])

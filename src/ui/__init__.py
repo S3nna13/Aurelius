@@ -116,6 +116,27 @@ from src.ui.progress_renderer import (
     ProgressError,
     PROGRESS_RENDERER_REGISTRY,
 )
+from src.ui.hotkey_overlay import (
+    HotkeyGroup,
+    HotkeyOverlay,
+    HotkeyOverlayError,
+    HOTKEY_OVERLAY_REGISTRY,
+    DEFAULT_HOTKEY_OVERLAY,
+)
+from src.ui.split_pane import (
+    SplitDirection,
+    PaneConfig,
+    SplitPane,
+    SplitPaneError,
+    SPLIT_PANE_REGISTRY,
+)
+from src.ui.model_info_panel import (
+    ModelInfoEntry,
+    ModelInfoPanel,
+    ModelInfoError,
+    MODEL_INFO_PANEL_REGISTRY,
+    DEFAULT_MODEL_INFO_PANEL,
+)
 
 # Register new UI surfaces into the surface registry.
 _COMMAND_PALETTE_SURFACE = UISurface(
@@ -195,6 +216,27 @@ _PROGRESS_RENDERER_SURFACE = UISurface(
     default_layout="stoic-focus",
     keyboard_map={"esc": "cancel"},
 )
+_HOTKEY_OVERLAY_SURFACE = UISurface(
+    surface_id="hotkey-overlay",
+    title="Hotkey Overlay",
+    panels=("hotkeys",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "?": "help"},
+)
+_SPLIT_PANE_SURFACE = UISurface(
+    surface_id="split-pane",
+    title="Split Pane",
+    panels=("left", "right"),
+    default_layout="stoic-3pane",
+    keyboard_map={"esc": "cancel", "tab": "next_pane"},
+)
+_MODEL_INFO_PANEL_SURFACE = UISurface(
+    surface_id="model-info-panel",
+    title="Model Info Panel",
+    panels=("info",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel"},
+)
 
 for _surface in (
     _COMMAND_PALETTE_SURFACE,
@@ -208,6 +250,9 @@ for _surface in (
     _SESSION_MANAGER_SURFACE,
     _DEBUG_PANEL_SURFACE,
     _PROGRESS_RENDERER_SURFACE,
+    _HOTKEY_OVERLAY_SURFACE,
+    _SPLIT_PANE_SURFACE,
+    _MODEL_INFO_PANEL_SURFACE,
 ):
     if _surface.surface_id not in UI_SURFACE_REGISTRY:
         register_ui_surface(_surface)
@@ -307,4 +352,22 @@ __all__ = [
     "ProgressRenderer",
     "ProgressError",
     "PROGRESS_RENDERER_REGISTRY",
+    # Hotkey overlay
+    "HotkeyGroup",
+    "HotkeyOverlay",
+    "HotkeyOverlayError",
+    "HOTKEY_OVERLAY_REGISTRY",
+    "DEFAULT_HOTKEY_OVERLAY",
+    # Split pane
+    "SplitDirection",
+    "PaneConfig",
+    "SplitPane",
+    "SplitPaneError",
+    "SPLIT_PANE_REGISTRY",
+    # Model info panel
+    "ModelInfoEntry",
+    "ModelInfoPanel",
+    "ModelInfoError",
+    "MODEL_INFO_PANEL_REGISTRY",
+    "DEFAULT_MODEL_INFO_PANEL",
 ]

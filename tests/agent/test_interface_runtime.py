@@ -138,10 +138,13 @@ def test_runtime_drives_the_full_thread_session_and_audit_lifecycle(tmp_path):
     compaction_summary = runtime.journal_compaction_summary(session.session_id, branch_id="main")
     capability_schema = runtime.capability_summary_schema()
     capability = runtime.capability_summary(session.session_id)
+    surface_catalog = runtime.surface_catalog()
+    surface_schema = runtime.surface_catalog_schema()
     summary = runtime.describe()
     json.dumps(summary)
     json.dumps(thread_status)
     json.dumps(export_payload)
+    json.dumps(surface_catalog)
 
     assert isinstance(approval, ApprovalRequest)
     assert isinstance(checkpoint, Checkpoint)
@@ -164,6 +167,16 @@ def test_runtime_drives_the_full_thread_session_and_audit_lifecycle(tmp_path):
     assert capability["schema"]["schema_name"] == capability_schema["schema_name"]
     assert capability["runtime"]["session_bound"] is True
     assert capability["journal"]["entries"] >= 1
+    assert surface_schema["schema_name"] == "aurelius.interface.surface-catalog"
+    assert surface_schema["schema_version"] == "1.0"
+    assert surface_catalog["backends"]["count"] >= 1
+    assert surface_catalog["engine_adapters"]["count"] >= 3
+    assert surface_catalog["multimodal"]["contracts"]["count"] >= 3
+    assert surface_catalog["mcp"]["servers"]["count"] >= 1
+    assert surface_catalog["computer_use"]["screen_parsers"]["count"] >= 1
+    assert surface_catalog["deployment"]["deploy_targets"]["count"] >= 1
+    assert surface_catalog["ui"]["ui_surfaces"]["count"] >= 1
+    assert summary["surface_catalog"]["ui"]["ui_surfaces"]["count"] >= 1
     assert thread_status["thread"]["thread_id"] == thread.thread_id
     assert thread_status["tool_calls"][0]["tool_name"] == "search_repo"
     assert reloaded_runtime.get_thread(session.session_id, thread.thread_id).thread_id == thread.thread_id
