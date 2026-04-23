@@ -127,16 +127,21 @@ def test_runtime_drives_the_full_thread_session_and_audit_lifecycle(tmp_path):
     )
     runtime.session_manager.branch_journal(session.session_id, "review")
     runtime.session_manager.compact_journal(session.session_id, branch_id="main", keep_last_n=1)
+    export_payload = runtime.export_session(session.session_id)
+    imported_runtime = _runtime(tmp_path / "imported")
+    imported_session = imported_runtime.import_session(export_payload, replace=True)
     reloaded_runtime = _runtime(tmp_path)
     thread_status = reloaded_runtime.thread_status(session.session_id, thread.thread_id)
     session_status = runtime.session_status(session.session_id)
     messages = reloaded_runtime.list_messages(session.session_id, thread_id=resumed.thread_id)
     branch_summary = runtime.journal_branch_summary(session.session_id, "main")
     compaction_summary = runtime.journal_compaction_summary(session.session_id, branch_id="main")
+    capability_schema = runtime.capability_summary_schema()
     capability = runtime.capability_summary(session.session_id)
     summary = runtime.describe()
     json.dumps(summary)
     json.dumps(thread_status)
+    json.dumps(export_payload)
 
     assert isinstance(approval, ApprovalRequest)
     assert isinstance(checkpoint, Checkpoint)
@@ -153,6 +158,10 @@ def test_runtime_drives_the_full_thread_session_and_audit_lifecycle(tmp_path):
     assert messages[-1]["payload"]["content"] == "persisted envelope"
     assert branch_summary["branch_id"] == "main"
     assert compaction_summary["branch_id"] == "main"
+    assert export_payload["schema_version"] == "1.0"
+    assert imported_session.session_id == session.session_id
+    assert capability_schema["schema_version"] == "1.0"
+    assert capability["schema"]["schema_name"] == capability_schema["schema_name"]
     assert capability["runtime"]["session_bound"] is True
     assert capability["journal"]["entries"] >= 1
     assert thread_status["thread"]["thread_id"] == thread.thread_id

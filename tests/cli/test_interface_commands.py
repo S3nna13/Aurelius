@@ -407,6 +407,18 @@ def test_interface_mode_set_command_updates_shell_state():
     assert shell.current_mode == "review"
 
 
+def test_interface_capability_schema_command_outputs_versioned_schema():
+    parser = _parser()
+    schema_buf = io.StringIO()
+    schema_args = parser.parse_args(["interface", "--repo-root", str(_repo_root()), "capability", "schema"])
+    rc = dispatch_interface_command(schema_args, schema_buf)
+    payload = json.loads(schema_buf.getvalue())
+
+    assert rc == 0
+    assert payload["schema"]["schema_name"] == "aurelius.interface.capability-summary"
+    assert payload["schema"]["schema_version"] == "1.0"
+
+
 def test_interface_persistent_channel_and_journal_commands(tmp_path):
     parser = _parser()
     runtime = AureliusInterfaceRuntime.from_repo_root(root_dir=_repo_root())
@@ -532,6 +544,7 @@ def test_interface_persistent_channel_and_journal_commands(tmp_path):
     rc = dispatch_interface_command(capability_args, capability_buf)
     assert rc == 0
     capability_payload = json.loads(capability_buf.getvalue())["capability"]
+    assert capability_payload["schema"]["schema_version"] == "1.0"
     assert capability_payload["runtime"]["session_bound"] is True
     assert capability_payload["journal"]["entries"] >= 1
 

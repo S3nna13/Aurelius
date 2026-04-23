@@ -85,6 +85,10 @@ def _normalize_thread_spec_mapping(spec: Mapping[str, Any]) -> dict[str, Any]:
     return data
 
 
+_CAPABILITY_SUMMARY_SCHEMA_NAME = "aurelius.interface.capability-summary"
+_CAPABILITY_SUMMARY_SCHEMA_VERSION = "1.0"
+
+
 class AureliusInterfaceRuntime:
     """Aurelius-native runtime tying contract, state, and skill bundles together."""
 
@@ -161,6 +165,7 @@ class AureliusInterfaceRuntime:
         sessions = self.session_manager.list_sessions()
         return {
             **self.framework.describe(),
+            "capability_summary_schema": self.capability_summary_schema(),
             "session_count": len(sessions),
             "session_ids": [session.session_id for session in sessions],
             "skill_catalog": self.skill_catalog.describe(),
@@ -208,6 +213,20 @@ class AureliusInterfaceRuntime:
 
     def get_background_job(self, session_id: str, job_id: str) -> BackgroundJob | None:
         return self.session_manager.get_background_job(session_id, job_id)
+
+    def export_session(self, session_id: str) -> dict[str, Any]:
+        return self.session_manager.export_session(session_id)
+
+    def export_session_to_path(self, session_id: str, path: str | Path) -> Path:
+        return self.session_manager.write_session_export(session_id, path)
+
+    def import_session(
+        self,
+        payload_or_path: Mapping[str, Any] | str | Path,
+        *,
+        replace: bool = False,
+    ):
+        return self.session_manager.import_session_export(payload_or_path, replace=replace)
 
     # ------------------------------------------------------------------
     # thread lifecycle
@@ -413,6 +432,55 @@ class AureliusInterfaceRuntime:
     def session_status(self, session_id: str) -> dict[str, Any]:
         return self.session_manager.status(session_id)
 
+    def capability_summary_schema(self) -> dict[str, Any]:
+        return {
+            "schema_name": _CAPABILITY_SUMMARY_SCHEMA_NAME,
+            "schema_version": _CAPABILITY_SUMMARY_SCHEMA_VERSION,
+            "description": "Versioned schema for Aurelius interface capability summaries.",
+            "sections": [
+                {
+                    "name": "framework",
+                    "required": True,
+                    "description": "Canonical contract, mode, and host metadata.",
+                },
+                {
+                    "name": "modes",
+                    "required": True,
+                    "description": "Resolved mode catalog names.",
+                },
+                {
+                    "name": "hosts",
+                    "required": True,
+                    "description": "Resolved host catalog names.",
+                },
+                {
+                    "name": "skills",
+                    "required": True,
+                    "description": "Local-first skill catalog provenance summary.",
+                },
+                {
+                    "name": "sessions",
+                    "required": True,
+                    "description": "Persistent session inventory summary.",
+                },
+                {
+                    "name": "runtime",
+                    "required": True,
+                    "description": "Runtime-facing session and channel counts.",
+                },
+                {
+                    "name": "session",
+                    "required": False,
+                    "description": "Optional session status summary when session_id is provided.",
+                },
+                {
+                    "name": "journal",
+                    "required": False,
+                    "description": "Optional session journal summary when session_id is provided.",
+                },
+            ],
+        }
+
     def journal_summary(self, session_id: str) -> dict[str, Any]:
         return self.session_manager.journal_summary(session_id)
 
@@ -440,6 +508,7 @@ class AureliusInterfaceRuntime:
         journal_summary = self.session_manager.journal_summary(session_id) if session is not None else None
         messages = self.list_messages(session_id) if session is not None else []
         return {
+            "schema": self.capability_summary_schema(),
             "framework": self.framework.describe(),
             "modes": sorted(self.mode_catalog),
             "hosts": sorted(self.host_catalog),

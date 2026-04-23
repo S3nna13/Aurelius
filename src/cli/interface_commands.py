@@ -29,6 +29,7 @@ __all__ = [
     "dispatch_interface_command",
     "handle_interface_approval_request",
     "handle_interface_capability_summary",
+    "handle_interface_capability_schema",
     "handle_interface_channel_list",
     "handle_interface_channel_send",
     "handle_interface_checkpoint_resume",
@@ -173,6 +174,23 @@ def handle_interface_capability_summary(
         stream,
         {
             "capability": runtime.capability_summary(session_id),
+        },
+    )
+    return 0
+
+
+def handle_interface_capability_schema(
+    args: argparse.Namespace,
+    out_stream: TextIO | None = None,
+    shell: AureliusShell | None = None,
+) -> int:
+    del shell
+    stream = out_stream if out_stream is not None else sys.stdout
+    runtime = _build_runtime(args)
+    _json_write(
+        stream,
+        {
+            "schema": runtime.capability_summary_schema(),
         },
     )
     return 0
@@ -747,6 +765,7 @@ def handle_interface_workflow_run(
 
 INTERFACE_COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace, TextIO, AureliusShell | None], int]] = {
     "capability_summary": handle_interface_capability_summary,
+    "capability_schema": handle_interface_capability_schema,
     "describe": handle_interface_describe,
     "channel_list": handle_interface_channel_list,
     "channel_send": handle_interface_channel_send,
@@ -780,6 +799,7 @@ INTERFACE_COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace, TextIO, Aure
 
 _NO_AUTO_SHELL_HANDLERS = {
     handle_interface_capability_summary,
+    handle_interface_capability_schema,
     handle_interface_channel_list,
     handle_interface_channel_send,
     handle_interface_journal_branch_summary,
@@ -831,6 +851,8 @@ def build_interface_parser(
     capability_summary_p = capability_sub.add_parser("summary", help="show capability summary")
     capability_summary_p.add_argument("--session-id", default=None, help="optional persistent session id")
     capability_summary_p.set_defaults(interface_handler=handle_interface_capability_summary)
+    capability_schema_p = capability_sub.add_parser("schema", help="show capability summary schema")
+    capability_schema_p.set_defaults(interface_handler=handle_interface_capability_schema)
 
     channel_p = interface_sub.add_parser("channel", help="route and inspect channel envelopes")
     channel_sub = channel_p.add_subparsers(dest="channel_command", metavar="channel_command")

@@ -1225,6 +1225,11 @@ class AureliusShell:
                 {"capability": self.capability_summary()},
                 sort_keys=True,
             )
+        if command == "capability" and len(argv) >= 2 and argv[1] == "schema":
+            return json.dumps(
+                {"schema": self.capability_summary_schema()},
+                sort_keys=True,
+            )
         if command == "thread" and len(argv) >= 3 and argv[1] == "status":
             thread_id = argv[2] if len(argv) > 2 else self.active_thread_id
             if thread_id is None:
@@ -1317,6 +1322,10 @@ class AureliusShell:
     def capability_summary(self) -> dict[str, Any]:
         """Return a runtime-backed capability summary for the shell session."""
         return self._build_runtime().capability_summary(self.session_id)
+
+    def capability_summary_schema(self) -> dict[str, Any]:
+        """Return the versioned schema for capability summaries."""
+        return self._build_runtime().capability_summary_schema()
 
     def _default_mode_name(self) -> str:
         if "chat" in self.framework.mode_catalog:

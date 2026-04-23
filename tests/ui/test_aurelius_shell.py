@@ -119,6 +119,11 @@ def test_shell_capability_and_journal_commands_route_through_runtime_summaries(m
     )
     monkeypatch.setattr(
         shell,
+        "capability_summary_schema",
+        lambda: {"schema_name": "aurelius.interface.capability-summary", "schema_version": "1.0"},
+    )
+    monkeypatch.setattr(
+        shell,
         "journal_branch_summary",
         lambda branch_id="main": {"branch_id": branch_id, "entry_count": 2},
     )
@@ -130,6 +135,9 @@ def test_shell_capability_and_journal_commands_route_through_runtime_summaries(m
 
     capability_payload = json.loads(shell.execute_command("capability summary"))
     assert capability_payload["capability"]["framework"]["title"] == "Aurelius"
+
+    schema_payload = json.loads(shell.execute_command("capability schema"))
+    assert schema_payload["schema"]["schema_version"] == "1.0"
 
     branch_payload = json.loads(shell.execute_command("journal branch main"))
     assert branch_payload["journal"]["branch_id"] == "main"

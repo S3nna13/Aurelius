@@ -166,7 +166,18 @@ def test_main_interface_persistent_channel_and_summary_commands_run_end_to_end(t
     capability_payload = json.loads(captured.out)
 
     assert rc == 0
+    assert capability_payload["capability"]["schema"]["schema_version"] == "1.0"
     assert capability_payload["capability"]["runtime"]["session_bound"] is True
+
+
+def test_main_interface_capability_schema_command_runs_end_to_end(capsys):
+    rc = cli_main.main(["interface", "--repo-root", str(_repo_root()), "capability", "schema"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert rc == 0
+    assert payload["schema"]["schema_name"] == "aurelius.interface.capability-summary"
+    assert payload["schema"]["schema_version"] == "1.0"
 
 
 def test_main_interface_skill_catalog_management_commands_run_end_to_end(tmp_path, capsys):
