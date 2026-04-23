@@ -1,4 +1,14 @@
-"""Shell execution tool with deny-list and output capture."""
+"""Shell execution tool with deny-list and output capture.
+
+Design note — intentional use of shell=True:
+    ShellTool is an explicit shell executor whose purpose is to let users run
+    arbitrary shell commands, including pipelines (``cmd1 | cmd2``), shell
+    built-ins, and glob expansions.  subprocess.run with shell=False cannot
+    support these use-cases.  Safety is enforced through SHELL_DENY_PATTERNS
+    (deny-list checked before every invocation) and a hard timeout, not by
+    disabling the shell.  The B602 finding is therefore intentional and
+    suppressed inline.
+"""
 from __future__ import annotations
 
 import subprocess
@@ -43,7 +53,7 @@ class ShellTool:
                     error=f"command denied: {pattern}",
                 )
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # nosec B602
                 command,
                 shell=True,
                 capture_output=True,

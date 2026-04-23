@@ -143,7 +143,7 @@ def load_checkpoint(
     # Load optimizer state if requested
     opt_path = ckpt_dir / "optimizer.pt"
     if optimizer is not None and opt_path.exists():
-        opt_state = torch.load(opt_path, map_location=map_location, weights_only=False)
+        opt_state = torch.load(opt_path, map_location=map_location, weights_only=True)
         optimizer.load_state_dict(opt_state)
         logger.info("Loaded optimizer state from %s", opt_path)
 

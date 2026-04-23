@@ -18,11 +18,11 @@ import threading
 from dataclasses import dataclass, field
 from typing import Callable
 
+from .mcp_server import MCPServer, register_mcp_server
+
 logger = logging.getLogger(__name__)
 
 _MAX_REQUEST_BODY = 1 * 1024 * 1024  # 1 MiB hard cap on incoming POST bodies
-
-from .mcp_server import MCPServer, register_mcp_server
 
 # ---------------------------------------------------------------------------
 # Configuration

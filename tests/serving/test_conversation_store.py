@@ -17,7 +17,7 @@ MESSAGES = [
 
 def test_instantiates_with_custom_storage_dir(tmp_path):
     s = ConversationStore(storage_dir=str(tmp_path))
-    assert s.storage_dir == str(tmp_path)
+    assert s.storage_dir == tmp_path.resolve()
 
 
 def test_save_creates_file(store, tmp_path):

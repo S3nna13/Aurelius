@@ -21,6 +21,7 @@ _PUBLIC_SUBPACKAGES = (
     "memory",
     "model",
     "monitoring",
+    "multiagent",
     "multimodal",
     "protocol",
     "reasoning",

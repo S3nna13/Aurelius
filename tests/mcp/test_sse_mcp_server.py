@@ -39,7 +39,7 @@ class TestSSEMCPServerConfigDefaults:
 
     def test_default_cors_origins(self):
         cfg = SSEMCPServerConfig()
-        assert cfg.cors_origins == ["*"]
+        assert cfg.cors_origins == []
 
     def test_custom_values(self):
         cfg = SSEMCPServerConfig(host="0.0.0.0", port=9999, path="/mcp", cors_origins=["https://example.com"])
