@@ -265,10 +265,11 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **138 implementation cycles** completed
-- **22 100+ tests** passing (full suite ~15-28 min on CPU)
-- **1 460+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, mcp, computer_use, multimodal, deployment, and the new **memory / tools** surface dirs
+- **139 implementation cycles** completed
+- **22 500+ tests** passing (full suite ~15-28 min on CPU)
+- **1 480+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, mcp, computer_use, multimodal, deployment, memory, tools, and the new **reasoning / search** surface dirs
 - Recent cycles:
+  - **cycle-139** — **NEW reasoning surface**: ChainOfThought (numbered/bullet/XML/freeform parse, consistency scoring) + ToTPlanner (beam search over thought branches, Yao et al. 2305.10601) + Scratchpad (pinned entries, tag search); **NEW search surface**: WebSearchStub (token-match, score-ranked) + SemanticSearch (TF-IDF inverted index) + ResultRanker (RRF fusion, min-max normalize, deduplicate); memory SemanticMemory (concept graph, BFS path) + MemoryConsolidator (decay factor, importance threshold); agent PlanExecutor (dependency DAG, transitive skip) + ToolOrchestrator (retry logic, batch dispatch)
   - **cycle-138** — deployment RolloutManager (canary/blue-green/rolling traffic split) + SecretProvider (ENV/FILE/MEMORY backends, redaction); CLI PluginCommands + DebugCommands (log level, traces, metric snapshot); **NEW memory surface**: EpisodicMemory (importance scoring, BM25 search, eviction) + WorkingMemory (TTL + LRU) + MemoryIndex (TF-IDF inverted index); **NEW tools surface**: ToolRegistry (OpenAI-format spec, exception-safe dispatch) + ShellTool (deny-list sandbox) + FileTool (path deny-list, base_dir)
   - **cycle-137** — UI tooltip system (hover-delay/position/registry) + ContextMenu (items/sections/keyboard-nav) + NotificationDrawer (severity/dismiss/history) → **UI at 25 files ✅**, serving ToolCallStreamAccumulator (partial JSON delta accumulation) + ContextCompressor (truncate/summarize_middle/drop_tool_results), eval MathBenchmark (7 categories, symbolic+numeric verify, BENCHMARK_REGISTRY["math"]) + CodeReviewScorer (5-dimension weighted rubric, grade A-F), alignment DPO trainer (sigmoid/hinge/IPO, label smoothing, 2305.18290) + RewardCalibrator (temperature/Platt/isotonic, ECE)
   - **cycle-136** — UI expansion (HotkeyOverlay + SplitPane + ModelInfoPanel, now 22 files), MCP expansion (SkillCatalog + ExtensionManifestValidator, now 7 files), agent coding tools (ASTAnalyzer + FIMTokenizer PSM/SPM/RANDOM, PatchSynthesizer via difflib), CodeExecutionTool (DENY_PATTERNS subprocess sandbox), OSWorld eval scorer (6 stub tasks, BENCHMARK_REGISTRY)
