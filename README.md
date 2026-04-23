@@ -265,14 +265,15 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **132 implementation cycles** completed
-- **20 400+ tests** passing (full suite ~15-28 min on CPU)
-- **1 400+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, and the new **mcp / computer_use / multimodal / deployment** surface dirs
+- **133 implementation cycles** completed
+- **20 700+ tests** passing (full suite ~15-28 min on CPU)
+- **1 420+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, and the new **mcp / computer_use / multimodal / deployment** surface dirs
 - Recent cycles:
   - **cycle-128** — preserve-thinking visualizer (background thought streams), background executor (async tool dispatch), context-budget controller (token budget with hard limits), proactive trigger (event-driven agent wakeups), swarm scaler (auto-spawn/prune agent pool), multimodal thinking chain (interleaved vision+text reasoning)
   - **cycle-129** — CoCoNut continuous-thought training, SoftThinking probabilistic thought mixer, AbsoluteZero self-play RL (proposer+solver), FlashMLA memory-linear attention, wait-token forcer (budget-forcing via <wait> injection), STILL-3 slow-thinking curriculum trainer
   - **cycle-130** — Eagle3 speculative decoding (draft model + tree verification), StripedAttention (alternating local+global heads), length reward (ThinkPrune output-length RL), AQLM 2-bit quantization (additive quantization with codebooks), curriculum RL (dynamic difficulty + mastery gating), process-reward model evaluator
   - **cycle-131** — radix/prefix-tree KV cache (block-trie + LRU + refcount pinning), SWE-RL reward shaping (unit-test pass/fail signal), synthetic math dataset generator (GSM8K/MATH style), math-eval benchmark harness (SymPy symbolic verifier), online RFT loop (generate→verify→filter→train), Zamba hybrid block (Mamba2 + full-attention every 6th layer)
+  - **cycle-133** — UI expansion (TranscriptViewer + DiffViewer + TaskPanel, now 14 files), multimodal expansion (VideoEncoder 3D-patch + JSONLayoutParser + DocumentEmbedder, now 5 files), MCP expansion (SSEMCPServer stdio/SSE + PluginHost semver-validated hot-reload, now 5 files), Responses API serving (GPT-5 parity — InputItem/ResponseTool/ResponseOutputItem/streaming events CREATED→DELTA→COMPLETED), computer-use expansion (StubBrowserDriver + TrajectoryRecorder/Replayer, now 5 files)
   - **cycle-132** — **6 new surface roots**: MCP server/client/tool-schema registry (stdio+in-process, cline/continue inspired), computer-use screen parser + GUI action predictor + action verifier (accessibility tree, OpenDevin/Kimi-Dev inspired), multimodal registry hub (VISION_ENCODER/AUDIO_ENCODER/MODALITY_PROJECTOR/TOKENIZER registries wiring existing model encoders), deployment surface (DockerfileBuilder + SBOMGenerator + HealthzHandler WSGI + real `deployment/Dockerfile` + `deployment/compose.yaml`), vLLM + SGLang backend adapters (lazy-import isolation), UI command palette + status-hierarchy tree + keyboard nav controller + onboarding flow (Rich, keyboard-first)
 - `aurelius` works as a terminal command after `pip install -e .`
 - Frontier-tier surfaces wired in cycles 100–103:
