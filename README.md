@@ -265,8 +265,8 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **134 implementation cycles** completed
-- **20 900+ tests** passing (full suite ~15-28 min on CPU)
+- **135 implementation cycles** completed
+- **21 100+ tests** passing (full suite ~15-28 min on CPU)
 - **1 420+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, and the new **mcp / computer_use / multimodal / deployment** surface dirs
 - Recent cycles:
   - **cycle-128** — preserve-thinking visualizer (background thought streams), background executor (async tool dispatch), context-budget controller (token budget with hard limits), proactive trigger (event-driven agent wakeups), swarm scaler (auto-spawn/prune agent pool), multimodal thinking chain (interleaved vision+text reasoning)
