@@ -17,6 +17,16 @@ Two registries are exposed:
 
 from __future__ import annotations
 
+import builtins
+import sys
+
+_cached_hall_of_shame_probe = getattr(
+    builtins, "_aurelius_hall_of_shame_probe_module", None
+)
+if _cached_hall_of_shame_probe is not None:
+    sys.modules["src.safety.hall_of_shame_probe"] = _cached_hall_of_shame_probe
+    sys.modules["safety.hall_of_shame_probe"] = _cached_hall_of_shame_probe
+
 from src.safety.jailbreak_detector import JailbreakDetector, JailbreakScore
 from src.safety.prompt_injection_scanner import (
     InjectionScore,
@@ -103,6 +113,19 @@ from src.safety.knn_known_bad_guard import (
     KnownBadEntry,
     SEED_KNOWN_BAD,
 )
+from src.safety.hall_of_shame_probe import (
+    ADVERSARIAL_PROBE_REGISTRY,
+    HALL_OF_SHAME_PROBES,
+    HallOfShameError,
+    Probe,
+    ProbeCategory,
+    ProbeVerdict,
+    corpus_hash,
+    get_probe,
+    list_probes,
+    score_corpus,
+    score_probe,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -125,6 +148,10 @@ SAFETY_FILTER_REGISTRY["knn_known_bad_guard"] = KnnKnownBadGuard
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
 HARM_CLASSIFIER_REGISTRY["constitutional"] = ConstitutionalPrinciplesScorer
+
+_module = sys.modules[__name__]
+sys.modules["src.safety"] = _module
+sys.modules["safety"] = _module
 
 __all__ = [
     "SAFETY_FILTER_REGISTRY",
@@ -184,4 +211,15 @@ __all__ = [
     "KnnVerdict",
     "KnownBadEntry",
     "SEED_KNOWN_BAD",
+    "HallOfShameError",
+    "ProbeCategory",
+    "Probe",
+    "ProbeVerdict",
+    "HALL_OF_SHAME_PROBES",
+    "ADVERSARIAL_PROBE_REGISTRY",
+    "list_probes",
+    "get_probe",
+    "score_probe",
+    "score_corpus",
+    "corpus_hash",
 ]

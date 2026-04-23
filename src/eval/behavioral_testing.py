@@ -16,6 +16,10 @@ class TestCase:
     metadata: dict = field(default_factory=dict)
 
 
+# Prevent pytest from trying to collect this helper dataclass as a test class.
+TestCase.__test__ = False
+
+
 @dataclass
 class TestResult:
     test_name: str
@@ -31,6 +35,10 @@ class TestResult:
     @property
     def failed(self) -> int:
         return self.total - self.passed
+
+
+# Prevent pytest from trying to collect this helper dataclass as a test class.
+TestResult.__test__ = False
 
 
 class BehavioralTest(ABC):

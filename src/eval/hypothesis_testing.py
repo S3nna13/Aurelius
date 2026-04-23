@@ -36,6 +36,10 @@ class TestResult:
         return self.reject_null
 
 
+# Prevent pytest from trying to collect this helper dataclass as a test class.
+TestResult.__test__ = False
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------

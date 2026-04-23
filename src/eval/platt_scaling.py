@@ -275,7 +275,7 @@ class IsotonicCalibrator:
         if scores.ndim != 1:
             raise ValueError(f"scores must be 1-D, got shape {scores.shape}")
 
-        scores_f = scores.float()
+        scores_f = scores.float().contiguous()
         x = self._x_fit
         y = self._y_fit
 

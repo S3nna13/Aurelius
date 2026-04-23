@@ -130,6 +130,9 @@ class AureliusConfig:
     # SSE wire encoder for streaming responses (default OFF)
     serving_sse_stream_encoder_enabled: bool = False
 
+    # OpenAI-compatible SSE chat-completion stream framing (default OFF)
+    serving_sse_chat_stream_enabled: bool = False
+
     # Sink-token logit bias helper for decoding (default OFF)
     inference_sink_logit_bias_enabled: bool = False
     inference_sink_logit_bonus: float = 1.0
@@ -154,8 +157,14 @@ class AureliusConfig:
     # Citation tracker for RAG output audit trails (default OFF)
     retrieval_citation_tracker_enabled: bool = False
 
+    # Code-aware dense embedder (identifier/signature/import/comment-weighted pooling; default OFF)
+    retrieval_code_aware_embedder_enabled: bool = False
+
     # Per-role token budget allocator for chat packing (default OFF)
     chat_token_budget_allocator_enabled: bool = False
+
+    # System-prompt principal-hierarchy priority encoder (default OFF)
+    chat_system_prompt_priority_enabled: bool = False
 
     # Beam index selection from verifier scores (default OFF)
     inference_beam_verifier_selector_enabled: bool = False
@@ -183,6 +192,9 @@ class AureliusConfig:
 
     # Function-calling API shape validator (serving; default OFF)
     serving_function_calling_api_enabled: bool = False
+
+    # Weight-space model merging (linear/slerp/ties/dare; default OFF)
+    model_merging_enabled: bool = False
 
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (

@@ -40,6 +40,7 @@ def _step_n(scheduler, n: int):
     """Call scheduler.step() n times and return list of lrs after each step."""
     lrs = []
     for _ in range(n):
+        scheduler.optimizer.step()
         scheduler.step()
         lrs.append(scheduler.optimizer.param_groups[0]["lr"])
     return lrs
@@ -105,6 +106,7 @@ class TestWSDScheduler:
     def test_warmup_starts_near_zero(self):
         """First step of warmup should produce a very small lr."""
         sched = self._make()
+        sched.optimizer.step()
         sched.step()
         lr = sched.optimizer.param_groups[0]["lr"]
         assert lr < BASE_LR * 0.5, "Warmup first step should be well below base_lr"
@@ -201,6 +203,7 @@ class TestInverseSqrtScheduler:
         sched = self._make(warmup_steps=WARMUP)
         _step_n(sched, WARMUP)  # complete warmup
         # Now at last_epoch = WARMUP; step once more → last_epoch = WARMUP+1
+        sched.optimizer.step()
         sched.step()
         step = WARMUP + 1
         expected = BASE_LR * math.sqrt(WARMUP / step)

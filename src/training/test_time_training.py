@@ -111,6 +111,9 @@ class TestTimeTrainer:
         logits, stats = ttt.adapt_and_predict(input_ids)
     """
 
+    # Prevent pytest from attempting to collect this utility class.
+    __test__ = False
+
     def __init__(self, model: nn.Module, config: TTTConfig) -> None:
         self.model = model
         self.config = config

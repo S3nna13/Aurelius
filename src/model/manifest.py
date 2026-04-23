@@ -37,6 +37,7 @@ __all__ = [
 
 
 _SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
+_BACKEND_NAME_RE = re.compile(r"^[a-z0-9_\-]+$")
 
 
 class ManifestValidationError(Exception):
@@ -71,6 +72,9 @@ class FamilyManifest:
     compatibility_version: str
     release_track: str
     migration_notes: tuple[str, ...] = field(default_factory=tuple)
+    backend_name: str | None = None
+    engine_contract: str | None = None
+    adapter_contract: str | None = None
 
     def __post_init__(self) -> None:
         # String identity fields
@@ -125,6 +129,27 @@ class FamilyManifest:
                 f"{[t.value for t in ReleaseTrack]}"
             ) from exc
 
+        if self.backend_name is not None:
+            if not isinstance(self.backend_name, str) or not self.backend_name:
+                raise ManifestValidationError(
+                    f"backend_name must be a non-empty string or None, "
+                    f"got {self.backend_name!r}"
+                )
+            if not _BACKEND_NAME_RE.match(self.backend_name):
+                raise ManifestValidationError(
+                    f"backend_name must match [a-z0-9_-]+ (lower-snake-or-dash), "
+                    f"got {self.backend_name!r}"
+                )
+
+        for cfield in ("engine_contract", "adapter_contract"):
+            v = getattr(self, cfield)
+            if v is None:
+                continue
+            if not isinstance(v, str) or not _SEMVER_RE.match(v):
+                raise ManifestValidationError(
+                    f"{cfield} must match semver X.Y.Z or be None, got {v!r}"
+                )
+
     @property
     def registry_key(self) -> str:
         return f"{self.family_name}/{self.variant_name}"
@@ -150,6 +175,12 @@ def _coerce_str_tuple(value: Any, fname: str) -> tuple[str, ...]:
 
 
 _MANIFEST_FIELDS = tuple(f.name for f in fields(FamilyManifest))
+_OPTIONAL_MANIFEST_FIELDS = frozenset({
+    "migration_notes",
+    "backend_name",
+    "engine_contract",
+    "adapter_contract",
+})
 
 
 def load_manifest(data: Mapping[str, Any]) -> FamilyManifest:
@@ -159,7 +190,7 @@ def load_manifest(data: Mapping[str, Any]) -> FamilyManifest:
             f"manifest data must be a mapping, got {type(data).__name__}"
         )
     missing = [f for f in _MANIFEST_FIELDS
-               if f not in data and f != "migration_notes"]
+               if f not in data and f not in _OPTIONAL_MANIFEST_FIELDS]
     if missing:
         raise ManifestValidationError(f"manifest missing fields: {missing}")
     extra = [k for k in data.keys() if k not in _MANIFEST_FIELDS]
@@ -198,6 +229,9 @@ def dump_manifest(manifest: FamilyManifest) -> dict:
         "compatibility_version": manifest.compatibility_version,
         "release_track": manifest.release_track,
         "migration_notes": list(manifest.migration_notes),
+        "backend_name": manifest.backend_name,
+        "engine_contract": manifest.engine_contract,
+        "adapter_contract": manifest.adapter_contract,
     }
 
 
@@ -254,6 +288,9 @@ AURELIUS_REFERENCE_MANIFEST: FamilyManifest = FamilyManifest(
     compatibility_version="1.0.0",
     release_track="research",
     migration_notes=("initial reference manifest",),
+    backend_name="pytorch",
+    engine_contract="1.0.0",
+    adapter_contract="1.0.0",
 )
 
 # Auto-register at import time. JSON-safety check is advisory: dump_manifest

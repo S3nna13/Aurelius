@@ -228,6 +228,9 @@ class LRSchedulerComparison:
         results: Dict[str, List[float]] = {name: [] for name in self.schedulers}
         for _ in range(n_steps):
             for name, sched in self.schedulers.items():
+                optimizer = getattr(sched, "optimizer", None)
+                if optimizer is not None:
+                    optimizer.step()
                 sched.step()
                 lr = sched.optimizer.param_groups[0]["lr"]
                 results[name].append(lr)

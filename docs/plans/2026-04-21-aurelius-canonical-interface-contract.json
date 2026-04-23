@@ -1,0 +1,573 @@
+{
+  "metadata": {
+    "schema_version": "1.0",
+    "title": "Aurelius Canonical Interface Contract",
+    "date": "2026-04-21",
+    "status": "draft",
+    "scope": [
+      "cli",
+      "ide",
+      "web",
+      "plugin",
+      "gateway",
+      "background-agent"
+    ],
+    "doc_path": "docs/plans/2026-04-21-aurelius-canonical-interface-contract.md"
+  },
+  "purpose": {
+    "summary": "Define one canonical Aurelius agent interface that can be rendered through multiple hosts without changing the core thread semantics.",
+    "target_hosts": [
+      "terminal-cli",
+      "ide-extension",
+      "plugin-delegation",
+      "capability-pack",
+      "multi-channel-gateway",
+      "background-job"
+    ],
+    "shared_contract": [
+      "instruction layering",
+      "mode selection",
+      "approval and tool gating",
+      "checkpoint and resume",
+      "subagent delegation",
+      "skill loading",
+      "auditable task completion"
+    ]
+  },
+  "contract_principles": [
+    {
+      "id": "P1",
+      "statement": "One task equals one thread."
+    },
+    {
+      "id": "P2",
+      "statement": "One thread has one stable id, one timeline, and one checkpoint history."
+    },
+    {
+      "id": "P3",
+      "statement": "No silent fallbacks. Unsupported operations must fail loudly."
+    },
+    {
+      "id": "P4",
+      "statement": "Human approval is explicit and stateful."
+    },
+    {
+      "id": "P5",
+      "statement": "Skills are installable capability bundles, not ad hoc prompt blobs."
+    },
+    {
+      "id": "P6",
+      "statement": "Modes are policy presets, not model-config booleans."
+    },
+    {
+      "id": "P7",
+      "statement": "Tool use is auditable and replayable."
+    },
+    {
+      "id": "P8",
+      "statement": "Background work must be resumable or cancelable."
+    },
+    {
+      "id": "P9",
+      "statement": "Host adapters may differ, but the core thread semantics must not."
+    },
+    {
+      "id": "P10",
+      "statement": "Model family identity, tokenizer contract, checkpoint format, backend contract, and release-track policy remain separate from user-facing modes."
+    }
+  ],
+  "canonical_nouns": {
+    "task_thread": {
+      "description": "Top-level unit of work with a stable history and status.",
+      "fields": [
+        "thread_id",
+        "title",
+        "mode",
+        "status",
+        "created_at",
+        "updated_at",
+        "host",
+        "workspace",
+        "instruction_stack",
+        "skills",
+        "approvals",
+        "checkpoints",
+        "steps"
+      ],
+      "status_values": [
+        "draft",
+        "pending_approval",
+        "running",
+        "blocked",
+        "completed",
+        "failed",
+        "canceled"
+      ]
+    },
+    "mode": {
+      "description": "Policy preset controlling prompt framing, tool access, and approval behavior.",
+      "canonical_names": [
+        "ask",
+        "code",
+        "debug",
+        "architect",
+        "review",
+        "background",
+        "chat"
+      ]
+    },
+    "instruction_layer": {
+      "description": "Text or structured rule source contributing to the thread prompt.",
+      "precedence_order": [
+        "system policy",
+        "user task prompt",
+        "repo instructions",
+        "workspace instructions",
+        "mode instructions",
+        "skill instructions",
+        "thread memory / checkpoints"
+      ]
+    },
+    "skill": {
+      "description": "Reusable capability bundle.",
+      "fields": [
+        "skill_id",
+        "name",
+        "description",
+        "scope",
+        "instructions",
+        "scripts",
+        "resources",
+        "entrypoints",
+        "version",
+        "provenance"
+      ],
+      "scope_values": [
+        "global",
+        "org",
+        "repo",
+        "thread"
+      ]
+    },
+    "approval": {
+      "description": "Stateful human decision requested before a risky operation proceeds.",
+      "categories": [
+        "file write",
+        "file delete",
+        "shell command",
+        "network request",
+        "browser navigation",
+        "MCP tool call",
+        "external process launch",
+        "model or checkpoint mutation"
+      ]
+    },
+    "checkpoint": {
+      "description": "Durable snapshot that can be resumed later.",
+      "minimum_contents": [
+        "thread metadata",
+        "instruction stack snapshot",
+        "active skills",
+        "workspace path or worktree id",
+        "tool and approval state",
+        "step log",
+        "last model response",
+        "last tool result",
+        "compact memory summary"
+      ]
+    },
+    "subagent": {
+      "description": "Nested task thread spawned to handle a bounded subtask.",
+      "inherits": [
+        "task context",
+        "approval policy",
+        "workspace scope",
+        "skill visibility"
+      ],
+      "inherits_by_default": [
+        "mutable execution state"
+      ]
+    },
+    "background_job": {
+      "description": "Task thread detached from the foreground interaction.",
+      "required_capabilities": [
+        "status polling",
+        "result retrieval",
+        "cancellation",
+        "optional resume"
+      ]
+    },
+    "tool_call": {
+      "description": "Structured action emitted by the model and validated before execution.",
+      "normalized_fields": [
+        "tool_name",
+        "arguments",
+        "call_id",
+        "host_step_id",
+        "status"
+      ]
+    }
+  },
+  "lifecycle": {
+    "create": [
+      "Create a thread with task prompt, chosen mode, workspace pointer, optional skills, optional repo instructions, and optional parent checkpoint."
+    ],
+    "plan": [
+      "Produce an explicit plan when useful.",
+      "Record the plan even when the runtime is in react or hybrid mode."
+    ],
+    "approve": [
+      "Enter pending_approval whenever the next action crosses an approval boundary.",
+      "Render what will happen, why it is risky, what data it touches, and what will happen if denied."
+    ],
+    "act": [
+      "Emit a tool call or a final answer.",
+      "Validate tool calls against registry and policy before execution."
+    ],
+    "observe": [
+      "Record tool output as an immutable observation event.",
+      "Feed the observation back into the next prompt turn when appropriate."
+    ],
+    "checkpoint": [
+      "Checkpoint on user request, on step boundaries, on significant state change, before long-running jobs, and before handoff across hosts."
+    ],
+    "resume": [
+      "Preserve identity, history ordering, mode, attached skills, and checkpoint lineage."
+    ],
+    "complete": [
+      "Completion is success, explicit failure, cancellation, or policy denial.",
+      "Every completion must have a final status and a final artifact."
+    ]
+  },
+  "mode_semantics": {
+    "ask": {
+      "intent": "Low-risk clarification mode.",
+      "tool_policy": "minimal tool access",
+      "default_constraints": [
+        "no write operations",
+        "no background job creation by default"
+      ]
+    },
+    "code": {
+      "intent": "Implementation mode.",
+      "tool_policy": "file editing and test execution allowed",
+      "default_constraints": [
+        "approval required for risky writes and external side effects"
+      ]
+    },
+    "debug": {
+      "intent": "Failure-analysis mode.",
+      "tool_policy": "run tests, inspect logs, and reproduce failures",
+      "default_constraints": [
+        "write access gated by approval"
+      ]
+    },
+    "architect": {
+      "intent": "Planning and decomposition mode.",
+      "tool_policy": "read-only by default",
+      "default_constraints": [
+        "produces design, sequencing, and task breakdowns"
+      ]
+    },
+    "review": {
+      "intent": "Audit mode.",
+      "tool_policy": "read-only by default",
+      "default_constraints": [
+        "focuses on risks, regressions, missing tests, and policy issues"
+      ]
+    },
+    "background": {
+      "intent": "Long-running autonomous mode.",
+      "tool_policy": "persistent execution with status/result/cancel",
+      "default_constraints": [
+        "must emit progress updates",
+        "must checkpoint periodically"
+      ]
+    },
+    "chat": {
+      "intent": "General conversation mode.",
+      "tool_policy": "low-friction interaction",
+      "default_constraints": [
+        "may escalate into other modes when the user requests work"
+      ]
+    }
+  },
+  "skill_contract": {
+    "packaging_shape": [
+      "skill-name/skill.md",
+      "skill-name/scripts/",
+      "skill-name/resources/",
+      "skill-name/tests/",
+      "skill-name/metadata.json"
+    ],
+    "minimum_expectations": [
+      "portable instructions",
+      "scriptable actions",
+      "explicit provenance",
+      "versioned compatibility",
+      "clear scope"
+    ],
+    "loading_order": [
+      "system policy",
+      "repo instructions",
+      "active mode rules",
+      "explicit skill packs",
+      "local thread memory"
+    ],
+    "openclaw_extensions": [
+      "workspace-scoped skills",
+      "registry-backed skill publishing and search via ClawHub",
+      "archived skill snapshots in openclaw/skills for provenance and audit",
+      "injected instruction files such as AGENTS.md, SOUL.md, and TOOLS.md"
+    ]
+  },
+  "approval_contract": {
+    "required_fields": [
+      "action summary",
+      "affected paths or resources",
+      "why the action is risky",
+      "whether it is reversible",
+      "minimum required scope"
+    ],
+    "decision_values": [
+      "allow",
+      "deny",
+      "allow_once",
+      "allow_for_thread",
+      "allow_for_scope"
+    ],
+    "hard_rule": "The runtime must never infer approval from silence."
+  },
+  "checkpoint_contract": {
+    "capabilities": [
+      "serialization",
+      "restoration",
+      "diffing",
+      "lineage tracking",
+      "resume validation"
+    ],
+    "recommended_state": [
+      "thread metadata",
+      "current mode",
+      "mode-specific parameters",
+      "active skill set",
+      "instruction stack hash",
+      "workspace hash or path",
+      "last completed step",
+      "pending approval requests",
+      "active background job ids",
+      "compact memory summary"
+    ]
+  },
+  "host_adapters": {
+    "cli": {
+      "must_support": [
+        "mode selection",
+        "thread creation",
+        "task submission",
+        "checkpoint save and load",
+        "status and result commands",
+        "cancel",
+        "skills listing and activation"
+      ]
+    },
+    "ide": {
+      "must_support": [
+        "inline approvals",
+        "file diff review",
+        "checkpoint restore",
+        "multi-root workspace support",
+        "subagent spawning",
+        "background job control"
+      ]
+    },
+    "web": {
+      "must_support": [
+        "thread list",
+        "thread detail",
+        "status timeline",
+        "checkpoints",
+        "approvals",
+        "result view"
+      ]
+    },
+    "plugin": {
+      "must_support": [
+        "delegated review",
+        "status",
+        "result",
+        "cancel",
+        "background job visibility"
+      ]
+    },
+    "gateway": {
+      "must_support": [
+        "inbound message routing across multiple channels or accounts",
+        "per-channel and per-peer isolation",
+        "pairing and allowlist policies for untrusted senders",
+        "workspace-scoped assistant sessions",
+        "voice or rich-media hooks where the host supports them",
+        "live canvas or companion-surface rendering where applicable",
+        "channel-aware reply delivery"
+      ]
+    }
+  },
+  "source_product_patterns": {
+    "cline": {
+      "reference_url": "https://github.com/cline/cline",
+      "patterns": [
+        "IDE-native agent workflow",
+        "explicit human approval",
+        "checkpoints and memory bank style persistence",
+        "MCP support",
+        "multi-root workspace support"
+      ]
+    },
+    "codex": {
+      "reference_url": "https://github.com/openai/codex",
+      "patterns": [
+        "CLI and multi-surface host model",
+        "modes and instructions",
+        "subagents",
+        "background execution",
+        "skills packaging",
+        "hooks and guardrails"
+      ]
+    },
+    "codex_plugin_cc": {
+      "reference_url": "https://github.com/openai/codex-plugin-cc",
+      "patterns": [
+        "delegated review commands",
+        "status/result/cancel control plane",
+        "plugin-host integration"
+      ]
+    },
+    "openai_skills": {
+      "reference_url": "https://github.com/openai/skills",
+      "patterns": [
+        "folder-based capability bundles",
+        "scripts and resources",
+        "portable installable skills"
+      ]
+    },
+    "openclaw": {
+      "reference_url": "https://github.com/openclaw/openclaw",
+      "patterns": [
+        "multi-channel inbox and account routing",
+        "workspace-scoped skills",
+        "injected instruction files",
+        "onboarding-driven setup",
+        "optional voice and canvas companion surfaces"
+      ]
+    },
+    "openclaw_clawhub": {
+      "reference_url": "https://github.com/openclaw/clawhub",
+      "patterns": [
+        "public skill registry",
+        "SKILL.md plus supporting files",
+        "moderation hooks and vector search",
+        "native package catalog"
+      ]
+    },
+    "openclaw_skills_archive": {
+      "reference_url": "https://github.com/openclaw/skills",
+      "patterns": [
+        "archived skill versions",
+        "historical provenance source",
+        "caution about suspicious or malicious skills"
+      ]
+    },
+    "openclaw_acpx": {
+      "reference_url": "https://github.com/openclaw/acpx",
+      "patterns": [
+        "ACP-based headless CLI client",
+        "persistent repo-scoped sessions",
+        "named parallel workstreams",
+        "queue-aware prompt submission and cancel",
+        "session mode and config controls"
+      ]
+    },
+    "openclaw_lobster": {
+      "reference_url": "https://github.com/openclaw/lobster",
+      "patterns": [
+        "typed JSON-first pipelines",
+        "local-first workflow shell",
+        "approval gates",
+        "workflow files with run, pipeline, and approval steps",
+        "OpenClaw-invocable macros"
+      ]
+    },
+    "openclaw_ansible": {
+      "reference_url": "https://github.com/openclaw/openclaw-ansible",
+      "patterns": [
+        "hardened installation automation",
+        "Docker and Tailscale VPN support",
+        "UFW, fail2ban, and unattended-upgrades",
+        "bare-metal macOS disabled",
+        "release and development install modes"
+      ]
+    },
+    "ironclaw": {
+      "reference_url": "https://github.com/nearai/ironclaw",
+      "patterns": [
+        "Rust reimplementation inspired by OpenClaw",
+        "WASM sandboxing and capability-based permissions",
+        "persistent memory and identity files",
+        "background routines and parallel jobs",
+        "plugin architecture and MCP support"
+      ]
+    }
+  },
+  "aurelius_substrate": {
+    "agent": [
+      "src/agent/react_loop.py",
+      "src/agent/plan_and_execute.py",
+      "src/agent/budget_bounded_loop.py",
+      "src/agent/tool_call_parser.py",
+      "src/agent/tool_registry_dispatcher.py",
+      "src/agent/mcp_client.py",
+      "src/agent/repo_context_packer.py"
+    ],
+    "serving": [
+      "src/serving/api_server.py",
+      "src/serving/function_calling_api.py",
+      "src/serving/continuous_batching.py",
+      "src/serving/web_ui.py"
+    ],
+    "ui": [
+      "src/ui/ui_surface.py",
+      "src/ui/motion.py",
+      "src/ui/welcome.py"
+    ],
+    "model_governance": [
+      "src/model/family.py",
+      "src/model/manifest_v2.py",
+      "src/model/release_track_router.py",
+      "src/model/compatibility.py",
+      "src/model/manifest.py"
+    ]
+  },
+  "non_goals": [
+    "model architecture",
+    "training loops",
+    "tokenizer internals",
+    "backend implementation details"
+  ],
+  "implementation_sequence": [
+    "thread and checkpoint dataclasses",
+    "mode registry",
+    "skill pack loader",
+    "approval state machine",
+    "background job controller",
+    "cli adapter",
+    "ide adapter",
+    "web and plugin adapters"
+  ],
+  "open_questions": [
+    "Should mode names be fixed or allow aliases?",
+    "Should checkpoints be file-based, database-backed, or both?",
+    "Should skills be loaded from repo-local folders, a global registry, or both?",
+    "Should background jobs always map to threads, or can they exist independently?",
+    "Should approvals expire automatically or persist until explicit action?"
+  ]
+}

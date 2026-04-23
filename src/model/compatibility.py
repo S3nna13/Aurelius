@@ -16,11 +16,12 @@ Pure stdlib: dataclasses, re, typing.
 from __future__ import annotations
 
 import re
+import dataclasses
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:  # pragma: no cover - typing only
-    from src.model.manifest import FamilyManifest
+from .manifest import FamilyManifest
+from .manifest_v2 import compare_backend_contracts
 
 __all__ = [
     "CompatibilityError",
@@ -101,6 +102,15 @@ def _escalate(current: str, new: str) -> str:
     return new if _SEVERITY_ORDER[new] > _SEVERITY_ORDER[current] else current
 
 
+def _backend_contract_summary(manifest: "FamilyManifest") -> str:
+    """Return a compact JSON-safe summary of backend-contract fields."""
+    return (
+        f"backend_name={manifest.backend_name!r}, "
+        f"engine_contract={manifest.engine_contract!r}, "
+        f"adapter_contract={manifest.adapter_contract!r}"
+    )
+
+
 def check_manifest_compatibility(
     required: "FamilyManifest",
     candidate: "FamilyManifest",
@@ -110,6 +120,9 @@ def check_manifest_compatibility(
     Rules:
         - major on ``compatibility_version`` must match exactly
           (otherwise ``major_break``); minor can differ forward-compatibly.
+        - backend identity and backend protocol fields are compared via
+          ``compare_backend_contracts`` and may contribute an additional
+          backend-aware severity.
         - ``tokenizer_name`` must match exactly.
         - ``vocab_size`` must match exactly.
         - ``backbone_class`` must match exactly.
@@ -117,6 +130,13 @@ def check_manifest_compatibility(
           (downgraded to ``minor_mismatch``).
         - ``capability_tags``: candidate must be a superset of required.
     """
+    if not isinstance(required, FamilyManifest) or not isinstance(
+        candidate, FamilyManifest
+    ):
+        raise CompatibilityError(
+            "check_manifest_compatibility expected two FamilyManifest instances"
+        )
+
     reasons: list[str] = []
     severity = SEVERITY_EXACT
 
@@ -158,6 +178,20 @@ def check_manifest_compatibility(
             f"candidate {candidate.backbone_class!r}"
         )
         severity = _escalate(severity, SEVERITY_MAJOR)
+
+    backend_verdict = compare_backend_contracts(required, candidate)
+    if backend_verdict != SEVERITY_EXACT:
+        reasons.append(
+            f"backend contract {backend_verdict}: required "
+            f"({_backend_contract_summary(required)}), candidate "
+            f"({_backend_contract_summary(candidate)})"
+        )
+        severity = _escalate(
+            severity,
+            SEVERITY_MINOR
+            if backend_verdict == SEVERITY_MINOR
+            else SEVERITY_MAJOR,
+        )
 
     # rope_config.
     req_rope = required.rope_config or {}
@@ -210,7 +244,15 @@ def check_checkpoint_compatibility(
         - ``config_version`` minor may drift (escalates to ``minor_mismatch``).
         - ``tokenizer_hash`` must match if both sides are non-None;
           if either is None, compatibility is permissive.
+        - ``backend_name`` / ``engine_contract`` / ``adapter_contract`` are
+          optional but, when present, are compared with the same backend-aware
+          rules used for manifest compatibility.
     """
+    if not isinstance(manifest, FamilyManifest):
+        raise CompatibilityError(
+            f"check_checkpoint_compatibility expected FamilyManifest, got "
+            f"{type(manifest).__name__}"
+        )
     if not isinstance(checkpoint_meta, dict):
         raise CompatibilityError(
             f"checkpoint_meta must be a dict, got "
@@ -267,6 +309,34 @@ def check_checkpoint_compatibility(
             f"{ckpt_hash!r}"
         )
         severity = _escalate(severity, SEVERITY_MAJOR)
+
+    backend_keys = ("backend_name", "engine_contract", "adapter_contract")
+    if any(key in checkpoint_meta for key in backend_keys):
+        backend_kwargs: dict[str, Any] = {}
+        for key in backend_keys:
+            value = checkpoint_meta.get(key)
+            if value is not None and not isinstance(value, str):
+                raise CompatibilityError(
+                    f"{key} in checkpoint_meta must be a string or None, "
+                    f"got {type(value).__name__}"
+                )
+            if key in ("engine_contract", "adapter_contract") and value is not None:
+                parse_semver(value)
+            backend_kwargs[key] = value
+        backend_candidate = dataclasses.replace(manifest, **backend_kwargs)
+        backend_verdict = compare_backend_contracts(manifest, backend_candidate)
+        if backend_verdict != SEVERITY_EXACT:
+            reasons.append(
+                f"checkpoint backend contract {backend_verdict}: manifest "
+                f"({_backend_contract_summary(manifest)}), checkpoint "
+                f"({_backend_contract_summary(backend_candidate)})"
+            )
+            severity = _escalate(
+                severity,
+                SEVERITY_MINOR
+                if backend_verdict == SEVERITY_MINOR
+                else SEVERITY_MAJOR,
+            )
 
     compatible = severity != SEVERITY_MAJOR
     return CompatibilityVerdict(

@@ -1,57 +1,93 @@
-"""
-Tests for src.serving.web_ui.
-"""
+"""Tests for src.serving.web_ui."""
 
+from __future__ import annotations
+
+import io
 import json
-import socket
-import threading
-import urllib.request
-
-import pytest
+from types import SimpleNamespace
 
 from src.serving.web_ui import (
     HTML_TEMPLATE,
+    WebUIHandler,
     WebUIServer,
     create_ui_server,
     make_mock_generate_fn,
 )
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+class _NoCloseBytesIO(io.BytesIO):
+    def close(self) -> None:  # pragma: no cover - harmless for in-memory tests
+        pass
 
 
-def _start_server(port: int) -> WebUIServer:
-    server = create_ui_server("127.0.0.1", port, make_mock_generate_fn())
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    for _ in range(40):
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=0.1):
-                break
-        except OSError:
-            import time
-            time.sleep(0.05)
-    return server
+class _MemorySocket:
+    def __init__(self, request_bytes: bytes) -> None:
+        self._rfile = _NoCloseBytesIO(request_bytes)
+        self._wfile = _NoCloseBytesIO()
+
+    def makefile(self, mode: str, buffering: int | None = None):
+        if "r" in mode:
+            return self._rfile
+        return self._wfile
+
+    def close(self) -> None:
+        pass
+
+    def sendall(self, data: bytes) -> None:
+        self._wfile.write(data)
+
+    def response_bytes(self) -> bytes:
+        return self._wfile.getvalue()
 
 
-@pytest.fixture(scope="module")
-def server_url():
-    port = _free_port()
-    srv = _start_server(port)
-    yield f"http://127.0.0.1:{port}"
-    srv.shutdown()
+def _request_bytes(
+    method: str,
+    path: str,
+    payload: dict | None = None,
+) -> bytes:
+    body = b""
+    headers = [
+        f"{method} {path} HTTP/1.1",
+        "Host: localhost",
+        "Connection: close",
+    ]
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        headers.append(f"Content-Length: {len(body)}")
+        headers.append("Content-Type: application/json")
+    return ("\r\n".join(headers) + "\r\n\r\n").encode("utf-8") + body
+
+
+def _invoke(
+    handler_cls,
+    method: str,
+    path: str,
+    payload: dict | None = None,
+    generate_fn=None,
+    api_url: str | None = None,
+):
+    socket = _MemorySocket(_request_bytes(method, path, payload))
+    server = SimpleNamespace(
+        generate_fn=generate_fn or make_mock_generate_fn(),
+        api_url=api_url,
+    )
+    handler_cls(socket, ("127.0.0.1", 12345), server)
+    raw = socket.response_bytes()
+    head, _, body = raw.partition(b"\r\n\r\n")
+    status_line, *header_lines = head.decode("utf-8", errors="replace").split("\r\n")
+    status = int(status_line.split()[1])
+    headers = {}
+    for line in header_lines:
+        if ":" in line:
+            key, value = line.split(":", 1)
+            headers[key.strip()] = value.strip()
+    return status, headers, body
 
 
 # ---------------------------------------------------------------------------
 # HTML_TEMPLATE tests
 # ---------------------------------------------------------------------------
+
 
 def test_html_template_is_nonempty_string():
     assert isinstance(HTML_TEMPLATE, str)
@@ -74,6 +110,7 @@ def test_html_template_contains_fetch():
 # make_mock_generate_fn tests
 # ---------------------------------------------------------------------------
 
+
 def test_mock_generate_fn_returns_callable():
     fn = make_mock_generate_fn()
     assert callable(fn)
@@ -89,66 +126,118 @@ def test_mock_generate_fn_output_contains_input():
 # create_ui_server tests
 # ---------------------------------------------------------------------------
 
+
 def test_create_ui_server_returns_web_ui_server():
-    port = _free_port()
-    srv = create_ui_server("127.0.0.1", port, make_mock_generate_fn())
+    srv = create_ui_server(
+        "127.0.0.1",
+        0,
+        make_mock_generate_fn(),
+        api_url="http://localhost:8080/v1/chat/completions",
+        bind_and_activate=False,
+    )
     assert isinstance(srv, WebUIServer)
+    assert srv.api_url == "http://localhost:8080/v1/chat/completions"
     srv.server_close()
 
 
 # ---------------------------------------------------------------------------
-# HTTP integration tests
+# Handler logic tests without real sockets
 # ---------------------------------------------------------------------------
 
-def test_get_root_returns_200(server_url):
-    with urllib.request.urlopen(f"{server_url}/") as resp:
-        assert resp.status == 200
+
+def test_get_root_returns_200():
+    status, headers, body = _invoke(WebUIHandler, "GET", "/")
+    assert status == 200
+    assert "text/html" in headers["Content-Type"]
+    assert body.decode("utf-8").startswith("<!DOCTYPE html>")
 
 
-def test_get_root_content_type_is_html(server_url):
-    with urllib.request.urlopen(f"{server_url}/") as resp:
-        content_type = resp.headers.get("Content-Type", "")
-        assert "text/html" in content_type
+def test_get_root_content_type_is_html():
+    _, headers, _ = _invoke(WebUIHandler, "GET", "/")
+    assert "text/html" in headers["Content-Type"]
 
 
-def test_get_health_returns_200(server_url):
-    with urllib.request.urlopen(f"{server_url}/health") as resp:
-        assert resp.status == 200
+def test_get_health_returns_200():
+    status, headers, body = _invoke(WebUIHandler, "GET", "/health")
+    assert status == 200
+    assert headers["Content-Type"] == "application/json"
+    assert json.loads(body)["status"] == "ok"
 
 
-def test_post_api_chat_returns_200(server_url):
-    payload = json.dumps({"message": "hello", "history": []}).encode("utf-8")
-    req = urllib.request.Request(
-        f"{server_url}/api/chat",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
+def test_post_api_chat_returns_200():
+    payload = {"message": "hello", "history": []}
+    status, headers, body = _invoke(WebUIHandler, "POST", "/api/chat", payload=payload)
+    assert status == 200
+    assert headers["Content-Type"] == "application/json"
+    assert "response" in json.loads(body)
+
+
+def test_post_api_chat_response_has_response_key():
+    payload = {"message": "ping", "history": []}
+    _, _, body = _invoke(WebUIHandler, "POST", "/api/chat", payload=payload)
+    assert "response" in json.loads(body)
+
+
+def test_post_api_chat_response_value_is_string():
+    payload = {"message": "test message", "history": []}
+    _, _, body = _invoke(WebUIHandler, "POST", "/api/chat", payload=payload)
+    assert isinstance(json.loads(body)["response"], str)
+
+
+def test_post_api_chat_proxies_to_configured_upstream(monkeypatch):
+    captured = {}
+
+    class _FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps(
+                {
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": "proxied response",
+                            }
+                        }
+                    ]
+                }
+            ).encode("utf-8")
+
+    def fake_urlopen(request, timeout=30):
+        captured["url"] = request.full_url
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return _FakeResponse()
+
+    monkeypatch.setattr("src.serving.web_ui.urlopen", fake_urlopen)
+
+    def unexpected_generate_fn(*args, **kwargs):  # pragma: no cover - defensive
+        raise AssertionError("local generate_fn should not be used when api_url is set")
+
+    payload = {
+        "message": "hello",
+        "history": [{"role": "assistant", "content": "prior reply"}],
+    }
+    status, headers, body = _invoke(
+        WebUIHandler,
+        "POST",
+        "/api/chat",
+        payload=payload,
+        generate_fn=unexpected_generate_fn,
+        api_url="http://example.test/v1/chat/completions",
     )
-    with urllib.request.urlopen(req) as resp:
-        assert resp.status == 200
 
-
-def test_post_api_chat_response_has_response_key(server_url):
-    payload = json.dumps({"message": "ping", "history": []}).encode("utf-8")
-    req = urllib.request.Request(
-        f"{server_url}/api/chat",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req) as resp:
-        data = json.loads(resp.read())
-    assert "response" in data
-
-
-def test_post_api_chat_response_value_is_string(server_url):
-    payload = json.dumps({"message": "test message", "history": []}).encode("utf-8")
-    req = urllib.request.Request(
-        f"{server_url}/api/chat",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req) as resp:
-        data = json.loads(resp.read())
-    assert isinstance(data["response"], str)
+    assert status == 200
+    assert headers["Content-Type"] == "application/json"
+    assert json.loads(body)["response"] == "proxied response"
+    assert captured["url"] == "http://example.test/v1/chat/completions"
+    assert captured["timeout"] == 30
+    assert captured["body"]["messages"] == [
+        {"role": "assistant", "content": "prior reply"},
+        {"role": "user", "content": "hello"},
+    ]

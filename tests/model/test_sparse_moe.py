@@ -151,7 +151,7 @@ def test_sparse_moe_layer_aux_loss_scalar(layer: SparseMoELayer, x: torch.Tensor
 # 12. SparseMoELayer aux_loss >= 0
 def test_sparse_moe_layer_aux_loss_nonneg(layer: SparseMoELayer, x: torch.Tensor) -> None:
     _, aux_loss = layer(x)
-    assert float(aux_loss) >= 0.0
+    assert float(aux_loss.detach()) >= 0.0
 
 
 # 13. SparseMoELayer get_routing_stats returns correct keys

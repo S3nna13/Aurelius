@@ -1,0 +1,61 @@
+"""Aurelius backend adapter surface -- isolates foreign frameworks behind native interfaces."""
+
+from __future__ import annotations
+
+from src.backends.base import (
+    BackendAdapter,
+    BackendAdapterError,
+    BackendContract,
+    EngineAdapter,
+)
+from src.backends.factory_bridge import (
+    BackendBuildResult,
+    build_with_backend,
+)
+from src.backends.registry import (
+    BACKEND_REGISTRY,
+    ENGINE_ADAPTER_REGISTRY,
+    get_backend,
+    get_engine_adapter,
+    list_backends,
+    list_engine_adapters,
+    register_backend,
+    register_engine_adapter,
+    select_backend_for_manifest,
+)
+
+__all__ = [
+    "BACKEND_REGISTRY",
+    "ENGINE_ADAPTER_REGISTRY",
+    "BackendAdapter",
+    "BackendAdapterError",
+    "BackendBuildResult",
+    "BackendContract",
+    "EngineAdapter",
+    "build_with_backend",
+    "get_backend",
+    "get_engine_adapter",
+    "list_backends",
+    "list_engine_adapters",
+    "register_backend",
+    "register_backend_adapter_pytorch",
+    "register_engine_adapter",
+    "select_backend_for_manifest",
+]
+
+
+def register_backend_adapter_pytorch() -> None:
+    """Import and register the reference PyTorch adapter.
+
+    Kept as a module-level function so tests and external callers can
+    re-invoke the registration explicitly (it is idempotent).
+    """
+    from src.backends import pytorch_adapter as _pt
+
+    _pt.register()
+
+
+# Register the reference PyTorch adapter at import time so that a bare
+# ``import src.backends`` is sufficient to get ``"pytorch"`` in the
+# registry. The registration is idempotent.
+register_backend_adapter_pytorch()

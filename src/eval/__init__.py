@@ -896,3 +896,36 @@ __all__ = list(__all__) + [
     "DebateEvalResult",
     "DebateEvaluator",
 ]
+
+# --- Additive registration for Multi-Needle NIAH long-context harness -------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched. Pure-stdlib data builder + scorer; no model
+# calls performed at import or registration time. Cycle 132 / surface=eval.
+from src.eval.multi_needle_eval import (
+    MultiNeedleError,
+    MultiNeedleConfig,
+    MultiNeedleSample,
+    MultiNeedleVerdict,
+    build_sample as multi_needle_build_sample,
+    parse_recovery as multi_needle_parse_recovery,
+    score as multi_needle_score,
+    DEPTH_PROFILE_REGISTRY,
+    MULTI_NEEDLE_REGISTRY,
+    register_depth_profile,
+)
+
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+BENCHMARK_REGISTRY.setdefault("niah_mk", MultiNeedleConfig)
+
+__all__ = list(__all__) + [
+    "MultiNeedleError",
+    "MultiNeedleConfig",
+    "MultiNeedleSample",
+    "MultiNeedleVerdict",
+    "multi_needle_build_sample",
+    "multi_needle_parse_recovery",
+    "multi_needle_score",
+    "DEPTH_PROFILE_REGISTRY",
+    "MULTI_NEEDLE_REGISTRY",
+    "register_depth_profile",
+]

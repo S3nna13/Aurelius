@@ -112,7 +112,9 @@ class DenseEmbedder(nn.Module):
             norm_first=True,
         )
         self.encoder = nn.TransformerEncoder(
-            encoder_layer, num_layers=config.n_layers
+            encoder_layer,
+            num_layers=config.n_layers,
+            enable_nested_tensor=False,
         )
         self.projection = nn.Linear(config.d_model, config.embed_dim)
 

@@ -92,6 +92,15 @@ QUERY_EXPANDER_REGISTRY: dict[str, type] = {
     "prf": PRFQueryExpander,
 }
 
+from .code_aware_embedder import (  # noqa: E402
+    CodeAwareEmbedder,
+    CodeFeatures,
+    split_identifier,
+    stub_token_embed,
+)
+
+EMBEDDING_REGISTRY["code_aware"] = CodeAwareEmbedder
+
 from .citation_tracker import (  # noqa: E402
     CitationReport,
     CitationSpan,
@@ -141,4 +150,8 @@ __all__ = [
     "CitationTracker",
     "CitationSource",
     "CITATION_REGISTRY",
+    "CodeAwareEmbedder",
+    "CodeFeatures",
+    "split_identifier",
+    "stub_token_embed",
 ]

@@ -484,3 +484,64 @@ __all__ += [
     "ReflexionMemory",
     "ReflexionResult",
 ]
+
+
+# --- multi-resource budget ledger (additive) --------------------------------
+from .budget_ledger import (  # noqa: E402
+    BUDGET_LEDGER_REGISTRY,
+    BudgetExhaustedError,
+    BudgetLedger,
+    BudgetSeverity,
+    LedgerError,
+    LedgerSnapshot,
+    ResourceLimit,
+    get_ledger,
+    list_ledgers,
+    make_default_ledger,
+    register_ledger,
+)
+
+__all__ += [
+    "BUDGET_LEDGER_REGISTRY",
+    "BudgetExhaustedError",
+    "BudgetLedger",
+    "BudgetSeverity",
+    "LedgerError",
+    "LedgerSnapshot",
+    "ResourceLimit",
+    "get_ledger",
+    "list_ledgers",
+    "make_default_ledger",
+    "register_ledger",
+]
+
+
+# --- interface runtime and shell layer (additive) ---------------------------
+_LAZY_INTERFACE_EXPORTS = {
+    "AureliusInterfaceRuntime": (".interface_runtime", "AureliusInterfaceRuntime"),
+    "SessionManager": (".session_manager", "SessionManager"),
+    "SessionRecord": (".session_manager", "SessionRecord"),
+    "WorkItem": (".session_manager", "WorkItem"),
+    "SessionWorkItem": (".session_manager", "WorkItem"),
+    "SessionJournal": (".session_journal", "SessionJournal"),
+    "SessionJournalEntry": (".session_journal", "SessionJournalEntry"),
+    "SessionJournalBranch": (".session_journal", "SessionJournalBranch"),
+    "SessionJournalCompaction": (".session_journal", "SessionJournalCompaction"),
+    "SkillCatalog": (".skill_catalog", "SkillCatalog"),
+    "SkillCatalogEntry": (".skill_catalog", "SkillCatalogEntry"),
+    "WorkflowRun": (".workflow_shell", "WorkflowRun"),
+    "WorkflowShell": (".workflow_shell", "WorkflowShell"),
+    "WorkflowStep": (".workflow_shell", "WorkflowStep"),
+}
+
+__all__ += list(_LAZY_INTERFACE_EXPORTS)
+
+
+def __getattr__(name: str):
+    if name not in _LAZY_INTERFACE_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_name, attr_name = _LAZY_INTERFACE_EXPORTS[name]
+    module = __import__(f"{__name__}{module_name}", fromlist=[attr_name])
+    value = getattr(module, attr_name)
+    globals()[name] = value
+    return value
