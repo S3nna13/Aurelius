@@ -87,3 +87,11 @@ from .cpo_trainer import CPOTrainer, CPOConfig, CPOBatch  # noqa: E402
 
 ALIGNMENT_REGISTRY["cpo"] = CPOTrainer
 
+from .spin_trainer import SPINTrainer, SPINConfig, SPINLoss, SPINBatch  # noqa: E402
+
+ALIGNMENT_REGISTRY["spin"] = SPINTrainer
+
+from .kto_trainer import KTOTrainer, KTOConfig, KTOLoss, KTOBatch  # noqa: E402
+
+ALIGNMENT_REGISTRY["kto"] = KTOTrainer
+

@@ -134,6 +134,28 @@ from src.multimodal.video_encoder import (  # noqa: E402
 register_vision_encoder("VideoEncoder", VideoEncoder)
 
 # ---------------------------------------------------------------------------
+# Cross-modal attention (Q-Former style)
+# ---------------------------------------------------------------------------
+
+from src.multimodal.cross_modal_attention import (  # noqa: E402
+    CROSS_MODAL_REGISTRY,
+    CrossModalAttentionLayer,
+    CrossModalConfig,
+    QFormer,
+)
+
+# ---------------------------------------------------------------------------
+# Audio-speech fusion
+# ---------------------------------------------------------------------------
+
+from src.multimodal.audio_speech_fusion import (  # noqa: E402
+    SPEECH_FUSION_REGISTRY,
+    AudioTextAligner,
+    SpeechFusionConfig,
+    SpeechFusionEncoder,
+)
+
+# ---------------------------------------------------------------------------
 # Document understanding (table/form/layout processor)
 # ---------------------------------------------------------------------------
 
@@ -197,6 +219,16 @@ __all__ = [
     "TemporalPositionEncoding",
     "VideoEncoder",
     "VIDEO_ENCODER_REGISTRY",
+    # Cross-modal attention (Q-Former)
+    "CrossModalConfig",
+    "CrossModalAttentionLayer",
+    "QFormer",
+    "CROSS_MODAL_REGISTRY",
+    # Audio-speech fusion
+    "SpeechFusionConfig",
+    "AudioTextAligner",
+    "SpeechFusionEncoder",
+    "SPEECH_FUSION_REGISTRY",
     # Document understanding
     "DocumentRegionType",
     "DocumentRegion",

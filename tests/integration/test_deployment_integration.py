@@ -18,6 +18,8 @@ from src.deployment.container_builder import (
     DockerfileBuilder,
     SBOMGenerator,
 )
+from src.deployment.helm_chart import HelmChart, HelmChartGenerator, HelmChartValues
+from src.deployment.otel_instrumentation import Tracer
 
 
 # ---------------------------------------------------------------------------
@@ -108,3 +110,58 @@ def test_dockerfile_and_sbom_both_exist(tmp_path: Path) -> None:
 
     assert (tmp_path / "Dockerfile").exists()
     assert (tmp_path / "sbom.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Helm chart integration
+# ---------------------------------------------------------------------------
+
+
+def test_helm_chart_write(tmp_path: Path) -> None:
+    """generate_chart_yaml + write_chart produce Chart.yaml and values.yaml on disk."""
+    chart = HelmChart(
+        name="aurelius-integration",
+        version="0.1.0",
+        app_version="0.1.0",
+        description="Integration test chart",
+        values=HelmChartValues(),
+    )
+    gen = HelmChartGenerator()
+    written = gen.write_chart(chart, tmp_path)
+
+    chart_yaml = written["Chart.yaml"]
+    values_yaml = written["values.yaml"]
+
+    assert chart_yaml.exists(), "Chart.yaml not written"
+    assert values_yaml.exists(), "values.yaml not written"
+
+    chart_content = chart_yaml.read_text()
+    assert "apiVersion: v2" in chart_content
+    assert "aurelius-integration" in chart_content
+
+    values_content = values_yaml.read_text()
+    assert "image:" in values_content
+
+
+# ---------------------------------------------------------------------------
+# OTel tracer lifecycle integration
+# ---------------------------------------------------------------------------
+
+
+def test_otel_tracer_lifecycle() -> None:
+    """Start a span, add an attribute, end it, verify it appears in get_spans()."""
+    tracer = Tracer()
+
+    span = tracer.start_span("inference-request", attributes={"model": "aurelius-1.3b"})
+    span.attributes["tokens_generated"] = 256
+    tracer.end_span(span)
+
+    spans = tracer.get_spans()
+    assert len(spans) == 1
+
+    recorded = spans[0]
+    assert recorded.name == "inference-request"
+    assert recorded.attributes["model"] == "aurelius-1.3b"
+    assert recorded.attributes["tokens_generated"] == 256
+    assert recorded.end_ns is not None
+    assert recorded.end_ns >= recorded.start_ns

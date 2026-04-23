@@ -87,6 +87,21 @@ from src.ui.task_panel import (
     TASK_PANEL_REGISTRY,
     TaskPanelError,
 )
+from src.ui.streaming_renderer import (
+    TokenChunk,
+    StreamingState,
+    StreamingRenderer,
+    STREAMING_RENDERER_REGISTRY,
+    StreamingRendererError,
+)
+from src.ui.session_manager import (
+    SessionState,
+    AureliusSession,
+    SessionManager,
+    DEFAULT_SESSION_MANAGER,
+    SESSION_MANAGER_REGISTRY,
+    SessionManagerError,
+)
 
 # Register new UI surfaces into the surface registry.
 _COMMAND_PALETTE_SURFACE = UISurface(
@@ -138,6 +153,20 @@ _TASK_PANEL_SURFACE = UISurface(
     default_layout="stoic-focus",
     keyboard_map={"esc": "cancel", "up": "nav_up", "down": "nav_down"},
 )
+_STREAMING_RENDERER_SURFACE = UISurface(
+    surface_id="streaming-renderer",
+    title="Streaming Renderer",
+    panels=("stream",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel"},
+)
+_SESSION_MANAGER_SURFACE = UISurface(
+    surface_id="session-manager",
+    title="Session Manager",
+    panels=("sessions",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "tab": "next_session"},
+)
 
 for _surface in (
     _COMMAND_PALETTE_SURFACE,
@@ -147,6 +176,8 @@ for _surface in (
     _TRANSCRIPT_VIEWER_SURFACE,
     _DIFF_VIEWER_SURFACE,
     _TASK_PANEL_SURFACE,
+    _STREAMING_RENDERER_SURFACE,
+    _SESSION_MANAGER_SURFACE,
 ):
     if _surface.surface_id not in UI_SURFACE_REGISTRY:
         register_ui_surface(_surface)
@@ -221,4 +252,17 @@ __all__ = [
     "TaskPanel",
     "TASK_PANEL_REGISTRY",
     "TaskPanelError",
+    # Streaming renderer
+    "TokenChunk",
+    "StreamingState",
+    "StreamingRenderer",
+    "STREAMING_RENDERER_REGISTRY",
+    "StreamingRendererError",
+    # Session manager
+    "SessionState",
+    "AureliusSession",
+    "SessionManager",
+    "DEFAULT_SESSION_MANAGER",
+    "SESSION_MANAGER_REGISTRY",
+    "SessionManagerError",
 ]

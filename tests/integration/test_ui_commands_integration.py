@@ -202,3 +202,75 @@ def test_task_panel_lifecycle() -> None:
     snapshot = panel.to_dict()
     assert isinstance(snapshot, dict)
     assert "integ-1" in snapshot
+
+
+# ---------------------------------------------------------------------------
+# StreamingRenderer lifecycle
+# ---------------------------------------------------------------------------
+
+
+def test_streaming_renderer_lifecycle() -> None:
+    """Push 5 chunks, complete, verify concatenated text, render panel."""
+    from src.ui.streaming_renderer import StreamingRenderer, StreamingState, TokenChunk
+
+    renderer = StreamingRenderer()
+    chunks = [
+        TokenChunk(text="The "),
+        TokenChunk(text="quick "),
+        TokenChunk(text="brown "),
+        TokenChunk(text="fox "),
+        TokenChunk(text="jumps."),
+    ]
+    for chunk in chunks:
+        renderer.push_chunk(chunk)
+
+    assert renderer.token_count() == 5
+    assert renderer.get_text() == "The quick brown fox jumps."
+    assert renderer.word_count() == 5
+    assert renderer._state == StreamingState.STREAMING
+
+    renderer.complete()
+    assert renderer._state == StreamingState.COMPLETE
+
+    console = Console(record=True)
+    renderer.render_panel(console, title="Integration Test")
+    output = console.export_text()
+    assert len(output) > 0
+
+
+# ---------------------------------------------------------------------------
+# SessionManager lifecycle
+# ---------------------------------------------------------------------------
+
+
+def test_session_manager_lifecycle() -> None:
+    """Create 2 sessions, switch_to one, verify other paused, save/load round-trip."""
+    from src.ui.session_manager import SessionManager, SessionState
+
+    manager = SessionManager()
+    s1 = manager.create("Tab Alpha")
+    s2 = manager.create("Tab Beta")
+
+    # Both start ACTIVE.
+    assert manager.get(s1.session_id).state == SessionState.ACTIVE
+    assert manager.get(s2.session_id).state == SessionState.ACTIVE
+
+    # Switching to s2 should pause s1.
+    manager.switch_to(s2.session_id)
+    assert manager.get(s1.session_id).state == SessionState.PAUSED
+    assert manager.get(s2.session_id).state == SessionState.ACTIVE
+
+    # Snapshot and restore.
+    snapshot = manager.save_to_dict()
+    new_manager = SessionManager()
+    new_manager.load_from_dict(snapshot)
+
+    assert new_manager.get(s1.session_id).state == SessionState.PAUSED
+    assert new_manager.get(s2.session_id).state == SessionState.ACTIVE
+    assert new_manager.get(s1.session_id).name == "Tab Alpha"
+
+    # Render should not crash.
+    console = Console(record=True)
+    new_manager.render(console)
+    output = console.export_text()
+    assert "Tab Alpha" in output or "Tab Beta" in output
