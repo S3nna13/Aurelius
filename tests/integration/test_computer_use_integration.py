@@ -1,6 +1,7 @@
 """Integration tests for the computer_use surface end-to-end pipeline.
 
 Parse JSON accessibility tree → predict GUI action → verify action.
+Also covers BrowserDriver lifecycle and Trajectory record/replay.
 
 Inspired by OpenDevin/OpenDevin (browser tool), MoonshotAI/Kimi-Dev (coding agent loop),
 Apache-2.0, clean-room reimplementation.
@@ -11,6 +12,12 @@ from __future__ import annotations
 import pytest
 
 from src.computer_use.action_verifier import ActionVerifier, verify_trajectory
+from src.computer_use.browser_driver import (
+    BROWSER_DRIVER_REGISTRY,
+    BrowserDriverError,
+    BrowserState,
+    StubBrowserDriver,
+)
 from src.computer_use.gui_action import (
     GUI_ACTION_REGISTRY,
     ActionType,
@@ -20,9 +27,15 @@ from src.computer_use.gui_action import (
 )
 from src.computer_use.screen_parser import (
     SCREEN_PARSER_REGISTRY,
+    AccessibilityNode,
     JSONTreeParser,
     ScreenSnapshot,
     get_screen_parser,
+)
+from src.computer_use.trajectory_replay import (
+    Trajectory,
+    TrajectoryRecorder,
+    TrajectoryReplayer,
 )
 
 
@@ -167,3 +180,102 @@ class TestComputerUseEndToEnd:
         snap = parser.parse(SAMPLE_TREE)
         editor = snap.root_node.children[1]
         assert editor.attributes.get("editable") is True
+
+
+# ---------------------------------------------------------------------------
+# BrowserDriver lifecycle integration
+# ---------------------------------------------------------------------------
+
+class TestBrowserDriverIntegration:
+    """End-to-end lifecycle test for StubBrowserDriver."""
+
+    def test_browser_driver_stub(self):
+        """navigate → click → type_text → get_state full lifecycle."""
+        driver = StubBrowserDriver()
+
+        # Navigate
+        state = driver.navigate("https://example.com")
+        assert isinstance(state, BrowserState)
+        assert state.url == "https://example.com"
+        assert state.ready is True
+
+        # Click
+        state = driver.click("#submit-btn")
+        assert isinstance(state, BrowserState)
+        assert state.ready is True
+
+        # Type text
+        state = driver.type_text("#search-input", "Aurelius")
+        assert isinstance(state, BrowserState)
+        assert state.ready is True
+        assert state.html_snapshot is not None
+        assert "Aurelius" in state.html_snapshot
+
+        # get_state reflects the latest state
+        current = driver.get_state()
+        assert current.url == "https://example.com"
+
+        # close
+        driver.close()
+        with pytest.raises(BrowserDriverError):
+            driver.get_state()
+
+
+# ---------------------------------------------------------------------------
+# Trajectory record and replay integration
+# ---------------------------------------------------------------------------
+
+class TestTrajectoryIntegration:
+    """Record a 2-step trajectory and replay it end-to-end."""
+
+    def test_trajectory_record_and_replay(self):
+        """Record 2 steps, finalize, replay with StubBrowserDriver, verify all ok."""
+        # Set up a stub driver and navigate so click/type_text will work.
+        driver = StubBrowserDriver()
+        driver.navigate("https://example.com")
+
+        # Record two steps.
+        recorder = TrajectoryRecorder(goal="search for something")
+
+        snap0 = ScreenSnapshot(
+            width=1280,
+            height=800,
+            root_node=AccessibilityNode(role="application", name="App"),
+        )
+        step0 = recorder.record_step(
+            GUIAction(action_type=ActionType.CLICK, target_selector="#search-btn"),
+            snapshot_before=snap0,
+        )
+
+        snap1 = ScreenSnapshot(
+            width=1280,
+            height=800,
+            root_node=AccessibilityNode(role="application", name="App"),
+        )
+        step1 = recorder.record_step(
+            GUIAction(
+                action_type=ActionType.TYPE,
+                target_selector="#search-input",
+                value="Aurelius",
+            ),
+            snapshot_before=snap1,
+        )
+
+        assert step0.step_id == 0
+        assert step1.step_id == 1
+
+        traj = recorder.finalize(success=True)
+        assert traj.success is True
+        assert len(traj.steps) == 2
+
+        # Replay.
+        replayer = TrajectoryReplayer()
+        statuses = replayer.replay(traj, driver)
+
+        assert len(statuses) == 2
+        assert all("ok" in s for s in statuses)
+
+        # Verify structural integrity.
+        ok, issues = replayer.verify(traj)
+        assert ok is True
+        assert issues == []

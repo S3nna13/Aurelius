@@ -118,3 +118,74 @@ def test_end_to_end_mcp_surface_lazy_import():
 
     tool_reg = mcp_surface.MCP_TOOL_SCHEMA_REGISTRY
     assert isinstance(tool_reg, dict)
+
+
+# ---------------------------------------------------------------------------
+# SSEMCPServer integration
+# ---------------------------------------------------------------------------
+
+
+def test_sse_server_handle():
+    """Instantiate SSEMCPServer, register a handler, call handle_request, verify."""
+    from src.mcp.sse_mcp_server import SSEMCPServer
+
+    server = SSEMCPServer()
+
+    def greet(payload: dict) -> dict:
+        return {"hello": payload.get("name", "world")}
+
+    server.register_tool_handler("greet", greet)
+
+    response = server.handle_request({"tool": "greet", "name": "Aurelius"})
+    assert response == {"hello": "Aurelius"}
+
+    # Unknown tool returns error, not a crash
+    error_resp = server.handle_request({"tool": "unknown_xyz"})
+    assert "error" in error_resp
+
+
+# ---------------------------------------------------------------------------
+# PluginHost lifecycle integration
+# ---------------------------------------------------------------------------
+
+
+def test_plugin_host_lifecycle():
+    """Register plugin, enable, list, disable, unregister — full lifecycle."""
+    from src.mcp.plugin_host import PluginHost, PluginHostError, PluginManifest
+
+    host = PluginHost()
+
+    manifest = PluginManifest(
+        plugin_id="integration.test",
+        name="Integration Test Plugin",
+        version="2.3.4",
+        description="Used in integration lifecycle test.",
+        tool_schemas=["greet", "ping"],
+        entry_point="integration_test:main",
+    )
+
+    # Register
+    host.register(manifest)
+    retrieved = host.get("integration.test")
+    assert retrieved.version == "2.3.4"
+
+    # Enable (already enabled by default — re-enable is idempotent)
+    host.enable("integration.test")
+    assert host.get("integration.test").enabled is True
+
+    # list_plugins returns it
+    enabled = host.list_plugins(enabled_only=True)
+    assert any(p.plugin_id == "integration.test" for p in enabled)
+
+    # Disable
+    host.disable("integration.test")
+    assert host.get("integration.test").enabled is False
+
+    # Not in enabled-only list
+    enabled_after = host.list_plugins(enabled_only=True)
+    assert not any(p.plugin_id == "integration.test" for p in enabled_after)
+
+    # Unregister
+    host.unregister("integration.test")
+    with pytest.raises(PluginHostError):
+        host.get("integration.test")

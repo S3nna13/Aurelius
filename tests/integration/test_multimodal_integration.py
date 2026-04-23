@@ -112,3 +112,70 @@ def test_model_side_projector_registered():
 def test_passthrough_tokenizer_registered():
     """PassthroughModalityTokenizer must appear in MODALITY_TOKENIZER_REGISTRY."""
     assert "PassthroughModalityTokenizer" in multimodal_pkg.MODALITY_TOKENIZER_REGISTRY
+
+
+# ---------------------------------------------------------------------------
+# Video encoder integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_video_encoder_registry():
+    """VIDEO_ENCODER_REGISTRY must be populated with 'temporal_3d' after importing multimodal."""
+    assert hasattr(multimodal_pkg, "VIDEO_ENCODER_REGISTRY")
+    assert "temporal_3d" in multimodal_pkg.VIDEO_ENCODER_REGISTRY
+
+
+def test_document_parser_json():
+    """Parse a 1-page document with 2 regions and verify structure."""
+    from src.multimodal.document_understanding import DocumentRegionType
+
+    parser = multimodal_pkg.JSONLayoutParser()
+    doc = {
+        "pages": [
+            {
+                "page_number": 1,
+                "width": 612.0,
+                "height": 792.0,
+                "regions": [
+                    {"region_type": "text", "text": "Introduction"},
+                    {"region_type": "table", "text": "Col1 Col2"},
+                ],
+            }
+        ]
+    }
+    pages = parser.parse(doc)
+    assert len(pages) == 1
+    assert pages[0].page_number == 1
+    assert len(pages[0].regions) == 2
+    assert pages[0].regions[0].region_type == DocumentRegionType.TEXT
+    assert pages[0].regions[1].region_type == DocumentRegionType.TABLE
+
+
+def test_document_embedder_shapes():
+    """Embed a page and verify output shape is (N_regions, d_model)."""
+    import torch
+    from src.multimodal.document_understanding import (
+        DocumentEmbedderConfig,
+        DocumentPage,
+        DocumentRegion,
+        DocumentRegionType,
+    )
+
+    page = multimodal_pkg.DocumentPage(
+        page_number=1,
+        width=612.0,
+        height=792.0,
+        regions=[
+            multimodal_pkg.DocumentRegion(
+                region_type=DocumentRegionType.TEXT, text="Hello Aurelius"
+            ),
+            multimodal_pkg.DocumentRegion(
+                region_type=DocumentRegionType.TABLE, text="A B C D"
+            ),
+        ],
+    )
+    cfg = multimodal_pkg.DocumentEmbedderConfig(vocab_size=256, d_model=128)
+    embedder = multimodal_pkg.DocumentEmbedder(cfg)
+    out = embedder(page)
+    assert out.shape == (2, 128)
+    assert not torch.isnan(out).any()

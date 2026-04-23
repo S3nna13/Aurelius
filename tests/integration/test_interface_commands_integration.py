@@ -180,6 +180,23 @@ def test_main_interface_capability_schema_command_runs_end_to_end(capsys):
     assert payload["schema"]["schema_version"] == "1.0"
 
 
+def test_main_interface_surface_commands_run_end_to_end(capsys):
+    rc = cli_main.main(["interface", "--repo-root", str(_repo_root()), "surface", "summary"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert rc == 0
+    assert payload["surface"]["engine_adapters"]["count"] >= 3
+    assert payload["surface"]["ui"]["ui_surfaces"]["count"] >= 1
+
+    rc = cli_main.main(["interface", "--repo-root", str(_repo_root()), "surface", "schema"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert rc == 0
+    assert payload["schema"]["schema_name"] == "aurelius.interface.surface-catalog"
+
+
 def test_main_interface_skill_catalog_management_commands_run_end_to_end(tmp_path, capsys):
     repo_root = tmp_path / "repo"
     workspace_root = tmp_path / "workspace"

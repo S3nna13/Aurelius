@@ -16,12 +16,25 @@ from importlib import import_module
 # Lazy submodule loader
 # ---------------------------------------------------------------------------
 
-_MCP_SUBMODULES = ("mcp_server", "mcp_client", "tool_schema_registry")
+_MCP_SUBMODULES = (
+    "mcp_server",
+    "mcp_client",
+    "tool_schema_registry",
+    "sse_mcp_server",
+    "plugin_host",
+)
 
 __all__ = [
     "MCP_SERVER_REGISTRY",
     "MCP_CLIENT_REGISTRY",
     "MCP_TOOL_SCHEMA_REGISTRY",
+    "SSEMCPServer",
+    "SSEMCPServerConfig",
+    "SSE_SERVER_REGISTRY",
+    "PluginHost",
+    "PluginManifest",
+    "PLUGIN_HOST_REGISTRY",
+    "DEFAULT_PLUGIN_HOST",
     *_MCP_SUBMODULES,
 ]
 
@@ -40,6 +53,34 @@ def __getattr__(name: str):
         from .tool_schema_registry import MCP_TOOL_SCHEMA_REGISTRY  # noqa: PLC0415
         globals()["MCP_TOOL_SCHEMA_REGISTRY"] = MCP_TOOL_SCHEMA_REGISTRY
         return MCP_TOOL_SCHEMA_REGISTRY
+    if name == "SSEMCPServer":
+        from .sse_mcp_server import SSEMCPServer  # noqa: PLC0415
+        globals()["SSEMCPServer"] = SSEMCPServer
+        return SSEMCPServer
+    if name == "SSEMCPServerConfig":
+        from .sse_mcp_server import SSEMCPServerConfig  # noqa: PLC0415
+        globals()["SSEMCPServerConfig"] = SSEMCPServerConfig
+        return SSEMCPServerConfig
+    if name == "SSE_SERVER_REGISTRY":
+        from .sse_mcp_server import SSE_SERVER_REGISTRY  # noqa: PLC0415
+        globals()["SSE_SERVER_REGISTRY"] = SSE_SERVER_REGISTRY
+        return SSE_SERVER_REGISTRY
+    if name == "PluginHost":
+        from .plugin_host import PluginHost  # noqa: PLC0415
+        globals()["PluginHost"] = PluginHost
+        return PluginHost
+    if name == "PluginManifest":
+        from .plugin_host import PluginManifest  # noqa: PLC0415
+        globals()["PluginManifest"] = PluginManifest
+        return PluginManifest
+    if name == "PLUGIN_HOST_REGISTRY":
+        from .plugin_host import PLUGIN_HOST_REGISTRY  # noqa: PLC0415
+        globals()["PLUGIN_HOST_REGISTRY"] = PLUGIN_HOST_REGISTRY
+        return PLUGIN_HOST_REGISTRY
+    if name == "DEFAULT_PLUGIN_HOST":
+        from .plugin_host import DEFAULT_PLUGIN_HOST  # noqa: PLC0415
+        globals()["DEFAULT_PLUGIN_HOST"] = DEFAULT_PLUGIN_HOST
+        return DEFAULT_PLUGIN_HOST
     if name in _MCP_SUBMODULES:
         module = import_module(f"src.mcp.{name}")
         globals()[name] = module

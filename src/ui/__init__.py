@@ -66,6 +66,27 @@ from src.ui.onboarding import (
     OnboardingFlow,
     ONBOARDING_REGISTRY,
 )
+from src.ui.transcript_viewer import (
+    TranscriptRole,
+    TranscriptEntry,
+    TranscriptViewer,
+    TRANSCRIPT_VIEWER_REGISTRY,
+    TranscriptViewerError,
+)
+from src.ui.diff_viewer import (
+    DiffLine,
+    DiffChunk,
+    ParsedDiff,
+    parse_unified_diff,
+    DiffViewer,
+    DiffViewerError,
+)
+from src.ui.task_panel import (
+    TaskEntry,
+    TaskPanel,
+    TASK_PANEL_REGISTRY,
+    TaskPanelError,
+)
 
 # Register new UI surfaces into the surface registry.
 _COMMAND_PALETTE_SURFACE = UISurface(
@@ -96,12 +117,36 @@ _ONBOARDING_SURFACE = UISurface(
     default_layout="stoic-focus",
     keyboard_map={"esc": "cancel", "enter": "confirm"},
 )
+_TRANSCRIPT_VIEWER_SURFACE = UISurface(
+    surface_id="transcript-viewer",
+    title="Transcript Viewer",
+    panels=("transcript",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "up": "scroll_up", "down": "scroll_down"},
+)
+_DIFF_VIEWER_SURFACE = UISurface(
+    surface_id="diff-viewer",
+    title="Diff Viewer",
+    panels=("diff",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "up": "scroll_up", "down": "scroll_down"},
+)
+_TASK_PANEL_SURFACE = UISurface(
+    surface_id="task-panel",
+    title="Task Panel",
+    panels=("tasks",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "up": "nav_up", "down": "nav_down"},
+)
 
 for _surface in (
     _COMMAND_PALETTE_SURFACE,
     _STATUS_HIERARCHY_SURFACE,
     _KEYBOARD_NAV_SURFACE,
     _ONBOARDING_SURFACE,
+    _TRANSCRIPT_VIEWER_SURFACE,
+    _DIFF_VIEWER_SURFACE,
+    _TASK_PANEL_SURFACE,
 ):
     if _surface.surface_id not in UI_SURFACE_REGISTRY:
         register_ui_surface(_surface)
@@ -158,4 +203,22 @@ __all__ = [
     "OnboardingStep",
     "OnboardingFlow",
     "ONBOARDING_REGISTRY",
+    # Transcript viewer
+    "TranscriptRole",
+    "TranscriptEntry",
+    "TranscriptViewer",
+    "TRANSCRIPT_VIEWER_REGISTRY",
+    "TranscriptViewerError",
+    # Diff viewer
+    "DiffLine",
+    "DiffChunk",
+    "ParsedDiff",
+    "parse_unified_diff",
+    "DiffViewer",
+    "DiffViewerError",
+    # Task panel
+    "TaskEntry",
+    "TaskPanel",
+    "TASK_PANEL_REGISTRY",
+    "TaskPanelError",
 ]

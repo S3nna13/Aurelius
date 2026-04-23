@@ -121,3 +121,84 @@ def test_src_ui_all_contains_keyboard_nav() -> None:
 def test_src_ui_all_contains_onboarding_flow() -> None:
     assert "OnboardingFlow" in ui.__all__
     assert "ONBOARDING_REGISTRY" in ui.__all__
+
+
+# ---------------------------------------------------------------------------
+# TranscriptViewer integration
+# ---------------------------------------------------------------------------
+
+
+def test_transcript_viewer_render() -> None:
+    """Create a viewer, add 2 entries, render, and export_text."""
+    from src.ui.transcript_viewer import TranscriptEntry, TranscriptRole, TranscriptViewer
+
+    viewer = TranscriptViewer()
+    viewer.add_entry(TranscriptEntry(role=TranscriptRole.USER, content="Hello Aurelius"))
+    viewer.add_entry(TranscriptEntry(role=TranscriptRole.ASSISTANT, content="Hello user"))
+
+    console = Console(record=True)
+    viewer.render(console)
+    output = console.export_text()
+    assert "Hello Aurelius" in output
+    assert "Hello user" in output
+
+    text = viewer.export_text()
+    assert "USER:" in text
+    assert "ASSISTANT:" in text
+    assert len(text) > 0
+
+
+# ---------------------------------------------------------------------------
+# DiffViewer integration
+# ---------------------------------------------------------------------------
+
+
+def test_diff_viewer_parse_and_render() -> None:
+    """Parse a 5-line diff, render to console."""
+    from src.ui.diff_viewer import DiffViewer, parse_unified_diff
+
+    diff_text = (
+        "--- a/sample.py\n"
+        "+++ b/sample.py\n"
+        "@@ -1,3 +1,3 @@\n"
+        " line one\n"
+        "-line two old\n"
+        "+line two new\n"
+        " line three\n"
+    )
+    diff = parse_unified_diff(diff_text)
+    assert len(diff.chunks) == 1
+
+    viewer = DiffViewer()
+    console = Console(record=True)
+    viewer.render_diff(console, diff)
+    output = console.export_text()
+    assert "sample.py" in output or "line" in output
+
+
+# ---------------------------------------------------------------------------
+# TaskPanel integration
+# ---------------------------------------------------------------------------
+
+
+def test_task_panel_lifecycle() -> None:
+    """Add, update, filter, render, to_dict."""
+    from src.ui.task_panel import TaskEntry, TaskPanel
+
+    panel = TaskPanel()
+    panel.add_task(TaskEntry(task_id="integ-1", title="Build", status="running"))
+    panel.add_task(TaskEntry(task_id="integ-2", title="Test", status="pending"))
+    panel.add_task(TaskEntry(task_id="integ-3", title="Deploy", status="running"))
+
+    panel.update_task("integ-2", status="running")
+    running = panel.filter_by_status("running")
+    assert len(running) == 3
+
+    console = Console(record=True)
+    panel.render(console)
+    output = console.export_text()
+    assert "Build" in output
+
+    snapshot = panel.to_dict()
+    assert isinstance(snapshot, dict)
+    assert "integ-1" in snapshot

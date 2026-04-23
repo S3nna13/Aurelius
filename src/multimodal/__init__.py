@@ -120,6 +120,36 @@ register_modality_projector("VisionProjector", VisionProjector)
 register_modality_tokenizer("PassthroughModalityTokenizer", PassthroughModalityTokenizer)
 
 # ---------------------------------------------------------------------------
+# Video encoder (temporal 3D patch, MoonViT-style)
+# ---------------------------------------------------------------------------
+
+from src.multimodal.video_encoder import (  # noqa: E402
+    VIDEO_ENCODER_REGISTRY,
+    Temporal3DPatchEmbed,
+    TemporalPositionEncoding,
+    VideoEncoder,
+    VideoEncoderConfig,
+)
+
+register_vision_encoder("VideoEncoder", VideoEncoder)
+
+# ---------------------------------------------------------------------------
+# Document understanding (table/form/layout processor)
+# ---------------------------------------------------------------------------
+
+from src.multimodal.document_understanding import (  # noqa: E402
+    DOCUMENT_EMBEDDER_REGISTRY,
+    DOCUMENT_PARSER_REGISTRY,
+    DocumentEmbedder,
+    DocumentEmbedderConfig,
+    DocumentPage,
+    DocumentParser,
+    DocumentRegion,
+    DocumentRegionType,
+    JSONLayoutParser,
+)
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -161,4 +191,20 @@ __all__ = [
     "ModalityTokenizerError",
     "ModalityTokenizer",
     "PassthroughModalityTokenizer",
+    # Video encoder
+    "VideoEncoderConfig",
+    "Temporal3DPatchEmbed",
+    "TemporalPositionEncoding",
+    "VideoEncoder",
+    "VIDEO_ENCODER_REGISTRY",
+    # Document understanding
+    "DocumentRegionType",
+    "DocumentRegion",
+    "DocumentPage",
+    "DocumentParser",
+    "JSONLayoutParser",
+    "DocumentEmbedderConfig",
+    "DocumentEmbedder",
+    "DOCUMENT_PARSER_REGISTRY",
+    "DOCUMENT_EMBEDDER_REGISTRY",
 ]
