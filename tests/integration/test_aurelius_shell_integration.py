@@ -64,3 +64,15 @@ def test_shell_backend_commands_are_reachable_from_execute_command():
 
     backend_show = json.loads(shell.execute_command("backend show pytorch"))
     assert backend_show["backend"]["backend_name"] == "pytorch"
+
+
+def test_shell_capability_and_journal_commands_are_reachable_from_execute_command():
+    from src.ui import AureliusShell
+
+    shell = AureliusShell.from_repo_root(root_dir=_repo_root())
+    capability = json.loads(shell.execute_command("capability summary"))
+    journal_branch = json.loads(shell.execute_command("journal branch main"))
+
+    assert capability["capability"]["framework"]["title"] == "Aurelius Canonical Interface Contract"
+    assert "skills" in capability["capability"]
+    assert journal_branch["journal"]["branch_id"] == "main"

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import asdict, replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -325,6 +327,44 @@ class AureliusInterfaceRuntime:
             self.session_manager.register_message(thread.session_id, envelope)
         return routed
 
+    def register_message(
+        self,
+        session_id: str,
+        *,
+        channel_id: str,
+        sender: str,
+        kind: str = "message",
+        payload: Mapping[str, Any] | None = None,
+        thread_id: str | None = None,
+        recipient: str | None = None,
+        workstream_id: str | None = None,
+        workspace: str | Path | None = None,
+        metadata: Mapping[str, Any] | None = None,
+        envelope_id: str | None = None,
+        created_at: str | None = None,
+    ) -> MessageEnvelope:
+        session = self.session_manager.ensure_session(session_id, workspace=workspace)
+        thread = None
+        if thread_id is not None:
+            thread = self.session_manager.get_thread(session.session_id, thread_id)
+            if thread is None:
+                raise InterfaceFrameworkError(f"unknown thread: {thread_id!r}")
+        envelope = MessageEnvelope(
+            envelope_id=envelope_id or f"envelope-{uuid.uuid4()}",
+            channel_id=channel_id,
+            thread_id=thread.thread_id if thread is not None else thread_id,
+            sender=sender,
+            recipient=recipient,
+            kind=kind,
+            payload=dict(payload or {}),
+            created_at=created_at or datetime.now(timezone.utc).isoformat(),
+            session_id=session.session_id,
+            workstream_id=workstream_id or (thread.workstream_id if thread is not None else None),
+            workspace=_coerce_workspace(workspace) or session.workspace or (thread.workspace if thread is not None else None),
+            metadata=dict(metadata or {}),
+        )
+        return self.session_manager.register_message(session.session_id, envelope)
+
     def record_tool_call(self, *, tool_name: str, arguments: dict[str, Any], call_id: str | None = None, host_step_id: str | None = None, status: str = "validated", thread: TaskThread | None = None) -> dict[str, Any]:
         normalized = self.framework.record_tool_call(
             tool_name=tool_name,
@@ -352,8 +392,70 @@ class AureliusInterfaceRuntime:
             "tool_calls": self.session_manager.list_tool_calls(session_id, thread_id),
         }
 
+    def list_messages(
+        self,
+        session_id: str,
+        *,
+        channel_id: str | None = None,
+        thread_id: str | None = None,
+        workstream_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        return [
+            _json_safe(asdict(message))
+            for message in self.session_manager.list_messages(
+                session_id,
+                channel_id=channel_id,
+                thread_id=thread_id,
+                workstream_id=workstream_id,
+            )
+        ]
+
     def session_status(self, session_id: str) -> dict[str, Any]:
         return self.session_manager.status(session_id)
+
+    def journal_summary(self, session_id: str) -> dict[str, Any]:
+        return self.session_manager.journal_summary(session_id)
+
+    def journal_branch_summary(self, session_id: str, branch_id: str = "main") -> dict[str, Any]:
+        journal = self.session_manager.get_journal(session_id)
+        if journal is None:  # pragma: no cover - defensive
+            raise InterfaceFrameworkError(f"unknown session journal: {session_id!r}")
+        return journal.describe_branch(branch_id)
+
+    def journal_compaction_summary(
+        self,
+        session_id: str,
+        *,
+        compaction_id: str | None = None,
+        branch_id: str | None = None,
+    ) -> dict[str, Any]:
+        journal = self.session_manager.get_journal(session_id)
+        if journal is None:  # pragma: no cover - defensive
+            raise InterfaceFrameworkError(f"unknown session journal: {session_id!r}")
+        return journal.describe_compaction(compaction_id=compaction_id, branch_id=branch_id)
+
+    def capability_summary(self, session_id: str | None = None) -> dict[str, Any]:
+        session = self.session_manager.get_session(session_id) if session_id is not None else None
+        session_status = self.session_manager.status(session_id) if session is not None else None
+        journal_summary = self.session_manager.journal_summary(session_id) if session is not None else None
+        messages = self.list_messages(session_id) if session is not None else []
+        return {
+            "framework": self.framework.describe(),
+            "modes": sorted(self.mode_catalog),
+            "hosts": sorted(self.host_catalog),
+            "skills": self.skill_catalog.provenance_summary(),
+            "skill_catalog": self.skill_catalog.provenance_summary(),
+            "sessions": {
+                "count": self.session_manager.session_count(),
+                "session_ids": [session.session_id for session in self.session_manager.list_sessions()],
+            },
+            "runtime": {
+                "channel_messages": len(messages),
+                "session_bound": session is not None,
+            },
+            "session": session_status,
+            "journal": journal_summary,
+        }
 
     def list_skills(self, *, scope: str | None = None, active: bool | None = None, include_archived: bool = True):
         return self.skill_catalog.list(scope=scope, active=active, include_archived=include_archived)
@@ -366,6 +468,12 @@ class AureliusInterfaceRuntime:
 
     def deactivate_skill(self, skill_id: str):
         return self.skill_catalog.deactivate(skill_id)
+
+    def archive_skill(self, skill_id: str, *, reason: str | None = None):
+        return self.skill_catalog.archive(skill_id, reason=reason)
+
+    def skill_provenance_summary(self) -> dict[str, Any]:
+        return self.skill_catalog.provenance_summary()
 
     def workflow_shell(self):
         from .workflow_shell import WorkflowShell

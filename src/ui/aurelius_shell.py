@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
+from src.agent.skill_catalog import SkillCatalog
 from src.model.interface_framework import (
     ApprovalRequest,
     AureliusInterfaceFramework,
@@ -354,6 +355,22 @@ class AureliusShell:
     @property
     def workflow_runs(self) -> tuple[WorkflowRun, ...]:
         return tuple(self._workflow_runs.values())
+
+    def list_messages(
+        self,
+        *,
+        channel: str | None = None,
+        thread_id: str | None = None,
+    ) -> tuple[dict[str, Any], ...]:
+        """List routed shell envelopes with optional channel/thread filters."""
+        filtered: list[dict[str, Any]] = []
+        for message in self._messages:
+            if channel is not None and message.channel != channel:
+                continue
+            if thread_id is not None and message.thread_id != thread_id:
+                continue
+            filtered.append(asdict(message))
+        return tuple(filtered)
 
     def describe(self) -> dict[str, Any]:
         """Return a JSON-serializable summary of the shell session."""
@@ -1163,6 +1180,51 @@ class AureliusShell:
                 },
                 sort_keys=True,
             )
+        if command == "skill" and len(argv) >= 2 and argv[1] == "summary":
+            return json.dumps(
+                {"summary": self.catalog_skill_summary()},
+                sort_keys=True,
+            )
+        if command == "skill" and len(argv) >= 3 and argv[1] == "show":
+            return json.dumps(
+                {"skill": self.catalog_skill_show(argv[2])},
+                sort_keys=True,
+            )
+        if command == "skill" and len(argv) >= 3 and argv[1] == "search":
+            query = " ".join(argv[2:]).strip()
+            if not query:
+                raise AureliusShellError("skill search requires a non-empty query")
+            matches = self.catalog_skill_search(query)
+            return json.dumps(
+                {
+                    "count": len(matches),
+                    "skills": matches,
+                },
+                sort_keys=True,
+            )
+        if command == "channel" and len(argv) >= 2 and argv[1] == "list":
+            return json.dumps(
+                {
+                    "count": len(self.list_messages()),
+                    "messages": list(self.list_messages()),
+                },
+                sort_keys=True,
+            )
+        if command == "journal" and len(argv) >= 3 and argv[1] == "branch":
+            return json.dumps(
+                {"journal": self.journal_branch_summary(argv[2])},
+                sort_keys=True,
+            )
+        if command == "journal" and len(argv) >= 3 and argv[1] == "compaction":
+            return json.dumps(
+                {"journal": self.journal_compaction_summary(branch_id=argv[2])},
+                sort_keys=True,
+            )
+        if command == "capability" and len(argv) >= 2 and argv[1] == "summary":
+            return json.dumps(
+                {"capability": self.capability_summary()},
+                sort_keys=True,
+            )
         if command == "thread" and len(argv) >= 3 and argv[1] == "status":
             thread_id = argv[2] if len(argv) > 2 else self.active_thread_id
             if thread_id is None:
@@ -1170,10 +1232,107 @@ class AureliusShell:
             return self.render_thread_status(thread_id)
         raise AureliusShellError(f"unsupported shell command: {command_line!r}")
 
+    def catalog_skill_summary(self) -> dict[str, Any]:
+        """Return the local-first skill catalog provenance summary."""
+        return self._build_skill_catalog().provenance_summary()
+
+    def catalog_skill_show(self, skill_id: str) -> dict[str, Any]:
+        """Return one catalog skill record as a JSON-safe mapping."""
+        if not isinstance(skill_id, str) or not skill_id.strip():
+            raise AureliusShellError("skill_id must be a non-empty string")
+        entry = self._build_skill_catalog().get(skill_id)
+        if entry is None:
+            raise AureliusShellError(f"unknown skill: {skill_id!r}")
+        return asdict(entry)
+
+    def catalog_skill_search(self, query: str) -> list[dict[str, Any]]:
+        """Search the local-first skill catalog."""
+        if not isinstance(query, str) or not query.strip():
+            raise AureliusShellError("query must be a non-empty string")
+        return [asdict(entry) for entry in self._build_skill_catalog().search(query)]
+
+    def instruction_layers(
+        self,
+        *,
+        workspace: str | Path | None = None,
+        skill_ids: Sequence[str] = (),
+        mode_name: str | None = None,
+        memory_summary: str | None = None,
+    ) -> tuple[str, ...]:
+        """Expose the active instruction layering model for terminal consumers."""
+        return self._build_skill_catalog().instruction_layers_for(
+            workspace=workspace,
+            repo_root=self.framework.paths.repo_root,
+            skill_ids=skill_ids,
+            mode_name=mode_name,
+            memory_summary=memory_summary,
+        )
+
+    def journal_branch_summary(self, branch_id: str = "main") -> dict[str, Any]:
+        """Return a persisted journal branch summary for the shell session."""
+        runtime = self._build_runtime()
+        if runtime.session_manager.get_session(self.session_id) is None:
+            return {
+                "branch_id": branch_id,
+                "name": branch_id,
+                "base_entry_id": None,
+                "head_entry_id": None,
+                "entry_count": 0,
+                "latest_entry_id": None,
+                "latest_entry_kind": None,
+                "compaction_count": 0,
+                "latest_compaction_id": None,
+                "metadata": {},
+            }
+        return runtime.journal_branch_summary(self.session_id, branch_id)
+
+    def journal_compaction_summary(
+        self,
+        *,
+        branch_id: str | None = None,
+        compaction_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Return a persisted journal compaction summary for the shell session."""
+        runtime = self._build_runtime()
+        if runtime.session_manager.get_session(self.session_id) is None:
+            return {
+                "compaction_id": None,
+                "branch_id": branch_id,
+                "policy": None,
+                "keep_last_n": 0,
+                "dropped_count": 0,
+                "retained_count": 0,
+                "summary_entry_id": None,
+                "facts_count": 0,
+                "summary_text": "",
+                "created_at": None,
+                "metadata": {},
+            }
+        return runtime.journal_compaction_summary(
+            self.session_id,
+            compaction_id=compaction_id,
+            branch_id=branch_id,
+        )
+
+    def capability_summary(self) -> dict[str, Any]:
+        """Return a runtime-backed capability summary for the shell session."""
+        return self._build_runtime().capability_summary(self.session_id)
+
     def _default_mode_name(self) -> str:
         if "chat" in self.framework.mode_catalog:
             return "chat"
         return next(iter(self.framework.mode_catalog))
+
+    def _build_skill_catalog(self) -> SkillCatalog:
+        return SkillCatalog(self.framework.paths.repo_root)
+
+    def _build_runtime(self):
+        from src.agent.interface_runtime import AureliusInterfaceRuntime
+
+        return AureliusInterfaceRuntime.from_repo_root(
+            root_dir=self.framework.paths.repo_root,
+            variant_id=self.framework.model_context.get("variant_id"),
+        )
 
     def _build_workstream_id(self, name: str) -> str:
         slug = "".join(

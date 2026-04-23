@@ -703,6 +703,56 @@ class SessionManager:
             return None
         return journal.get_entry(entry_id)
 
+    def list_journal_compactions(
+        self,
+        session_id: str,
+        *,
+        branch_id: str | None = None,
+    ) -> list[SessionJournalCompaction]:
+        journal = self.get_journal(session_id)
+        if journal is None:  # pragma: no cover - defensive
+            raise InterfaceFrameworkError(f"unknown session journal: {session_id!r}")
+        compactions = list(journal.compactions.values())
+        if branch_id is not None:
+            compactions = [item for item in compactions if item.branch_id == branch_id]
+        return sorted(compactions, key=lambda item: (item.created_at, item.compaction_id))
+
+    def journal_summary(self, session_id: str) -> dict[str, Any]:
+        journal = self.get_journal(session_id)
+        if journal is None:  # pragma: no cover - defensive
+            raise InterfaceFrameworkError(f"unknown session journal: {session_id!r}")
+        branches = self.list_journal_branches(session_id)
+        compactions = self.list_journal_compactions(session_id)
+        latest_compaction = compactions[-1] if compactions else None
+        return {
+            **journal.describe(),
+            "branches": [
+                {
+                    "branch_id": branch.branch_id,
+                    "name": branch.name,
+                    "head_entry_id": branch.head_entry_id,
+                    "base_entry_id": branch.base_entry_id,
+                    "entry_count": len(branch.entry_ids),
+                    "metadata": _json_safe(branch.metadata),
+                }
+                for branch in branches
+            ],
+            "compactions": [
+                {
+                    "compaction_id": compaction.compaction_id,
+                    "branch_id": compaction.branch_id,
+                    "policy": compaction.policy,
+                    "keep_last_n": compaction.keep_last_n,
+                    "dropped_count": len(compaction.dropped_entry_ids),
+                    "retained_count": len(compaction.retained_entry_ids),
+                    "summary_entry_id": compaction.summary_entry_id,
+                    "created_at": compaction.created_at,
+                }
+                for compaction in compactions
+            ],
+            "latest_compaction": _json_safe(asdict(latest_compaction)) if latest_compaction is not None else None,
+        }
+
     # ------------------------------------------------------------------
     # thread / approval / checkpoint / message / tool-call records
     # ------------------------------------------------------------------
@@ -848,6 +898,32 @@ class SessionManager:
             payload={"message": _json_safe(asdict(message))},
         )
         return message
+
+    def get_message(self, session_id: str, envelope_id: str) -> MessageEnvelope | None:
+        session = self.get_session(session_id)
+        if session is None:
+            return None
+        return session.messages.get(envelope_id)
+
+    def list_messages(
+        self,
+        session_id: str,
+        *,
+        channel_id: str | None = None,
+        thread_id: str | None = None,
+        workstream_id: str | None = None,
+    ) -> list[MessageEnvelope]:
+        session = self.get_session(session_id)
+        if session is None:
+            return []
+        messages = list(session.messages.values())
+        if channel_id is not None:
+            messages = [message for message in messages if message.channel_id == channel_id]
+        if thread_id is not None:
+            messages = [message for message in messages if message.thread_id == thread_id]
+        if workstream_id is not None:
+            messages = [message for message in messages if message.workstream_id == workstream_id]
+        return sorted(messages, key=lambda item: (item.created_at, item.envelope_id))
 
     def register_tool_call(self, session_id: str, thread_id: str, entry: dict[str, Any]) -> dict[str, Any]:
         session = self._require_session(session_id)

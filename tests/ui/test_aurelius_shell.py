@@ -85,6 +85,59 @@ def test_shell_skill_discovery_attachment_and_execute_command_surface(tmp_path):
     assert backend_show["backend"]["backend_name"] == "pytorch"
 
 
+def test_shell_skill_catalog_commands_route_through_local_catalog(monkeypatch):
+    shell = _shell()
+    monkeypatch.setattr(shell, "catalog_skill_summary", lambda: {"count": 1, "archived_count": 0})
+    monkeypatch.setattr(
+        shell,
+        "catalog_skill_show",
+        lambda skill_id: {"skill_id": skill_id, "name": "Demo Skill"},
+    )
+    monkeypatch.setattr(
+        shell,
+        "catalog_skill_search",
+        lambda query: [{"skill_id": "demo-skill", "name": "Demo Skill", "query": query}],
+    )
+
+    summary_payload = json.loads(shell.execute_command("skill summary"))
+    assert summary_payload["summary"]["count"] == 1
+
+    show_payload = json.loads(shell.execute_command("skill show demo-skill"))
+    assert show_payload["skill"]["skill_id"] == "demo-skill"
+
+    search_payload = json.loads(shell.execute_command("skill search Demo Skill"))
+    assert search_payload["count"] == 1
+    assert search_payload["skills"][0]["name"] == "Demo Skill"
+
+
+def test_shell_capability_and_journal_commands_route_through_runtime_summaries(monkeypatch):
+    shell = _shell()
+    monkeypatch.setattr(
+        shell,
+        "capability_summary",
+        lambda: {"framework": {"title": "Aurelius"}, "runtime": {"session_bound": False}},
+    )
+    monkeypatch.setattr(
+        shell,
+        "journal_branch_summary",
+        lambda branch_id="main": {"branch_id": branch_id, "entry_count": 2},
+    )
+    monkeypatch.setattr(
+        shell,
+        "journal_compaction_summary",
+        lambda branch_id=None, compaction_id=None: {"branch_id": branch_id, "compaction_id": compaction_id},
+    )
+
+    capability_payload = json.loads(shell.execute_command("capability summary"))
+    assert capability_payload["capability"]["framework"]["title"] == "Aurelius"
+
+    branch_payload = json.loads(shell.execute_command("journal branch main"))
+    assert branch_payload["journal"]["branch_id"] == "main"
+
+    compaction_payload = json.loads(shell.execute_command("journal compaction main"))
+    assert compaction_payload["journal"]["branch_id"] == "main"
+
+
 def test_shell_approval_checkpoint_resume_subagent_job_and_routing():
     shell = _shell()
     thread = shell.create_thread(
@@ -135,6 +188,9 @@ def test_shell_approval_checkpoint_resume_subagent_job_and_routing():
     assert routing["envelope"]["channel"] == "terminal"
     assert tool_call["tool_name"] == "search_repo"
     assert "canceled" in shell.render_status()
+    listed_messages = json.loads(shell.execute_command("channel list"))
+    assert listed_messages["count"] >= 1
+    assert listed_messages["messages"][0]["channel"] == "terminal"
 
 
 def test_shell_workflow_execution_and_snapshot_round_trip():

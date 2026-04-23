@@ -7,6 +7,7 @@ import io
 import json
 from pathlib import Path
 
+from src.agent.interface_runtime import AureliusInterfaceRuntime
 from src.cli.interface_commands import build_interface_parser, dispatch_interface_command
 from src.ui import AureliusShell
 
@@ -119,6 +120,35 @@ def test_interface_thread_workstream_job_and_status_commands_share_shell_state()
     assert rc == 0
     assert "canceled" in job_status_buf.getvalue()
 
+    channel_send_buf = io.StringIO()
+    channel_send_args = parser.parse_args(
+        [
+            "interface",
+            "channel",
+            "send",
+            "--thread-id",
+            thread_id,
+            "--channel",
+            "terminal",
+            "--content",
+            "hello from cli",
+        ]
+    )
+    rc = dispatch_interface_command(channel_send_args, channel_send_buf, shell=shell)
+    assert rc == 0
+    channel_send_payload = json.loads(channel_send_buf.getvalue())
+    assert channel_send_payload["envelope"]["channel"] == "terminal"
+
+    channel_list_buf = io.StringIO()
+    channel_list_args = parser.parse_args(
+        ["interface", "channel", "list", "--thread-id", thread_id]
+    )
+    rc = dispatch_interface_command(channel_list_args, channel_list_buf, shell=shell)
+    assert rc == 0
+    channel_list_payload = json.loads(channel_list_buf.getvalue())
+    assert channel_list_payload["count"] == 1
+    assert channel_list_payload["messages"][0]["content"] == "hello from cli"
+
 
 def test_interface_skill_catalog_and_checkpoint_workflows(tmp_path):
     parser = _parser()
@@ -206,6 +236,117 @@ def test_interface_skill_catalog_and_checkpoint_workflows(tmp_path):
     assert resumed_thread["thread_id"] == thread_id
 
 
+def test_interface_skill_catalog_management_commands(tmp_path):
+    parser = _parser()
+    repo_root = tmp_path / "repo"
+    workspace_root = tmp_path / "workspace"
+    (repo_root / "skills" / "catalog-skill").mkdir(parents=True)
+    (repo_root / "skills" / "catalog-skill" / "SKILL.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "skill_id: catalog-skill",
+                "name: Catalog Skill",
+                "scope: repo",
+                "---",
+                "Catalog skill body.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (repo_root / "AGENTS.md").write_text("Repo instructions.\n", encoding="utf-8")
+    workspace_root.mkdir(parents=True)
+    (workspace_root / "SOUL.md").write_text("Workspace instructions.\n", encoding="utf-8")
+
+    summary_buf = io.StringIO()
+    summary_args = parser.parse_args(
+        ["interface", "--repo-root", str(repo_root), "skill", "summary"]
+    )
+    rc = dispatch_interface_command(summary_args, summary_buf)
+    assert rc == 0
+    summary_payload = json.loads(summary_buf.getvalue())["summary"]
+    assert summary_payload["count"] == 1
+
+    show_buf = io.StringIO()
+    show_args = parser.parse_args(
+        ["interface", "--repo-root", str(repo_root), "skill", "show", "catalog-skill"]
+    )
+    rc = dispatch_interface_command(show_args, show_buf)
+    assert rc == 0
+    assert json.loads(show_buf.getvalue())["skill"]["skill_id"] == "catalog-skill"
+
+    search_buf = io.StringIO()
+    search_args = parser.parse_args(
+        ["interface", "--repo-root", str(repo_root), "skill", "search", "Catalog Skill"]
+    )
+    rc = dispatch_interface_command(search_args, search_buf)
+    assert rc == 0
+    assert json.loads(search_buf.getvalue())["skills"][0]["skill_id"] == "catalog-skill"
+
+    activate_buf = io.StringIO()
+    activate_args = parser.parse_args(
+        ["interface", "--repo-root", str(repo_root), "skill", "activate", "catalog-skill"]
+    )
+    rc = dispatch_interface_command(activate_args, activate_buf)
+    assert rc == 0
+    assert json.loads(activate_buf.getvalue())["skill"]["metadata"]["active"] is True
+
+    deactivate_buf = io.StringIO()
+    deactivate_args = parser.parse_args(
+        ["interface", "--repo-root", str(repo_root), "skill", "deactivate", "catalog-skill"]
+    )
+    rc = dispatch_interface_command(deactivate_args, deactivate_buf)
+    assert rc == 0
+    assert json.loads(deactivate_buf.getvalue())["skill"]["metadata"]["active"] is False
+
+    archive_buf = io.StringIO()
+    archive_args = parser.parse_args(
+        [
+            "interface",
+            "--repo-root",
+            str(repo_root),
+            "skill",
+            "archive",
+            "catalog-skill",
+            "--reason",
+            "replaced",
+        ]
+    )
+    rc = dispatch_interface_command(archive_args, archive_buf)
+    assert rc == 0
+    archive_payload = json.loads(archive_buf.getvalue())["skill"]
+    assert archive_payload["metadata"]["archived"] is True
+    assert archive_payload["metadata"]["archived_reason"] == "replaced"
+
+    layers_buf = io.StringIO()
+    layers_args = parser.parse_args(
+        [
+            "interface",
+            "--repo-root",
+            str(repo_root),
+            "skill",
+            "layers",
+            "--workspace",
+            str(workspace_root),
+            "--mode",
+            "review",
+            "--skill",
+            "catalog-skill",
+            "--memory-summary",
+            "checkpoint memory",
+        ]
+    )
+    rc = dispatch_interface_command(layers_args, layers_buf)
+    assert rc == 0
+    layers_payload = json.loads(layers_buf.getvalue())
+    assert layers_payload["count"] >= 4
+    assert any("Repo instructions." in layer for layer in layers_payload["layers"])
+    assert any("Workspace instructions." in layer for layer in layers_payload["layers"])
+    assert any("mode instructions: review" == layer for layer in layers_payload["layers"])
+    assert any("skill instructions: catalog-skill:" in layer for layer in layers_payload["layers"])
+
+
 def test_interface_workflow_run_command_executes_approval_gated_workflow():
     parser = _parser()
     shell = AureliusShell.from_repo_root(root_dir=_repo_root())
@@ -264,3 +405,172 @@ def test_interface_mode_set_command_updates_shell_state():
     payload = json.loads(mode_buf.getvalue())
     assert payload["current_mode"] == "review"
     assert shell.current_mode == "review"
+
+
+def test_interface_persistent_channel_and_journal_commands(tmp_path):
+    parser = _parser()
+    runtime = AureliusInterfaceRuntime.from_repo_root(root_dir=_repo_root())
+    runtime = AureliusInterfaceRuntime(
+        runtime.framework,
+        root_dir=_repo_root(),
+        session_manager=runtime.session_manager.__class__(state_dir=tmp_path / "sessions", root_dir=_repo_root()),
+        skill_catalog=runtime.skill_catalog,
+    )
+    session = runtime.create_session(session_id="session-cli", workspace=str(tmp_path))
+    thread = runtime.create_thread(
+        {
+            "title": "Persistent CLI thread",
+            "mode": "chat",
+            "task_prompt": "Persist channel envelopes.",
+            "session_id": session.session_id,
+            "workspace": str(tmp_path),
+        }
+    )
+    runtime.session_manager.branch_journal(session.session_id, "review")
+    runtime.session_manager.compact_journal(session.session_id, branch_id="main", keep_last_n=1)
+
+    send_buf = io.StringIO()
+    send_args = parser.parse_args(
+        [
+            "interface",
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path / "sessions"),
+            "channel",
+            "send",
+            "--session-id",
+            session.session_id,
+            "--thread-id",
+            thread.thread_id,
+            "--channel",
+            "terminal",
+            "--content",
+            "persist me",
+        ]
+    )
+    rc = dispatch_interface_command(send_args, send_buf)
+    assert rc == 0
+    assert json.loads(send_buf.getvalue())["envelope"]["payload"]["content"] == "persist me"
+
+    list_buf = io.StringIO()
+    list_args = parser.parse_args(
+        [
+            "interface",
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path / "sessions"),
+            "channel",
+            "list",
+            "--session-id",
+            session.session_id,
+            "--thread-id",
+            thread.thread_id,
+        ]
+    )
+    rc = dispatch_interface_command(list_args, list_buf)
+    assert rc == 0
+    list_payload = json.loads(list_buf.getvalue())
+    assert list_payload["count"] == 1
+    assert list_payload["messages"][0]["payload"]["content"] == "persist me"
+
+    branch_buf = io.StringIO()
+    branch_args = parser.parse_args(
+        [
+            "interface",
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path / "sessions"),
+            "journal",
+            "branch",
+            "--session-id",
+            session.session_id,
+            "--branch-id",
+            "main",
+        ]
+    )
+    rc = dispatch_interface_command(branch_args, branch_buf)
+    assert rc == 0
+    assert json.loads(branch_buf.getvalue())["journal"]["branch_id"] == "main"
+
+    compaction_buf = io.StringIO()
+    compaction_args = parser.parse_args(
+        [
+            "interface",
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path / "sessions"),
+            "journal",
+            "compaction",
+            "--session-id",
+            session.session_id,
+            "--branch-id",
+            "main",
+        ]
+    )
+    rc = dispatch_interface_command(compaction_args, compaction_buf)
+    assert rc == 0
+    assert json.loads(compaction_buf.getvalue())["journal"]["branch_id"] == "main"
+
+    capability_buf = io.StringIO()
+    capability_args = parser.parse_args(
+        [
+            "interface",
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path / "sessions"),
+            "capability",
+            "summary",
+            "--session-id",
+            session.session_id,
+        ]
+    )
+    rc = dispatch_interface_command(capability_args, capability_buf)
+    assert rc == 0
+    capability_payload = json.loads(capability_buf.getvalue())["capability"]
+    assert capability_payload["runtime"]["session_bound"] is True
+    assert capability_payload["journal"]["entries"] >= 1
+
+
+def test_interface_persistent_commands_fail_loudly_for_unknown_session(tmp_path):
+    parser = _parser()
+
+    list_buf = io.StringIO()
+    list_args = parser.parse_args(
+        [
+            "interface",
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path / "sessions"),
+            "channel",
+            "list",
+            "--session-id",
+            "missing-session",
+        ]
+    )
+    rc = dispatch_interface_command(list_args, list_buf)
+    assert rc == 1
+    assert "unknown session" in json.loads(list_buf.getvalue())["error"]
+
+    capability_buf = io.StringIO()
+    capability_args = parser.parse_args(
+        [
+            "interface",
+            "--repo-root",
+            str(_repo_root()),
+            "--state-dir",
+            str(tmp_path / "sessions"),
+            "capability",
+            "summary",
+            "--session-id",
+            "missing-session",
+        ]
+    )
+    rc = dispatch_interface_command(capability_args, capability_buf)
+    assert rc == 1
+    assert "unknown session" in json.loads(capability_buf.getvalue())["error"]
