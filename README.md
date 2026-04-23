@@ -265,10 +265,11 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **136 implementation cycles** completed
-- **21 300+ tests** passing (full suite ~15-28 min on CPU)
-- **1 430+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, and the new **mcp / computer_use / multimodal / deployment** surface dirs
+- **137 implementation cycles** completed
+- **21 700+ tests** passing (full suite ~15-28 min on CPU)
+- **1 440+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, and the new **mcp / computer_use / multimodal / deployment** surface dirs
 - Recent cycles:
+  - **cycle-137** — UI tooltip system (hover-delay/position/registry) + ContextMenu (items/sections/keyboard-nav) + NotificationDrawer (severity/dismiss/history) → **UI at 25 files ✅**, serving ToolCallStreamAccumulator (partial JSON delta accumulation) + ContextCompressor (truncate/summarize_middle/drop_tool_results), eval MathBenchmark (7 categories, symbolic+numeric verify, BENCHMARK_REGISTRY["math"]) + CodeReviewScorer (5-dimension weighted rubric, grade A-F), alignment DPO trainer (sigmoid/hinge/IPO, label smoothing, 2305.18290) + RewardCalibrator (temperature/Platt/isotonic, ECE)
   - **cycle-136** — UI expansion (HotkeyOverlay + SplitPane + ModelInfoPanel, now 22 files), MCP expansion (SkillCatalog + ExtensionManifestValidator, now 7 files), agent coding tools (ASTAnalyzer + FIMTokenizer PSM/SPM/RANDOM, PatchSynthesizer via difflib), CodeExecutionTool (DENY_PATTERNS subprocess sandbox), OSWorld eval scorer (6 stub tasks, BENCHMARK_REGISTRY)
   - **cycle-135** — multimodal GatedFusion + WeightedSumFusion (sigmoid/softmax-normalized), WebArena harness + eval scorer, UI DebugPanel + ProgressRenderer (ETAEstimator ring buffer), GitHub Actions CI real workflow file — **anti-stagnation resolved**: multimodal→8 ✅, computer_use→6 ✅
   - **cycle-134** — Helm chart generator (4 YAML templates), OpenTelemetry instrumentation (Tracer + PrometheusMetrics), UI StreamingRenderer + SessionManager (multi-tab PAUSED semantics), QFormer cross-modal attention (2301.12597), SPIN trainer (2401.01335), KTO trainer (2402.01306)
