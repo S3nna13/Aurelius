@@ -16,11 +16,13 @@ _PUBLIC_SUBPACKAGES = (
     "inference",
     "longcontext",
     "mcp",
+    "memory",
     "model",
     "multimodal",
     "retrieval",
     "safety",
     "serving",
+    "tools",
     "training",
     "ui",
 )

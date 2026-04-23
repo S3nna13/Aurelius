@@ -10,3 +10,22 @@ try:
     )
 except Exception:  # pragma: no cover - keep package importable on partial setups
     pass
+
+try:
+    from .plugin_commands import (
+        PluginCommandResult,
+        PluginCommands,
+        PLUGIN_COMMANDS,
+    )
+except Exception:  # pragma: no cover
+    pass
+
+try:
+    from .debug_commands import (
+        LogLevel,
+        DebugSnapshot,
+        DebugCommands,
+        DEBUG_COMMANDS,
+    )
+except Exception:  # pragma: no cover
+    pass

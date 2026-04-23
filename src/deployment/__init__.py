@@ -62,3 +62,49 @@ __all__ = list(__all__) + [
     "GHActionsTrigger",
     "GHActionsJob",
 ]
+
+# --- Rollout manager ----------------------------------------------------------
+from src.deployment.rollout_manager import (
+    CANARY_3_STAGE as _CANARY_3_STAGE,
+    ROLLOUT_REGISTRY as _ROLLOUT_REGISTRY,
+    RolloutManager as _RolloutManager,
+    RolloutPlan as _RolloutPlan,
+    RolloutStage as _RolloutStage,
+    RolloutStrategy as _RolloutStrategy,
+)
+
+CANARY_3_STAGE = _CANARY_3_STAGE
+ROLLOUT_REGISTRY = _ROLLOUT_REGISTRY
+RolloutManager = _RolloutManager
+RolloutPlan = _RolloutPlan
+RolloutStage = _RolloutStage
+RolloutStrategy = _RolloutStrategy
+
+__all__ = list(__all__) + [
+    "CANARY_3_STAGE",
+    "ROLLOUT_REGISTRY",
+    "RolloutManager",
+    "RolloutPlan",
+    "RolloutStage",
+    "RolloutStrategy",
+]
+
+# --- Secret provider ----------------------------------------------------------
+from src.deployment.secret_provider import (
+    SECRET_PROVIDER_REGISTRY as _SECRET_PROVIDER_REGISTRY,
+    SecretBackend as _SecretBackend,
+    SecretProvider as _SecretProvider,
+    SecretValue as _SecretValue,
+)
+
+SECRET_PROVIDER_REGISTRY = _SECRET_PROVIDER_REGISTRY
+SecretBackend = _SecretBackend
+SecretProvider = _SecretProvider
+SecretValue = _SecretValue
+
+__all__ = list(__all__) + [
+    "SECRET_PROVIDER_REGISTRY",
+    "SecretBackend",
+    "SecretProvider",
+    "SecretValue",
+]
