@@ -95,3 +95,13 @@ from .kto_trainer import KTOTrainer, KTOConfig, KTOLoss, KTOBatch  # noqa: E402
 
 ALIGNMENT_REGISTRY["kto"] = KTOTrainer
 
+from .dpo_trainer import DPOConfig, DPOLoss, DPOTrainer  # noqa: E402
+
+ALIGNMENT_REGISTRY["dpo"] = DPOTrainer()
+
+from .reward_calibration import (  # noqa: E402
+    CalibrationMethod,
+    RewardCalibrator,
+    REWARD_CALIBRATOR_REGISTRY,
+)
+

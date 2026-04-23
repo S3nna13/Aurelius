@@ -137,6 +137,20 @@ from src.ui.model_info_panel import (
     MODEL_INFO_PANEL_REGISTRY,
     DEFAULT_MODEL_INFO_PANEL,
 )
+from src.ui.tooltip import TooltipRenderer, TooltipRegistry, TOOLTIP_REGISTRY
+from src.ui.context_menu import (
+    MenuItemKind,
+    MenuItem,
+    ContextMenu,
+    ContextMenuRegistry,
+    CONTEXT_MENU_REGISTRY,
+)
+from src.ui.notification_drawer import (
+    NotificationLevel,
+    Notification,
+    NotificationDrawer,
+    DEFAULT_NOTIFICATION_DRAWER,
+)
 
 # Register new UI surfaces into the surface registry.
 _COMMAND_PALETTE_SURFACE = UISurface(
@@ -370,4 +384,19 @@ __all__ = [
     "ModelInfoError",
     "MODEL_INFO_PANEL_REGISTRY",
     "DEFAULT_MODEL_INFO_PANEL",
+    # Tooltip
+    "TooltipRenderer",
+    "TooltipRegistry",
+    "TOOLTIP_REGISTRY",
+    # Context menu
+    "MenuItemKind",
+    "MenuItem",
+    "ContextMenu",
+    "ContextMenuRegistry",
+    "CONTEXT_MENU_REGISTRY",
+    # Notification drawer
+    "NotificationLevel",
+    "Notification",
+    "NotificationDrawer",
+    "DEFAULT_NOTIFICATION_DRAWER",
 ]

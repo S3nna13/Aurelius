@@ -112,3 +112,19 @@ from .responses_api import (  # noqa: E402,F401
 # Register the Responses API handler under the "responses" key so it sits
 # alongside all other API-shape validators in the shared registry.
 API_SHAPE_REGISTRY["responses"] = ResponsesAPIHandler
+
+# --- Streaming tool-call accumulation (additive) ---------------------------
+from .tool_call_streaming import (  # noqa: E402,F401
+    ToolCallBuffer,
+    ToolCallState,
+    ToolCallStreamAccumulator,
+    TOOL_CALL_ACCUMULATOR_REGISTRY,
+)
+
+# --- Multi-turn context compression (additive) -----------------------------
+from .context_compressor import (  # noqa: E402,F401
+    CompressedTurn,
+    CompressionStrategy,
+    ContextCompressor,
+    CONTEXT_COMPRESSOR_REGISTRY,
+)
