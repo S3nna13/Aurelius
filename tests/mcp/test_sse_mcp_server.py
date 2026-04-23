@@ -125,7 +125,7 @@ class TestHandleRequest:
         server.register_tool_handler("boom", boom)
         resp = server.handle_request({"tool": "boom"})
         assert "error" in resp
-        assert "boom" in resp["error"]
+        assert "boom" not in resp["error"]  # exception detail must not leak (AUR-SEC-2026-0010)
 
     def test_method_key_also_routes(self):
         """handle_request should also accept 'method' as the routing key."""

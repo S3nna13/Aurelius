@@ -9,3 +9,33 @@ AUR-SEC-2026-0002 | B324: weak MD5 hash for non-security dedup in synthetic_code
 AUR-SEC-2026-0003 | B324: weak SHA1 hash for non-security chunk-id in corpus_indexer.py | Low | CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N | CWE-327 | retrieval | Tampering | bandit B324 | src/retrieval/corpus_indexer.py:168 | fixed | cycle-139 | fix: usedforsecurity=False | regression: tests/security/test_security_gate_c139_adversarial.py
 
 AUR-SEC-2026-0004 | FROZEN-FILE: weights_only=False in checkpoint optimizer load | High | CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H | CWE-502 | training | Tampering | picklescan/manual review | src/training/checkpoint.py:145 (frozen file) | fixed | cycle-139 | fix: weights_only=True for optimizer state load; frozen-file change justified by security policy; all 7 checkpoint tests pass | regression: tests/training/test_checkpoint.py
+
+AUR-SEC-2026-0005 | weights_only=False in WarmStartInitializer.apply() interpolate branch | High | CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H | CWE-502 | training | Tampering | picklescan/manual review | src/training/warm_start.py:205 | fixed | cycle-139-sec | fix: weights_only=True | regression: tests/security/test_security_hardening_regressions.py
+
+AUR-SEC-2026-0006 | weights_only=False in WarmStartInitializer.apply() stack_layers branch | High | CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H | CWE-502 | training | Tampering | picklescan/manual review | src/training/warm_start.py:214 | fixed | cycle-139-sec | fix: weights_only=True | regression: tests/security/test_security_hardening_regressions.py
+
+AUR-SEC-2026-0007 | Path traversal in FileConversationStore via unsanitized conversation_id | High | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N | CWE-22 | serving | Tampering | manual review / GitHub alert | src/serving/conversation_store.py | fixed | cycle-139-sec | fix: _SAFE_ID allowlist regex + resolved-path jail check | regression: tests/security/test_security_hardening_regressions.py
+
+AUR-SEC-2026-0008 | ReDoS in _JS_IMPORT_RE via unbounded .+? | Medium | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H | CWE-400 | agent | DoS | manual review | src/agent/repo_context_packer.py:_JS_IMPORT_RE | fixed | cycle-139-sec | fix: [^\n]{0,200}? bound | regression: tests/security/test_security_hardening_regressions.py
+
+AUR-SEC-2026-0009 | ReDoS in _GO_IMPORT_RE via unbounded [^)]+ with DOTALL | Medium | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H | CWE-400 | agent | DoS | manual review | src/agent/repo_context_packer.py:_GO_IMPORT_RE | fixed | cycle-139-sec | fix: [^)]{0,4096} bound + DOTALL removed | regression: tests/security/test_security_hardening_regressions.py
+
+AUR-SEC-2026-0010 | Exception info disclosure in SSEMCPServer.handle_request | Medium | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N | CWE-209 | mcp | Information Disclosure | manual review | src/mcp/sse_mcp_server.py:215 | fixed | cycle-139-sec | fix: generic handler error; test asserts no leakage | regression: tests/mcp/test_sse_mcp_server.py
+
+AUR-SEC-2026-0011 | Wildcard CORS on SSE MCP server | Medium | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N | CWE-942 | mcp | Spoofing | manual review | src/mcp/sse_mcp_server.py | fixed | cycle-139-sec | fix: cors_origins=[] with origin-allowlist | regression: tests/mcp/test_sse_mcp_server.py
+
+AUR-SEC-2026-0012 | Unbounded Content-Length OOM/Slowloris DoS on SSE server | High | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H | CWE-400 | mcp | DoS | manual review | src/mcp/sse_mcp_server.py:do_POST | fixed | cycle-139-sec | fix: 1 MiB cap + 413 | regression: tests/mcp/test_sse_mcp_server.py
+
+AUR-SEC-2026-0013 | Broken harm detection math error in guardrails | High | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:H/A:N | CWE-670 | serving | Tampering | manual review | src/serving/guardrails.py | fixed | cycle-139-sec | fix: 1.0 on any match; threshold 0.8->0.5 | regression: tests/security/test_security_hardening_regressions.py
+
+AUR-SEC-2026-0014 | MD5 in session_router._hash | Low | CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N | CWE-327 | serving | Tampering | manual review | src/serving/session_router.py | fixed | cycle-139-sec | fix: blake2b digest_size=8 | regression: tests/security/test_security_hardening_regressions.py
+
+AUR-SEC-2026-0015 | MCP StdioMCPServer exception info disclosure | Medium | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N | CWE-209 | mcp | Information Disclosure | manual review | src/mcp/mcp_server.py | fixed | cycle-139-sec | fix: internal logging; generic response | regression: tests/mcp/test_mcp_server.py
+
+AUR-SEC-2026-0016 | Canary pipeline: exfil detection defense | N/A | N/A | CWE-N/A | security | Detection | new defensive module | src/security/canary_pipeline.py | new | cycle-139-sec | token VALUE never logged | regression: tests/security/test_canary_pipeline.py
+
+AUR-SEC-2026-0017 | Safe archive extractor: zip-slip/tar-slip/bomb guards | N/A | N/A | CWE-N/A | security | Detection | new defensive module | src/security/safe_archive.py | new | cycle-139-sec | member-by-member + path jail | regression: tests/security/test_safe_archive.py
+
+AUR-SEC-2026-0018 | Auth middleware: HMAC timing-safe API key comparison | N/A | N/A | CWE-N/A | serving | Spoofing/EoP | new defensive module | src/serving/auth_middleware.py | new | cycle-139-sec | hmac.compare_digest; DEFAULT require_auth=False | regression: tests/serving/test_auth_middleware.py
+
+AUR-SEC-2026-0019 | Token-bucket rate limiter: thread-safe DoS defense | N/A | N/A | CWE-N/A | serving | DoS | new defensive module | src/serving/rate_limiter.py | new | cycle-139-sec | per-bucket Lock; 100 rps burst 200 | regression: tests/serving/test_rate_limiter.py
