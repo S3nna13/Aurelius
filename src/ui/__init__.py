@@ -151,6 +151,16 @@ from src.ui.notification_drawer import (
     NotificationDrawer,
     DEFAULT_NOTIFICATION_DRAWER,
 )
+from src.ui.color_theme import (
+    ColorDepth,
+    ColorSpec,
+    ColorTheme,
+    ThemeRenderer,
+    COLOR_THEME_REGISTRY,
+    DEFAULT_THEME,
+    get_theme,
+    register_theme,
+)
 
 # Register new UI surfaces into the surface registry.
 _COMMAND_PALETTE_SURFACE = UISurface(
@@ -252,6 +262,14 @@ _MODEL_INFO_PANEL_SURFACE = UISurface(
     keyboard_map={"esc": "cancel"},
 )
 
+_COLOR_THEME_SURFACE = UISurface(
+    surface_id="color-theme",
+    title="Color Theme",
+    panels=("theme",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "tab": "next_theme"},
+)
+
 for _surface in (
     _COMMAND_PALETTE_SURFACE,
     _STATUS_HIERARCHY_SURFACE,
@@ -267,6 +285,7 @@ for _surface in (
     _HOTKEY_OVERLAY_SURFACE,
     _SPLIT_PANE_SURFACE,
     _MODEL_INFO_PANEL_SURFACE,
+    _COLOR_THEME_SURFACE,
 ):
     if _surface.surface_id not in UI_SURFACE_REGISTRY:
         register_ui_surface(_surface)
@@ -399,4 +418,13 @@ __all__ = [
     "Notification",
     "NotificationDrawer",
     "DEFAULT_NOTIFICATION_DRAWER",
+    # Color theme
+    "ColorDepth",
+    "ColorSpec",
+    "ColorTheme",
+    "ThemeRenderer",
+    "COLOR_THEME_REGISTRY",
+    "DEFAULT_THEME",
+    "get_theme",
+    "register_theme",
 ]

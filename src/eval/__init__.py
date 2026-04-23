@@ -999,3 +999,63 @@ __all__ = list(__all__) + [
     "OSWORLD_TASK_REGISTRY",
     "EVAL_HARNESS_REGISTRY",
 ]
+
+# --- Additive registration for BenchmarkRunner ------------------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.
+from .benchmark_runner import (
+    RunConfig as _RunConfig,
+    BenchmarkResult as _BenchmarkResult,
+    BenchmarkRunner as _BenchmarkRunner,
+)
+
+RunConfig = _RunConfig
+BenchmarkResult = _BenchmarkResult
+BenchmarkRunner = _BenchmarkRunner
+
+__all__ = list(__all__) + [
+    "RunConfig",
+    "BenchmarkResult",
+    "BenchmarkRunner",
+]
+
+# --- Additive registration for ABComparison ---------------------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.
+from .ab_comparison import (
+    ComparisonMetric as _ComparisonMetric,
+    ModelComparison as _ModelComparison,
+    ABComparison as _ABComparison,
+)
+
+ComparisonMetric = _ComparisonMetric
+ModelComparison = _ModelComparison
+ABComparison = _ABComparison
+
+__all__ = list(__all__) + [
+    "ComparisonMetric",
+    "ModelComparison",
+    "ABComparison",
+]
+
+# --- Additive registration for EvalPipeline ---------------------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.
+from .eval_pipeline import (
+    EvalStage as _EvalStage,
+    PipelineResult as _PipelineResult,
+    EvalPipeline as _EvalPipeline,
+    EVAL_PIPELINE_REGISTRY as _EVAL_PIPELINE_REGISTRY,
+)
+
+EvalStage = _EvalStage
+PipelineResult = _PipelineResult
+EvalPipeline = _EvalPipeline
+EVAL_PIPELINE_REGISTRY = _EVAL_PIPELINE_REGISTRY
+
+__all__ = list(__all__) + [
+    "EvalStage",
+    "PipelineResult",
+    "EvalPipeline",
+    "EVAL_PIPELINE_REGISTRY",
+]

@@ -99,6 +99,25 @@ from .cross_layer_kv_sharing import (  # noqa: E402
 
 LONGCONTEXT_STRATEGY_REGISTRY["cross_layer_kv"] = CrossLayerKVStack
 
+from .dynamic_ntk_rope import DynamicNTKRoPE, NTKRoPEConfig  # noqa: E402
+
+LONGCONTEXT_STRATEGY_REGISTRY["dynamic_ntk_rope"] = DynamicNTKRoPE
+
+from .streaming_attention import (  # noqa: E402
+    StreamingConfig,
+    StreamingAttentionCache,
+    compute_streaming_attention,
+)
+
+LONGCONTEXT_STRATEGY_REGISTRY["streaming_attention"] = StreamingAttentionCache
+
+from .memory_mapped_context import (  # noqa: E402
+    ContextChunk,
+    MemoryMappedContext,
+)
+
+LONGCONTEXT_STRATEGY_REGISTRY["memory_mapped_context"] = MemoryMappedContext
+
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
     "KVInt8Compressor",
@@ -145,4 +164,11 @@ __all__ = [
     "CrossLayerKVConfig",
     "CrossLayerKVAttention",
     "CrossLayerKVStack",
+    "DynamicNTKRoPE",
+    "NTKRoPEConfig",
+    "StreamingConfig",
+    "StreamingAttentionCache",
+    "compute_streaming_attention",
+    "ContextChunk",
+    "MemoryMappedContext",
 ]

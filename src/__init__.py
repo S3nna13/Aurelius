@@ -9,6 +9,7 @@ _PUBLIC_SUBPACKAGES = (
     "alignment",
     "backends",
     "chat",
+    "compression",
     "computer_use",
     "data",
     "deployment",
