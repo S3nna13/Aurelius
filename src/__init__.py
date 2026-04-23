@@ -18,6 +18,7 @@ _PUBLIC_SUBPACKAGES = (
     "mcp",
     "memory",
     "model",
+    "monitoring",
     "multimodal",
     "protocol",
     "reasoning",

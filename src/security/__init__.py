@@ -64,6 +64,22 @@ from src.security.soc_pipeline import (
     evidence_first_gate,
 )
 
+from src.security.canary_pipeline import (
+    CanaryConfig,
+    CanaryPipeline,
+    CanaryToken,
+    CANARY_PIPELINE_REGISTRY,
+    DEFAULT_CANARY_PIPELINE,
+)
+
+from src.security.safe_archive import (
+    ArchiveError,
+    SAFE_EXTRACTOR_REGISTRY,
+    SafeTarExtractor,
+    SafeZipExtractor,
+    safe_extract,
+)
+
 
 # Additive registry keyed by name; test suites and integrators can register
 # new defensive pipelines without touching downstream call sites.
@@ -110,4 +126,14 @@ __all__ = [
     "SecurityEvent",
     "TriageDecision",
     "evidence_first_gate",
+    "CanaryConfig",
+    "CanaryPipeline",
+    "CanaryToken",
+    "CANARY_PIPELINE_REGISTRY",
+    "DEFAULT_CANARY_PIPELINE",
+    "ArchiveError",
+    "SAFE_EXTRACTOR_REGISTRY",
+    "SafeTarExtractor",
+    "SafeZipExtractor",
+    "safe_extract",
 ]

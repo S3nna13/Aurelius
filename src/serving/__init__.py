@@ -128,3 +128,25 @@ from .context_compressor import (  # noqa: E402,F401
     ContextCompressor,
     CONTEXT_COMPRESSOR_REGISTRY,
 )
+
+# --- Token-bucket rate limiter (additive, STRIDE-DoS defense) --------------
+from .rate_limiter import (  # noqa: E402,F401
+    RateLimitConfig,
+    RateLimitResult,
+    RateLimiterChain,
+    TokenBucketLimiter,
+    DEFAULT_RATE_LIMITER,
+    RATE_LIMIT_REGISTRY,
+)
+
+# --- Authentication middleware (additive, AUR-SEC-2026-0012) ---------------
+# Mitigates Spoofing and Elevation of Privilege on the serving surface by
+# requiring callers to present a hashed API key before any request is served.
+from .auth_middleware import (  # noqa: E402,F401
+    APIKey,
+    AuthConfig,
+    AuthMiddleware,
+    AuthResult,
+    AUTH_MIDDLEWARE_REGISTRY,
+    DEFAULT_AUTH_MIDDLEWARE,
+)

@@ -112,6 +112,26 @@ CITATION_REGISTRY: dict[str, type] = {
     "basic": CitationTracker,
 }
 
+from .neural_reranker import (  # noqa: E402
+    CrossEncoderReranker as NeuralCrossEncoderReranker,
+    ListwiseReranker,
+    RerankScore,
+)
+
+RERANKER_REGISTRY["neural_cross_encoder"] = NeuralCrossEncoderReranker
+RERANKER_REGISTRY["listwise"] = ListwiseReranker
+
+from .dense_retriever import DenseDocument, DenseRetriever  # noqa: E402
+
+RETRIEVER_REGISTRY["dense"] = DenseRetriever
+
+from .hybrid_fusion_v2 import (  # noqa: E402
+    FusionResult,
+    FusionStrategy,
+    HYBRID_FUSION_REGISTRY,
+    HybridFusionV2,
+)
+
 __all__ = [
     "BM25Retriever",
     "Chunk",
@@ -154,4 +174,16 @@ __all__ = [
     "CodeFeatures",
     "split_identifier",
     "stub_token_embed",
+    # neural_reranker
+    "NeuralCrossEncoderReranker",
+    "ListwiseReranker",
+    "RerankScore",
+    # dense_retriever
+    "DenseDocument",
+    "DenseRetriever",
+    # hybrid_fusion_v2
+    "FusionResult",
+    "FusionStrategy",
+    "HYBRID_FUSION_REGISTRY",
+    "HybridFusionV2",
 ]
