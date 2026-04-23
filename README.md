@@ -265,10 +265,11 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **137 implementation cycles** completed
-- **21 700+ tests** passing (full suite ~15-28 min on CPU)
-- **1 440+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, and the new **mcp / computer_use / multimodal / deployment** surface dirs
+- **138 implementation cycles** completed
+- **22 100+ tests** passing (full suite ~15-28 min on CPU)
+- **1 460+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, mcp, computer_use, multimodal, deployment, and the new **memory / tools** surface dirs
 - Recent cycles:
+  - **cycle-138** — deployment RolloutManager (canary/blue-green/rolling traffic split) + SecretProvider (ENV/FILE/MEMORY backends, redaction); CLI PluginCommands + DebugCommands (log level, traces, metric snapshot); **NEW memory surface**: EpisodicMemory (importance scoring, BM25 search, eviction) + WorkingMemory (TTL + LRU) + MemoryIndex (TF-IDF inverted index); **NEW tools surface**: ToolRegistry (OpenAI-format spec, exception-safe dispatch) + ShellTool (deny-list sandbox) + FileTool (path deny-list, base_dir)
   - **cycle-137** — UI tooltip system (hover-delay/position/registry) + ContextMenu (items/sections/keyboard-nav) + NotificationDrawer (severity/dismiss/history) → **UI at 25 files ✅**, serving ToolCallStreamAccumulator (partial JSON delta accumulation) + ContextCompressor (truncate/summarize_middle/drop_tool_results), eval MathBenchmark (7 categories, symbolic+numeric verify, BENCHMARK_REGISTRY["math"]) + CodeReviewScorer (5-dimension weighted rubric, grade A-F), alignment DPO trainer (sigmoid/hinge/IPO, label smoothing, 2305.18290) + RewardCalibrator (temperature/Platt/isotonic, ECE)
   - **cycle-136** — UI expansion (HotkeyOverlay + SplitPane + ModelInfoPanel, now 22 files), MCP expansion (SkillCatalog + ExtensionManifestValidator, now 7 files), agent coding tools (ASTAnalyzer + FIMTokenizer PSM/SPM/RANDOM, PatchSynthesizer via difflib), CodeExecutionTool (DENY_PATTERNS subprocess sandbox), OSWorld eval scorer (6 stub tasks, BENCHMARK_REGISTRY)
   - **cycle-135** — multimodal GatedFusion + WeightedSumFusion (sigmoid/softmax-normalized), WebArena harness + eval scorer, UI DebugPanel + ProgressRenderer (ETAEstimator ring buffer), GitHub Actions CI real workflow file — **anti-stagnation resolved**: multimodal→8 ✅, computer_use→6 ✅
