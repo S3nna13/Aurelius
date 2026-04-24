@@ -9,12 +9,12 @@ from src.serving.model_router import (
 )
 
 
-def _ep(eid: str, **kwargs) -> ModelEndpoint:
+def _ep(eid: str, port: int = 8000, **kwargs) -> ModelEndpoint:
     return ModelEndpoint(
         endpoint_id=eid,
         model_name="test-model",
         host="localhost",
-        port=8000,
+        port=port,
         **kwargs,
     )
 
