@@ -4,6 +4,28 @@ import json
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from urllib.parse import urlparse
+
+_ALLOWED_SCHEMES = frozenset(["http", "https"])
+
+
+def _validate_backend_url(url: str) -> None:
+    """Validate backend URL: only http/https schemes allowed.
+
+    SSRF mitigation for bandit B310 / CWE-22. The base URL is config-supplied
+    and typically points at a loopback inference server, but we still enforce
+    the scheme allowlist to prevent file://, gopher://, ftp:// etc.
+    """
+    try:
+        parsed = urlparse(url)
+    except Exception as exc:  # pragma: no cover - urlparse rarely raises
+        raise ValueError(f"malformed backend URL: {url!r}") from exc
+    if parsed.scheme not in _ALLOWED_SCHEMES:
+        raise ValueError(
+            f"backend URL scheme {parsed.scheme!r} not allowed; must be http or https"
+        )
+    if not parsed.hostname:
+        raise ValueError(f"backend URL missing host: {url!r}")
 
 __all__ = [
     "HTTPBackendConfig",
@@ -38,7 +60,8 @@ class HTTPBackend:
         last_exc: Exception | None = None
         for attempt in range(cfg.max_retries):
             try:
-                with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:
+                _validate_backend_url(url)
+                with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_backend_url
                     return json.loads(resp.read())
             except urllib.error.HTTPError as exc:
                 if 400 <= exc.code < 500:
@@ -69,9 +92,14 @@ class HTTPBackend:
 
     def health(self) -> bool:
         cfg = self._config
-        req = urllib.request.Request(f"{cfg.base_url}/health", method="GET")
+        health_url = f"{cfg.base_url}/health"
         try:
-            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:
+            _validate_backend_url(health_url)
+        except ValueError:
+            return False
+        req = urllib.request.Request(health_url, method="GET")
+        try:
+            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_backend_url
                 return resp.status == 200
         except Exception:
             return False

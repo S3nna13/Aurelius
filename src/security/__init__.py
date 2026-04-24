@@ -80,6 +80,38 @@ from src.security.safe_archive import (
     safe_extract,
 )
 
+from src.security.policy_gate import (
+    DEFAULT_POLICY_GATE,
+    POLICY_GATE_REGISTRY,
+    PolicyGate,
+    PolicyScope,
+    PolicyViolation,
+)
+
+from src.security.sarif_reporter import (
+    SARIF_REPORTER_REGISTRY,
+    SarifLevel,
+    SarifReport,
+    SarifResult,
+    SarifRule,
+)
+
+from src.security.audit_logger import (
+    AUDIT_LOGGER,
+    AuditCategory,
+    AuditEvent,
+    AuditLevel,
+    AuditLogger,
+)
+
+from src.security.sandbox_executor import (
+    SANDBOX_EXECUTOR,
+    SandboxConfig,
+    SandboxExecutor,
+    SandboxResult,
+    SandboxViolation,
+)
+
 
 # Additive registry keyed by name; test suites and integrators can register
 # new defensive pipelines without touching downstream call sites.
@@ -136,4 +168,24 @@ __all__ = [
     "SafeTarExtractor",
     "SafeZipExtractor",
     "safe_extract",
+    "PolicyScope",
+    "PolicyViolation",
+    "PolicyGate",
+    "POLICY_GATE_REGISTRY",
+    "DEFAULT_POLICY_GATE",
+    "SarifLevel",
+    "SarifRule",
+    "SarifResult",
+    "SarifReport",
+    "SARIF_REPORTER_REGISTRY",
+    "AuditLevel",
+    "AuditCategory",
+    "AuditEvent",
+    "AuditLogger",
+    "AUDIT_LOGGER",
+    "SandboxConfig",
+    "SandboxViolation",
+    "SandboxResult",
+    "SandboxExecutor",
+    "SANDBOX_EXECUTOR",
 ]

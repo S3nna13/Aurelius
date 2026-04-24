@@ -1,9 +1,52 @@
 import ast
+import operator
 import re
 import json
 import datetime
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Any
+
+
+# Maximum length of a calculator expression accepted by the built-in tool.
+# Guards against pathological inputs and protects the parser.
+_MAX_EXPR_LEN = 1_000
+
+_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+_UNARYOPS = {
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+
+def _calc_walk(node: ast.AST) -> Any:
+    """AST walker that computes an arithmetic expression without going
+    through the dynamic code evaluator. Used by :func:`_safe_eval` to avoid
+    the B307 finding (AUR-SEC-2026-0022)."""
+    if isinstance(node, ast.Expression):
+        return _calc_walk(node.body)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, (int, float)) and not isinstance(
+            node.value, bool
+        ):
+            return node.value
+        raise ValueError(
+            f"Disallowed constant type: {type(node.value).__name__}"
+        )
+    if isinstance(node, ast.BinOp) and type(node.op) in _BINOPS:
+        return _BINOPS[type(node.op)](
+            _calc_walk(node.left), _calc_walk(node.right)
+        )
+    if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARYOPS:
+        return _UNARYOPS[type(node.op)](_calc_walk(node.operand))
+    raise ValueError(f"Disallowed node type: {type(node).__name__}")
 
 
 @dataclass
@@ -22,20 +65,37 @@ class Tool:
 
 
 def _safe_eval(expression: str) -> Any:
-    """Evaluate an arithmetic expression using only literal numbers and safe operators."""
-    allowed_nodes = (
-        ast.Expression, ast.BinOp, ast.UnaryOp, ast.Constant,
-        ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod,
-        ast.Pow, ast.USub, ast.UAdd,
-    )
-    # ast.Num was removed in Python 3.14; ast.Constant covers all literals
+    """Compute an arithmetic expression using only numeric literals and safe operators.
+
+    Hardened against B307 (AUR-SEC-2026-0022) by:
+      * enforcing a length guard via ``_MAX_EXPR_LEN``,
+      * AST-validating every node against an allowlist, and
+      * computing the result via a strict AST walker (``_calc_walk``) instead
+        of the Python dynamic-code primitive.
+    """
+    if not expression or len(expression) > _MAX_EXPR_LEN:
+        raise ValueError(
+            f"expression rejected by size guard: len={len(expression)}"
+        )
+    # ast.Num was removed in Python 3.14; ast.Constant covers all literals.
     tree = ast.parse(expression.strip(), mode="eval")
-    for node in ast.walk(tree):
-        if not isinstance(node, allowed_nodes):
-            raise ValueError(f"Disallowed node type: {type(node).__name__}")
-    code = compile(tree, "<string>", "eval")
-    # ast-validated expression — no builtins exposed
-    return eval(code, {"__builtins__": {}})  # noqa: S307
+    return _calc_walk(tree)
+
+
+def parse_literal(text: str) -> Any:
+    """Safely parse a Python literal (dict/list/tuple/number/string/bool/None).
+
+    Uses :func:`ast.literal_eval`, which rejects anything that is not a
+    composite of literals. This is the sanctioned replacement for dynamic
+    code evaluation when the input is structured data (AUR-SEC-2026-0022).
+    """
+    if not isinstance(text, str):
+        raise TypeError(f"parse_literal expects str, got {type(text).__name__}")
+    if not text or len(text) > _MAX_EXPR_LEN:
+        raise ValueError(
+            f"literal rejected by size guard: len={len(text)}"
+        )
+    return ast.literal_eval(text)
 
 
 def calculator(expression: str) -> str:

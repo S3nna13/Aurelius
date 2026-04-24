@@ -10,7 +10,11 @@ _VALID_DTYPES = {"float32", "float16", "bfloat16", "int8", "int4"}
 class ServeDeploymentConfig:
     model_name: str
     model_path: str
-    host: str = "0.0.0.0"
+    # Default to loopback only (CWE-605). Operators who need to expose the
+    # serving endpoint on all interfaces must explicitly opt in by setting
+    # host="0.0.0.0" via config; do not change this default without a
+    # corresponding auth/network-policy review.
+    host: str = "127.0.0.1"
     port: int = 8000
     workers: int = 1
     max_batch_size: int = 32

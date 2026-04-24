@@ -14,7 +14,29 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Callable, List
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+
+_ALLOWED_UPSTREAM_SCHEMES = frozenset(["http", "https"])
+
+
+def _validate_upstream_url(url: str) -> None:
+    """Validate upstream API URL scheme.
+
+    SSRF mitigation for bandit B310 / CWE-22. The api_url is CLI-supplied
+    and proxied from user chat messages; enforce http/https scheme allowlist
+    to prevent file://, gopher://, etc. being used as upstream.
+    """
+    try:
+        parsed = urlparse(url)
+    except Exception as exc:  # pragma: no cover
+        raise ValueError(f"malformed upstream URL: {url!r}") from exc
+    if parsed.scheme not in _ALLOWED_UPSTREAM_SCHEMES:
+        raise ValueError(
+            f"upstream URL scheme {parsed.scheme!r} not allowed; must be http or https"
+        )
+    if not parsed.hostname:
+        raise ValueError(f"upstream URL missing host: {url!r}")
 
 logger = logging.getLogger(__name__)
 
@@ -244,6 +266,7 @@ def _normalize_history(history: Any) -> list[dict[str, str]]:
 
 
 def _build_upstream_reply(api_url: str, message: str, history: Any) -> str:
+    _validate_upstream_url(api_url)
     messages = _normalize_history(history)
     messages.append({"role": "user", "content": message})
     request_body = json.dumps(
@@ -263,7 +286,7 @@ def _build_upstream_reply(api_url: str, message: str, history: Any) -> str:
         method="POST",
     )
     try:
-        with urlopen(request, timeout=30) as response:
+        with urlopen(request, timeout=30) as response:  # nosec B310 - scheme validated by _validate_upstream_url
             raw = response.read()
     except HTTPError as exc:
         raise RuntimeError(f"upstream API request failed with HTTP {exc.code}") from exc
@@ -395,12 +418,16 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Aurelius browser chat UI")
     parser.add_argument("--port", type=int, default=7860, help="Port to listen on (default: 7860)")
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="Interface to bind (default: 127.0.0.1 loopback; use 0.0.0.0 to expose on all interfaces)")
     parser.add_argument("--api-url", default="http://localhost:8080/v1/chat/completions",
                         help="Upstream API URL (default: http://localhost:8080/v1/chat/completions)")
     args = parser.parse_args()
 
+    # Default bind is loopback only (CWE-605). Operators must pass --host 0.0.0.0
+    # explicitly to listen on all interfaces; never silently bind to the wildcard.
     server = create_ui_server(
-        "0.0.0.0",
+        args.host,
         args.port,
         make_mock_generate_fn(),
         api_url=args.api_url,
