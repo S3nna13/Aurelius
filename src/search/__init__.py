@@ -15,6 +15,9 @@ __all__ = [
     "Posting", "InvertedIndex", "INVERTED_INDEX_REGISTRY",
     "CacheEntry", "SearchCache", "SEARCH_CACHE_REGISTRY",
     "TokenType", "QueryToken", "QueryParser", "QUERY_PARSER_REGISTRY",
+    # Cross-encoder reranker + dense embedder
+    "CrossEncoderConfig", "CrossEncoderModel", "CrossEncoderReranker", "RankedResult", "CROSS_ENCODER_RERANKER",
+    "EmbedderConfig", "DenseEmbedder", "DENSE_EMBEDDER",
 ]
 
 from .web_search import SearchResult, SearchQuery, WebSearchStub, WEB_SEARCH
@@ -45,3 +48,8 @@ SEARCH_REGISTRY.update({
     "search_cache": SearchCache,
     "query_parser": QueryParser,
 })
+
+# --- Cross-encoder reranker + dense embedder ----------------------------------
+from .cross_encoder_reranker import CrossEncoderConfig, CrossEncoderModel, CrossEncoderReranker, RankedResult, CROSS_ENCODER_RERANKER  # noqa: F401
+from .dense_embedder import EmbedderConfig, DenseEmbedder, DENSE_EMBEDDER  # noqa: F401
+SEARCH_REGISTRY.update({"reranker": CROSS_ENCODER_RERANKER, "dense_embedder": DENSE_EMBEDDER})

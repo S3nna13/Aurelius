@@ -126,20 +126,31 @@ class SandboxExecutor:
 
         globs = self._build_globals(cfg)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(_run_exec, code, globs, cfg.max_output_bytes)
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = pool.submit(_run_exec, code, globs, cfg.max_output_bytes)
+        try:
+            result = future.result(timeout=cfg.timeout_seconds)
+            pool.shutdown(wait=True)
+            return result
+        except concurrent.futures.TimeoutError:
+            # CPython cannot force-kill a worker thread; it will continue
+            # running until it returns. Abandon the pool without waiting so
+            # the caller is not blocked on a runaway sandbox thread.
             try:
-                return future.result(timeout=cfg.timeout_seconds)
-            except concurrent.futures.TimeoutError:
-                # CPython cannot force-kill a worker thread; it will continue
-                # running until it returns. Callers get a clear signal that
-                # the wall-clock budget was exceeded.
-                return SandboxResult(
-                    stdout="",
-                    stderr="",
-                    exception="TimeoutError: sandbox wall-clock budget exceeded",
-                    timed_out=True,
-                )
+                future.cancel()
+            except Exception:
+                pass
+            try:
+                pool.shutdown(wait=False, cancel_futures=True)
+            except TypeError:
+                # Older Pythons lack ``cancel_futures``; fall back silently.
+                pool.shutdown(wait=False)
+            return SandboxResult(
+                stdout="",
+                stderr="",
+                exception="TimeoutError: sandbox wall-clock budget exceeded",
+                timed_out=True,
+            )
 
 
 SANDBOX_EXECUTOR = SandboxExecutor()
