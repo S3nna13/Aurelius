@@ -1059,3 +1059,23 @@ __all__ = list(__all__) + [
     "EvalPipeline",
     "EVAL_PIPELINE_REGISTRY",
 ]
+
+# --- TruthfulQA + ARC + HellaSwag scorers (additive, cycle-147) ---------------
+from src.eval.truthfulqa_scorer import (  # noqa: E402,F401
+    TruthfulQAQuestion,
+    TruthfulQAResult,
+    TruthfulQAScorer,
+    TRUTHFULQA_REGISTRY,
+)
+from src.eval.arc_scorer import (  # noqa: E402,F401
+    ARCQuestion,
+    ARCResult,
+    ARCScorer,
+    ARC_REGISTRY,
+)
+from src.eval.hellaswag_scorer import (  # noqa: E402,F401
+    HellaSwagExample,
+    HellaSwagResult,
+    HellaSwagScorer,
+    HELLASWAG_REGISTRY,
+)

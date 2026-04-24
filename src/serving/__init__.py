@@ -150,3 +150,23 @@ from .auth_middleware import (  # noqa: E402,F401
     AUTH_MIDDLEWARE_REGISTRY,
     DEFAULT_AUTH_MIDDLEWARE,
 )
+
+# --- Load balancer + request queue + response dedup (additive, cycle-147) -----
+from .load_balancer import (  # noqa: E402,F401
+    BackendNode,
+    LBStrategy,
+    LoadBalancer,
+    LOAD_BALANCER_REGISTRY,
+)
+from .request_queue import (  # noqa: E402,F401
+    QueuePriority,
+    QueuedRequest,
+    RequestQueue,
+    REQUEST_QUEUE_REGISTRY,
+)
+from .response_dedup import (  # noqa: E402,F401
+    DedupEntry,
+    DedupStrategy,
+    ResponseDedup,
+    RESPONSE_DEDUP_REGISTRY,
+)

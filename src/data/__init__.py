@@ -176,3 +176,22 @@ __all__ = [
     "DatasetVersion",
     "DataVersionRegistry",
 ]
+
+# --- Synthetic CoT + SFT builder + dataset analyzer (additive, cycle-147) -----
+from src.data.synthetic_cot_dataset import (  # noqa: E402,F401
+    CoTDatasetConfig,
+    CoTExample,
+    SyntheticCoTDataset,
+    COT_DATASET_REGISTRY,
+)
+from src.data.sft_dataset_builder import (  # noqa: E402,F401
+    SFTDatasetBuilder,
+    SFTDatasetConfig,
+    SFTExample,
+    SFT_BUILDER_REGISTRY,
+)
+from src.data.dataset_analyzer import (  # noqa: E402,F401
+    DatasetAnalyzer,
+    DatasetStats,
+    DATASET_ANALYZER_REGISTRY,
+)

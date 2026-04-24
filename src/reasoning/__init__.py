@@ -24,3 +24,9 @@ REASONING_REGISTRY: dict[str, object] = {
     "mcts": MCTS_REASONER,
     "chain_manager": DEFAULT_CHAIN_MANAGER,
 }
+
+# --- Cycle-147 reasoning deepening (Wang 2022, Chen 2022, Zhou 2022) -----------
+from .self_consistency import SelfConsistency, SelfConsistencyConfig, ConsistencyResult, SELF_CONSISTENCY_REGISTRY  # noqa: F401
+from .program_of_thought import ProgramOfThought, PoTConfig, PoTResult, POT_REGISTRY  # noqa: F401
+from .least_to_most import LeastToMost, L2MConfig, L2MResult, SubProblem, L2M_REGISTRY  # noqa: F401
+REASONING_REGISTRY.update({"self_consistency": SelfConsistency, "pot": ProgramOfThought, "l2m": LeastToMost})

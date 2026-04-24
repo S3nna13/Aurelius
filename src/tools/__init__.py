@@ -13,3 +13,9 @@ from .file_tool import FileTool, FILE_TOOL
 from .edit_tool import EditTool, EditOperation, EDIT_TOOL
 from .grep_tool import GrepTool, GrepMatch, GREP_TOOL
 from .web_tool import WebTool, WEB_TOOL
+
+# --- Cycle-147 tool deepening --------------------------------------------------
+from .code_runner_tool import CodeRunnerTool, CodeRunnerConfig, CodeRunnerResult, CODE_RUNNER_REGISTRY  # noqa: F401
+from .linter_tool import LinterTool, LintIssue, LintResult, LINTER_REGISTRY  # noqa: F401
+from .json_tool import JSONTool, JSONToolConfig, JSON_TOOL_REGISTRY  # noqa: F401
+from .diff_tool import DiffTool, DiffFormat, DiffResult, DIFF_TOOL_REGISTRY  # noqa: F401
