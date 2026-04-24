@@ -112,11 +112,37 @@ from src.security.sandbox_executor import (
     SandboxViolation,
 )
 
+from src.security.rate_abuse_detector import (
+    AbuseAlert,
+    AbusePattern,
+    RATE_ABUSE_DETECTOR_REGISTRY,
+    RateAbuseDetector,
+    RequestRecord,
+)
+
+from src.security.ip_allowlist import (
+    CIDRBlock,
+    IP_ALLOWLIST_REGISTRY,
+    IPAllowlist,
+)
+
+from src.security.audit_trail import (
+    AuditEvent as TrailAuditEvent,
+    AUDIT_TRAIL_REGISTRY,
+    AuditTrail,
+)
+
 
 # Additive registry keyed by name; test suites and integrators can register
 # new defensive pipelines without touching downstream call sites.
 DEFENSIVE_PIPELINE_REGISTRY: dict = {
     "default": DEFAULT_SOC_PIPELINE,
+}
+
+SECURITY_REGISTRY: dict = {
+    "rate_abuse_detector": RATE_ABUSE_DETECTOR_REGISTRY,
+    "ip_allowlist": IP_ALLOWLIST_REGISTRY,
+    "audit_trail": AUDIT_TRAIL_REGISTRY,
 }
 
 __all__ = [
@@ -188,4 +214,20 @@ __all__ = [
     "SandboxResult",
     "SandboxExecutor",
     "SANDBOX_EXECUTOR",
+    # rate_abuse_detector
+    "AbuseAlert",
+    "AbusePattern",
+    "RATE_ABUSE_DETECTOR_REGISTRY",
+    "RateAbuseDetector",
+    "RequestRecord",
+    # ip_allowlist
+    "CIDRBlock",
+    "IP_ALLOWLIST_REGISTRY",
+    "IPAllowlist",
+    # audit_trail
+    "TrailAuditEvent",
+    "AUDIT_TRAIL_REGISTRY",
+    "AuditTrail",
+    # combined registry
+    "SECURITY_REGISTRY",
 ]

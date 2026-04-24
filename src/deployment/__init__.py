@@ -129,3 +129,28 @@ from src.deployment.model_packager import (  # noqa: E402,F401
     ModelPackager,
     PackageManifest,
 )
+
+# --- Canary controller --------------------------------------------------------
+from src.deployment.canary_controller import (  # noqa: E402,F401
+    CANARY_CONTROLLER_REGISTRY,
+    CanaryController,
+    CanaryStage,
+    CanaryState,
+    DEFAULT_STAGES,
+)
+
+# --- A/B test router ----------------------------------------------------------
+from src.deployment.ab_test_router import (  # noqa: E402,F401
+    AB_TEST_ROUTER_REGISTRY,
+    ABTestRouter,
+    Assignment,
+    Variant,
+)
+
+# --- Config drift detector ----------------------------------------------------
+from src.deployment.config_drift_detector import (  # noqa: E402,F401
+    CONFIG_DRIFT_DETECTOR_REGISTRY,
+    ConfigDriftDetector,
+    ConfigField,
+    DriftReport,
+)
