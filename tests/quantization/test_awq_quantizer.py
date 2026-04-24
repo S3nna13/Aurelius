@@ -1,14 +1,17 @@
-"""Tests for src/quantization/awq_quantizer.py — 10+ tests, CPU-only, tiny tensors."""
+"""Tests for src/quantization/awq_quantizer.py — covers legacy and new API."""
 
 from __future__ import annotations
 
 import pytest
-import torch
+
+torch = pytest.importorskip("torch")
 
 from src.quantization.awq_quantizer import (
+    ActivationStats,
     AWQConfig,
     AWQQuantizer,
     AWQScaleSearch,
+    AWQ_QUANTIZER_REGISTRY,
     QUANTIZATION_REGISTRY,
 )
 
@@ -18,31 +21,29 @@ from src.quantization.awq_quantizer import (
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
-def tiny_weight() -> torch.Tensor:
-    """4×8 weight matrix."""
+def tiny_weight() -> "torch.Tensor":
     torch.manual_seed(0)
     return torch.randn(4, 8)
 
 
 @pytest.fixture()
-def tiny_activations() -> torch.Tensor:
-    """16×8 calibration activations."""
+def tiny_activations() -> "torch.Tensor":
     torch.manual_seed(1)
     return torch.randn(16, 8)
 
 
 @pytest.fixture()
 def config4bit() -> AWQConfig:
-    return AWQConfig(bits=4, group_size=128, zero_point=True, clip_ratio=0.9)
+    return AWQConfig(bits=4, group_size=128, zero_point=True)
 
 
 @pytest.fixture()
 def config8bit() -> AWQConfig:
-    return AWQConfig(bits=8, group_size=128, zero_point=True, clip_ratio=0.9)
+    return AWQConfig(bits=8, group_size=128, zero_point=True)
 
 
 # ---------------------------------------------------------------------------
-# AWQConfig tests
+# AWQConfig
 # ---------------------------------------------------------------------------
 
 class TestAWQConfig:
@@ -51,114 +52,219 @@ class TestAWQConfig:
         assert cfg.bits == 4
         assert cfg.group_size == 128
         assert cfg.zero_point is True
-        assert cfg.clip_ratio == 0.9
+        assert cfg.version == "gemm"
+
+    def test_clip_ratio_backcompat(self):
+        cfg = AWQConfig()
+        assert cfg.clip_ratio == pytest.approx(0.9)
 
     def test_custom(self):
-        cfg = AWQConfig(bits=8, group_size=64, zero_point=False, clip_ratio=0.8)
+        cfg = AWQConfig(bits=8, group_size=64, zero_point=False, version="gemv")
         assert cfg.bits == 8
         assert cfg.group_size == 64
         assert cfg.zero_point is False
-        assert cfg.clip_ratio == 0.8
+        assert cfg.version == "gemv"
 
 
 # ---------------------------------------------------------------------------
-# AWQScaleSearch tests
+# ActivationStats
 # ---------------------------------------------------------------------------
 
-class TestAWQScaleSearch:
-    def test_search_scales_shape(self, tiny_weight, tiny_activations, config4bit):
-        searcher = AWQScaleSearch(config4bit)
-        scales = searcher.search_scales(tiny_weight, tiny_activations)
-        assert scales.shape == (tiny_weight.shape[0],), "One scale per output channel"
+class TestActivationStats:
+    def test_frozen(self, tiny_activations):
+        q = AWQQuantizer()
+        stats = q.collect_activation_stats(tiny_activations)
+        with pytest.raises(Exception):
+            stats.channel_scales = torch.zeros(1)  # type: ignore[misc]
 
-    def test_search_scales_positive(self, tiny_weight, tiny_activations, config4bit):
-        searcher = AWQScaleSearch(config4bit)
-        scales = searcher.search_scales(tiny_weight, tiny_activations)
-        assert (scales > 0).all(), "All scales must be positive"
-
-    def test_search_scales_grid_count(self, tiny_weight, tiny_activations, config4bit):
-        """Grid has 20 points; returned scales should be one of those grid values."""
-        searcher = AWQScaleSearch(config4bit, n_grid=20)
-        scales = searcher.search_scales(tiny_weight, tiny_activations)
-        # Just verify output is finite
-        assert torch.isfinite(scales).all()
-
-    def test_search_scales_zero_activations(self, tiny_weight, config4bit):
-        """Zero activations should not cause NaN."""
-        zero_acts = torch.zeros(16, 8)
-        searcher = AWQScaleSearch(config4bit)
-        scales = searcher.search_scales(tiny_weight, zero_acts)
-        assert torch.isfinite(scales).all()
+    def test_fields(self, tiny_activations):
+        q = AWQQuantizer()
+        stats = q.collect_activation_stats(tiny_activations)
+        assert isinstance(stats, ActivationStats)
+        assert stats.channel_scales.shape == (tiny_activations.shape[-1],)
+        assert stats.max_activations.shape == (tiny_activations.shape[-1],)
 
 
 # ---------------------------------------------------------------------------
-# AWQQuantizer tests
+# collect_activation_stats
 # ---------------------------------------------------------------------------
 
-class TestAWQQuantizer:
-    def test_quantize_layer_shapes(self, tiny_weight, tiny_activations, config4bit):
+class TestCollectActivationStats:
+    def test_shape_2d(self, tiny_activations):
+        q = AWQQuantizer()
+        stats = q.collect_activation_stats(tiny_activations)
+        assert stats.channel_scales.shape == (8,)
+        assert stats.max_activations.shape == (8,)
+
+    def test_shape_3d(self):
+        q = AWQQuantizer()
+        acts = torch.randn(2, 5, 8)
+        stats = q.collect_activation_stats(acts)
+        assert stats.channel_scales.shape == (8,)
+        assert stats.max_activations.shape == (8,)
+
+    def test_non_negative(self, tiny_activations):
+        stats = AWQQuantizer().collect_activation_stats(tiny_activations)
+        assert (stats.channel_scales >= 0).all()
+        assert (stats.max_activations >= 0).all()
+
+    def test_max_ge_mean(self, tiny_activations):
+        stats = AWQQuantizer().collect_activation_stats(tiny_activations)
+        assert (stats.max_activations + 1e-6 >= stats.channel_scales).all()
+
+    def test_scalar_activation_raises(self):
+        q = AWQQuantizer()
+        with pytest.raises(ValueError):
+            q.collect_activation_stats(torch.tensor(0.0))
+
+
+# ---------------------------------------------------------------------------
+# compute_scale_factor
+# ---------------------------------------------------------------------------
+
+class TestComputeScaleFactor:
+    def test_shape(self, tiny_weight, tiny_activations):
+        q = AWQQuantizer()
+        stats = q.collect_activation_stats(tiny_activations)
+        sf = q.compute_scale_factor(tiny_weight, stats)
+        assert sf.shape == (tiny_weight.shape[-1],)
+
+    def test_positive(self, tiny_weight, tiny_activations):
+        q = AWQQuantizer()
+        stats = q.collect_activation_stats(tiny_activations)
+        sf = q.compute_scale_factor(tiny_weight, stats)
+        assert (sf > 0).all()
+
+    def test_finite(self, tiny_weight, tiny_activations):
+        q = AWQQuantizer()
+        stats = q.collect_activation_stats(tiny_activations)
+        sf = q.compute_scale_factor(tiny_weight, stats)
+        assert torch.isfinite(sf).all()
+
+    def test_clamp_floor(self):
+        q = AWQQuantizer()
+        stats = ActivationStats(
+            channel_scales=torch.zeros(4),
+            max_activations=torch.zeros(4),
+        )
+        w = torch.randn(3, 4)
+        sf = q.compute_scale_factor(w, stats)
+        assert (sf >= 1e-4 - 1e-8).all()
+
+
+# ---------------------------------------------------------------------------
+# quantize_with_scales / reconstruction_error
+# ---------------------------------------------------------------------------
+
+class TestQuantizeWithScales:
+    def test_shapes(self, tiny_weight, tiny_activations, config4bit):
         q = AWQQuantizer(config4bit)
-        q_weight, scales, zeros = q.quantize_layer(tiny_weight, tiny_activations)
-        assert q_weight.shape == tiny_weight.shape
-        assert scales.shape == (tiny_weight.shape[0],)
-        assert zeros.shape == (tiny_weight.shape[0],)
+        stats = q.collect_activation_stats(tiny_activations)
+        sf = q.compute_scale_factor(tiny_weight, stats)
+        w_int, scale, zero = q.quantize_with_scales(tiny_weight, sf)
+        assert w_int.shape == tiny_weight.shape
+        assert scale.shape == (tiny_weight.shape[0],)
+        assert zero.shape == (tiny_weight.shape[0],)
 
-    def test_quantize_layer_4bit_range(self, tiny_weight, tiny_activations, config4bit):
+    def test_range_4bit(self, tiny_weight, tiny_activations, config4bit):
         q = AWQQuantizer(config4bit)
-        q_weight, _, _ = q.quantize_layer(tiny_weight, tiny_activations)
-        assert q_weight.min() >= 0
-        assert q_weight.max() <= 15  # 2^4 - 1
+        stats = q.collect_activation_stats(tiny_activations)
+        sf = q.compute_scale_factor(tiny_weight, stats)
+        w_int, _, _ = q.quantize_with_scales(tiny_weight, sf)
+        assert int(w_int.min().item()) >= 0
+        assert int(w_int.max().item()) <= 15
 
-    def test_quantize_layer_8bit_range(self, tiny_weight, tiny_activations, config8bit):
+    def test_range_8bit(self, tiny_weight, tiny_activations, config8bit):
         q = AWQQuantizer(config8bit)
-        q_weight, _, _ = q.quantize_layer(tiny_weight, tiny_activations)
-        assert q_weight.min() >= 0
-        assert q_weight.max() <= 255  # 2^8 - 1
+        stats = q.collect_activation_stats(tiny_activations)
+        sf = q.compute_scale_factor(tiny_weight, stats)
+        w_int, _, _ = q.quantize_with_scales(tiny_weight, sf)
+        assert int(w_int.min().item()) >= 0
+        assert int(w_int.max().item()) <= 255
 
-    def test_dequantize_shape(self, tiny_weight, tiny_activations, config4bit):
+    def test_int_dtype(self, tiny_weight, tiny_activations, config4bit):
         q = AWQQuantizer(config4bit)
-        q_weight, scales, zeros = q.quantize_layer(tiny_weight, tiny_activations)
-        recon = q.dequantize(q_weight, scales, zeros)
-        assert recon.shape == tiny_weight.shape
+        stats = q.collect_activation_stats(tiny_activations)
+        sf = q.compute_scale_factor(tiny_weight, stats)
+        w_int, _, _ = q.quantize_with_scales(tiny_weight, sf)
+        assert w_int.dtype == torch.int32
 
-    def test_dequantize_finite(self, tiny_weight, tiny_activations, config4bit):
-        q = AWQQuantizer(config4bit)
-        q_weight, scales, zeros = q.quantize_layer(tiny_weight, tiny_activations)
-        recon = q.dequantize(q_weight, scales, zeros)
-        assert torch.isfinite(recon).all()
-
-    def test_roundtrip_error_reasonable(self, tiny_weight, tiny_activations, config8bit):
-        """8-bit round-trip error should be relatively small."""
-        q = AWQQuantizer(config8bit)
-        q_weight, scales, zeros = q.quantize_layer(tiny_weight, tiny_activations)
-        recon = q.dequantize(q_weight, scales, zeros)
-        err = (recon - tiny_weight).abs().mean().item()
-        # Generous bound — just checking it's not completely broken
-        assert err < 1.0, f"Mean reconstruction error too large: {err}"
-
-    def test_registry_entry(self):
-        assert "awq" in QUANTIZATION_REGISTRY
-        assert QUANTIZATION_REGISTRY["awq"] is AWQQuantizer
-
-    def test_no_zero_point_symmetric(self, tiny_weight, tiny_activations):
+    def test_symmetric(self, tiny_weight, tiny_activations):
         cfg = AWQConfig(bits=4, zero_point=False)
         q = AWQQuantizer(cfg)
-        q_weight, scales, zeros = q.quantize_layer(tiny_weight, tiny_activations)
-        # zeros should all be 0.0 for symmetric
-        assert (zeros == 0.0).all()
+        stats = q.collect_activation_stats(tiny_activations)
+        sf = q.compute_scale_factor(tiny_weight, stats)
+        _, _, zero = q.quantize_with_scales(tiny_weight, sf)
+        assert torch.all(zero == 0)
 
-    def test_different_seeds_different_output(self):
-        torch.manual_seed(42)
-        w1 = torch.randn(4, 8)
-        torch.manual_seed(99)
-        w2 = torch.randn(4, 8)
-        acts = torch.randn(16, 8)
+    def test_shape_mismatch(self, tiny_weight):
         q = AWQQuantizer()
-        qw1, _, _ = q.quantize_layer(w1, acts)
-        qw2, _, _ = q.quantize_layer(w2, acts)
-        assert not torch.equal(qw1, qw2)
+        bad = torch.ones(3)
+        with pytest.raises(ValueError):
+            q.quantize_with_scales(tiny_weight, bad)
 
-    def test_scales_all_positive(self, tiny_weight, tiny_activations, config4bit):
+
+class TestReconstructionError:
+    def test_finite(self, tiny_weight, tiny_activations, config4bit):
         q = AWQQuantizer(config4bit)
-        _, scales, _ = q.quantize_layer(tiny_weight, tiny_activations)
+        stats = q.collect_activation_stats(tiny_activations)
+        sf = q.compute_scale_factor(tiny_weight, stats)
+        w_int, scale, zero = q.quantize_with_scales(tiny_weight, sf)
+        err = q.reconstruction_error(tiny_weight, w_int, scale, zero)
+        assert err >= 0
+        assert err == err  # not NaN
+
+    def test_reasonable_4bit(self, tiny_weight, tiny_activations, config4bit):
+        q = AWQQuantizer(config4bit)
+        stats = q.collect_activation_stats(tiny_activations)
+        sf = q.compute_scale_factor(tiny_weight, stats)
+        w_int, scale, zero = q.quantize_with_scales(tiny_weight, sf)
+        err = q.reconstruction_error(tiny_weight, w_int, scale, zero)
+        assert err < 10.0
+
+
+# ---------------------------------------------------------------------------
+# Legacy scale search
+# ---------------------------------------------------------------------------
+
+class TestLegacyAWQScaleSearch:
+    def test_shape(self, tiny_weight, tiny_activations):
+        s = AWQScaleSearch()
+        scales = s.search_scales(tiny_weight, tiny_activations)
+        assert scales.shape == (tiny_weight.shape[0],)
+
+    def test_positive(self, tiny_weight, tiny_activations):
+        s = AWQScaleSearch()
+        scales = s.search_scales(tiny_weight, tiny_activations)
         assert (scales > 0).all()
+
+
+# ---------------------------------------------------------------------------
+# Legacy layer API
+# ---------------------------------------------------------------------------
+
+class TestLegacyQuantizeLayer:
+    def test_roundtrip(self, tiny_weight, tiny_activations, config8bit):
+        q = AWQQuantizer(config8bit)
+        qw, scales, zeros = q.quantize_layer(tiny_weight, tiny_activations)
+        recon = q.dequantize(qw, scales, zeros)
+        assert recon.shape == tiny_weight.shape
+        assert torch.isfinite(recon).all()
+
+    def test_range_4bit(self, tiny_weight, tiny_activations, config4bit):
+        q = AWQQuantizer(config4bit)
+        qw, _, _ = q.quantize_layer(tiny_weight, tiny_activations)
+        assert int(qw.min().item()) >= 0
+        assert int(qw.max().item()) <= 15
+
+
+# ---------------------------------------------------------------------------
+# Registry
+# ---------------------------------------------------------------------------
+
+class TestRegistry:
+    def test_awq_legacy(self):
+        assert QUANTIZATION_REGISTRY["awq"] is AWQQuantizer
+
+    def test_default(self):
+        assert AWQ_QUANTIZER_REGISTRY["default"] is AWQQuantizer

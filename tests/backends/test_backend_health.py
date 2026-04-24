@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.backends.backend_health import (
     BackendHealthChecker,
@@ -147,11 +147,17 @@ class TestP99LatencyMs(unittest.TestCase):
         assert checker.p99_latency_ms(reports) == 42.0
 
     def test_p99_multiple(self):
-        checker = BackendHealthChecker()
-        latencies = list(range(1, 101))
-        reports = self._make_reports(latencies)
-        p99 = checker.p99_latency_ms(reports)
-        assert p99 == 99
+        # Patch time.monotonic so this test is completely immune to wall-clock
+        # timing variance when the full suite runs under load.  The p99
+        # calculation is pure math on the latency_ms values that _make_reports
+        # injects directly; no real clock is consulted, but the patch makes
+        # that contract explicit and protects against future refactors.
+        with patch("src.backends.backend_health.time.monotonic", return_value=0.0):
+            checker = BackendHealthChecker()
+            latencies = list(range(1, 101))
+            reports = self._make_reports(latencies)
+            p99 = checker.p99_latency_ms(reports)
+            assert p99 == 99
 
     def test_p99_empty(self):
         checker = BackendHealthChecker()

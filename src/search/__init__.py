@@ -8,6 +8,9 @@ __all__ = [
     "HybridSearchIndex", "HYBRID_INDEX",
     "ResultRanker", "RESULT_RANKER",
     "SEARCH_REGISTRY",
+    # Cycle-146 code search + query expansion
+    "CodeSymbol", "CodeFile", "CodeSearchIndex", "CODE_SEARCH_INDEX",
+    "ExpandedQuery", "QueryExpander", "QUERY_EXPANDER",
 ]
 
 from .web_search import SearchResult, SearchQuery, WebSearchStub, WEB_SEARCH
@@ -23,3 +26,8 @@ SEARCH_REGISTRY: dict[str, object] = {
     "hybrid": HYBRID_INDEX,
     "ranker": RESULT_RANKER,
 }
+
+# --- Cycle-146 code search + query expansion ----------------------------------
+from .code_search import CodeSymbol, CodeFile, CodeSearchIndex, CODE_SEARCH_INDEX  # noqa: F401
+from .query_expander import ExpandedQuery, QueryExpander, QUERY_EXPANDER  # noqa: F401
+SEARCH_REGISTRY.update({"code": CODE_SEARCH_INDEX, "expander": QUERY_EXPANDER})

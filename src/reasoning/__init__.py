@@ -7,6 +7,9 @@ __all__ = [
     "ChainStrategy", "ChainStep", "ReasoningChainManager",
     "CHAIN_MANAGER_REGISTRY", "DEFAULT_CHAIN_MANAGER",
     "REASONING_REGISTRY",
+    # Cycle-146 step verification + beam search (Lightman et al. 2305.20050)
+    "VerificationLabel", "StepScore", "StepVerifier", "STEP_VERIFIER",
+    "BeamHypothesis", "BeamSearchReasoner", "BEAM_SEARCH_REASONER",
 ]
 from .chain_of_thought import ChainOfThought, COT_REGISTRY
 from .tot_planner import ThoughtNode, ToTPlanner, TOT_PLANNER
@@ -24,6 +27,11 @@ REASONING_REGISTRY: dict[str, object] = {
     "mcts": MCTS_REASONER,
     "chain_manager": DEFAULT_CHAIN_MANAGER,
 }
+
+# --- Cycle-146 step verification + beam search (Lightman et al. 2305.20050) --
+from .step_verifier import VerificationLabel, StepScore, StepVerifier, STEP_VERIFIER  # noqa: F401
+from .beam_search_reasoner import BeamHypothesis, BeamSearchReasoner, BEAM_SEARCH_REASONER  # noqa: F401
+REASONING_REGISTRY.update({"step_verifier": STEP_VERIFIER, "beam": BEAM_SEARCH_REASONER})
 
 # --- Cycle-147 reasoning deepening (Wang 2022, Chen 2022, Zhou 2022) -----------
 from .self_consistency import SelfConsistency, SelfConsistencyConfig, ConsistencyResult, SELF_CONSISTENCY_REGISTRY  # noqa: F401
