@@ -14,6 +14,23 @@ from .activation_mapper import (
     ActivationMapper,
     ACTIVATION_MAPPER_REGISTRY,
 )
+from .model_benchmarker import (
+    BenchmarkConfig,
+    BenchmarkStats,
+    ModelBenchmarker,
+    MODEL_BENCHMARKER_REGISTRY,
+)
+from .memory_monitor import (
+    MemorySnapshot,
+    WatermarkConfig,
+    MemoryMonitor,
+    MEMORY_MONITOR_REGISTRY,
+)
+from .trace_collector import (
+    TraceEvent,
+    TraceCollector,
+    TRACE_COLLECTOR_REGISTRY,
+)
 
 __all__ = [
     "FLOPsConfig",
@@ -26,4 +43,15 @@ __all__ = [
     "ActivationStats",
     "ActivationMapper",
     "ACTIVATION_MAPPER_REGISTRY",
+    "BenchmarkConfig",
+    "BenchmarkStats",
+    "ModelBenchmarker",
+    "MODEL_BENCHMARKER_REGISTRY",
+    "MemorySnapshot",
+    "WatermarkConfig",
+    "MemoryMonitor",
+    "MEMORY_MONITOR_REGISTRY",
+    "TraceEvent",
+    "TraceCollector",
+    "TRACE_COLLECTOR_REGISTRY",
 ]

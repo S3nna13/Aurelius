@@ -1,114 +1,114 @@
-"""Model pruner: magnitude pruning, structured pruning, pruning schedule."""
+"""Model pruner: magnitude, structured, and random weight pruning."""
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
-_rng = random.Random(42)
 
-
-class PruningMethod(str, Enum):
+class PruningStrategy(str, Enum):
     MAGNITUDE = "magnitude"
+    STRUCTURED = "structured"
     RANDOM = "random"
-    STRUCTURED_HEAD = "structured_head"
-    STRUCTURED_LAYER = "structured_layer"
 
 
 @dataclass
-class PruningMask:
-    layer_name: str
-    mask: list[float]  # 1.0 = keep, 0.0 = prune
-    sparsity: float
-    method: PruningMethod
+class PruningConfig:
+    strategy: PruningStrategy = PruningStrategy.MAGNITUDE
+    sparsity: float = 0.5
+    target_modules: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class PruningStats:
+    module_name: str
+    original_params: int
+    remaining_params: int
+    sparsity_achieved: float
 
 
 class ModelPruner:
-    def __init__(self, target_sparsity: float = 0.5) -> None:
-        self.target_sparsity = target_sparsity
+    """Weight pruning utilities for model compression."""
+
+    def __init__(self, config: PruningConfig | None = None, seed: int = 42) -> None:
+        self.config = config or PruningConfig()
+        self._rng = random.Random(seed)
 
     def compute_mask(
         self,
-        layer_name: str,
         weights: list[float],
-        method: PruningMethod = PruningMethod.MAGNITUDE,
-        structured_k: int = None,
-    ) -> PruningMask:
+        sparsity: float,
+        strategy: PruningStrategy = PruningStrategy.MAGNITUDE,
+    ) -> list[bool]:
+        """Return a boolean mask where True means keep."""
         n = len(weights)
         if n == 0:
-            return PruningMask(layer_name=layer_name, mask=[], sparsity=0.0, method=method)
+            return []
+        sparsity = max(0.0, min(1.0, sparsity))
+        keep_count = int(round(n * (1.0 - sparsity)))
+        keep_count = max(0, min(n, keep_count))
 
-        if method == PruningMethod.MAGNITUDE:
-            keep_count = max(1, int(round(n * (1 - self.target_sparsity))))
-            indexed = sorted(enumerate(weights), key=lambda x: abs(x[1]), reverse=True)
-            keep_indices = set(idx for idx, _ in indexed[:keep_count])
-            mask = [1.0 if i in keep_indices else 0.0 for i in range(n)]
-            actual_sparsity = sum(1 for m in mask if m == 0.0) / n
+        if strategy == PruningStrategy.MAGNITUDE:
+            indexed = sorted(
+                range(n), key=lambda i: abs(weights[i]), reverse=True
+            )
+            keep = set(indexed[:keep_count])
+            return [i in keep for i in range(n)]
 
-        elif method == PruningMethod.RANDOM:
+        if strategy == PruningStrategy.RANDOM:
             indices = list(range(n))
-            _rng.shuffle(indices)
-            keep_count = max(1, int(round(n * (1 - self.target_sparsity))))
-            keep_indices = set(indices[:keep_count])
-            mask = [1.0 if i in keep_indices else 0.0 for i in range(n)]
-            actual_sparsity = sum(1 for m in mask if m == 0.0) / n
+            self._rng.shuffle(indices)
+            keep = set(indices[:keep_count])
+            return [i in keep for i in range(n)]
 
-        elif method == PruningMethod.STRUCTURED_HEAD:
-            keep_k = structured_k if structured_k is not None else max(1, n // 2)
-            keep_k = min(keep_k, n)
-            mask = [1.0] * keep_k + [0.0] * (n - keep_k)
-            actual_sparsity = sum(1 for m in mask if m == 0.0) / n
+        if strategy == PruningStrategy.STRUCTURED:
+            return [i < keep_count for i in range(n)]
 
-        elif method == PruningMethod.STRUCTURED_LAYER:
-            if self.target_sparsity >= 0.8:
-                mask = [0.0] * n
-                actual_sparsity = 1.0
-            else:
-                mask = [1.0] * n
-                actual_sparsity = 0.0
+        return [True] * n
 
-        else:
-            mask = [1.0] * n
-            actual_sparsity = 0.0
+    def apply_mask(
+        self, weights: list[float], mask: list[bool]
+    ) -> list[float]:
+        """Zero out masked-out weights."""
+        if len(weights) != len(mask):
+            raise ValueError("weights and mask length mismatch")
+        return [w if m else 0.0 for w, m in zip(weights, mask)]
 
-        return PruningMask(
-            layer_name=layer_name,
-            mask=mask,
-            sparsity=actual_sparsity,
-            method=method,
+    def prune(
+        self, module_name: str, weights: list[float]
+    ) -> tuple[list[float], PruningStats]:
+        mask = self.compute_mask(
+            weights, self.config.sparsity, self.config.strategy
         )
+        pruned = self.apply_mask(weights, mask)
+        remaining = sum(1 for m in mask if m)
+        n = len(weights)
+        achieved = 0.0 if n == 0 else 1.0 - remaining / n
+        stats = PruningStats(
+            module_name=module_name,
+            original_params=n,
+            remaining_params=remaining,
+            sparsity_achieved=achieved,
+        )
+        return pruned, stats
 
-    def apply_mask(self, weights: list[float], mask: list[float]) -> list[float]:
-        return [w * m for w, m in zip(weights, mask)]
+    def achieved_sparsity(self, weights: list[float]) -> float:
+        """Fraction of zero weights."""
+        n = len(weights)
+        if n == 0:
+            return 0.0
+        zeros = sum(1 for w in weights if w == 0.0)
+        return zeros / n
 
-    def sparsity_schedule(
+    def can_prune_further(
         self,
-        current_step: int,
-        total_steps: int,
-        final_sparsity: float,
-        warmup_steps: int = 100,
-    ) -> float:
-        if current_step < warmup_steps:
-            return 0.0
-        denom = total_steps - warmup_steps
-        if denom <= 0:
-            return final_sparsity
-        progress = (current_step - warmup_steps) / denom
-        progress = min(1.0, max(0.0, progress))
-        return final_sparsity * (1 - (1 - progress) ** 3)
-
-    def global_sparsity(self, masks: list[PruningMask]) -> float:
-        if not masks:
-            return 0.0
-        total_weights = sum(len(m.mask) for m in masks)
-        if total_weights == 0:
-            return 0.0
-        weighted_sum = sum(m.sparsity * len(m.mask) for m in masks)
-        return weighted_sum / total_weights
+        current_sparsity: float,
+        target_sparsity: float,
+        tolerance: float = 0.01,
+    ) -> bool:
+        return current_sparsity + tolerance < target_sparsity
 
 
-PRUNING_REGISTRY: dict[str, ModelPruner] = {
-    "default": ModelPruner(0.5),
-    "aggressive": ModelPruner(0.9),
-    "light": ModelPruner(0.2),
+MODEL_PRUNER_REGISTRY: dict[str, type[ModelPruner]] = {
+    "default": ModelPruner,
 }

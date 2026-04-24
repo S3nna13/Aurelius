@@ -1,231 +1,209 @@
-"""Tests for model pruner."""
+"""Tests for model_pruner."""
 from __future__ import annotations
 
 import pytest
+
 from src.compression.model_pruner import (
-    PruningMethod,
-    PruningMask,
+    MODEL_PRUNER_REGISTRY,
     ModelPruner,
-    PRUNING_REGISTRY,
+    PruningConfig,
+    PruningStats,
+    PruningStrategy,
 )
 
 
-# --- PruningMethod enum ---
+# --- enum ---
 
-def test_pruning_method_magnitude():
-    assert PruningMethod.MAGNITUDE == "magnitude"
+def test_strategy_magnitude():
+    assert PruningStrategy.MAGNITUDE == "magnitude"
 
-def test_pruning_method_random():
-    assert PruningMethod.RANDOM == "random"
+def test_strategy_structured():
+    assert PruningStrategy.STRUCTURED == "structured"
 
-def test_pruning_method_structured_head():
-    assert PruningMethod.STRUCTURED_HEAD == "structured_head"
-
-def test_pruning_method_structured_layer():
-    assert PruningMethod.STRUCTURED_LAYER == "structured_layer"
+def test_strategy_random():
+    assert PruningStrategy.RANDOM == "random"
 
 
-# --- PruningMask fields ---
+# --- config ---
 
-def test_pruning_mask_fields():
-    mask = PruningMask(
-        layer_name="layer0",
-        mask=[1.0, 0.0, 1.0],
-        sparsity=0.333,
-        method=PruningMethod.MAGNITUDE,
+def test_config_defaults():
+    cfg = PruningConfig()
+    assert cfg.strategy == PruningStrategy.MAGNITUDE
+    assert cfg.sparsity == 0.5
+    assert cfg.target_modules == []
+
+def test_config_custom():
+    cfg = PruningConfig(sparsity=0.8, target_modules=["a", "b"])
+    assert cfg.sparsity == 0.8
+    assert cfg.target_modules == ["a", "b"]
+
+
+# --- stats ---
+
+def test_stats_fields():
+    s = PruningStats(
+        module_name="m", original_params=10, remaining_params=5,
+        sparsity_achieved=0.5,
     )
-    assert mask.layer_name == "layer0"
-    assert mask.mask == [1.0, 0.0, 1.0]
-    assert abs(mask.sparsity - 0.333) < 1e-9
-    assert mask.method == PruningMethod.MAGNITUDE
+    assert s.module_name == "m"
+    assert s.original_params == 10
+    assert s.remaining_params == 5
+    assert s.sparsity_achieved == 0.5
 
-def test_pruning_mask_is_dataclass():
-    from dataclasses import fields as dc_fields
-    field_names = {f.name for f in dc_fields(PruningMask)}
-    assert "layer_name" in field_names
-    assert "mask" in field_names
-    assert "sparsity" in field_names
-    assert "method" in field_names
+def test_stats_frozen():
+    s = PruningStats("m", 10, 5, 0.5)
+    with pytest.raises(Exception):
+        s.module_name = "x"  # type: ignore[misc]
 
 
-# --- ModelPruner.compute_mask MAGNITUDE ---
+# --- compute_mask MAGNITUDE ---
 
-def test_compute_mask_magnitude_correct_sparsity():
-    pruner = ModelPruner(target_sparsity=0.5)
-    weights = [1.0, 2.0, 3.0, 4.0]
-    pm = pruner.compute_mask("layer0", weights, method=PruningMethod.MAGNITUDE)
-    # 50% should be pruned → 2 zeros
-    zero_count = sum(1 for m in pm.mask if m == 0.0)
-    assert zero_count == 2
+def test_magnitude_mask_length():
+    p = ModelPruner()
+    mask = p.compute_mask([1.0, 2.0, 3.0, 4.0], 0.5)
+    assert len(mask) == 4
 
-def test_compute_mask_magnitude_keeps_largest():
-    pruner = ModelPruner(target_sparsity=0.5)
-    weights = [0.1, 100.0, 0.2, 50.0]
-    pm = pruner.compute_mask("layer0", weights, method=PruningMethod.MAGNITUDE)
-    # 100.0 (idx 1) and 50.0 (idx 3) should be kept
-    assert pm.mask[1] == 1.0
-    assert pm.mask[3] == 1.0
+def test_magnitude_keeps_largest():
+    p = ModelPruner()
+    weights = [0.1, 0.2, 0.9, 0.8]
+    mask = p.compute_mask(weights, 0.5, PruningStrategy.MAGNITUDE)
+    # should keep 0.9 and 0.8 indices
+    assert mask[2] is True
+    assert mask[3] is True
+    assert mask[0] is False
+    assert mask[1] is False
 
-def test_compute_mask_magnitude_only_01():
-    pruner = ModelPruner(target_sparsity=0.5)
-    weights = [1.0, 2.0, 3.0, 4.0]
-    pm = pruner.compute_mask("layer0", weights, method=PruningMethod.MAGNITUDE)
-    assert all(m in (0.0, 1.0) for m in pm.mask)
+def test_magnitude_sparsity_fraction():
+    p = ModelPruner()
+    weights = [float(i + 1) for i in range(10)]
+    mask = p.compute_mask(weights, 0.7)
+    kept = sum(1 for m in mask if m)
+    assert kept == 3
 
-def test_compute_mask_magnitude_layer_name():
-    pruner = ModelPruner(target_sparsity=0.5)
-    pm = pruner.compute_mask("my_layer", [1.0, 2.0])
-    assert pm.layer_name == "my_layer"
+def test_magnitude_empty_weights():
+    p = ModelPruner()
+    assert p.compute_mask([], 0.5) == []
 
-def test_compute_mask_magnitude_method_recorded():
-    pruner = ModelPruner(target_sparsity=0.5)
-    pm = pruner.compute_mask("layer", [1.0, 2.0, 3.0], method=PruningMethod.MAGNITUDE)
-    assert pm.method == PruningMethod.MAGNITUDE
+def test_magnitude_zero_sparsity_keeps_all():
+    p = ModelPruner()
+    mask = p.compute_mask([1.0, 2.0, 3.0], 0.0)
+    assert all(mask)
+
+def test_magnitude_full_sparsity_keeps_none():
+    p = ModelPruner()
+    mask = p.compute_mask([1.0, 2.0, 3.0], 1.0)
+    assert not any(mask)
 
 
-# --- Mask values are only 0.0 or 1.0 ---
+# --- RANDOM ---
 
-def test_mask_values_random_only_01():
-    pruner = ModelPruner(target_sparsity=0.5)
-    pm = pruner.compute_mask("layer", [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], method=PruningMethod.RANDOM)
-    assert all(m in (0.0, 1.0) for m in pm.mask)
+def test_random_mask_correct_count():
+    p = ModelPruner(seed=1)
+    mask = p.compute_mask([1.0] * 10, 0.5, PruningStrategy.RANDOM)
+    assert sum(1 for m in mask if m) == 5
 
-def test_mask_values_structured_head_only_01():
-    pruner = ModelPruner(target_sparsity=0.5)
-    pm = pruner.compute_mask("layer", [1.0, 2.0, 3.0, 4.0], method=PruningMethod.STRUCTURED_HEAD)
-    assert all(m in (0.0, 1.0) for m in pm.mask)
+def test_random_mask_reproducible():
+    p1 = ModelPruner(seed=99)
+    p2 = ModelPruner(seed=99)
+    m1 = p1.compute_mask([1.0] * 20, 0.5, PruningStrategy.RANDOM)
+    m2 = p2.compute_mask([1.0] * 20, 0.5, PruningStrategy.RANDOM)
+    assert m1 == m2
 
-def test_mask_values_structured_layer_keep_only_01():
-    pruner = ModelPruner(target_sparsity=0.5)
-    pm = pruner.compute_mask("layer", [1.0, 2.0, 3.0], method=PruningMethod.STRUCTURED_LAYER)
-    assert all(m in (0.0, 1.0) for m in pm.mask)
 
-def test_mask_values_structured_layer_prune_only_01():
-    pruner = ModelPruner(target_sparsity=0.9)
-    pm = pruner.compute_mask("layer", [1.0, 2.0, 3.0], method=PruningMethod.STRUCTURED_LAYER)
-    assert all(m in (0.0, 1.0) for m in pm.mask)
+# --- STRUCTURED ---
+
+def test_structured_keeps_prefix():
+    p = ModelPruner()
+    mask = p.compute_mask([1.0] * 10, 0.5, PruningStrategy.STRUCTURED)
+    assert mask[:5] == [True] * 5
+    assert mask[5:] == [False] * 5
+
+def test_structured_full_prune():
+    p = ModelPruner()
+    mask = p.compute_mask([1.0] * 6, 1.0, PruningStrategy.STRUCTURED)
+    assert not any(mask)
 
 
 # --- apply_mask ---
 
-def test_apply_mask_zeros_pruned():
-    pruner = ModelPruner()
-    weights = [1.0, 2.0, 3.0, 4.0]
-    mask = [1.0, 0.0, 1.0, 0.0]
-    result = pruner.apply_mask(weights, mask)
-    assert result[1] == 0.0
-    assert result[3] == 0.0
+def test_apply_mask_zeroes():
+    p = ModelPruner()
+    out = p.apply_mask([1.0, 2.0, 3.0], [True, False, True])
+    assert out == [1.0, 0.0, 3.0]
 
-def test_apply_mask_preserves_unpruned():
-    pruner = ModelPruner()
-    weights = [1.0, 2.0, 3.0, 4.0]
-    mask = [1.0, 0.0, 1.0, 0.0]
-    result = pruner.apply_mask(weights, mask)
-    assert result[0] == 1.0
-    assert result[2] == 3.0
+def test_apply_mask_length_mismatch():
+    p = ModelPruner()
+    with pytest.raises(ValueError):
+        p.apply_mask([1.0, 2.0], [True])
 
-def test_apply_mask_all_keep():
-    pruner = ModelPruner()
-    weights = [1.0, 2.0, 3.0]
-    mask = [1.0, 1.0, 1.0]
-    result = pruner.apply_mask(weights, mask)
-    assert result == weights
-
-def test_apply_mask_all_prune():
-    pruner = ModelPruner()
-    weights = [1.0, 2.0, 3.0]
-    mask = [0.0, 0.0, 0.0]
-    result = pruner.apply_mask(weights, mask)
-    assert all(v == 0.0 for v in result)
-
-def test_apply_mask_same_length():
-    pruner = ModelPruner()
-    weights = [1.0, 2.0, 3.0]
-    mask = [1.0, 0.0, 1.0]
-    assert len(pruner.apply_mask(weights, mask)) == 3
+def test_apply_mask_all_false():
+    p = ModelPruner()
+    assert p.apply_mask([1.0, 2.0], [False, False]) == [0.0, 0.0]
 
 
-# --- sparsity_schedule ---
+# --- prune ---
 
-def test_sparsity_schedule_zero_at_warmup():
-    pruner = ModelPruner()
-    val = pruner.sparsity_schedule(current_step=0, total_steps=1000, final_sparsity=0.5, warmup_steps=100)
-    assert val == 0.0
+def test_prune_returns_stats():
+    p = ModelPruner(PruningConfig(sparsity=0.5))
+    pruned, stats = p.prune("layer1", [1.0, 2.0, 3.0, 4.0])
+    assert isinstance(stats, PruningStats)
+    assert stats.module_name == "layer1"
+    assert stats.original_params == 4
+    assert stats.remaining_params == 2
 
-def test_sparsity_schedule_zero_before_warmup():
-    pruner = ModelPruner()
-    val = pruner.sparsity_schedule(current_step=50, total_steps=1000, final_sparsity=0.5, warmup_steps=100)
-    assert val == 0.0
+def test_prune_sparsity_achieved():
+    p = ModelPruner(PruningConfig(sparsity=0.75))
+    _, stats = p.prune("m", [1.0, 2.0, 3.0, 4.0])
+    assert stats.sparsity_achieved == pytest.approx(0.75)
 
-def test_sparsity_schedule_approaches_final():
-    pruner = ModelPruner()
-    val = pruner.sparsity_schedule(current_step=1000, total_steps=1000, final_sparsity=0.5, warmup_steps=100)
-    assert abs(val - 0.5) < 1e-9
-
-def test_sparsity_schedule_monotone():
-    pruner = ModelPruner()
-    vals = [
-        pruner.sparsity_schedule(step, 1000, 0.5, 100)
-        for step in [100, 200, 400, 700, 1000]
-    ]
-    for i in range(len(vals) - 1):
-        assert vals[i] <= vals[i + 1]
-
-def test_sparsity_schedule_cubic():
-    pruner = ModelPruner()
-    # At 50% progress past warmup, cubic gives 1-(0.5)^3=0.875
-    val = pruner.sparsity_schedule(current_step=550, total_steps=1000, final_sparsity=0.5, warmup_steps=100)
-    expected = 0.5 * (1 - (1 - 0.5) ** 3)
-    assert abs(val - expected) < 1e-9
+def test_prune_zeros_match_mask():
+    p = ModelPruner(PruningConfig(sparsity=0.5))
+    pruned, _ = p.prune("m", [0.1, 0.2, 0.9, 0.8])
+    assert pruned[0] == 0.0
+    assert pruned[1] == 0.0
+    assert pruned[2] == 0.9
+    assert pruned[3] == 0.8
 
 
-# --- global_sparsity ---
+# --- achieved_sparsity ---
 
-def test_global_sparsity_empty():
-    pruner = ModelPruner()
-    assert pruner.global_sparsity([]) == 0.0
+def test_achieved_sparsity_all_zero():
+    p = ModelPruner()
+    assert p.achieved_sparsity([0.0, 0.0, 0.0]) == 1.0
 
-def test_global_sparsity_single():
-    pruner = ModelPruner()
-    pm = PruningMask(layer_name="l0", mask=[0.0, 1.0], sparsity=0.5, method=PruningMethod.MAGNITUDE)
-    assert abs(pruner.global_sparsity([pm]) - 0.5) < 1e-9
+def test_achieved_sparsity_none_zero():
+    p = ModelPruner()
+    assert p.achieved_sparsity([1.0, 2.0, 3.0]) == 0.0
 
-def test_global_sparsity_weighted_average():
-    pruner = ModelPruner()
-    pm1 = PruningMask(layer_name="l0", mask=[0.0] * 10, sparsity=1.0, method=PruningMethod.MAGNITUDE)
-    pm2 = PruningMask(layer_name="l1", mask=[1.0] * 10, sparsity=0.0, method=PruningMethod.MAGNITUDE)
-    result = pruner.global_sparsity([pm1, pm2])
-    assert abs(result - 0.5) < 1e-9
+def test_achieved_sparsity_half():
+    p = ModelPruner()
+    assert p.achieved_sparsity([0.0, 1.0, 0.0, 2.0]) == 0.5
 
-def test_global_sparsity_different_sizes():
-    pruner = ModelPruner()
-    pm1 = PruningMask(layer_name="l0", mask=[0.0] * 4, sparsity=1.0, method=PruningMethod.MAGNITUDE)
-    pm2 = PruningMask(layer_name="l1", mask=[1.0] * 2, sparsity=0.0, method=PruningMethod.MAGNITUDE)
-    # weighted: (4*1.0 + 2*0.0)/6 = 4/6 = 0.667
-    result = pruner.global_sparsity([pm1, pm2])
-    assert abs(result - (4.0 / 6.0)) < 1e-9
+def test_achieved_sparsity_empty():
+    p = ModelPruner()
+    assert p.achieved_sparsity([]) == 0.0
 
 
-# --- PRUNING_REGISTRY ---
+# --- can_prune_further ---
 
-def test_pruning_registry_has_default():
-    assert "default" in PRUNING_REGISTRY
+def test_can_prune_further_true():
+    p = ModelPruner()
+    assert p.can_prune_further(0.3, 0.5) is True
 
-def test_pruning_registry_has_aggressive():
-    assert "aggressive" in PRUNING_REGISTRY
+def test_can_prune_further_false():
+    p = ModelPruner()
+    assert p.can_prune_further(0.5, 0.5) is False
 
-def test_pruning_registry_has_light():
-    assert "light" in PRUNING_REGISTRY
+def test_can_prune_further_tolerance():
+    p = ModelPruner()
+    assert p.can_prune_further(0.49, 0.5, tolerance=0.05) is False
 
-def test_pruning_registry_default_sparsity():
-    assert PRUNING_REGISTRY["default"].target_sparsity == 0.5
 
-def test_pruning_registry_aggressive_sparsity():
-    assert PRUNING_REGISTRY["aggressive"].target_sparsity == 0.9
+# --- registry ---
 
-def test_pruning_registry_light_sparsity():
-    assert PRUNING_REGISTRY["light"].target_sparsity == 0.2
+def test_registry_has_default():
+    assert "default" in MODEL_PRUNER_REGISTRY
 
-def test_pruning_registry_values_are_pruners():
-    for key, val in PRUNING_REGISTRY.items():
-        assert isinstance(val, ModelPruner), f"{key} is not a ModelPruner"
+def test_registry_constructs():
+    cls = MODEL_PRUNER_REGISTRY["default"]
+    assert isinstance(cls(), ModelPruner)
