@@ -132,6 +132,32 @@ from .hybrid_fusion_v2 import (  # noqa: E402
     HybridFusionV2,
 )
 
+from .passage_segmenter import (  # noqa: E402
+    PassageSegmenter,
+    Segment,
+    SegmentStrategy,
+)
+
+SEGMENTER_REGISTRY: dict = {
+    "passage_segmenter": PassageSegmenter(),
+}
+
+from .multi_hop_retriever import (  # noqa: E402
+    HopResult,
+    MultiHopConfig,
+    MultiHopRetriever,
+)
+
+RETRIEVER_REGISTRY["multi_hop"] = MultiHopRetriever
+
+from .citation_extractor import (  # noqa: E402
+    Citation,
+    CitationExtractor,
+    CitationType,
+)
+
+CITATION_REGISTRY["citation_extractor"] = CitationExtractor
+
 __all__ = [
     "BM25Retriever",
     "Chunk",
@@ -186,4 +212,17 @@ __all__ = [
     "FusionStrategy",
     "HYBRID_FUSION_REGISTRY",
     "HybridFusionV2",
+    # passage_segmenter
+    "PassageSegmenter",
+    "Segment",
+    "SegmentStrategy",
+    "SEGMENTER_REGISTRY",
+    # multi_hop_retriever
+    "HopResult",
+    "MultiHopConfig",
+    "MultiHopRetriever",
+    # citation_extractor
+    "Citation",
+    "CitationExtractor",
+    "CitationType",
 ]

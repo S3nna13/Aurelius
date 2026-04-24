@@ -265,8 +265,8 @@ from aurelius.model.transformer import AureliusTransformer
 
 ## Current status
 
-- **148+ implementation cycles** completed (security hardening cycle-139-sec complete)
-- **27 244+ tests** passing (full suite ~30 min on CPU)
+- **149+ implementation cycles** completed (security hardening cycle-139-sec complete)
+- **27 408+ tests** passing (full suite ~30 min on CPU)
 - **1 720+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, mcp, computer_use, multimodal, deployment, memory, tools, reasoning, search, protocol, monitoring, quantization, simulation, compression, federation, multiagent, runtime, and **backends** surface dirs
 - Open security findings: 0 High, 0 Critical (CVE ledger: AUR-SEC-2026-0001..0019 all closed)
 - Recent cycles:
