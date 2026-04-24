@@ -12,6 +12,22 @@ from .mixed_precision_planner import (
     MixedPrecisionPlan,
     MixedPrecisionPlanner,
 )
+from .awq_quantizer import (
+    AWQConfig,
+    AWQScaleSearch,
+    AWQQuantizer,
+    QUANTIZATION_REGISTRY,
+)
+from .bnb_emulation import (
+    BnBConfig,
+    OutlierDetector,
+    BnBQuantizer,
+)
+from .quantization_aware_training import (
+    QATConfig,
+    FakeQuantize,
+    QATWrapper,
+)
 
 __all__ = [
     # GPTQ calibration
@@ -22,4 +38,17 @@ __all__ = [
     "LayerSensitivity",
     "MixedPrecisionPlan",
     "MixedPrecisionPlanner",
+    # AWQ
+    "AWQConfig",
+    "AWQScaleSearch",
+    "AWQQuantizer",
+    "QUANTIZATION_REGISTRY",
+    # BnB emulation
+    "BnBConfig",
+    "OutlierDetector",
+    "BnBQuantizer",
+    # QAT
+    "QATConfig",
+    "FakeQuantize",
+    "QATWrapper",
 ]

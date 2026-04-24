@@ -108,3 +108,24 @@ __all__ = list(__all__) + [
     "SecretProvider",
     "SecretValue",
 ]
+
+# --- Kubernetes operator (additive, cycle-146) ---------------------------------
+from src.deployment.kubernetes_operator import (  # noqa: E402,F401
+    K8S_OPERATOR_REGISTRY,
+    KubernetesOperator,
+    ModelDeploymentSpec,
+)
+
+# --- Serve config (additive, cycle-146) ----------------------------------------
+from src.deployment.serve_config import (  # noqa: E402,F401
+    SERVE_CONFIG_REGISTRY,
+    ServeConfigBuilder,
+    ServeDeploymentConfig,
+)
+
+# --- Model packager (additive, cycle-146) --------------------------------------
+from src.deployment.model_packager import (  # noqa: E402,F401
+    MODEL_PACKAGER_REGISTRY,
+    ModelPackager,
+    PackageManifest,
+)

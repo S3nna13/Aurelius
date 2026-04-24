@@ -24,12 +24,22 @@ _MCP_SUBMODULES = (
     "plugin_host",
     "skill_catalog",
     "extension_manifest",
+    "tool_result_formatter",
+    "session_manager",
 )
 
 __all__ = [
     "MCP_SERVER_REGISTRY",
     "MCP_CLIENT_REGISTRY",
     "MCP_TOOL_SCHEMA_REGISTRY",
+    "MCP_REGISTRY",
+    # tool_result_formatter
+    "ToolResultFormatter",
+    "ResultFormat",
+    # session_manager
+    "MCPSessionManager",
+    "MCPSession",
+    "SessionState",
     "SSEMCPServer",
     "SSEMCPServerConfig",
     "SSE_SERVER_REGISTRY",
@@ -118,6 +128,30 @@ def __getattr__(name: str):
         from .extension_manifest import ManifestValidationResult  # noqa: PLC0415
         globals()["ManifestValidationResult"] = ManifestValidationResult
         return ManifestValidationResult
+    if name == "MCP_REGISTRY":
+        from .tool_result_formatter import MCP_REGISTRY  # noqa: PLC0415
+        globals()["MCP_REGISTRY"] = MCP_REGISTRY
+        return MCP_REGISTRY
+    if name == "ToolResultFormatter":
+        from .tool_result_formatter import ToolResultFormatter  # noqa: PLC0415
+        globals()["ToolResultFormatter"] = ToolResultFormatter
+        return ToolResultFormatter
+    if name == "ResultFormat":
+        from .tool_result_formatter import ResultFormat  # noqa: PLC0415
+        globals()["ResultFormat"] = ResultFormat
+        return ResultFormat
+    if name == "MCPSessionManager":
+        from .session_manager import MCPSessionManager  # noqa: PLC0415
+        globals()["MCPSessionManager"] = MCPSessionManager
+        return MCPSessionManager
+    if name == "MCPSession":
+        from .session_manager import MCPSession  # noqa: PLC0415
+        globals()["MCPSession"] = MCPSession
+        return MCPSession
+    if name == "SessionState":
+        from .session_manager import SessionState  # noqa: PLC0415
+        globals()["SessionState"] = SessionState
+        return SessionState
     if name in _MCP_SUBMODULES:
         module = import_module(f"src.mcp.{name}")
         globals()[name] = module

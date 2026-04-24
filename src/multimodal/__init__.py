@@ -260,3 +260,28 @@ __all__ = [
     "MultimodalTokenFusion",
     "MULTIMODAL_FUSION_REGISTRY",
 ]
+
+# --- ViT encoder (additive, cycle-146) -----------------------------------------
+from src.multimodal.vit_encoder import (  # noqa: E402,F401
+    ViTConfig,
+    ViTEncoder,
+    ViTPatchEmbedding,
+    VIT_REGISTRY,
+)
+VISION_ENCODER_REGISTRY.update({k: v for k, v in VIT_REGISTRY.items()})
+
+# --- Vision projector v2 (additive, cycle-146) ---------------------------------
+from src.multimodal.vision_projector_v2 import (  # noqa: E402,F401
+    ProjectorConfig,
+    VisionProjectorV2,
+    VISION_PROJECTOR_V2_REGISTRY,
+)
+MODALITY_PROJECTOR_REGISTRY.update(VISION_PROJECTOR_V2_REGISTRY)
+
+# --- OCR module (additive, cycle-146) ------------------------------------------
+from src.multimodal.ocr_module import (  # noqa: E402,F401
+    OCRConfig,
+    OCRModule,
+    TextRegionEncoder,
+    OCR_MODULE_REGISTRY,
+)

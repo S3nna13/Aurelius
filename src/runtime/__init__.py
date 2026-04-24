@@ -1,5 +1,7 @@
 from .compile_manager import COMPILE_REGISTRY, CompileConfig, CompileManager
 from .memory_profiler import MEMORY_PROFILER_REGISTRY, MemoryProfiler, MemorySnapshot
+from .torch_profiler_wrapper import AureliusProfiler, ProfilerConfig, RUNTIME_REGISTRY
+from .jit_cache import JITCache, JITCacheConfig
 
 __all__ = [
     "CompileConfig",
@@ -8,4 +10,9 @@ __all__ = [
     "MemorySnapshot",
     "MemoryProfiler",
     "MEMORY_PROFILER_REGISTRY",
+    "ProfilerConfig",
+    "AureliusProfiler",
+    "RUNTIME_REGISTRY",
+    "JITCacheConfig",
+    "JITCache",
 ]

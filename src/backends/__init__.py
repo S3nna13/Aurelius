@@ -79,3 +79,25 @@ def register_backend_adapter_pytorch() -> None:
 # ``import src.backends`` is sufficient to get ``"pytorch"`` in the
 # registry. The registration is idempotent.
 register_backend_adapter_pytorch()
+
+# --- Ollama adapter (additive, cycle-146) --------------------------------------
+from src.backends.ollama_adapter import (  # noqa: E402,F401
+    OLLAMA_REGISTRY,
+    OllamaAdapter,
+    OllamaConfig,
+)
+
+# --- Generic HTTP backend (additive, cycle-146) --------------------------------
+from src.backends.http_backend import (  # noqa: E402,F401
+    HTTP_BACKEND_REGISTRY,
+    HTTPBackend,
+    HTTPBackendConfig,
+)
+
+# --- Backend health checker (additive, cycle-146) ------------------------------
+from src.backends.backend_health import (  # noqa: E402,F401
+    BACKEND_HEALTH_REGISTRY,
+    BackendHealthChecker,
+    HealthReport,
+    HealthStatus,
+)
