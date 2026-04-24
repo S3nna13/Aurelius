@@ -11,6 +11,10 @@ __all__ = [
     # Cycle-146 code search + query expansion
     "CodeSymbol", "CodeFile", "CodeSearchIndex", "CODE_SEARCH_INDEX",
     "ExpandedQuery", "QueryExpander", "QUERY_EXPANDER",
+    # Cycle-147 inverted index, search cache, query parser
+    "Posting", "InvertedIndex", "INVERTED_INDEX_REGISTRY",
+    "CacheEntry", "SearchCache", "SEARCH_CACHE_REGISTRY",
+    "TokenType", "QueryToken", "QueryParser", "QUERY_PARSER_REGISTRY",
 ]
 
 from .web_search import SearchResult, SearchQuery, WebSearchStub, WEB_SEARCH
@@ -31,3 +35,13 @@ SEARCH_REGISTRY: dict[str, object] = {
 from .code_search import CodeSymbol, CodeFile, CodeSearchIndex, CODE_SEARCH_INDEX  # noqa: F401
 from .query_expander import ExpandedQuery, QueryExpander, QUERY_EXPANDER  # noqa: F401
 SEARCH_REGISTRY.update({"code": CODE_SEARCH_INDEX, "expander": QUERY_EXPANDER})
+
+# --- Cycle-147 inverted index, search cache, query parser -----------------
+from .inverted_index import Posting, InvertedIndex, INVERTED_INDEX_REGISTRY  # noqa: F401
+from .search_cache import CacheEntry, SearchCache, SEARCH_CACHE_REGISTRY  # noqa: F401
+from .query_parser import TokenType, QueryToken, QueryParser, QUERY_PARSER_REGISTRY  # noqa: F401
+SEARCH_REGISTRY.update({
+    "inverted_index": InvertedIndex,
+    "search_cache": SearchCache,
+    "query_parser": QueryParser,
+})
