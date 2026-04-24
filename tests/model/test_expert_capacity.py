@@ -40,3 +40,30 @@ def test_capacity_utilization_rejects_zero_capacity():
     with pytest.raises(ValueError):
         capacity_utilization(torch.tensor([1, 2]), capacity=0)
 
+
+def test_expert_token_counts_all_same_expert():
+    counts = expert_token_counts(torch.tensor([2, 2, 2]), n_experts=4)
+    assert counts[2].item() == 3
+    assert counts[0].item() == 0
+
+
+def test_expert_token_counts_empty_tensor():
+    counts = expert_token_counts(torch.tensor([], dtype=torch.long), n_experts=3)
+    assert counts.shape == (3,)
+    assert counts.sum().item() == 0
+
+
+def test_capacity_overflow_zero_when_under_capacity():
+    overflow = capacity_overflow(torch.tensor([0, 1, 2]), capacity=5)
+    assert overflow.sum().item() == 0
+
+
+def test_capacity_overflow_exact_capacity_is_zero_overflow():
+    overflow = capacity_overflow(torch.tensor([3, 3]), capacity=3)
+    assert overflow.sum().item() == 0
+
+
+def test_capacity_utilization_at_full_load():
+    util = capacity_utilization(torch.tensor([4, 4, 4]), capacity=4)
+    assert util.item() == pytest.approx(1.0)
+
