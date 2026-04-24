@@ -36,7 +36,7 @@ class HTTPBackend:
     def _post(self, url: str, body: dict) -> dict:
         cfg = self._config
         # AUR-SEC-2026-0020: gate URL scheme before any urlopen call.
-        validate_url(url)
+        validate_url(url, allow_private_ips=True)
         encoded = json.dumps(body).encode()
         req = urllib.request.Request(url, data=encoded, headers=self._headers(), method="POST")  # noqa: S310 — scheme validated above (AUR-SEC-2026-0020)
         last_exc: Exception | None = None
@@ -78,7 +78,7 @@ class HTTPBackend:
         # intentionally forgiving (returns False on any failure) but must
         # still refuse to dispatch banned-scheme requests.
         try:
-            validate_url(health_url)
+            validate_url(health_url, allow_private_ips=True)
         except Exception:
             return False
         req = urllib.request.Request(health_url, method="GET")  # noqa: S310 — scheme validated above (AUR-SEC-2026-0020)

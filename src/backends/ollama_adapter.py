@@ -31,7 +31,7 @@ class OllamaAdapter:
         cfg = self._config
         gen_url = f"{cfg.host}/api/generate"
         # AUR-SEC-2026-0020: scheme validation before urlopen.
-        validate_url(gen_url)
+        validate_url(gen_url, allow_private_ips=True)
         body = json.dumps({
             "model": cfg.model,
             "prompt": prompt,
@@ -55,7 +55,7 @@ class OllamaAdapter:
         cfg = self._config
         tags_url = f"{cfg.host}/api/tags"
         # AUR-SEC-2026-0020: scheme validation before urlopen.
-        validate_url(tags_url)
+        validate_url(tags_url, allow_private_ips=True)
         req = urllib.request.Request(tags_url, method="GET")  # noqa: S310 — scheme validated above (AUR-SEC-2026-0020)
         try:
             with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # noqa: S310 — scheme validated above (AUR-SEC-2026-0020)
@@ -69,7 +69,7 @@ class OllamaAdapter:
         tags_url = f"{cfg.host}/api/tags"
         # AUR-SEC-2026-0020: refuse to dispatch banned-scheme requests.
         try:
-            validate_url(tags_url)
+            validate_url(tags_url, allow_private_ips=True)
         except UnsafeURLSchemeError:
             return False
         req = urllib.request.Request(tags_url, method="GET")  # noqa: S310 — scheme validated above (AUR-SEC-2026-0020)

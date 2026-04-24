@@ -84,7 +84,7 @@ def validate_url(
     url: str,
     allowed_schemes: Sequence[str] = ("http", "https"),
     *,
-    allow_private_ips: bool = True,
+    allow_private_ips: bool = False,
 ) -> str:
     """Validate *url* and return it unchanged on success.
 

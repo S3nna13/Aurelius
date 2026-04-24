@@ -5,7 +5,7 @@ anything. This gate raises unless the caller explicitly opts in (kwarg or
 ``AURELIUS_ALLOW_ANY_INTERFACE=1`` env var). Loopback is always allowed;
 non-loopback specific addresses are allowed but logged at WARNING.
 
-Finding AUR-SEC-2026-0023 (typosquat), AUR-SEC-2026-0024 (bind address gate);
+Finding (typosquat), AUR-SEC-2026-0024 (bind address gate);
 CWE-494 (download of code without integrity check),
 CWE-1327 (binding to unrestricted IP).
 

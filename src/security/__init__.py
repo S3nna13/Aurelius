@@ -206,4 +206,4 @@ __all__ = [
     "BIND_ADDRESS_REGISTRY",
     "UnsafeBindAddressError",
     "check_bind_address",
-]
+"validate_url","UnsafeURLSchemeError","URL_BANNED_SCHEMES","URL_SCHEME_VALIDATOR",]
