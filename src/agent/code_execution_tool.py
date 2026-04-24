@@ -1,5 +1,8 @@
 """Code execution tool: Inspired by Gemini 2.5 code execution tool (Google DeepMind 2025).
 
+Finding AUR-SEC-2026-0021; CWE-78 (OS command injection),
+CWE-426 (untrusted search path).
+
 Gemini-style sandboxed code execution for the Aurelius agent surface.
 Runs short Python (or stub) snippets in a subprocess with deny-pattern
 pre-validation. Pure standard library.
@@ -7,10 +10,45 @@ pre-validation. Pure standard library.
 
 from __future__ import annotations
 
-import subprocess
+import os
+import shutil
+import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+
+from src.security.safe_subprocess import (
+    UnsafeSubprocessError,
+    run_safe,
+)
+
+
+def _resolve_python3() -> str:
+    """Resolve ``python3`` to an absolute path at import time.
+
+    AUR-SEC-2026-0021: :mod:`subprocess` was starting a child with the
+    partial executable name ``python3`` (S607). This lookup captures the
+    resolved absolute path once so later calls never rely on the child's
+    ``PATH``.
+    """
+    found = shutil.which("python3") or shutil.which("python") or sys.executable
+    if not os.path.isabs(found):
+        # Fallback: try a few well-known locations.
+        for candidate in ("/usr/bin/python3", "/usr/local/bin/python3"):
+            if os.path.isfile(candidate):
+                found = candidate
+                break
+    if not os.path.isabs(found):
+        raise UnsafeSubprocessError(
+            f"could not resolve python3 to an absolute path; got {found!r}"
+        )
+    return os.path.realpath(found)
+
+
+#: Absolute interpreter path resolved at import. Forms the sole entry
+#: in the :func:`run_safe` allowlist for this tool.
+_PYTHON3_ABS: str = _resolve_python3()
+_ALLOWED_EXECUTABLES: frozenset[str] = frozenset({_PYTHON3_ABS})
 
 __all__ = [
     "ExecutionLanguage",
@@ -129,31 +167,38 @@ class CodeExecutionTool:
                 duration_ms=0.0,
             )
 
-        # Run in a child process
+        # Run in a child process via the hardened wrapper (AUR-SEC-2026-0021).
         t0 = time.perf_counter()
         try:
-            proc = subprocess.run(  # noqa: S603
-                ["python3", "-c", req.code],
-                capture_output=req.capture_output,
-                text=True,
-                timeout=req.timeout_s,
-                env=req.env_vars if req.env_vars else None,
+            safe_res = run_safe(
+                [_PYTHON3_ABS, "-c", req.code],
+                timeout=float(req.timeout_s),
+                allowed_executables=_ALLOWED_EXECUTABLES,
+                env_override=req.env_vars if req.env_vars else None,
             )
             duration_ms = (time.perf_counter() - t0) * 1000.0
+            if safe_res.killed_on_timeout:
+                return ExecutionResult(
+                    stdout=safe_res.stdout,
+                    stderr=safe_res.stderr,
+                    exit_code=1,
+                    duration_ms=duration_ms,
+                    timed_out=True,
+                )
             return ExecutionResult(
-                stdout=proc.stdout or "",
-                stderr=proc.stderr or "",
-                exit_code=proc.returncode,
+                stdout=safe_res.stdout,
+                stderr=safe_res.stderr,
+                exit_code=safe_res.returncode,
                 duration_ms=duration_ms,
             )
-        except subprocess.TimeoutExpired:
+        except UnsafeSubprocessError as exc:
             duration_ms = (time.perf_counter() - t0) * 1000.0
             return ExecutionResult(
                 stdout="",
                 stderr="",
                 exit_code=1,
                 duration_ms=duration_ms,
-                timed_out=True,
+                error=f"unsafe_subprocess: {exc}",
             )
         except Exception as exc:  # noqa: BLE001
             duration_ms = (time.perf_counter() - t0) * 1000.0

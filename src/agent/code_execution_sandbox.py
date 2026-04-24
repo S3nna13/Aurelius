@@ -1,5 +1,8 @@
 """Safe-ish per-call Python code execution sandbox.
 
+Finding AUR-SEC-2026-0021; CWE-78 (OS command injection),
+CWE-426 (untrusted search path).
+
 The :class:`CodeExecutionSandbox` runs short Python snippets in a
 fresh child process launched via :mod:`subprocess`. It applies basic
 hardening:
@@ -25,12 +28,21 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import time
 from dataclasses import dataclass
 from typing import Optional
+
+from src.security.safe_subprocess import (
+    UnsafeSubprocessError,
+    run_safe,
+)
+
+# Absolute path of the interpreter, resolved at import. The sandbox
+# only ever allows its configured interpreter; callers that pass a
+# custom ``python_path`` extend the per-instance allowlist.
+_DEFAULT_PYTHON_ABS: str = os.path.realpath(sys.executable)
 
 try:  # pragma: no cover - platform branch
     import resource  # type: ignore[attr-defined]
@@ -148,7 +160,17 @@ class CodeExecutionSandbox:
             raise ValueError(
                 f"max_output_chars must be >= 0, got {max_output_chars!r}"
             )
-        self.python_path = python_path or sys.executable
+        # Resolve the interpreter to an absolute path and remember the
+        # caller-supplied allowlist for :func:`run_safe`.
+        resolved = os.path.realpath(python_path) if python_path else _DEFAULT_PYTHON_ABS
+        if not os.path.isabs(resolved):
+            raise UnsafeSubprocessError(
+                f"python_path must resolve to an absolute path; got {resolved!r}"
+            )
+        self.python_path = resolved
+        self._allowed_executables: frozenset[str] = frozenset(
+            {resolved, _DEFAULT_PYTHON_ABS}
+        )
         self.timeout = float(timeout)
         self.max_memory_mb = int(max_memory_mb)
         self.max_output_chars = int(max_output_chars)
@@ -214,33 +236,21 @@ class CodeExecutionSandbox:
         t0 = time.perf_counter()
         timed_out = False
         try:
-            kwargs: dict[str, object] = dict(
-                input=stdin_text,
-                capture_output=True,
-                text=True,
-                cwd=tmpdir,
-                env=env,
+            # AUR-SEC-2026-0021: all subprocess calls go through the
+            # hardened wrapper (allowlist + shell=False + timeout).
+            safe_res = run_safe(
+                argv,
                 timeout=self.timeout,
+                allowed_executables=self._allowed_executables,
+                env_override=env,
+                cwd=tmpdir,
+                preexec_fn=preexec,
+                stdin_text=stdin_text,
             )
-            if preexec is not None and os.name == "posix":
-                kwargs["preexec_fn"] = preexec
-            proc = subprocess.run(argv, **kwargs)  # type: ignore[arg-type]
-            exit_code = proc.returncode
-            stdout = proc.stdout or ""
-            stderr = proc.stderr or ""
-        except subprocess.TimeoutExpired as exc:
-            timed_out = True
-            exit_code = 124
-            stdout_raw = exc.stdout or b""
-            stderr_raw = exc.stderr or b""
-            if isinstance(stdout_raw, bytes):
-                stdout = stdout_raw.decode("utf-8", errors="replace")
-            else:
-                stdout = stdout_raw
-            if isinstance(stderr_raw, bytes):
-                stderr = stderr_raw.decode("utf-8", errors="replace")
-            else:
-                stderr = stderr_raw
+            exit_code = safe_res.returncode
+            stdout = safe_res.stdout
+            stderr = safe_res.stderr
+            timed_out = safe_res.killed_on_timeout
         finally:
             duration_ms = (time.perf_counter() - t0) * 1000.0
             shutil.rmtree(tmpdir, ignore_errors=True)

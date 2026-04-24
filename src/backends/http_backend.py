@@ -5,6 +5,8 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
+from src.security.url_scheme_validator import validate_url
+
 __all__ = [
     "HTTPBackendConfig",
     "HTTPBackend",
@@ -33,12 +35,14 @@ class HTTPBackend:
 
     def _post(self, url: str, body: dict) -> dict:
         cfg = self._config
+        # AUR-SEC-2026-0020: gate URL scheme before any urlopen call.
+        validate_url(url)
         encoded = json.dumps(body).encode()
-        req = urllib.request.Request(url, data=encoded, headers=self._headers(), method="POST")
+        req = urllib.request.Request(url, data=encoded, headers=self._headers(), method="POST")  # noqa: S310 — scheme validated above (AUR-SEC-2026-0020)
         last_exc: Exception | None = None
         for attempt in range(cfg.max_retries):
             try:
-                with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:
+                with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # noqa: S310 — scheme validated above (AUR-SEC-2026-0020)
                     return json.loads(resp.read())
             except urllib.error.HTTPError as exc:
                 if 400 <= exc.code < 500:
@@ -69,9 +73,17 @@ class HTTPBackend:
 
     def health(self) -> bool:
         cfg = self._config
-        req = urllib.request.Request(f"{cfg.base_url}/health", method="GET")
+        health_url = f"{cfg.base_url}/health"
+        # AUR-SEC-2026-0020: block unsafe schemes before urlopen. health() is
+        # intentionally forgiving (returns False on any failure) but must
+        # still refuse to dispatch banned-scheme requests.
         try:
-            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:
+            validate_url(health_url)
+        except Exception:
+            return False
+        req = urllib.request.Request(health_url, method="GET")  # noqa: S310 — scheme validated above (AUR-SEC-2026-0020)
+        try:
+            with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # noqa: S310 — scheme validated above (AUR-SEC-2026-0020)
                 return resp.status == 200
         except Exception:
             return False

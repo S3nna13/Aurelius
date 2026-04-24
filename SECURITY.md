@@ -35,6 +35,11 @@ All security findings are tracked in `.aurelius-cves.log` at the repository root
 | AUR-SEC-2026-0017 | Safe archive extractor (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
 | AUR-SEC-2026-0018 | Auth middleware / HMAC timing-safe (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
 | AUR-SEC-2026-0019 | Token-bucket rate limiter (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
+| AUR-SEC-2026-0020 | urllib SSRF / unchecked scheme in http_backend + ollama_adapter | High | CWE-918 | Fixed (cycle-150-sec) |
+| AUR-SEC-2026-0021 | Unsafe subprocess in code-exec surfaces (sandbox, test_runner, red_team, exec_tool) | High | CWE-78, CWE-426 | Fixed (cycle-150-sec) |
+| AUR-SEC-2026-0022 | CycloneDX 1.5 SBOM generator (new defense) | N/A | N/A | Deployed (cycle-150-sec) |
+| AUR-SEC-2026-0023 | Typosquat guard for uv.lock (new defense) | N/A | CWE-494 | Deployed (cycle-150-sec) |
+| AUR-SEC-2026-0024 | Bind-address gate — require opt-in for 0.0.0.0 (new defense) | N/A | CWE-1327 | Deployed (cycle-150-sec) |
 
 ## Security Architecture
 

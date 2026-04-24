@@ -1,5 +1,8 @@
 """Code test-runner tool for coding agents.
 
+Finding AUR-SEC-2026-0021; CWE-78 (OS command injection),
+CWE-426 (untrusted search path).
+
 Given a working directory with tests, runs pytest (or a specified test
 command) in a subprocess with a wall-clock timeout and parses the
 output for pass/fail/skipped/error counts and the names of failing
@@ -141,7 +144,9 @@ class CodeTestRunner:
             raise ValueError(f"timeout must be > 0, got {timeout!r}")
         if working_dir is not None and not os.path.isdir(working_dir):
             raise NotADirectoryError(working_dir)
-        self.python_path = python_path or sys.executable
+        # AUR-SEC-2026-0021: resolve to absolute path so downstream
+        # :func:`run_safe` allowlist checks succeed.
+        self.python_path = os.path.realpath(python_path or sys.executable)
         default_cmd = [self.python_path, "-m", "pytest", "-q", "--tb=short"]
         self.test_command: list[str] = (
             list(test_command) if test_command else default_cmd
@@ -228,9 +233,10 @@ def _run_argv_via_sandbox(
     call.
     """
     import shutil
-    import subprocess
     import tempfile
     import time
+
+    from src.security.safe_subprocess import run_safe
 
     run_fn = getattr(sandbox, "_run", None)
     if run_fn is not None and cwd is None:
@@ -238,8 +244,8 @@ def _run_argv_via_sandbox(
         return run_fn(argv, stdin_text=None)  # type: ignore[no-any-return]
 
     # Custom cwd path: we need to preserve the user's working dir but
-    # still get env scrubbing + timeout. Re-implement the minimal
-    # happy path inline.
+    # still get env scrubbing + timeout. Use the hardened wrapper for
+    # argv allowlist + timeout enforcement.
     env = sandbox._build_env()  # noqa: SLF001
     tmpdir = None
     workdir = cwd
@@ -247,38 +253,33 @@ def _run_argv_via_sandbox(
         tmpdir = tempfile.mkdtemp(prefix="aurelius_testrun_")
         workdir = tmpdir
 
+    # Allowlist = sandbox interpreter + resolved argv[0] if it is an
+    # absolute path. This keeps the allowlist tight while letting
+    # callers point the runner at custom test binaries explicitly.
+    base_allowed = set(getattr(
+        sandbox,
+        "_allowed_executables",
+        frozenset({sandbox.python_path}),
+    ))
+    if argv and os.path.isabs(argv[0]):
+        base_allowed.add(argv[0])
+    allowed = frozenset(base_allowed)
+
     t0 = time.perf_counter()
-    timed_out = False
-    stdout = ""
-    stderr = ""
-    exit_code = 0
     try:
-        try:
-            proc = subprocess.run(
-                argv,
-                input=None,
-                capture_output=True,
-                text=True,
-                cwd=workdir,
-                env=env,
-                timeout=sandbox.timeout,
-            )
-            exit_code = proc.returncode
-            stdout = proc.stdout or ""
-            stderr = proc.stderr or ""
-        except subprocess.TimeoutExpired as exc:
-            timed_out = True
-            exit_code = 124
-            raw_out = exc.stdout or b""
-            raw_err = exc.stderr or b""
-            if isinstance(raw_out, bytes):
-                stdout = raw_out.decode("utf-8", errors="replace")
-            else:
-                stdout = raw_out
-            if isinstance(raw_err, bytes):
-                stderr = raw_err.decode("utf-8", errors="replace")
-            else:
-                stderr = raw_err
+        # AUR-SEC-2026-0021: hardened subprocess wrapper replaces raw
+        # subprocess.run call here.
+        safe_res = run_safe(
+            argv,
+            timeout=sandbox.timeout,
+            allowed_executables=allowed,
+            env_override=env,
+            cwd=workdir,
+        )
+        exit_code = safe_res.returncode
+        stdout = safe_res.stdout
+        stderr = safe_res.stderr
+        timed_out = safe_res.killed_on_timeout
     finally:
         duration_ms = (time.perf_counter() - t0) * 1000.0
         if tmpdir is not None:

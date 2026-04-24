@@ -80,11 +80,61 @@ from src.security.safe_archive import (
     safe_extract,
 )
 
+from src.security.safe_subprocess import (
+    SAFE_SUBPROCESS,
+    SafeRunResult,
+    UnsafeSubprocessError,
+    run_safe,
+)
+
+from src.security.sbom_generator import (
+    SBOM_BOM_FORMAT,
+    SBOM_SPEC_VERSION,
+    SBOMResult,
+    generate_sbom,
+)
+
+# AUR-SEC-2026-0020: URL scheme / SSRF validator (CWE-918, CWE-284).
+from src.security.url_scheme_validator import (
+    BANNED_SCHEMES as URL_BANNED_SCHEMES,
+    UnsafeURLSchemeError,
+    validate_url as URL_SCHEME_VALIDATOR,
+)
+
+# AUR-SEC-2026-0023: Typosquat guard for dependency lockfiles (CWE-494).
+from src.security.typosquat_guard import (
+    POPULAR_PACKAGES,
+    TYPOSQUAT_REGISTRY,
+    TyposquatHit,
+    TyposquatResult,
+    check_typosquats,
+)
+
+# AUR-SEC-2026-0024: Bind-address gate (CWE-1327).
+from src.security.bind_address_gate import (
+    BIND_ADDRESS_REGISTRY,
+    UnsafeBindAddressError,
+    check_bind_address,
+)
+
 
 # Additive registry keyed by name; test suites and integrators can register
 # new defensive pipelines without touching downstream call sites.
 DEFENSIVE_PIPELINE_REGISTRY: dict = {
     "default": DEFAULT_SOC_PIPELINE,
+}
+
+#: Security registry for hardened subprocess wrappers and URL validators.
+SECURITY_REGISTRY: dict = {
+    "safe_subprocess": SAFE_SUBPROCESS,
+    "url_scheme_validator": URL_SCHEME_VALIDATOR,
+    "url_banned_schemes": URL_BANNED_SCHEMES,
+}
+
+#: Additive registry of SBOM emitters; callers can register alternate
+#: generators (SPDX, VEX, ...) without touching downstream imports.
+SBOM_REGISTRY: dict = {
+    "default": generate_sbom,
 }
 
 __all__ = [
@@ -136,4 +186,24 @@ __all__ = [
     "SafeTarExtractor",
     "SafeZipExtractor",
     "safe_extract",
+    "SAFE_SUBPROCESS",
+    "SafeRunResult",
+    "UnsafeSubprocessError",
+    "run_safe",
+    "SECURITY_REGISTRY",
+    "SBOM_BOM_FORMAT",
+    "SBOM_SPEC_VERSION",
+    "SBOMResult",
+    "generate_sbom",
+    "SBOM_REGISTRY",
+    # AUR-SEC-2026-0023
+    "POPULAR_PACKAGES",
+    "TYPOSQUAT_REGISTRY",
+    "TyposquatHit",
+    "TyposquatResult",
+    "check_typosquats",
+    # AUR-SEC-2026-0024
+    "BIND_ADDRESS_REGISTRY",
+    "UnsafeBindAddressError",
+    "check_bind_address",
 ]

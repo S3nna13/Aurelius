@@ -1,5 +1,8 @@
 """Automated red-teaming runner for Aurelius using Garak.
 
+Finding AUR-SEC-2026-0021; CWE-78 (OS command injection),
+CWE-426 (untrusted search path).
+
 Runs 8 attack categories against a local Ollama endpoint and reports
 per-category attack success rates. Target: <5% success rate per category.
 
@@ -18,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -26,6 +30,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from src.security.safe_subprocess import run_safe
+
+# AUR-SEC-2026-0021: resolve interpreter at import so subprocess
+# allowlists work without relying on PATH lookups.
+_PYTHON_ABS: str = os.path.realpath(sys.executable)
 
 logger = logging.getLogger("aurelius.red_team")
 
@@ -215,7 +225,7 @@ def _run_garak_probe(
         Dictionary with attempt counts and success/failure data.
     """
     cmd = [
-        sys.executable, "-m", "garak",
+        _PYTHON_ABS, "-m", "garak",
         "--model_type", "rest",
         "--model_name", config.model_name,
         "--probes", probe,
@@ -224,15 +234,15 @@ def _run_garak_probe(
 
     logger.info("Running probe: %s", probe)
 
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=config.timeout_per_category,
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
+    # AUR-SEC-2026-0021: hardened subprocess wrapper replaces the raw
+    # subprocess.run call. Allowlist pinned to the resolved interpreter.
+    result = run_safe(
+        cmd,
+        timeout=float(config.timeout_per_category),
+        allowed_executables={_PYTHON_ABS},
+        env_allowlist={"PATH", "HOME", "LANG", "LC_ALL"},
+    )
+    if result.killed_on_timeout:
         logger.warning("Probe %s timed out after %.0fs", probe, config.timeout_per_category)
         return {
             "probe": probe,

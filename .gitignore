@@ -39,3 +39,4 @@ runs/
 wandb/
 .aurelius-meta-prompt.md
 .aurelius/
+.venv
