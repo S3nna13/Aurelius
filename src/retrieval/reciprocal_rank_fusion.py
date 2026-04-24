@@ -52,9 +52,11 @@ Stdlib only. No numpy, no torch.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Callable, Iterable
 
 __all__ = [
+    "RankedDoc",
     "reciprocal_rank_fusion",
     "borda_count",
     "comb_sum",
@@ -62,6 +64,16 @@ __all__ = [
     "fuse",
     "FUSION_REGISTRY",
 ]
+
+
+@dataclass
+class RankedDoc:
+    """A single ranked document from any retrieval lane."""
+
+    doc_id: str
+    text: str
+    score: float
+    source: str
 
 Ranking = list[tuple[str, float]]
 
