@@ -1,303 +1,382 @@
-"""Tests for attention_flow.py — AttentionRollout and HeadImportance."""
+"""
+Tests for src/interpretability/attention_flow.py
 
-import math
+Covers: AttentionFlow dataclass, AttentionFlowAnalyzer, and ATTENTION_FLOW_REGISTRY.
+Minimum 28 tests.
+"""
+
+from __future__ import annotations
+
 import pytest
-import torch
 
 from src.interpretability.attention_flow import (
-    AttentionFlowConfig,
-    AttentionRollout,
-    HeadImportance,
+    AttentionFlow,
+    AttentionFlowAnalyzer,
+    ATTENTION_FLOW_REGISTRY,
 )
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-N_LAYERS = 2
-N_HEADS = 2
-SEQ_LEN = 4
+
+def _uniform_weights(n: int) -> list[list[float]]:
+    """n x n uniform attention matrix (each row sums to 1)."""
+    val = 1.0 / n
+    return [[val] * n for _ in range(n)]
 
 
-def make_attn(n_heads=N_HEADS, seq_len=SEQ_LEN, seed=0):
-    torch.manual_seed(seed)
-    raw = torch.rand(n_heads, seq_len, seq_len)
-    # Row-normalize so it's a valid attention matrix
-    return raw / raw.sum(dim=-1, keepdim=True)
+def _identity_weights(n: int) -> list[list[float]]:
+    """n x n identity attention matrix."""
+    return [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
 
 
-def make_config(add_residual=True):
-    return AttentionFlowConfig(n_layers=N_LAYERS, n_heads=N_HEADS, add_residual=add_residual)
+def _zero_weights(n: int) -> list[list[float]]:
+    """n x n all-zero matrix."""
+    return [[0.0] * n for _ in range(n)]
 
 
-# ---------------------------------------------------------------------------
-# AttentionFlowConfig
-# ---------------------------------------------------------------------------
-
-class TestAttentionFlowConfig:
-    def test_n_layers(self):
-        cfg = AttentionFlowConfig(n_layers=4, n_heads=8)
-        assert cfg.n_layers == 4
-
-    def test_n_heads(self):
-        cfg = AttentionFlowConfig(n_layers=4, n_heads=8)
-        assert cfg.n_heads == 8
-
-    def test_add_residual_default_true(self):
-        cfg = AttentionFlowConfig(n_layers=2, n_heads=4)
-        assert cfg.add_residual is True
-
-    def test_add_residual_false(self):
-        cfg = AttentionFlowConfig(n_layers=2, n_heads=4, add_residual=False)
-        assert cfg.add_residual is False
-
-    def test_is_dataclass(self):
-        import dataclasses
-        assert dataclasses.is_dataclass(AttentionFlowConfig)
-
-    def test_custom_values(self):
-        cfg = AttentionFlowConfig(n_layers=6, n_heads=16, add_residual=True)
-        assert cfg.n_layers == 6
-        assert cfg.n_heads == 16
-        assert cfg.add_residual is True
+def _make_analyzer(num_layers: int = 3, num_heads: int = 4) -> AttentionFlowAnalyzer:
+    return AttentionFlowAnalyzer(num_layers=num_layers, num_heads=num_heads)
 
 
 # ---------------------------------------------------------------------------
-# AttentionRollout — compute_rollout
+# 1. AttentionFlow dataclass — basic fields
 # ---------------------------------------------------------------------------
 
-class TestAttentionRolloutShape:
-    def setup_method(self):
-        self.cfg = make_config()
-        self.rollout_module = AttentionRollout(self.cfg)
+class TestAttentionFlowDataclass:
+    def test_fields_stored_correctly(self):
+        af = AttentionFlow(layer=0, head=1, from_pos=2, to_pos=3, weight=0.75)
+        assert af.layer == 0
+        assert af.head == 1
+        assert af.from_pos == 2
+        assert af.to_pos == 3
+        assert af.weight == 0.75
 
-    def test_output_shape_2layers(self):
-        matrices = [make_attn(seed=i) for i in range(N_LAYERS)]
-        result = self.rollout_module.compute_rollout(matrices)
-        assert result.shape == (SEQ_LEN, SEQ_LEN)
+    def test_frozen_layer(self):
+        af = AttentionFlow(layer=0, head=0, from_pos=0, to_pos=0, weight=0.5)
+        with pytest.raises((AttributeError, TypeError)):
+            af.layer = 99  # type: ignore[misc]
 
-    def test_output_is_tensor(self):
-        matrices = [make_attn(seed=i) for i in range(N_LAYERS)]
-        result = self.rollout_module.compute_rollout(matrices)
-        assert isinstance(result, torch.Tensor)
+    def test_frozen_weight(self):
+        af = AttentionFlow(layer=0, head=0, from_pos=0, to_pos=0, weight=0.5)
+        with pytest.raises((AttributeError, TypeError)):
+            af.weight = 0.99  # type: ignore[misc]
 
-    def test_output_shape_1layer(self):
-        cfg = AttentionFlowConfig(n_layers=1, n_heads=N_HEADS)
-        module = AttentionRollout(cfg)
-        result = module.compute_rollout([make_attn()])
-        assert result.shape == (SEQ_LEN, SEQ_LEN)
+    def test_frozen_from_pos(self):
+        af = AttentionFlow(layer=1, head=2, from_pos=3, to_pos=4, weight=0.1)
+        with pytest.raises((AttributeError, TypeError)):
+            af.from_pos = 0  # type: ignore[misc]
 
-    def test_output_shape_3layers(self):
-        cfg = AttentionFlowConfig(n_layers=3, n_heads=N_HEADS)
-        module = AttentionRollout(cfg)
-        matrices = [make_attn(seed=i) for i in range(3)]
-        result = module.compute_rollout(matrices)
-        assert result.shape == (SEQ_LEN, SEQ_LEN)
+    def test_equality(self):
+        af1 = AttentionFlow(layer=0, head=0, from_pos=0, to_pos=1, weight=0.3)
+        af2 = AttentionFlow(layer=0, head=0, from_pos=0, to_pos=1, weight=0.3)
+        assert af1 == af2
 
-    def test_output_shape_larger_seq(self):
-        cfg = AttentionFlowConfig(n_layers=2, n_heads=4)
-        module = AttentionRollout(cfg)
-        seq = 8
-        raw = [torch.rand(4, seq, seq) for _ in range(2)]
-        matrices = [r / r.sum(-1, keepdim=True) for r in raw]
-        result = module.compute_rollout(matrices)
-        assert result.shape == (seq, seq)
-
-
-class TestAttentionRolloutResidual:
-    def test_with_residual_values_not_all_zero(self):
-        cfg = make_config(add_residual=True)
-        module = AttentionRollout(cfg)
-        matrices = [make_attn(seed=i) for i in range(N_LAYERS)]
-        result = module.compute_rollout(matrices)
-        assert result.abs().sum() > 0
-
-    def test_without_residual_shape(self):
-        cfg = make_config(add_residual=False)
-        module = AttentionRollout(cfg)
-        matrices = [make_attn(seed=i) for i in range(N_LAYERS)]
-        result = module.compute_rollout(matrices)
-        assert result.shape == (SEQ_LEN, SEQ_LEN)
-
-    def test_without_residual_differs_from_with(self):
-        matrices = [make_attn(seed=i) for i in range(N_LAYERS)]
-        cfg_res = make_config(add_residual=True)
-        cfg_nores = make_config(add_residual=False)
-        res = AttentionRollout(cfg_res).compute_rollout(matrices)
-        nores = AttentionRollout(cfg_nores).compute_rollout(matrices)
-        assert not torch.allclose(res, nores)
-
-    def test_1layer_no_residual_approx_input(self):
-        """With 1 layer and no residual, rollout ≈ mean over heads."""
-        cfg = AttentionFlowConfig(n_layers=1, n_heads=N_HEADS, add_residual=False)
-        module = AttentionRollout(cfg)
-        a = make_attn()
-        result = module.compute_rollout([a])
-        expected = a.mean(dim=0)
-        assert torch.allclose(result, expected, atol=1e-5)
-
-    def test_residual_rows_sum_to_approx_one(self):
-        """After residual+normalization, rows should sum ~1."""
-        cfg = make_config(add_residual=True)
-        module = AttentionRollout(cfg)
-        matrices = [make_attn(seed=i) for i in range(N_LAYERS)]
-        result = module.compute_rollout(matrices)
-        row_sums = result.sum(dim=-1)
-        assert torch.allclose(row_sums, torch.ones(SEQ_LEN), atol=1e-4)
-
-    def test_identity_attn_with_residual(self):
-        """Identity attention matrices with residual -> identity rollout."""
-        cfg = AttentionFlowConfig(n_layers=2, n_heads=1, add_residual=True)
-        module = AttentionRollout(cfg)
-        ident = torch.eye(SEQ_LEN).unsqueeze(0)  # (1, S, S)
-        result = module.compute_rollout([ident, ident])
-        assert torch.allclose(result, torch.eye(SEQ_LEN), atol=1e-4)
+    def test_inequality_different_weight(self):
+        af1 = AttentionFlow(layer=0, head=0, from_pos=0, to_pos=1, weight=0.3)
+        af2 = AttentionFlow(layer=0, head=0, from_pos=0, to_pos=1, weight=0.4)
+        assert af1 != af2
 
 
 # ---------------------------------------------------------------------------
-# AttentionRollout — token_relevance
+# 2. AttentionFlowAnalyzer — constructor
 # ---------------------------------------------------------------------------
 
-class TestTokenRelevance:
-    def setup_method(self):
-        self.cfg = make_config()
-        self.module = AttentionRollout(self.cfg)
-        matrices = [make_attn(seed=i) for i in range(N_LAYERS)]
-        self.rollout = self.module.compute_rollout(matrices)
+class TestAnalyzerConstructor:
+    def test_num_layers_stored(self):
+        a = AttentionFlowAnalyzer(num_layers=6, num_heads=8)
+        assert a.num_layers == 6
 
-    def test_returns_1d_tensor(self):
-        rel = self.module.token_relevance(self.rollout, 0)
-        assert rel.dim() == 1
+    def test_num_heads_stored(self):
+        a = AttentionFlowAnalyzer(num_layers=6, num_heads=8)
+        assert a.num_heads == 8
 
-    def test_length_equals_seq_len(self):
-        rel = self.module.token_relevance(self.rollout, 0)
-        assert len(rel) == SEQ_LEN
-
-    def test_target_idx_0_is_first_row(self):
-        rel = self.module.token_relevance(self.rollout, 0)
-        assert torch.allclose(rel, self.rollout[0])
-
-    def test_target_idx_last_is_last_row(self):
-        rel = self.module.token_relevance(self.rollout, SEQ_LEN - 1)
-        assert torch.allclose(rel, self.rollout[SEQ_LEN - 1])
-
-    def test_target_idx_1(self):
-        rel = self.module.token_relevance(self.rollout, 1)
-        assert torch.allclose(rel, self.rollout[1])
-
-    def test_output_is_tensor(self):
-        rel = self.module.token_relevance(self.rollout, 0)
-        assert isinstance(rel, torch.Tensor)
-
-    def test_different_targets_differ(self):
-        rel0 = self.module.token_relevance(self.rollout, 0)
-        rel1 = self.module.token_relevance(self.rollout, 1)
-        # For a non-symmetric rollout these should differ
-        assert not torch.allclose(rel0, rel1) or True  # always passes, just exercise code
+    def test_starts_empty(self):
+        a = _make_analyzer()
+        assert a.top_flows(n=100) == []
 
 
 # ---------------------------------------------------------------------------
-# HeadImportance — score_by_gradient
+# 3. record — return type and filtering
 # ---------------------------------------------------------------------------
 
-class TestHeadImportanceScores:
-    def setup_method(self):
-        self.hi = HeadImportance(n_layers=N_LAYERS, n_heads=N_HEADS)
-
-    def _make_inputs(self, seed=0):
-        torch.manual_seed(seed)
-        weights = [torch.rand(N_HEADS, SEQ_LEN, SEQ_LEN) for _ in range(N_LAYERS)]
-        grads = [torch.rand(N_HEADS, SEQ_LEN, SEQ_LEN) for _ in range(N_LAYERS)]
-        return weights, grads
-
-    def test_output_shape(self):
-        w, g = self._make_inputs()
-        scores = self.hi.score_by_gradient(w, g)
-        assert scores.shape == (N_LAYERS, N_HEADS)
-
-    def test_output_is_tensor(self):
-        w, g = self._make_inputs()
-        scores = self.hi.score_by_gradient(w, g)
-        assert isinstance(scores, torch.Tensor)
-
-    def test_scores_non_negative(self):
-        w, g = self._make_inputs()
-        scores = self.hi.score_by_gradient(w, g)
-        assert (scores >= 0).all()
-
-    def test_scores_with_zero_grad(self):
-        w = [torch.rand(N_HEADS, SEQ_LEN, SEQ_LEN) for _ in range(N_LAYERS)]
-        g = [torch.zeros(N_HEADS, SEQ_LEN, SEQ_LEN) for _ in range(N_LAYERS)]
-        scores = self.hi.score_by_gradient(w, g)
-        assert torch.allclose(scores, torch.zeros(N_LAYERS, N_HEADS))
-
-    def test_scores_positive_for_random_inputs(self):
-        w, g = self._make_inputs()
-        scores = self.hi.score_by_gradient(w, g)
-        assert scores.sum() > 0
-
-    def test_scores_larger_config(self):
-        hi = HeadImportance(n_layers=4, n_heads=8)
-        w = [torch.rand(8, SEQ_LEN, SEQ_LEN) for _ in range(4)]
-        g = [torch.rand(8, SEQ_LEN, SEQ_LEN) for _ in range(4)]
-        scores = hi.score_by_gradient(w, g)
-        assert scores.shape == (4, 8)
-
-
-# ---------------------------------------------------------------------------
-# HeadImportance — top_heads
-# ---------------------------------------------------------------------------
-
-class TestTopHeads:
-    def setup_method(self):
-        self.hi = HeadImportance(n_layers=N_LAYERS, n_heads=N_HEADS)
-        torch.manual_seed(42)
-        w = [torch.rand(N_HEADS, SEQ_LEN, SEQ_LEN) for _ in range(N_LAYERS)]
-        g = [torch.rand(N_HEADS, SEQ_LEN, SEQ_LEN) for _ in range(N_LAYERS)]
-        self.scores = self.hi.score_by_gradient(w, g)
-
-    def test_top_heads_returns_list(self):
-        result = self.hi.top_heads(self.scores, k=2)
+class TestRecord:
+    def test_record_returns_list(self):
+        a = _make_analyzer()
+        result = a.record(0, 0, _uniform_weights(3))
         assert isinstance(result, list)
 
-    def test_top_heads_k2_length(self):
-        result = self.hi.top_heads(self.scores, k=2)
+    def test_record_returns_attention_flow_objects(self):
+        a = _make_analyzer()
+        result = a.record(0, 0, _uniform_weights(3))
+        assert all(isinstance(f, AttentionFlow) for f in result)
+
+    def test_record_zero_weights_returns_empty(self):
+        a = _make_analyzer()
+        result = a.record(0, 0, _zero_weights(4))
+        assert result == []
+
+    def test_record_filters_zero_weights(self):
+        a = _make_analyzer()
+        weights = [[0.5, 0.0], [0.0, 0.5]]
+        result = a.record(0, 0, weights)
+        # Only the two non-zero entries should produce flows
         assert len(result) == 2
+        for f in result:
+            assert f.weight > 0.0
 
-    def test_top_heads_k1_length(self):
-        result = self.hi.top_heads(self.scores, k=1)
-        assert len(result) == 1
+    def test_record_identity_n_flows_equals_n(self):
+        n = 4
+        a = _make_analyzer()
+        result = a.record(0, 0, _identity_weights(n))
+        assert len(result) == n
 
-    def test_top_heads_default_k5_capped(self):
-        # n_layers * n_heads = 4, so k=5 capped to 4
-        result = self.hi.top_heads(self.scores, k=5)
-        assert len(result) == min(5, N_LAYERS * N_HEADS)
+    def test_record_uniform_n_flows_equals_n_squared(self):
+        n = 3
+        a = _make_analyzer()
+        result = a.record(0, 0, _uniform_weights(n))
+        assert len(result) == n * n
 
-    def test_top_heads_tuple_elements(self):
-        result = self.hi.top_heads(self.scores, k=2)
-        for item in result:
-            assert len(item) == 3
+    def test_record_sets_layer_and_head(self):
+        a = _make_analyzer()
+        result = a.record(2, 3, _identity_weights(2))
+        for f in result:
+            assert f.layer == 2
+            assert f.head == 3
 
-    def test_top_heads_layer_idx_in_range(self):
-        result = self.hi.top_heads(self.scores, k=N_LAYERS * N_HEADS)
-        for layer_idx, head_idx, score in result:
-            assert 0 <= layer_idx < N_LAYERS
+    def test_record_sets_from_pos_and_to_pos(self):
+        a = _make_analyzer()
+        weights = [[0.8, 0.2], [0.1, 0.9]]
+        result = a.record(0, 0, weights)
+        pairs = {(f.from_pos, f.to_pos) for f in result}
+        assert (0, 0) in pairs
+        assert (0, 1) in pairs
+        assert (1, 0) in pairs
+        assert (1, 1) in pairs
 
-    def test_top_heads_head_idx_in_range(self):
-        result = self.hi.top_heads(self.scores, k=N_LAYERS * N_HEADS)
-        for layer_idx, head_idx, score in result:
-            assert 0 <= head_idx < N_HEADS
+    def test_record_weight_value_correct(self):
+        a = _make_analyzer()
+        weights = [[0.6, 0.4]]
+        result = a.record(0, 0, weights)
+        weight_vals = sorted([f.weight for f in result])
+        assert abs(weight_vals[0] - 0.4) < 1e-9
+        assert abs(weight_vals[1] - 0.6) < 1e-9
 
-    def test_top_heads_scores_are_float(self):
-        result = self.hi.top_heads(self.scores, k=2)
-        for layer_idx, head_idx, score in result:
-            assert isinstance(score, float)
+    def test_record_accumulates_across_calls(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(2))
+        a.record(1, 0, _uniform_weights(2))
+        assert len(a.top_flows(n=100)) == 8  # 4 + 4
 
-    def test_top_heads_scores_positive(self):
-        result = self.hi.top_heads(self.scores, k=2)
-        for _, _, score in result:
-            assert score >= 0
+    def test_record_returns_only_current_call_flows(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(2))
+        result2 = a.record(1, 0, _identity_weights(3))
+        assert len(result2) == 3  # only current call
 
-    def test_top_heads_descending_order(self):
-        result = self.hi.top_heads(self.scores, k=N_LAYERS * N_HEADS)
-        scores_list = [s for _, _, s in result]
-        assert scores_list == sorted(scores_list, reverse=True)
+
+# ---------------------------------------------------------------------------
+# 4. top_flows
+# ---------------------------------------------------------------------------
+
+class TestTopFlows:
+    def test_top_flows_returns_list(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(3))
+        assert isinstance(a.top_flows(), list)
+
+    def test_top_flows_sorted_descending(self):
+        a = _make_analyzer()
+        weights = [[0.1, 0.9], [0.4, 0.6]]
+        a.record(0, 0, weights)
+        flows = a.top_flows(n=10)
+        for i in range(len(flows) - 1):
+            assert flows[i].weight >= flows[i + 1].weight
+
+    def test_top_flows_n_limits_results(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(4))  # 16 flows
+        result = a.top_flows(n=5)
+        assert len(result) == 5
+
+    def test_top_flows_n_larger_than_available_returns_all(self):
+        a = _make_analyzer()
+        a.record(0, 0, _identity_weights(3))  # 3 flows
+        result = a.top_flows(n=100)
+        assert len(result) == 3
+
+    def test_top_flows_default_n_is_10(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(4))  # 16 flows
+        result = a.top_flows()
+        assert len(result) == 10
+
+    def test_top_flows_empty_after_zero_weights(self):
+        a = _make_analyzer()
+        a.record(0, 0, _zero_weights(3))
+        assert a.top_flows() == []
+
+    def test_top_flows_highest_weight_first(self):
+        a = _make_analyzer()
+        weights = [[0.1, 0.9]]
+        a.record(0, 0, weights)
+        flows = a.top_flows(n=2)
+        assert abs(flows[0].weight - 0.9) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# 5. layer_summary
+# ---------------------------------------------------------------------------
+
+class TestLayerSummary:
+    def test_layer_summary_keys(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(2))
+        summary = a.layer_summary(0)
+        assert "layer" in summary
+        assert "total_flows" in summary
+        assert "mean_weight" in summary
+        assert "max_weight" in summary
+
+    def test_layer_summary_layer_value(self):
+        a = _make_analyzer()
+        a.record(1, 0, _uniform_weights(2))
+        summary = a.layer_summary(1)
+        assert summary["layer"] == 1
+
+    def test_layer_summary_total_flows(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(3))  # 9 flows
+        summary = a.layer_summary(0)
+        assert summary["total_flows"] == 9
+
+    def test_layer_summary_mean_weight_uniform(self):
+        a = _make_analyzer()
+        n = 2
+        a.record(0, 0, _uniform_weights(n))
+        summary = a.layer_summary(0)
+        expected_mean = 1.0 / n
+        assert abs(summary["mean_weight"] - expected_mean) < 1e-9
+
+    def test_layer_summary_max_weight(self):
+        a = _make_analyzer()
+        weights = [[0.2, 0.8], [0.3, 0.7]]
+        a.record(0, 0, weights)
+        summary = a.layer_summary(0)
+        assert abs(summary["max_weight"] - 0.8) < 1e-9
+
+    def test_layer_summary_unrecorded_layer_zeros(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(2))
+        summary = a.layer_summary(99)
+        assert summary["total_flows"] == 0
+        assert summary["mean_weight"] == 0.0
+        assert summary["max_weight"] == 0.0
+
+    def test_layer_summary_aggregates_across_heads(self):
+        a = _make_analyzer()
+        a.record(0, 0, _identity_weights(2))  # 2 flows
+        a.record(0, 1, _identity_weights(2))  # 2 flows
+        summary = a.layer_summary(0)
+        assert summary["total_flows"] == 4
+
+
+# ---------------------------------------------------------------------------
+# 6. head_importance
+# ---------------------------------------------------------------------------
+
+class TestHeadImportance:
+    def test_head_importance_length_equals_num_heads(self):
+        a = _make_analyzer(num_layers=2, num_heads=4)
+        a.record(0, 0, _uniform_weights(2))
+        result = a.head_importance(0)
+        assert len(result) == 4
+
+    def test_head_importance_unrecorded_head_is_zero(self):
+        a = _make_analyzer(num_layers=2, num_heads=3)
+        a.record(0, 0, _uniform_weights(2))
+        result = a.head_importance(0)
+        # Heads 1 and 2 were not recorded
+        assert result[1] == 0.0
+        assert result[2] == 0.0
+
+    def test_head_importance_unrecorded_layer_all_zeros(self):
+        a = _make_analyzer(num_layers=2, num_heads=3)
+        a.record(0, 0, _uniform_weights(2))
+        result = a.head_importance(1)
+        assert result == [0.0, 0.0, 0.0]
+
+    def test_head_importance_value_is_mean_weight(self):
+        a = _make_analyzer(num_layers=2, num_heads=2)
+        weights = [[1.0]]  # 1 flow with weight 1.0
+        a.record(0, 0, weights)
+        result = a.head_importance(0)
+        assert abs(result[0] - 1.0) < 1e-9
+
+    def test_head_importance_uniform_mean(self):
+        n = 2
+        a = _make_analyzer(num_layers=1, num_heads=1)
+        a.record(0, 0, _uniform_weights(n))
+        result = a.head_importance(0)
+        assert abs(result[0] - 1.0 / n) < 1e-9
+
+    def test_head_importance_multiple_heads(self):
+        a = _make_analyzer(num_layers=1, num_heads=2)
+        # head 0: single flow weight=0.8
+        a.record(0, 0, [[0.8]])
+        # head 1: single flow weight=0.3
+        a.record(0, 1, [[0.3]])
+        result = a.head_importance(0)
+        assert abs(result[0] - 0.8) < 1e-9
+        assert abs(result[1] - 0.3) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# 7. reset
+# ---------------------------------------------------------------------------
+
+class TestReset:
+    def test_reset_clears_top_flows(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(3))
+        a.reset()
+        assert a.top_flows(n=100) == []
+
+    def test_reset_clears_layer_summary(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(3))
+        a.reset()
+        summary = a.layer_summary(0)
+        assert summary["total_flows"] == 0
+
+    def test_reset_clears_head_importance(self):
+        a = _make_analyzer(num_layers=1, num_heads=2)
+        a.record(0, 0, _uniform_weights(2))
+        a.reset()
+        result = a.head_importance(0)
+        assert result == [0.0, 0.0]
+
+    def test_reset_allows_fresh_recording(self):
+        a = _make_analyzer()
+        a.record(0, 0, _uniform_weights(2))
+        a.reset()
+        a.record(1, 0, _identity_weights(3))
+        assert len(a.top_flows(n=100)) == 3
+
+
+# ---------------------------------------------------------------------------
+# 8. REGISTRY
+# ---------------------------------------------------------------------------
+
+class TestRegistry:
+    def test_registry_has_default_key(self):
+        assert "default" in ATTENTION_FLOW_REGISTRY
+
+    def test_registry_default_is_class(self):
+        assert ATTENTION_FLOW_REGISTRY["default"] is AttentionFlowAnalyzer
+
+    def test_registry_default_is_instantiable(self):
+        cls = ATTENTION_FLOW_REGISTRY["default"]
+        instance = cls(num_layers=2, num_heads=4)
+        assert isinstance(instance, AttentionFlowAnalyzer)

@@ -1,114 +1,145 @@
-"""Attention flow analysis: rollout, head importance, circuit tracing."""
+"""
+attention_flow.py — Analyzes attention flow across transformer layers.
 
+Pure Python, stdlib-only. No torch dependency.
+"""
+
+from __future__ import annotations
+
+import math
 from dataclasses import dataclass
-from typing import List, Tuple
-
-import torch
-from torch import Tensor
+from typing import Dict, List
 
 
-@dataclass
-class AttentionFlowConfig:
-    n_layers: int
-    n_heads: int
-    add_residual: bool = True
+@dataclass(frozen=True)
+class AttentionFlow:
+    """A single directed attention flow from one position to another."""
+    layer: int
+    head: int
+    from_pos: int
+    to_pos: int
+    weight: float
 
 
-class AttentionRollout:
-    """Compute attention rollout across layers."""
+class AttentionFlowAnalyzer:
+    """Records and analyzes attention flows across transformer layers and heads."""
 
-    def __init__(self, config: AttentionFlowConfig):
-        self.config = config
+    def __init__(self, num_layers: int, num_heads: int) -> None:
+        self.num_layers = num_layers
+        self.num_heads = num_heads
+        # All recorded flows stored as a flat list
+        self._flows: List[AttentionFlow] = []
+        # Per (layer, head) -> list of AttentionFlow
+        self._layer_head_flows: Dict[tuple, List[AttentionFlow]] = {}
 
-    def compute_rollout(self, attn_matrices: List[Tensor]) -> Tensor:
-        """Compute attention rollout.
+    def record(
+        self,
+        layer: int,
+        head: int,
+        attention_weights: List[List[float]],
+    ) -> List[AttentionFlow]:
+        """Record attention weights for one layer/head.
 
-        Args:
-            attn_matrices: list of (n_heads, seq_len, seq_len) tensors, one per layer.
-
-        Returns:
-            (seq_len, seq_len) rollout tensor.
-        """
-        # Mean over heads -> (seq_len, seq_len) per layer
-        averaged = [a.mean(dim=0) for a in attn_matrices]  # list of (S, S)
-
-        if self.config.add_residual:
-            processed = []
-            for a in averaged:
-                seq_len = a.size(0)
-                identity = torch.eye(seq_len, dtype=a.dtype, device=a.device)
-                a = a + identity
-                # Normalize rows
-                row_sums = a.sum(dim=-1, keepdim=True).clamp(min=1e-6)
-                a = a / row_sums
-                processed.append(a)
-        else:
-            processed = averaged
-
-        # Matrix multiply across layers: rollout = A_L @ ... @ A_1
-        rollout = processed[0]
-        for a in processed[1:]:
-            rollout = a @ rollout
-
-        return rollout
-
-    def token_relevance(self, rollout: Tensor, target_idx: int) -> Tensor:
-        """Return the relevance scores for a target token.
+        For each (from_pos, to_pos) pair, creates an AttentionFlow if weight > 0.0.
 
         Args:
-            rollout: (seq_len, seq_len) rollout tensor.
-            target_idx: index of the target token.
+            layer: Layer index.
+            head: Head index.
+            attention_weights: 2-D list [from_pos][to_pos] of floats.
 
         Returns:
-            1D tensor of length seq_len.
+            List of AttentionFlow objects created for this layer/head.
         """
-        return rollout[target_idx]
+        flows: List[AttentionFlow] = []
+        for from_pos, row in enumerate(attention_weights):
+            for to_pos, weight in enumerate(row):
+                if weight > 0.0:
+                    flow = AttentionFlow(
+                        layer=layer,
+                        head=head,
+                        from_pos=from_pos,
+                        to_pos=to_pos,
+                        weight=weight,
+                    )
+                    flows.append(flow)
 
+        self._flows.extend(flows)
+        key = (layer, head)
+        if key not in self._layer_head_flows:
+            self._layer_head_flows[key] = []
+        self._layer_head_flows[key].extend(flows)
+        return flows
 
-class HeadImportance:
-    """Score attention heads by importance."""
+    def top_flows(self, n: int = 10) -> List[AttentionFlow]:
+        """Return the globally top-n AttentionFlow objects by weight descending.
 
-    def __init__(self, n_layers: int, n_heads: int):
-        self.n_layers = n_layers
-        self.n_heads = n_heads
-
-    def score_by_gradient(
-        self, attn_weights: List[Tensor], gradients: List[Tensor]
-    ) -> Tensor:
-        """Compute importance scores via gradient * attention.
+        If n > number of recorded flows, returns all flows.
 
         Args:
-            attn_weights: list of (n_heads, seq_len, seq_len) per layer.
-            gradients: list of (n_heads, seq_len, seq_len) per layer.
+            n: Number of top flows to return.
 
         Returns:
-            (n_layers, n_heads) importance scores.
+            Sorted list (descending by weight) of up to n AttentionFlow objects.
         """
-        scores = []
-        for w, g in zip(attn_weights, gradients):
-            # Element-wise multiply, mean over seq dims -> (n_heads,)
-            head_scores = (w * g).abs().mean(dim=(-2, -1))
-            scores.append(head_scores)
-        return torch.stack(scores, dim=0)  # (n_layers, n_heads)
+        sorted_flows = sorted(self._flows, key=lambda f: f.weight, reverse=True)
+        return sorted_flows[:n]
 
-    def top_heads(
-        self, scores: Tensor, k: int = 5
-    ) -> List[Tuple[int, int, float]]:
-        """Return top-k heads by importance score.
+    def layer_summary(self, layer: int) -> Dict:
+        """Summarize all recorded flows for a given layer (across all heads).
 
         Args:
-            scores: (n_layers, n_heads) tensor.
-            k: number of top heads to return.
+            layer: Layer index.
 
         Returns:
-            list of (layer_idx, head_idx, score) tuples sorted descending.
+            Dict with keys: "layer", "total_flows", "mean_weight", "max_weight".
         """
-        n_layers, n_heads = scores.shape
-        flat = scores.reshape(-1)
-        topk_vals, topk_indices = torch.topk(flat, k=min(k, flat.numel()))
-        results = []
-        for idx, val in zip(topk_indices.tolist(), topk_vals.tolist()):
-            layer_idx = idx // n_heads
-            head_idx = idx % n_heads
-            results.append((layer_idx, head_idx, float(val)))
-        return results
+        layer_flows = [f for f in self._flows if f.layer == layer]
+        total = len(layer_flows)
+        if total == 0:
+            return {
+                "layer": layer,
+                "total_flows": 0,
+                "mean_weight": 0.0,
+                "max_weight": 0.0,
+            }
+        weights = [f.weight for f in layer_flows]
+        mean_w = sum(weights) / total
+        max_w = max(weights)
+        return {
+            "layer": layer,
+            "total_flows": total,
+            "mean_weight": mean_w,
+            "max_weight": max_w,
+        }
+
+    def head_importance(self, layer: int) -> List[float]:
+        """Return mean attention weight per head for a given layer.
+
+        Args:
+            layer: Layer index.
+
+        Returns:
+            List of length num_heads. Each entry is the mean weight for that
+            head at the given layer, or 0.0 if no flows were recorded for it.
+        """
+        result = [0.0] * self.num_heads
+        for head in range(self.num_heads):
+            key = (layer, head)
+            flows = self._layer_head_flows.get(key, [])
+            if flows:
+                result[head] = sum(f.weight for f in flows) / len(flows)
+        return result
+
+    def reset(self) -> None:
+        """Clear all recorded flows."""
+        self._flows = []
+        self._layer_head_flows = {}
+
+
+# ---------------------------------------------------------------------------
+# Registry
+# ---------------------------------------------------------------------------
+
+ATTENTION_FLOW_REGISTRY = {
+    "default": AttentionFlowAnalyzer,
+}
