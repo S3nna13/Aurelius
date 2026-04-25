@@ -43,3 +43,16 @@ runs/
 wandb/
 .aurelius-meta-prompt.md
 .aurelius/
+
+# Agent / cycle artifacts
+.aurelius-*.log
+.ruff_cache/
+.pytest_cache/
+aurelius.egg-info/
+
+# Deployment
+.dockerignore
+
+# IDE
+*.swo
+*~

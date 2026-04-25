@@ -16,6 +16,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+# File locking for multi-process safety
+try:
+    from filelock import FileLock, Timeout as FileLockTimeout
+    _HAS_FILELOCK = True
+except ImportError:  # pragma: no cover - optional dependency
+    _HAS_FILELOCK = False
+
 from src.model.interface_framework import (
     ApprovalRequest,
     BackgroundJob,
@@ -664,7 +671,9 @@ class SessionManager:
     ) -> Workstream | None:
         session = self.get_session(session_id)
         if session is None:
-            return None
+            if missing_ok:
+                return None
+            raise InterfaceFrameworkError(f"unknown session: {session_id!r}")
         workstream = session.workstreams.get(workstream_id)
         if workstream is not None:
             return workstream
@@ -673,7 +682,9 @@ class SessionManager:
                 return candidate
         if missing_ok:
             return None
-        return None
+        raise InterfaceFrameworkError(
+            f"unknown workstream: {workstream_id!r} in session {session_id!r}"
+        )
 
     def set_workstream_status(self, session_id: str, workstream_id_or_name: str, status: str) -> Workstream:
         if status not in _WORKSTREAM_STATUSES:
@@ -1330,10 +1341,22 @@ class SessionManager:
     def _persist_journal(self, journal: SessionJournal) -> None:
         if not self.persist:
             return
-        self._journal_path(journal.session_id).write_text(
-            json.dumps(journal.snapshot(), indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        path = self._journal_path(journal.session_id)
+        try:
+            if _HAS_FILELOCK:
+                lock_path = path.with_suffix(".json.lock")
+                with FileLock(str(lock_path), timeout=5):
+                    path.write_text(
+                        json.dumps(journal.snapshot(), indent=2, sort_keys=True),
+                        encoding="utf-8",
+                    )
+            else:
+                path.write_text(
+                    json.dumps(journal.snapshot(), indent=2, sort_keys=True),
+                    encoding="utf-8",
+                )
+        except OSError as exc:  # pragma: no cover - filesystem failure
+            raise InterfaceFrameworkError(f"cannot persist journal: {path}") from exc
 
     def _load_journal(self, path: Path) -> SessionJournal:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -1385,11 +1408,21 @@ class SessionManager:
     def _persist(self, session: SessionRecord) -> None:
         if not self.persist:
             return
+        path = self._session_path(session.session_id)
         payload = self.snapshot(session)
-        self._session_path(session.session_id).write_text(
-            json.dumps(payload, indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        try:
+            if _HAS_FILELOCK:
+                lock_path = path.with_suffix(".json.lock")
+                with FileLock(str(lock_path), timeout=5):
+                    path.write_text(
+                        json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+                    )
+            else:
+                path.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+                )
+        except OSError as exc:  # pragma: no cover - filesystem failure
+            raise InterfaceFrameworkError(f"cannot persist session: {path}") from exc
 
     def _load_session(self, path: Path) -> SessionRecord:
         payload = json.loads(path.read_text(encoding="utf-8"))

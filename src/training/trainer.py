@@ -300,6 +300,9 @@ class TrainConfig:
             use_muon=raw.get("optimizer", {}).get("use_muon", cls.use_muon),
             muon_lr=raw.get("optimizer", {}).get("muon_lr", cls.muon_lr),
             muon_momentum=raw.get("optimizer", {}).get("muon_momentum", cls.muon_momentum),
+            use_zclip=raw.get("optimizer", {}).get("use_zclip", cls.use_zclip),
+            zclip_z_threshold=raw.get("optimizer", {}).get("zclip_z_threshold", cls.zclip_z_threshold),
+            zclip_ema_alpha=raw.get("optimizer", {}).get("zclip_ema_alpha", cls.zclip_ema_alpha),
         )
 
 
@@ -356,6 +359,7 @@ class CheckpointManager:
         tokens_seen: int,
         loss: float,
         accelerator: Any,
+        muon_optimizer: Any | None = None,
     ) -> Path:
         """Save checkpoint as safetensors + metadata JSON."""
         ckpt_dir = self.save_dir / f"step-{step:07d}"
@@ -375,13 +379,14 @@ class CheckpointManager:
         save_file(state_dict, ckpt_dir / "model.safetensors")
 
         # Save optimizer + scheduler state (torch format for complex state)
-        torch.save(
-            {
-                "optimizer": optimizer.state_dict(),
-                "scheduler": scheduler.state_dict(),
-            },
-            ckpt_dir / "optim_state.pt",
-        )
+        # When Muon is used, also save Muon state so resume works correctly.
+        optim_state = {
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
+        }
+        if muon_optimizer is not None:
+            optim_state["muon"] = muon_optimizer.state_dict()
+        torch.save(optim_state, ckpt_dir / "optim_state.pt")
 
         # Save metadata
         metadata = {
@@ -411,6 +416,7 @@ class CheckpointManager:
         model: torch.nn.Module,
         optimizer: AdamW | None = None,
         scheduler: LambdaLR | None = None,
+        muon_optimizer: Any | None = None,
     ) -> dict[str, Any]:
         """Load checkpoint from safetensors + metadata."""
         ckpt_dir = Path(ckpt_dir)
@@ -420,7 +426,7 @@ class CheckpointManager:
         model.load_state_dict(state_dict, strict=True)
 
         # Load optimizer + scheduler
-        if optimizer is not None or scheduler is not None:
+        if optimizer is not None or scheduler is not None or muon_optimizer is not None:
             optim_state = torch.load(
                 ckpt_dir / "optim_state.pt",
                 map_location="cpu",
@@ -430,6 +436,8 @@ class CheckpointManager:
                 optimizer.load_state_dict(optim_state["optimizer"])
             if scheduler is not None:
                 scheduler.load_state_dict(optim_state["scheduler"])
+            if muon_optimizer is not None and "muon" in optim_state:
+                muon_optimizer.load_state_dict(optim_state["muon"])
 
         # Load metadata
         with open(ckpt_dir / "metadata.json") as f:
@@ -655,11 +663,14 @@ class AureliusTrainer:
 
         # Resume from checkpoint if specified
         if self.cfg.resume_from is not None:
+            # Resume: pass AdamW optimizer and Muon optimizer separately
+            resume_adamw = self.adamw_optimizer
             metadata = CheckpointManager.load(
                 self.cfg.resume_from,
                 self.accelerator.unwrap_model(self.model),
-                self.optimizer,
+                resume_adamw,
                 self.scheduler,
+                muon_optimizer=self.muon_optimizer,
             )
             self.global_step = metadata["step"]
             self.tokens_seen = metadata["tokens_seen"]
@@ -771,12 +782,13 @@ class AureliusTrainer:
         if self.accelerator.is_main_process:
             self.ckpt_mgr.save(
                 model=self.model,
-                optimizer=self.adamw_optimizer,  # save AdamW state (Muon state is momentum buffers only)
+                optimizer=self.adamw_optimizer,
                 scheduler=self.scheduler,
                 step=self.global_step,
                 tokens_seen=self.tokens_seen,
                 loss=current_loss,
                 accelerator=self.accelerator,
+                muon_optimizer=self.muon_optimizer,
             )
 
     @torch.no_grad()
