@@ -101,3 +101,4 @@ cycle-169 | 2026-04-25 | input_sanitizer+float_compressor | surfaces=security×1
 deploy-170 | 2026-04-25 | health_monitor+request_tracker | surfaces=deployment×1,serving×1 | +11 tests | DEPLOYMENT CYCLE
 sec-171 | 2026-04-25 | secrets_scanner+dependency_scanner | surfaces=security×2 | +12 tests | SECURITY-DOMINANT
 cycle-172 | 2026-04-25 | decaying_store+history_store | surfaces=memory×1,cli×1 | +11 tests
+cycle-173 | 2026-04-25 | analogical_reasoning+f1_score | surfaces=reasoning×1,evaluation×1 | +11 tests
