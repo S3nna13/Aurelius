@@ -66,3 +66,30 @@ def test_stdout_captured():
     assert result.exception is None
     assert "hello" in result.stdout
     assert "world" in result.stdout
+
+
+def test_getattr_type_traversal_escape_blocked():
+    runner = SandboxExecutor()
+    traversal_snippets = [
+        "getattr(object, '__class__')",
+        "setattr(object, '__class__', int)",
+        "type(object)",
+        "hasattr(object, '__class__')",
+        "[c for c in type.__subclasses__(type)]",
+        "getattr(int, '__subclasses__')()",
+    ]
+    for snippet in traversal_snippets:
+        result = runner.execute(snippet)
+        assert result.exception is not None, (
+            f"expected sandbox violation for {snippet!r} but got none"
+        )
+
+
+def test_default_allowed_builtins_excludes_getattr_type():
+    from src.security.sandbox_executor import DEFAULT_ALLOWED_BUILTINS
+
+    for name in ("getattr", "setattr", "type", "hasattr"):
+        assert name not in DEFAULT_ALLOWED_BUILTINS, (
+            f"{name} must not be in DEFAULT_ALLOWED_BUILTINS "
+            f"(sandbox escape vector — AUR-SEC-2026-0027)"
+        )

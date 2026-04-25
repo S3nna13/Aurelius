@@ -5,12 +5,7 @@ description = "Aurelius — 1.3B decoder-only LLM trained from scratch"
 requires-python = ">=3.12"
 dependencies = [
     "torch>=2.3.0",
-    "transformers>=4.45.0",
     "tokenizers>=0.20.0",
-    "datasets>=3.0.0",
-    "accelerate>=1.0.0",
-    "trl>=0.12.0",
-    "peft>=0.13.0",
     "safetensors>=0.4.0",
     "einops>=0.8.0",
     "pyyaml>=6.0",
@@ -20,7 +15,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+full = [
+    "transformers>=4.45.0",
+    "datasets>=3.0.0",
+    "accelerate>=1.0.0",
+    "trl>=0.12.0",
+    "peft>=0.13.0",
+]
 train = [
+    "transformers>=4.45.0",
+    "datasets>=3.0.0",
+    "accelerate>=1.0.0",
+    "trl>=0.12.0",
+    "peft>=0.13.0",
     "datatrove[io,processing]>=0.3.0",
     "flash-attn>=2.6.0",
     "deepspeed>=0.15.0",
@@ -63,7 +70,8 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP"]
+select = ["E", "F", "I", "UP", "S"]
+ignore = ["S105"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

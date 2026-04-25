@@ -183,10 +183,10 @@ class ASTAnalyzer:
 class FIMTokenizer:
     """Format and parse fill-in-the-middle (FIM) prompts."""
 
-    FIM_PREFIX_TOKEN: str = "<|fim_prefix|>"
-    FIM_SUFFIX_TOKEN: str = "<|fim_suffix|>"
-    FIM_MIDDLE_TOKEN: str = "<|fim_middle|>"
-    FIM_PAD_TOKEN: str = "<|fim_pad|>"
+    FIM_PREFIX_TOKEN: str = "<|fim_prefix|>"  # noqa: S105
+    FIM_SUFFIX_TOKEN: str = "<|fim_suffix|>"  # noqa: S105
+    FIM_MIDDLE_TOKEN: str = "<|fim_middle|>"  # noqa: S105
+    FIM_PAD_TOKEN: str = "<|fim_pad|>"  # noqa: S105
 
     def format_psm(self, span: FIMSpan) -> str:
         """Format as prefix-suffix-middle (PSM) — StarCoder2 default."""
