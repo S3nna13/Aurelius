@@ -97,3 +97,4 @@ cycle-165 | 2026-04-25 | SECURITY-DOMINANT | reference-harvest from NEXUS | surf
 cycle-166 | 2026-04-25 | scenario_sweeper+retry_tool+circuit_breaker | surfaces=simulation×1,tools×1,protocol×1 | +14 tests
 cycle-167 | 2026-04-25 | scheduler+silo_comparator | surfaces=workflow×1,federation×1 | +9 tests
 cycle-168 | 2026-04-25 | fp16_quantizer+interactive_commands | surfaces=quantization×1,cli×1 | +12 tests
+cycle-169 | 2026-04-25 | input_sanitizer+float_compressor | surfaces=security×1,compression×1 | +10 tests
