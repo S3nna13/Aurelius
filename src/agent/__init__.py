@@ -635,3 +635,39 @@ __all__ += [
     "ToolCallOutcome",
     "ToolOrchestrator",
 ]
+
+
+# --- message handler (cycle-201) ---------------------------------------------
+from .message_handler import (  # noqa: E402
+    MessageHandler,
+    MESSAGE_HANDLER_REGISTRY,
+    DEFAULT_MESSAGE_HANDLER,
+)
+
+AGENT_LOOP_REGISTRY["message_handler"] = MessageHandler
+
+__all__ += [
+    "MessageHandler",
+    "MESSAGE_HANDLER_REGISTRY",
+    "DEFAULT_MESSAGE_HANDLER",
+]
+
+
+# --- supervisor (cycle-201) --------------------------------------------------
+from .supervisor import (  # noqa: E402
+    AgentState,
+    AgentSupervisor,
+    SupervisorConfig,
+    SUPERVISOR_REGISTRY,
+    DEFAULT_SUPERVISOR,
+)
+
+AGENT_LIFECYCLE_REGISTRY["supervisor"] = AgentSupervisor
+
+__all__ += [
+    "AgentState",
+    "AgentSupervisor",
+    "SupervisorConfig",
+    "SUPERVISOR_REGISTRY",
+    "DEFAULT_SUPERVISOR",
+]

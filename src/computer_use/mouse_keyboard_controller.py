@@ -1,85 +1,112 @@
+"""Mock mouse and keyboard controller for computer-use automation.
+
+No OS automation libraries are imported — this is a pure/mock implementation
+suitable for unit-testing agentic action sequences.
+"""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import Enum
 from typing import Any
 
 
-class MouseButton(Enum):
-    LEFT = "left"
-    RIGHT = "right"
-    MIDDLE = "middle"
-
-
-@dataclass
-class MouseAction:
-    type: str
-    x: float = 0.0
-    y: float = 0.0
-    button: MouseButton = MouseButton.LEFT
-    delta_y: float = 0.0
-    end_x: float = 0.0
-    end_y: float = 0.0
-
-    @classmethod
-    def move_to(cls, x: float, y: float) -> MouseAction:
-        return cls(type="move", x=x, y=y)
-
-    @classmethod
-    def click(cls, button: MouseButton = MouseButton.LEFT) -> MouseAction:
-        return cls(type="click", button=button)
-
-    @classmethod
-    def double_click(cls) -> MouseAction:
-        return cls(type="double_click")
-
-    @classmethod
-    def scroll(cls, delta_y: float = 0.0) -> MouseAction:
-        return cls(type="scroll", delta_y=delta_y)
-
-    @classmethod
-    def drag(cls, start_x: float, start_y: float, end_x: float, end_y: float) -> MouseAction:
-        return cls(type="drag", x=start_x, y=start_y, end_x=end_x, end_y=end_y)
-
-
-@dataclass
-class KeyAction:
-    type: str
-    text: str = ""
-    key: str = ""
-    keys: list[str] = None
-
-    def __post_init__(self) -> None:
-        if self.keys is None:
-            self.keys = []
-
-    @classmethod
-    def type_text(cls, text: str) -> KeyAction:
-        if not text:
-            raise ValueError("text cannot be empty")
-        return cls(type="type", text=text)
-
-    @classmethod
-    def press(cls, key: str) -> KeyAction:
-        return cls(type="press", key=key)
-
-    @classmethod
-    def hotkey(cls, keys: list[str]) -> KeyAction:
-        return cls(type="hotkey", keys=keys)
-
-
 class MouseKeyboardController:
+    """Records mouse and keyboard actions in an internal log.
+
+    All coordinates are validated (0‑99999).  Invalid inputs raise immediately.
+    """
+
+    _VALID_BUTTONS: frozenset[str] = frozenset({"left", "right", "middle"})
+    _VALID_DIRECTIONS: frozenset[str] = frozenset({"up", "down"})
+    _MAX_COORD: int = 99_999
+    _MAX_TEXT_LEN: int = 1_000
+
     def __init__(self) -> None:
-        self.history: list[MouseAction | KeyAction] = []
+        self._log: list[dict[str, Any]] = []
 
-    def record_action(self, action: MouseAction | KeyAction) -> None:
-        self.history.append(action)
+    def _validate_coords(self, x: int, y: int) -> None:
+        if not isinstance(x, int) or not isinstance(y, int):
+            raise TypeError(
+                f"coordinates must be ints, got {type(x).__name__} and {type(y).__name__}"
+            )
+        if x < 0 or y < 0:
+            raise ValueError(f"coordinates must be non-negative, got ({x}, {y})")
+        if x > self._MAX_COORD or y > self._MAX_COORD:
+            raise ValueError(
+                f"coordinates must be <= {self._MAX_COORD}, got ({x}, {y})"
+            )
 
-    def clear_history(self) -> None:
-        self.history.clear()
+    def _validate_button(self, button: str) -> None:
+        if button not in self._VALID_BUTTONS:
+            raise ValueError(
+                f"button must be one of {sorted(self._VALID_BUTTONS)}, got {button!r}"
+            )
 
-    def get_actions(self) -> list[MouseAction | KeyAction]:
-        return list(self.history)
+    def move_mouse(self, x: int, y: int) -> None:
+        """Record a move-mouse action after validating coordinates."""
+        self._validate_coords(x, y)
+        self._log.append({"action": "move_mouse", "x": x, "y": y})
 
+    def click(self, x: int, y: int, button: str = "left") -> None:
+        """Record a click action after validating coordinates and button."""
+        self._validate_coords(x, y)
+        self._validate_button(button)
+        self._log.append({"action": "click", "x": x, "y": y, "button": button})
 
-MOUSE_KEYBOARD_CONTROLLER = MouseKeyboardController()
+    def scroll(
+        self,
+        x: int,
+        y: int,
+        direction: str = "down",
+        amount: int = 3,
+    ) -> None:
+        """Record a scroll action after validating inputs."""
+        self._validate_coords(x, y)
+        if direction not in self._VALID_DIRECTIONS:
+            raise ValueError(
+                f"direction must be one of {sorted(self._VALID_DIRECTIONS)}, got {direction!r}"
+            )
+        if not isinstance(amount, int) or amount < 1:
+            raise ValueError(f"amount must be a positive int, got {amount!r}")
+        self._log.append(
+            {
+                "action": "scroll",
+                "x": x,
+                "y": y,
+                "direction": direction,
+                "amount": amount,
+            }
+        )
+
+    def type_text(self, text: str, interval: float = 0.01) -> None:
+        """Record a type-text action after validating inputs."""
+        if not isinstance(text, str):
+            raise TypeError(f"text must be str, got {type(text).__name__}")
+        if len(text) > self._MAX_TEXT_LEN:
+            raise ValueError(
+                f"text length must be <= {self._MAX_TEXT_LEN}, got {len(text)}"
+            )
+        if interval < 0:
+            raise ValueError(f"interval must be non-negative, got {interval}")
+        self._log.append({"action": "type_text", "text": text, "interval": interval})
+
+    def press_key(self, key: str) -> None:
+        """Record a single key-press action."""
+        if not isinstance(key, str) or not key:
+            raise ValueError("key must be a non-empty str")
+        self._log.append({"action": "press_key", "key": key})
+
+    def hotkey(self, keys: list[str]) -> None:
+        """Record a hotkey (multiple keys) action."""
+        if not isinstance(keys, list):
+            raise TypeError(f"keys must be a list, got {type(keys).__name__}")
+        if not all(isinstance(k, str) for k in keys):
+            raise TypeError("all keys must be str")
+        self._log.append({"action": "hotkey", "keys": list(keys)})
+
+    def get_action_log(self) -> list[dict]:
+        """Return a shallow copy of the internal action log."""
+        return list(self._log)
+
+    def clear_log(self) -> None:
+        """Clear the internal action log."""
+        self._log.clear()

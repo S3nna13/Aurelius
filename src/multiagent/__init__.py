@@ -55,3 +55,15 @@ from .role_play_manager import (  # noqa: F401
     ROLE_PLAY_REGISTRY,
 )
 MULTIAGENT_REGISTRY["role_play"] = RolePlayManager
+
+# --- Consensus voter (cycle-201) ---------------------------------------------
+from .consensus_voter import (  # noqa: F401
+    Ballot,
+    ConsensusResult,
+    ConsensusVoter,
+    TieBreak,
+    Vote,
+    CONSENSUS_VOTER_REGISTRY,
+    DEFAULT_CONSENSUS_VOTER,
+)
+MULTIAGENT_REGISTRY["consensus_voter"] = DEFAULT_CONSENSUS_VOTER
