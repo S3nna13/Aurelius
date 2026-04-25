@@ -7,12 +7,12 @@ Inspired by cline/cline (MCP integration), continuedev/continue (context provide
 Apache-2.0, clean-room reimplementation.
 """
 
+from __future__ import annotations
+
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-
-from __future__ import annotations
 
 if TYPE_CHECKING:
     from src.mcp.mcp_server import StdioMCPServer
