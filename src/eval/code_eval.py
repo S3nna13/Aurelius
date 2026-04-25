@@ -423,12 +423,10 @@ _SAFE_BUILTINS: dict[str, Any] = {
     "reversed": reversed,
     "sorted": sorted,
     "zip": zip,
-    # Inspection
-    "hasattr": hasattr,
+    # Inspection (escalation-pruned: getattr/hasattr/type/vars removed)
     "isinstance": isinstance,
     "issubclass": issubclass,
     "callable": callable,
-    "getattr": getattr,
     # Misc
     "chr": chr,
     "hash": hash,
@@ -438,8 +436,6 @@ _SAFE_BUILTINS: dict[str, Any] = {
     "ord": ord,
     "print": print,
     "repr": repr,
-    "type": type,
-    "vars": vars,
     # Exceptions (needed for raise / except in solutions)
     "Exception": Exception,
     "ValueError": ValueError,
