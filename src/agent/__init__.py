@@ -630,8 +630,24 @@ from .tool_orchestrator import (  # noqa: E402
 )
 
 __all__ += [
-    "TOOL_ORCHESTRATOR",
     "ToolCall",
     "ToolCallOutcome",
     "ToolOrchestrator",
+]
+
+# --- execution tracer (additive) ------------------------------------
+from .execution_tracer import ExecutionEventType, ExecutionEvent, ExecutionTracer, EXECUTION_TRACER_REGISTRY  # noqa: F401
+from .tool_use_tracer import ToolCallStatus, ToolCall, ToolTrace, ToolUseTracer, TOOL_USE_TRACER_REGISTRY  # noqa: F401
+AGENT_LOOP_REGISTRY.update({"execution_tracer": ExecutionTracer})
+AGENT_LOOP_REGISTRY.update({"tool_use_tracer": ToolUseTracer})
+__all__ += [
+    "ExecutionEventType",
+    "ExecutionEvent",
+    "ExecutionTracer",
+    "EXECUTION_TRACER_REGISTRY",
+    "ToolCallStatus",
+    "ToolCall",
+    "ToolTrace",
+    "ToolUseTracer",
+    "TOOL_USE_TRACER_REGISTRY",
 ]

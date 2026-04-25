@@ -14,3 +14,13 @@ MONITORING_REGISTRY: dict[str, object] = {
     "alerts": ALERT_MANAGER,
     "health": HEALTH_CHECKER,
 }
+
+# --- metric exporter (additive) ------------------------------------
+from .metric_exporter import ExportFormat, MetricPoint, MetricExporter, METRIC_EXPORTER_REGISTRY  # noqa: F401
+MONITORING_REGISTRY.update({"exporter": MetricExporter})
+__all__ += [
+    "ExportFormat",
+    "MetricPoint",
+    "MetricExporter",
+    "METRIC_EXPORTER_REGISTRY",
+]

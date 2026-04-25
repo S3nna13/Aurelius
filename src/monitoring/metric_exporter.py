@@ -1,83 +1,90 @@
-"""Aurelius monitoring: metric_exporter — exports collected metrics in multiple formats."""
+"""Metric exporting to Prometheus, JSON, CSV, and InfluxDB line protocol."""
 from __future__ import annotations
 
+import csv
+import io
 import json
-from dataclasses import dataclass
-from enum import Enum
-from typing import List
+import time
+from dataclasses import dataclass, field
+from enum import StrEnum
 
 
-class ExportFormat(Enum):
+class ExportFormat(StrEnum):
     PROMETHEUS = "prometheus"
     JSON = "json"
     CSV = "csv"
-    INFLUX = "influx"
+    INFLUXDB = "influxdb"
 
 
 @dataclass(frozen=True)
 class MetricPoint:
     name: str
     value: float
-    labels: dict  # dict[str, str]
     timestamp: float
+    labels: dict[str, str] = field(default_factory=dict)
 
 
+@dataclass
 class MetricExporter:
-    """Collects MetricPoint objects and exports them in various wire formats."""
+    max_points: int = 10000
+    _points: list[MetricPoint] = field(default_factory=list)
 
-    def __init__(self) -> None:
-        self._points: List[MetricPoint] = []
-
-    def add(self, point: MetricPoint) -> None:
+    def add(
+        self,
+        name: str,
+        value: float,
+        labels: dict[str, str] | None = None,
+    ) -> MetricPoint:
+        point = MetricPoint(name=name, value=value, timestamp=time.time(), labels=labels or {})
         self._points.append(point)
+        if len(self._points) > self.max_points:
+            self._points.pop(0)
+        return point
 
-    def export(self, fmt: ExportFormat) -> str:
-        if fmt is ExportFormat.PROMETHEUS:
+    def export(self, fmt: str) -> str:
+        if fmt == "prometheus":
             return self._export_prometheus()
-        if fmt is ExportFormat.JSON:
+        elif fmt == "json":
             return self._export_json()
-        if fmt is ExportFormat.CSV:
+        elif fmt == "csv":
             return self._export_csv()
-        if fmt is ExportFormat.INFLUX:
-            return self._export_influx()
-        raise ValueError(f"Unknown format: {fmt}")
-
-    def _label_str_prometheus(self, labels: dict) -> str:
-        if not labels:
-            return ""
-        parts = [f'{k}="{v}"' for k, v in labels.items()]
-        return "{" + ",".join(parts) + "}"
+        elif fmt == "influxdb":
+            return self._export_influxdb()
+        raise ValueError(f"Unknown export format: {fmt!r}")
 
     def _export_prometheus(self) -> str:
         lines = []
         for p in self._points:
-            ts_ms = int(p.timestamp * 1000)
-            label_part = self._label_str_prometheus(p.labels)
-            lines.append(f"{p.name}{label_part} {p.value} {ts_ms}")
-        return "\n".join(lines) + ("\n" if lines else "")
+            label_str = ""
+            if p.labels:
+                label_str = "{" + ",".join(f'{k}="{v}"' for k, v in p.labels.items()) + "}"
+            lines.append(f"{p.name}{label_str} {p.value} {int(p.timestamp * 1000)}")
+        return "\n".join(lines)
 
     def _export_json(self) -> str:
-        records = [
-            {"name": p.name, "value": p.value, "labels": p.labels, "timestamp": p.timestamp}
+        data = [
+            {"name": p.name, "value": p.value, "timestamp": p.timestamp, "labels": p.labels}
             for p in self._points
         ]
-        return json.dumps(records)
+        return json.dumps(data, indent=2)
 
     def _export_csv(self) -> str:
-        rows = ["name,value,labels,timestamp"]
+        output = io.StringIO()
+        writer = csv.writer(output, lineterminator="\n")
+        writer.writerow(["name", "value", "timestamp", "labels"])
         for p in self._points:
-            label_part = ";".join(f"{k}={v}" for k, v in p.labels.items())
-            rows.append(f"{p.name},{p.value},{label_part},{p.timestamp}")
-        return "\n".join(rows) + "\n"
+            writer.writerow([p.name, p.value, p.timestamp, json.dumps(p.labels)])
+        return output.getvalue()
 
-    def _export_influx(self) -> str:
+    def _export_influxdb(self) -> str:
         lines = []
         for p in self._points:
+            label_str = ""
+            if p.labels:
+                label_str = "," + ",".join(f"{k}={v}" for k, v in p.labels.items())
             ts_ns = int(p.timestamp * 1e9)
-            label_part = ",".join(f"{k}={v}" for k, v in p.labels.items())
-            tag_set = f",{label_part}" if label_part else ""
-            lines.append(f"{p.name}{tag_set} value={p.value} {ts_ns}")
-        return "\n".join(lines) + ("\n" if lines else "")
+            lines.append(f"{p.name}{label_str} value={p.value} {ts_ns}")
+        return "\n".join(lines)
 
     def clear(self) -> None:
         self._points.clear()
@@ -86,6 +93,4 @@ class MetricExporter:
         return len(self._points)
 
 
-METRIC_EXPORTER_REGISTRY: dict = {"default": MetricExporter}
-
-REGISTRY = METRIC_EXPORTER_REGISTRY
+METRIC_EXPORTER_REGISTRY: dict[str, object] = {"default": MetricExporter()}

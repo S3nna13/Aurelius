@@ -38,3 +38,13 @@ from .self_consistency import SelfConsistency, SelfConsistencyConfig, Consistenc
 from .program_of_thought import ProgramOfThought, PoTConfig, PoTResult, POT_REGISTRY  # noqa: F401
 from .least_to_most import LeastToMost, L2MConfig, L2MResult, SubProblem, L2M_REGISTRY  # noqa: F401
 REASONING_REGISTRY.update({"self_consistency": SelfConsistency, "pot": ProgramOfThought, "l2m": LeastToMost})
+
+# --- Cycle-158 GNN layers + trainer ------------------------------------
+from .gnn_layer import GNNConfig, GCNLayer, GATLayer, GraphSAGELayer, GNNStack, GNN_PROFILER_REGISTRY  # noqa: F401
+from .gnn_trainer import GNNTrainConfig, GNNTrainResult, GNNTrainer  # noqa: F401
+REASONING_REGISTRY.update({"gnn": GNNStack})
+
+__all__ = [
+    "GNNConfig", "GCNLayer", "GATLayer", "GraphSAGELayer", "GNNStack", "GNN_PROFILER_REGISTRY",
+    "GNNTrainConfig", "GNNTrainResult", "GNNTrainer",
+] + __all__

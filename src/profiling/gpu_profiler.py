@@ -1,9 +1,7 @@
 """GPU utilization and memory tracking (simulated, stdlib-only)."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -30,13 +28,24 @@ class GPUProfiler:
             i: [] for i in range(num_devices)
         }
 
-    def record(self, stats: GPUStats) -> None:
-        device_id = stats.device_id
+    def record(
+        self,
+        utilization_pct: float | None = None,
+        memory_used_mb: float | None = None,
+        memory_total_mb: float | None = None,
+        device_id: int = 0,
+    ) -> None:
+        stats = GPUStats(
+            device_id=device_id,
+            utilization_pct=utilization_pct if utilization_pct is not None else 0.0,
+            memory_used_mb=memory_used_mb if memory_used_mb is not None else 0.0,
+            memory_total_mb=memory_total_mb if memory_total_mb is not None else 0.0,
+        )
         if device_id not in self._history:
             self._history[device_id] = []
         self._history[device_id].append(stats)
 
-    def latest(self, device_id: int = 0) -> Optional[GPUStats]:
+    def latest(self, device_id: int = 0) -> GPUStats | None:
         hist = self._history.get(device_id, [])
         return hist[-1] if hist else None
 
@@ -65,4 +74,4 @@ class GPUProfiler:
         }
 
 
-GPU_PROFILER_REGISTRY = {"default": GPUProfiler}
+GPU_PROFILER_REGISTRY: dict[str, object] = {"default": GPUProfiler}

@@ -1,140 +1,130 @@
+"""Tool-use tracing for agent tool-call latencies, success rates, and traces."""
 from __future__ import annotations
 
 import json
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any
+from enum import StrEnum
 
 
-class ToolCallStatus(str, Enum):
-    PENDING = "pending"
-    RUNNING = "running"
+class ToolCallStatus(StrEnum):
+    ACTIVE = "active"
     SUCCESS = "success"
-    ERROR = "error"
-    TIMEOUT = "timeout"
+    FAILURE = "failure"
 
 
 @dataclass
 class ToolCall:
     call_id: str
+    trace_id: str
     tool_name: str
-    args: dict
     status: ToolCallStatus
-    result: Any | None = None
+    start_time: float
+    end_time: float | None = None
     error: str | None = None
-    started_at: float | None = None
-    completed_at: float | None = None
-    latency_ms: float | None = None
 
 
 @dataclass
 class ToolTrace:
     trace_id: str
-    calls: list[ToolCall]
-    total_calls: int
-    success_rate: float
-    mean_latency_ms: float | None
+    calls: list[ToolCall] = field(default_factory=list)
+    created_at: float = field(default_factory=time.time)
 
 
+@dataclass
 class ToolUseTracer:
-    """Trace all tool calls within an agent run."""
+    max_traces: int = 100
+    max_calls_per_trace: int = 5000
+    _traces: dict[str, ToolTrace] = field(default_factory=dict)
+    _active_calls: dict[str, ToolCall] = field(default_factory=dict)
 
-    def __init__(self) -> None:
-        self._traces: dict[str, list[ToolCall]] = {}
-        self._calls: dict[str, ToolCall] = {}
+    @property
+    def active_calls(self) -> list[ToolCall]:
+        return list(self._active_calls.values())
 
-    def start_trace(self) -> str:
-        trace_id = str(uuid.uuid4())
-        self._traces[trace_id] = []
-        return trace_id
+    def start_trace(self, trace_id: str | None = None) -> str:
+        tid = trace_id or str(uuid.uuid4())[:8]
+        if len(self._traces) >= self.max_traces:
+            oldest = min(self._traces)
+            del self._traces[oldest]
+        self._traces[tid] = ToolTrace(trace_id=tid)
+        return tid
 
-    def record_call(self, trace_id: str, tool_name: str, args: dict) -> ToolCall:
+    def get_trace(self, trace_id: str) -> ToolTrace:
         if trace_id not in self._traces:
-            raise KeyError(f"Unknown trace_id: {trace_id}")
+            raise KeyError(f"Trace {trace_id!r} not found")
+        return self._traces[trace_id]
+
+    def start_call(
+        self,
+        trace_id: str,
+        tool_name: str,
+        call_id: str | None = None,
+    ) -> str:
+        if trace_id not in self._traces:
+            raise KeyError(f"Trace {trace_id!r} not found")
+        cid = call_id or str(uuid.uuid4())[:8]
         call = ToolCall(
-            call_id=str(uuid.uuid4()),
-            tool_name=tool_name,
-            args=args,
-            status=ToolCallStatus.PENDING,
-        )
-        self._traces[trace_id].append(call)
-        self._calls[call.call_id] = call
-        return call
-
-    def start_call(self, call_id: str) -> ToolCall:
-        call = self._get_call(call_id)
-        call.status = ToolCallStatus.RUNNING
-        call.started_at = time.monotonic()
-        return call
-
-    def complete_call(self, call_id: str, result: Any) -> ToolCall:
-        call = self._get_call(call_id)
-        call.completed_at = time.monotonic()
-        call.result = result
-        call.status = ToolCallStatus.SUCCESS
-        if call.started_at is not None:
-            call.latency_ms = (call.completed_at - call.started_at) * 1000.0
-        return call
-
-    def fail_call(self, call_id: str, error: str, timeout: bool = False) -> ToolCall:
-        call = self._get_call(call_id)
-        call.completed_at = time.monotonic()
-        call.error = error
-        call.status = ToolCallStatus.TIMEOUT if timeout else ToolCallStatus.ERROR
-        if call.started_at is not None:
-            call.latency_ms = (call.completed_at - call.started_at) * 1000.0
-        return call
-
-    def get_trace(self, trace_id: str) -> ToolTrace | None:
-        calls = self._traces.get(trace_id)
-        if calls is None:
-            return None
-        total = len(calls)
-        successes = sum(1 for c in calls if c.status == ToolCallStatus.SUCCESS)
-        rate = (successes / total) if total else 0.0
-        latencies = [c.latency_ms for c in calls if c.latency_ms is not None]
-        mean_lat = (sum(latencies) / len(latencies)) if latencies else None
-        return ToolTrace(
+            call_id=cid,
             trace_id=trace_id,
-            calls=list(calls),
-            total_calls=total,
-            success_rate=rate,
-            mean_latency_ms=mean_lat,
+            tool_name=tool_name,
+            status=ToolCallStatus.ACTIVE,
+            start_time=time.time(),
         )
+        self._active_calls[cid] = call
+        return cid
 
-    def export_trace(self, trace_id: str) -> dict:
-        trace = self.get_trace(trace_id)
-        if trace is None:
-            return {}
-        return {
-            "trace_id": trace.trace_id,
-            "total_calls": trace.total_calls,
-            "success_rate": trace.success_rate,
-            "mean_latency_ms": trace.mean_latency_ms,
-            "calls": [
-                {
-                    "call_id": c.call_id,
-                    "tool_name": c.tool_name,
-                    "args": c.args,
-                    "status": c.status.value,
-                    "result": c.result if isinstance(c.result, (str, int, float, bool, list, dict, type(None))) else str(c.result),
-                    "error": c.error,
-                    "started_at": c.started_at,
-                    "completed_at": c.completed_at,
-                    "latency_ms": c.latency_ms,
-                }
-                for c in trace.calls
-            ],
-        }
+    def complete_call(self, call_id: str) -> None:
+        if call_id not in self._active_calls:
+            raise KeyError(f"Call {call_id!r} not found")
+        call = self._active_calls[call_id]
+        call.status = ToolCallStatus.SUCCESS
+        call.end_time = time.time()
+        trace = self._traces[call.trace_id]
+        trace.calls.append(call)
+        del self._active_calls[call_id]
 
-    def active_calls(self, trace_id: str) -> list[ToolCall]:
-        calls = self._traces.get(trace_id, [])
-        return [c for c in calls if c.status == ToolCallStatus.RUNNING]
+    def fail_call(self, call_id: str, error: str) -> None:
+        if call_id not in self._active_calls:
+            raise KeyError(f"Call {call_id!r} not found")
+        call = self._active_calls[call_id]
+        call.status = ToolCallStatus.FAILURE
+        call.end_time = time.time()
+        call.error = error
+        trace = self._traces[call.trace_id]
+        trace.calls.append(call)
+        del self._active_calls[call_id]
 
-    def _get_call(self, call_id: str) -> ToolCall:
-        call = self._calls.get(call_id)
-        if call is None:
-            raise KeyError(f"Unknown call_id: {call_id}")
-        return call
+    def record_call(
+        self,
+        trace_id: str,
+        tool_name: str,
+        success: bool = True,
+        error: str = "",
+        duration_ms: float | None = None,
+    ) -> ToolCall:
+        call_id = self.start_call(trace_id, tool_name)
+        if success:
+            self.complete_call(call_id)
+        else:
+            self.fail_call(call_id, error)
+        return self._traces[trace_id].calls[-1]
+
+    def export_trace(self, trace_id: str) -> str:
+        if trace_id not in self._traces:
+            raise KeyError(f"Trace {trace_id!r} not found")
+        trace = self._traces[trace_id]
+        calls_data = []
+        for c in trace.calls:
+            calls_data.append({
+                "call_id": c.call_id,
+                "tool_name": c.tool_name,
+                "status": c.status.value,
+                "duration_ms": (c.end_time - c.start_time) * 1000 if c.end_time else None,
+                "error": c.error,
+            })
+        return json.dumps({"trace_id": trace_id, "calls": calls_data}, indent=2)
+
+
+TOOL_USE_TRACER_REGISTRY: dict[str, object] = {"default": ToolUseTracer()}

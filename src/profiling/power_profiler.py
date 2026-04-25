@@ -1,11 +1,9 @@
 """Power consumption estimation (TDP-based, stdlib-only)."""
-
 from __future__ import annotations
 
 import statistics
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -26,13 +24,13 @@ class TDPConfig:
 class PowerProfiler:
     def __init__(
         self,
-        tdp_config: Optional[TDPConfig] = None,
+        tdp_config: TDPConfig | None = None,
         max_readings: int = 10000,
     ) -> None:
         self.tdp_config = tdp_config if tdp_config is not None else TDPConfig()
         self.max_readings = max_readings
         self._readings: list[PowerReading] = []
-        self._last_timestamp: Optional[float] = None
+        self._last_timestamp: float | None = None
         self._cumulative_energy_j: float = 0.0
 
     def record(self, power_w: float, component: str = "total") -> PowerReading:
@@ -63,13 +61,13 @@ class PowerProfiler:
             total += self._readings[i - 1].power_w * interval
         return total
 
-    def mean_power_w(self, component: Optional[str] = None) -> float:
+    def mean_power_w(self, component: str | None = None) -> float:
         readings = self._filter(component)
         if not readings:
             return 0.0
         return statistics.mean(r.power_w for r in readings)
 
-    def peak_power_w(self, component: Optional[str] = None) -> float:
+    def peak_power_w(self, component: str | None = None) -> float:
         readings = self._filter(component)
         if not readings:
             return 0.0
@@ -95,10 +93,10 @@ class PowerProfiler:
     def readings_for(self, component: str) -> list[PowerReading]:
         return [r for r in self._readings if r.component == component]
 
-    def _filter(self, component: Optional[str]) -> list[PowerReading]:
+    def _filter(self, component: str | None) -> list[PowerReading]:
         if component is None:
             return self._readings
         return [r for r in self._readings if r.component == component]
 
 
-POWER_PROFILER_REGISTRY = {"default": PowerProfiler}
+POWER_PROFILER_REGISTRY: dict[str, object] = {"default": PowerProfiler}

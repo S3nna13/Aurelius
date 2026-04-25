@@ -1,112 +1,160 @@
-"""GNN layers for knowledge graph reasoning.
-
-Implements GCN (Kipf & Welling 2017), GAT (Velickovic 2018),
-and GraphSAGE (Hamilton 2017) with a stacking wrapper.
-License: MIT.
-"""
+"""GNN layers for graph representation learning (GCN, GAT, GraphSAGE)."""
 from __future__ import annotations
-
-from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-@dataclass
 class GNNConfig:
+    gnn_type: str = "gcn"
     in_dim: int = 64
     out_dim: int = 64
+    n_layers: int = 2
     n_heads: int = 4
-    dropout: float = 0.1
-    layer_type: str = "gcn"
+    dropout: float = 0.0
+    use_residual: bool = True
+    activation: str = "relu"
+
+    def __init__(
+        self,
+        gnn_type: str = "gcn",
+        in_dim: int = 64,
+        out_dim: int = 64,
+        n_layers: int = 2,
+        n_heads: int = 4,
+        dropout: float = 0.0,
+        use_residual: bool = True,
+        activation: str = "relu",
+    ) -> None:
+        self.gnn_type = gnn_type
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.n_layers = n_layers
+        self.n_heads = n_heads
+        self.dropout = dropout
+        self.use_residual = use_residual
+        self.activation = activation
+        if self.out_dim % self.n_heads != 0:
+            raise ValueError("out_dim must be divisible by n_heads")
+
+
+GNN_PROFILER_REGISTRY: dict[str, object] = {}
 
 
 class GCNLayer(nn.Module):
-    """Graph Convolutional Network layer (Kipf & Welling 2017)."""
-
-    def __init__(self, in_dim: int, out_dim: int) -> None:
+    def __init__(self, in_dim: int, out_dim: int, dropout: float = 0.0) -> None:
         super().__init__()
-        self.linear = nn.Linear(in_dim, out_dim, bias=False)
+        self.linear = nn.Linear(in_dim, out_dim)
+        self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x: torch.Tensor, adj: torch.Tensor) -> torch.Tensor:
-        return F.relu(adj @ self.linear(x))
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        n = x.size(0)
+        edge_index = edge_index.to(x.device)
+        x = self.linear(x)
+        if edge_index.numel() == 0:
+            return self.dropout(F.relu(x))
+        row, col = edge_index[0], edge_index[1]
+        deg = torch.zeros(n, device=x.device)
+        deg.scatter_add_(0, row, torch.ones_like(row, dtype=torch.float))
+        deg = deg.pow(-0.5)
+        deg[deg == float("inf")] = 0.0
+        norm = deg[row] * deg[col]
+        adj = torch.zeros(n, n, device=x.device)
+        adj[edge_index[0], edge_index[1]] = norm
+        x = adj @ x
+        x = F.relu(x)
+        return self.dropout(x)
 
 
 class GATLayer(nn.Module):
-    """Graph Attention Network layer (Velickovic 2018)."""
-
-    def __init__(self, in_dim: int, out_dim: int,
-                 n_heads: int = 4, dropout: float = 0.1) -> None:
+    def __init__(
+        self, in_dim: int, out_dim: int, n_heads: int = 4, dropout: float = 0.0
+    ) -> None:
         super().__init__()
         self.n_heads = n_heads
-        self.out_dim = out_dim
-        self.dropout = dropout
-        self.linear = nn.Linear(in_dim, out_dim * n_heads, bias=False)
-        self.attn_src = nn.Parameter(torch.empty(n_heads, out_dim))
-        self.attn_dst = nn.Parameter(torch.empty(n_heads, out_dim))
-        nn.init.xavier_uniform_(self.attn_src.unsqueeze(0))
-        nn.init.xavier_uniform_(self.attn_dst.unsqueeze(0))
+        self.head_dim = out_dim // n_heads
+        if out_dim % n_heads != 0:
+            raise ValueError("out_dim must be divisible by n_heads")
+        self.W = nn.Linear(in_dim, n_heads * self.head_dim)
+        self.att = nn.Parameter(torch.randn(n_heads, 2 * self.head_dim))
+        nn.init.xavier_uniform_(self.att.data)
+        self.dropout = nn.Dropout(dropout)
+        self.out_proj = nn.Linear(n_heads * self.head_dim, out_dim)
 
-    def forward(self, x: torch.Tensor, adj: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, edge_index: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         n = x.size(0)
-        h = self.linear(x).view(n, self.n_heads, self.out_dim)
-
-        e_src = (h * self.attn_src).sum(dim=-1)
-        e_dst = (h * self.attn_dst).sum(dim=-1)
-
-        scores = e_src.unsqueeze(1) + e_dst.unsqueeze(0)
-        scores = F.leaky_relu(scores, negative_slope=0.2)
-
-        mask = (adj == 0).unsqueeze(-1).expand_as(scores)
-        scores = scores.masked_fill(mask, float("-inf"))
-        attn = F.softmax(scores, dim=1)
-        attn = F.dropout(attn, p=self.dropout, training=self.training)
-
-        out = (attn.unsqueeze(-1) * h.unsqueeze(1)).sum(dim=2)
-        return out.mean(dim=1)
+        device = x.device
+        edge_index = edge_index.to(device)
+        row, col = edge_index[0], edge_index[1]
+        x_proj = self.W(x).view(n, self.n_heads, self.head_dim)
+        h_src = x_proj[row]
+        h_dst = x_proj[col]
+        alpha = torch.cat([h_src, h_dst], dim=-1)
+        alpha = (alpha * self.att.view(1, self.n_heads, 2 * self.head_dim)).sum(-1)
+        alpha = F.softmax(alpha, dim=0)
+        alpha_exp = F.dropout(alpha, p=0.0, training=self.training)
+        h_prime = h_src * alpha_exp.unsqueeze(-1)
+        out = torch.zeros(n, self.n_heads, self.head_dim, device=device)
+        out.scatter_add_(0, col.view(-1, 1, 1).expand(-1, self.n_heads, self.head_dim), h_prime)
+        out = out.view(n, -1)
+        out = self.out_proj(out)
+        out = F.elu(out)
+        return self.dropout(out), alpha
 
 
 class GraphSAGELayer(nn.Module):
-    """GraphSAGE: sample-and-aggregate (Hamilton 2017)."""
-
-    def __init__(self, in_dim: int, out_dim: int) -> None:
+    def __init__(self, in_dim: int, out_dim: int, dropout: float = 0.0) -> None:
         super().__init__()
-        self.linear = nn.Linear(in_dim * 2, out_dim, bias=True)
+        self.linear = nn.Linear(in_dim * 2, out_dim)
+        self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x: torch.Tensor, adj: torch.Tensor) -> torch.Tensor:
-        deg = adj.sum(dim=1, keepdim=True).clamp(min=1.0)
-        neighbor_agg = (adj @ x) / deg
-        return F.relu(self.linear(torch.cat([x, neighbor_agg], dim=-1)))
-
-
-def _build_layer(config: GNNConfig) -> nn.Module:
-    if config.layer_type == "gcn":
-        return GCNLayer(config.in_dim, config.out_dim)
-    if config.layer_type == "gat":
-        return GATLayer(config.in_dim, config.out_dim,
-                        n_heads=config.n_heads, dropout=config.dropout)
-    if config.layer_type == "sage":
-        return GraphSAGELayer(config.in_dim, config.out_dim)
-    raise ValueError(f"unknown layer_type: {config.layer_type!r}")
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        n = x.size(0)
+        device = x.device
+        edge_index = edge_index.to(device)
+        row, col = edge_index[0], edge_index[1]
+        neigh = torch.zeros_like(x)
+        count = torch.zeros(n, device=device)
+        neigh.scatter_add_(0, col.unsqueeze(1).expand_as(x), x[row])
+        count.scatter_add_(0, col, torch.ones_like(col, dtype=torch.float))
+        count[count == 0] = 1.0
+        neigh = neigh / count.unsqueeze(1)
+        x_aggr = torch.cat([x, neigh], dim=-1)
+        out = self.linear(x_aggr)
+        out = F.relu(out)
+        return self.dropout(out)
 
 
 class GNNStack(nn.Module):
-    """Stack of GNN layers with residual connections."""
-
-    def __init__(self, config: GNNConfig, n_layers: int = 3) -> None:
+    def __init__(self, config: GNNConfig) -> None:
         super().__init__()
-        if n_layers < 1:
-            raise ValueError("n_layers must be >= 1")
         self.config = config
-        self.layers = nn.ModuleList([_build_layer(config) for _ in range(n_layers)])
-        self.use_residual = config.in_dim == config.out_dim
-
-    def forward(self, x: torch.Tensor, adj: torch.Tensor) -> torch.Tensor:
-        for layer in self.layers:
-            h = layer(x, adj)
-            if self.use_residual:
-                x = x + h
+        layers = []
+        in_d = config.in_dim
+        for i in range(config.n_layers):
+            out_d = config.out_dim
+            if config.gnn_type == "gcn":
+                layers.append(GCNLayer(in_d, out_d, config.dropout))
+            elif config.gnn_type == "gat":
+                layers.append(GATLayer(in_d, out_d, config.n_heads, config.dropout))
             else:
-                x = h
-        return x
+                layers.append(GraphSAGELayer(in_d, out_d, config.dropout))
+            in_d = out_d
+        self.layers = nn.ModuleList(layers)
+        self.use_residual = config.use_residual
+        self.activation = config.activation
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        h = x
+        for i, layer in enumerate(self.layers):
+            prev = h
+            if isinstance(layer, GATLayer):
+                h, _ = layer(h, edge_index)
+            else:
+                h = layer(h, edge_index)
+            if self.use_residual and h.shape == prev.shape and i < len(self.layers) - 1:
+                h = h + prev
+        return h

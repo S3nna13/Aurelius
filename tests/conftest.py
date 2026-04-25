@@ -21,6 +21,22 @@ import importlib
 from typing import Any
 
 import pytest
+import torch
+
+
+@pytest.fixture
+def x_8() -> torch.Tensor:
+    """8-node graph node features (8 x 64)."""
+    return torch.randn(8, 64)
+
+
+@pytest.fixture
+def edge_index_8() -> torch.Tensor:
+    """8-edge graph edge index (2 x 8)."""
+    return torch.tensor(
+        [[0, 1, 2, 3, 4, 5, 6, 7], [1, 2, 3, 0, 5, 6, 7, 4]],
+        dtype=torch.long,
+    )
 
 
 def _snapshot(obj: Any) -> Any:
