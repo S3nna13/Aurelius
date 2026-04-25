@@ -11,10 +11,13 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import ClassVar
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -146,8 +149,9 @@ class StdioMCPServer(MCPServer):
         try:
             result = handler(self, params)
             return {"jsonrpc": _JSONRPC_VERSION, "id": req_id, "result": result}
-        except Exception as exc:  # noqa: BLE001
-            return _error_response(req_id, _INTERNAL_ERROR, str(exc))
+        except Exception:  # noqa: BLE001
+            logger.exception("Internal error handling MCP method %r", method)
+            return _error_response(req_id, _INTERNAL_ERROR, "Internal server error")
 
     # ------------------------------------------------------------------
     # Built-in method handlers

@@ -112,3 +112,61 @@ from .responses_api import (  # noqa: E402,F401
 # Register the Responses API handler under the "responses" key so it sits
 # alongside all other API-shape validators in the shared registry.
 API_SHAPE_REGISTRY["responses"] = ResponsesAPIHandler
+
+# --- Streaming tool-call accumulation (additive) ---------------------------
+from .tool_call_streaming import (  # noqa: E402,F401
+    ToolCallBuffer,
+    ToolCallState,
+    ToolCallStreamAccumulator,
+    TOOL_CALL_ACCUMULATOR_REGISTRY,
+)
+
+# --- Multi-turn context compression (additive) -----------------------------
+from .context_compressor import (  # noqa: E402,F401
+    CompressedTurn,
+    CompressionStrategy,
+    ContextCompressor,
+    CONTEXT_COMPRESSOR_REGISTRY,
+)
+
+# --- Token-bucket rate limiter (additive, STRIDE-DoS defense) --------------
+from .rate_limiter import (  # noqa: E402,F401
+    RateLimitConfig,
+    RateLimitResult,
+    RateLimiterChain,
+    TokenBucketLimiter,
+    DEFAULT_RATE_LIMITER,
+    RATE_LIMIT_REGISTRY,
+)
+
+# --- Authentication middleware (additive, AUR-SEC-2026-0012) ---------------
+# Mitigates Spoofing and Elevation of Privilege on the serving surface by
+# requiring callers to present a hashed API key before any request is served.
+from .auth_middleware import (  # noqa: E402,F401
+    APIKey,
+    AuthConfig,
+    AuthMiddleware,
+    AuthResult,
+    AUTH_MIDDLEWARE_REGISTRY,
+    DEFAULT_AUTH_MIDDLEWARE,
+)
+
+# --- Load balancer + request queue + response dedup (additive, cycle-147) -----
+from .load_balancer import (  # noqa: E402,F401
+    BackendNode,
+    LBStrategy,
+    LoadBalancer,
+    LOAD_BALANCER_REGISTRY,
+)
+from .request_queue import (  # noqa: E402,F401
+    QueuePriority,
+    QueuedRequest,
+    RequestQueue,
+    REQUEST_QUEUE_REGISTRY,
+)
+from .response_dedup import (  # noqa: E402,F401
+    DedupEntry,
+    DedupStrategy,
+    ResponseDedup,
+    RESPONSE_DEDUP_REGISTRY,
+)

@@ -136,3 +136,29 @@ from src.training.nce_objectives import NCEConfig, NCEObjectives  # noqa: E402
 # Registry entry is set inside nce_objectives.py after import.
 
 __all__ += ["NCEConfig", "NCEObjectives"]
+
+# Curriculum Scheduler — difficulty progression + mastery gating
+from src.training.curriculum_scheduler import (  # noqa: E402
+    DifficultyLevel,
+    CurriculumStage,
+    CurriculumScheduler,
+)
+
+__all__ += ["DifficultyLevel", "CurriculumStage", "CurriculumScheduler"]
+
+# Gradient Checkpoint Manager — segment selection + memory/recompute estimation
+from src.training.gradient_checkpoint_manager import (  # noqa: E402
+    CheckpointPolicy,
+    CheckpointConfig,
+    GradientCheckpointManager,
+)
+
+__all__ += ["CheckpointPolicy", "CheckpointConfig", "GradientCheckpointManager"]
+
+# Warmup Scheduler — linear warmup + cosine/polynomial/restart decay
+from src.training.warmup_scheduler import (  # noqa: E402
+    SchedulerType,
+    WarmupScheduler,
+)
+
+__all__ += ["SchedulerType", "WarmupScheduler"]

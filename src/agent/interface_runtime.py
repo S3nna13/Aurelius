@@ -22,6 +22,7 @@ from src.model.interface_framework import (
 
 from .session_manager import SessionManager
 from .skill_catalog import SkillCatalog
+from .surface_catalog import describe_surface_catalog, surface_catalog_schema
 
 __all__ = [
     "AureliusInterfaceRuntime",
@@ -169,6 +170,7 @@ class AureliusInterfaceRuntime:
             "session_count": len(sessions),
             "session_ids": [session.session_id for session in sessions],
             "skill_catalog": self.skill_catalog.describe(),
+            "surface_catalog": self.surface_catalog(),
         }
 
     def validate(self) -> None:
@@ -501,6 +503,12 @@ class AureliusInterfaceRuntime:
         if journal is None:  # pragma: no cover - defensive
             raise InterfaceFrameworkError(f"unknown session journal: {session_id!r}")
         return journal.describe_compaction(compaction_id=compaction_id, branch_id=branch_id)
+
+    def surface_catalog_schema(self) -> dict[str, Any]:
+        return surface_catalog_schema()
+
+    def surface_catalog(self) -> dict[str, Any]:
+        return describe_surface_catalog()
 
     def capability_summary(self, session_id: str | None = None) -> dict[str, Any]:
         session = self.session_manager.get_session(session_id) if session_id is not None else None

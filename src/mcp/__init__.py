@@ -22,12 +22,24 @@ _MCP_SUBMODULES = (
     "tool_schema_registry",
     "sse_mcp_server",
     "plugin_host",
+    "skill_catalog",
+    "extension_manifest",
+    "tool_result_formatter",
+    "session_manager",
 )
 
 __all__ = [
     "MCP_SERVER_REGISTRY",
     "MCP_CLIENT_REGISTRY",
     "MCP_TOOL_SCHEMA_REGISTRY",
+    "MCP_REGISTRY",
+    # tool_result_formatter
+    "ToolResultFormatter",
+    "ResultFormat",
+    # session_manager
+    "MCPSessionManager",
+    "MCPSession",
+    "SessionState",
     "SSEMCPServer",
     "SSEMCPServerConfig",
     "SSE_SERVER_REGISTRY",
@@ -35,6 +47,13 @@ __all__ = [
     "PluginManifest",
     "PLUGIN_HOST_REGISTRY",
     "DEFAULT_PLUGIN_HOST",
+    "SkillCatalog",
+    "SkillMetadata",
+    "DEFAULT_SKILL_CATALOG",
+    "SKILL_CATALOG_REGISTRY",
+    "ExtensionManifestValidator",
+    "ExtensionManifest",
+    "ManifestValidationResult",
     *_MCP_SUBMODULES,
 ]
 
@@ -81,6 +100,58 @@ def __getattr__(name: str):
         from .plugin_host import DEFAULT_PLUGIN_HOST  # noqa: PLC0415
         globals()["DEFAULT_PLUGIN_HOST"] = DEFAULT_PLUGIN_HOST
         return DEFAULT_PLUGIN_HOST
+    if name == "SkillCatalog":
+        from .skill_catalog import SkillCatalog  # noqa: PLC0415
+        globals()["SkillCatalog"] = SkillCatalog
+        return SkillCatalog
+    if name == "SkillMetadata":
+        from .skill_catalog import SkillMetadata  # noqa: PLC0415
+        globals()["SkillMetadata"] = SkillMetadata
+        return SkillMetadata
+    if name == "DEFAULT_SKILL_CATALOG":
+        from .skill_catalog import DEFAULT_SKILL_CATALOG  # noqa: PLC0415
+        globals()["DEFAULT_SKILL_CATALOG"] = DEFAULT_SKILL_CATALOG
+        return DEFAULT_SKILL_CATALOG
+    if name == "SKILL_CATALOG_REGISTRY":
+        from .skill_catalog import SKILL_CATALOG_REGISTRY  # noqa: PLC0415
+        globals()["SKILL_CATALOG_REGISTRY"] = SKILL_CATALOG_REGISTRY
+        return SKILL_CATALOG_REGISTRY
+    if name == "ExtensionManifestValidator":
+        from .extension_manifest import ExtensionManifestValidator  # noqa: PLC0415
+        globals()["ExtensionManifestValidator"] = ExtensionManifestValidator
+        return ExtensionManifestValidator
+    if name == "ExtensionManifest":
+        from .extension_manifest import ExtensionManifest  # noqa: PLC0415
+        globals()["ExtensionManifest"] = ExtensionManifest
+        return ExtensionManifest
+    if name == "ManifestValidationResult":
+        from .extension_manifest import ManifestValidationResult  # noqa: PLC0415
+        globals()["ManifestValidationResult"] = ManifestValidationResult
+        return ManifestValidationResult
+    if name == "MCP_REGISTRY":
+        from .tool_result_formatter import MCP_REGISTRY  # noqa: PLC0415
+        globals()["MCP_REGISTRY"] = MCP_REGISTRY
+        return MCP_REGISTRY
+    if name == "ToolResultFormatter":
+        from .tool_result_formatter import ToolResultFormatter  # noqa: PLC0415
+        globals()["ToolResultFormatter"] = ToolResultFormatter
+        return ToolResultFormatter
+    if name == "ResultFormat":
+        from .tool_result_formatter import ResultFormat  # noqa: PLC0415
+        globals()["ResultFormat"] = ResultFormat
+        return ResultFormat
+    if name == "MCPSessionManager":
+        from .session_manager import MCPSessionManager  # noqa: PLC0415
+        globals()["MCPSessionManager"] = MCPSessionManager
+        return MCPSessionManager
+    if name == "MCPSession":
+        from .session_manager import MCPSession  # noqa: PLC0415
+        globals()["MCPSession"] = MCPSession
+        return MCPSession
+    if name == "SessionState":
+        from .session_manager import SessionState  # noqa: PLC0415
+        globals()["SessionState"] = SessionState
+        return SessionState
     if name in _MCP_SUBMODULES:
         module = import_module(f"src.mcp.{name}")
         globals()[name] = module

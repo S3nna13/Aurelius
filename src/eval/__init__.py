@@ -929,3 +929,153 @@ __all__ = list(__all__) + [
     "MULTI_NEEDLE_REGISTRY",
     "register_depth_profile",
 ]
+
+# --- Additive registration for WebArena autonomous web-agent benchmark -------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.  Measures task-completion rate on realistic
+# web environments (Zhou et al. 2307.13854).
+from .webarena_scorer import (
+    WebArenaTask as _WebArenaTask,
+    WebArenaResult as _WebArenaResult,
+    WebArenaMetrics as _WebArenaMetrics,
+    WebArenaScorer as _WebArenaScorer,
+    WEBARENA_TASK_REGISTRY as _WEBARENA_TASK_REGISTRY,
+    WEBARENA_SCORER_REGISTRY as _WEBARENA_SCORER_REGISTRY,
+)
+
+WebArenaTask = _WebArenaTask
+WebArenaResult = _WebArenaResult
+WebArenaMetrics = _WebArenaMetrics
+WebArenaScorer = _WebArenaScorer
+WEBARENA_TASK_REGISTRY = _WEBARENA_TASK_REGISTRY
+WEBARENA_SCORER_REGISTRY = _WEBARENA_SCORER_REGISTRY
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("webarena", _WebArenaScorer)
+BENCHMARK_REGISTRY.setdefault("webarena", _WebArenaScorer)
+
+__all__ = list(__all__) + [
+    "WebArenaTask",
+    "WebArenaResult",
+    "WebArenaMetrics",
+    "WebArenaScorer",
+    "WEBARENA_TASK_REGISTRY",
+    "WEBARENA_SCORER_REGISTRY",
+]
+
+# --- Additive registration for OSWorld computer-use task scorer --------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.  Measures task completion rate for computer-use
+# tasks across apps and difficulty levels (Xie et al. 2024, 2406.14800).
+from .osworld_scorer import (  # noqa: E402
+    OSWorldTask as _OSWorldTask,
+    OSWorldResult as _OSWorldResult,
+    OSWorldMetrics as _OSWorldMetrics,
+    OSWorldScorer as _OSWorldScorer,
+    OSWORLD_TASK_REGISTRY as _OSWORLD_TASK_REGISTRY,
+)
+
+OSWorldTask = _OSWorldTask
+OSWorldResult = _OSWorldResult
+OSWorldMetrics = _OSWorldMetrics
+OSWorldScorer = _OSWorldScorer
+OSWORLD_TASK_REGISTRY = _OSWORLD_TASK_REGISTRY
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("osworld", _OSWorldScorer)
+BENCHMARK_REGISTRY.setdefault("osworld", _OSWorldScorer)
+
+# Create EVAL_HARNESS_REGISTRY if it doesn't exist yet, then register osworld.
+EVAL_HARNESS_REGISTRY: dict = globals().setdefault("EVAL_HARNESS_REGISTRY", {})
+EVAL_HARNESS_REGISTRY.setdefault("osworld", _OSWorldScorer)
+
+__all__ = list(__all__) + [
+    "OSWorldTask",
+    "OSWorldResult",
+    "OSWorldMetrics",
+    "OSWorldScorer",
+    "OSWORLD_TASK_REGISTRY",
+    "EVAL_HARNESS_REGISTRY",
+]
+
+# --- Additive registration for BenchmarkRunner ------------------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.
+from .benchmark_runner import (
+    RunConfig as _RunConfig,
+    BenchmarkResult as _BenchmarkResult,
+    BenchmarkRunner as _BenchmarkRunner,
+)
+
+RunConfig = _RunConfig
+BenchmarkResult = _BenchmarkResult
+BenchmarkRunner = _BenchmarkRunner
+
+__all__ = list(__all__) + [
+    "RunConfig",
+    "BenchmarkResult",
+    "BenchmarkRunner",
+]
+
+# --- Additive registration for ABComparison ---------------------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.
+from .ab_comparison import (
+    ComparisonMetric as _ComparisonMetric,
+    ModelComparison as _ModelComparison,
+    ABComparison as _ABComparison,
+)
+
+ComparisonMetric = _ComparisonMetric
+ModelComparison = _ModelComparison
+ABComparison = _ABComparison
+
+__all__ = list(__all__) + [
+    "ComparisonMetric",
+    "ModelComparison",
+    "ABComparison",
+]
+
+# --- Additive registration for EvalPipeline ---------------------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.
+from .eval_pipeline import (
+    EvalStage as _EvalStage,
+    PipelineResult as _PipelineResult,
+    EvalPipeline as _EvalPipeline,
+    EVAL_PIPELINE_REGISTRY as _EVAL_PIPELINE_REGISTRY,
+)
+
+EvalStage = _EvalStage
+PipelineResult = _PipelineResult
+EvalPipeline = _EvalPipeline
+EVAL_PIPELINE_REGISTRY = _EVAL_PIPELINE_REGISTRY
+
+__all__ = list(__all__) + [
+    "EvalStage",
+    "PipelineResult",
+    "EvalPipeline",
+    "EVAL_PIPELINE_REGISTRY",
+]
+
+# --- TruthfulQA + ARC + HellaSwag scorers (additive, cycle-147) ---------------
+from src.eval.truthfulqa_scorer import (  # noqa: E402,F401
+    TruthfulQAQuestion,
+    TruthfulQAResult,
+    TruthfulQAScorer,
+    TRUTHFULQA_REGISTRY,
+)
+from src.eval.arc_scorer import (  # noqa: E402,F401
+    ARCQuestion,
+    ARCResult,
+    ARCScorer,
+    ARC_REGISTRY,
+)
+from src.eval.hellaswag_scorer import (  # noqa: E402,F401
+    HellaSwagExample,
+    HellaSwagResult,
+    HellaSwagScorer,
+    HELLASWAG_REGISTRY,
+)

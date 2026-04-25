@@ -1,4 +1,19 @@
-"""Safe code generation, extraction, and sandboxed execution utilities."""
+"""Safe code generation, extraction, and sandboxed execution utilities.
+
+Security note
+-------------
+This module intentionally runs model-generated Python in a restricted
+namespace (``_SAFE_BUILTINS``) under a threaded timeout. The sandboxed-run
+sites below are annotated with ``# nosec B102``. Contract for callers:
+
+  * Input MUST pass ``sanitize_code()`` (enforced at both run sites).
+  * Input MUST satisfy the ``_MAX_EXEC_LEN`` length guard.
+  * The ``globals`` dict passed in MUST originate from
+    ``_make_restricted_globals()`` — never pass real module globals.
+
+Violating these conditions may allow arbitrary-code execution in the host
+process.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +24,10 @@ import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any
+
+
+# Maximum length of a code string accepted for sandboxed evaluation.
+_MAX_EXEC_LEN = 100_000
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +179,23 @@ def execute_python(code: str, config: ExecutionConfig) -> ExecutionResult:
     """Safely execute Python code in a restricted namespace."""
     start = time.monotonic()
 
+    # Size guard: reject empty or pathologically large inputs before sanitize/compile.
+    if not code or len(code) > _MAX_EXEC_LEN:
+        elapsed = time.monotonic() - start
+        return ExecutionResult(
+            code=code,
+            stdout="",
+            stderr="",
+            return_value="",
+            success=False,
+            execution_time=elapsed,
+            error=(
+                "empty code"
+                if not code
+                else f"code too large ({len(code)} chars > {_MAX_EXEC_LEN})"
+            ),
+        )
+
     # Sanitize first
     is_safe, reason = sanitize_code(code, config.allowed_modules)
     if not is_safe:
@@ -184,7 +220,8 @@ def execute_python(code: str, config: ExecutionConfig) -> ExecutionResult:
         try:
             compiled = compile(code, "<sandbox>", "exec")
             with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
-                exec(compiled, restricted_globals)
+                # nosec B102 -- sandboxed run; input validated via sanitize_code() and _MAX_EXEC_LEN; globals come from _make_restricted_globals().
+                exec(compiled, restricted_globals)  # noqa: S102
         except Exception as exc:
             exc_holder.append(exc)
 
@@ -260,6 +297,24 @@ class CodeInterpreterSession:
         """Sanitize and execute code in the persistent namespace."""
         start = time.monotonic()
 
+        if not code or len(code) > _MAX_EXEC_LEN:
+            elapsed = time.monotonic() - start
+            result = ExecutionResult(
+                code=code,
+                stdout="",
+                stderr="",
+                return_value="",
+                success=False,
+                execution_time=elapsed,
+                error=(
+                    "empty code"
+                    if not code
+                    else f"code too large ({len(code)} chars > {_MAX_EXEC_LEN})"
+                ),
+            )
+            self._history.append(result)
+            return result
+
         is_safe, reason = sanitize_code(code, self._config.allowed_modules)
         if not is_safe:
             elapsed = time.monotonic() - start
@@ -284,7 +339,8 @@ class CodeInterpreterSession:
             try:
                 compiled = compile(code, "<session>", "exec")
                 with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
-                    exec(compiled, namespace)
+                    # nosec B102 -- sandboxed run; input validated via sanitize_code() and _MAX_EXEC_LEN; globals come from _make_restricted_globals().
+                    exec(compiled, namespace)  # noqa: S102
             except Exception as exc:
                 exc_holder.append(exc)
 

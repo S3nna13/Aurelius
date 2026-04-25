@@ -87,6 +87,80 @@ from src.ui.task_panel import (
     TASK_PANEL_REGISTRY,
     TaskPanelError,
 )
+from src.ui.streaming_renderer import (
+    TokenChunk,
+    StreamingState,
+    StreamingRenderer,
+    STREAMING_RENDERER_REGISTRY,
+    StreamingRendererError,
+)
+from src.ui.session_manager import (
+    SessionState,
+    AureliusSession,
+    SessionManager,
+    DEFAULT_SESSION_MANAGER,
+    SESSION_MANAGER_REGISTRY,
+    SessionManagerError,
+)
+from src.ui.debug_panel import (
+    DebugMetric,
+    DebugSection,
+    DebugPanel,
+    DebugPanelError,
+    DEBUG_PANEL_REGISTRY,
+)
+from src.ui.progress_renderer import (
+    ProgressTask,
+    ETAEstimator,
+    ProgressRenderer,
+    ProgressError,
+    PROGRESS_RENDERER_REGISTRY,
+)
+from src.ui.hotkey_overlay import (
+    HotkeyGroup,
+    HotkeyOverlay,
+    HotkeyOverlayError,
+    HOTKEY_OVERLAY_REGISTRY,
+    DEFAULT_HOTKEY_OVERLAY,
+)
+from src.ui.split_pane import (
+    SplitDirection,
+    PaneConfig,
+    SplitPane,
+    SplitPaneError,
+    SPLIT_PANE_REGISTRY,
+)
+from src.ui.model_info_panel import (
+    ModelInfoEntry,
+    ModelInfoPanel,
+    ModelInfoError,
+    MODEL_INFO_PANEL_REGISTRY,
+    DEFAULT_MODEL_INFO_PANEL,
+)
+from src.ui.tooltip import TooltipRenderer, TooltipRegistry, TOOLTIP_REGISTRY
+from src.ui.context_menu import (
+    MenuItemKind,
+    MenuItem,
+    ContextMenu,
+    ContextMenuRegistry,
+    CONTEXT_MENU_REGISTRY,
+)
+from src.ui.notification_drawer import (
+    NotificationLevel,
+    Notification,
+    NotificationDrawer,
+    DEFAULT_NOTIFICATION_DRAWER,
+)
+from src.ui.color_theme import (
+    ColorDepth,
+    ColorSpec,
+    ColorTheme,
+    ThemeRenderer,
+    COLOR_THEME_REGISTRY,
+    DEFAULT_THEME,
+    get_theme,
+    register_theme,
+)
 
 # Register new UI surfaces into the surface registry.
 _COMMAND_PALETTE_SURFACE = UISurface(
@@ -138,6 +212,63 @@ _TASK_PANEL_SURFACE = UISurface(
     default_layout="stoic-focus",
     keyboard_map={"esc": "cancel", "up": "nav_up", "down": "nav_down"},
 )
+_STREAMING_RENDERER_SURFACE = UISurface(
+    surface_id="streaming-renderer",
+    title="Streaming Renderer",
+    panels=("stream",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel"},
+)
+_SESSION_MANAGER_SURFACE = UISurface(
+    surface_id="session-manager",
+    title="Session Manager",
+    panels=("sessions",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "tab": "next_session"},
+)
+_DEBUG_PANEL_SURFACE = UISurface(
+    surface_id="debug-panel",
+    title="Debug Panel",
+    panels=("debug",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "c": "collapse"},
+)
+_PROGRESS_RENDERER_SURFACE = UISurface(
+    surface_id="progress-renderer",
+    title="Progress Renderer",
+    panels=("progress",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel"},
+)
+_HOTKEY_OVERLAY_SURFACE = UISurface(
+    surface_id="hotkey-overlay",
+    title="Hotkey Overlay",
+    panels=("hotkeys",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "?": "help"},
+)
+_SPLIT_PANE_SURFACE = UISurface(
+    surface_id="split-pane",
+    title="Split Pane",
+    panels=("left", "right"),
+    default_layout="stoic-3pane",
+    keyboard_map={"esc": "cancel", "tab": "next_pane"},
+)
+_MODEL_INFO_PANEL_SURFACE = UISurface(
+    surface_id="model-info-panel",
+    title="Model Info Panel",
+    panels=("info",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel"},
+)
+
+_COLOR_THEME_SURFACE = UISurface(
+    surface_id="color-theme",
+    title="Color Theme",
+    panels=("theme",),
+    default_layout="stoic-focus",
+    keyboard_map={"esc": "cancel", "tab": "next_theme"},
+)
 
 for _surface in (
     _COMMAND_PALETTE_SURFACE,
@@ -147,6 +278,14 @@ for _surface in (
     _TRANSCRIPT_VIEWER_SURFACE,
     _DIFF_VIEWER_SURFACE,
     _TASK_PANEL_SURFACE,
+    _STREAMING_RENDERER_SURFACE,
+    _SESSION_MANAGER_SURFACE,
+    _DEBUG_PANEL_SURFACE,
+    _PROGRESS_RENDERER_SURFACE,
+    _HOTKEY_OVERLAY_SURFACE,
+    _SPLIT_PANE_SURFACE,
+    _MODEL_INFO_PANEL_SURFACE,
+    _COLOR_THEME_SURFACE,
 ):
     if _surface.surface_id not in UI_SURFACE_REGISTRY:
         register_ui_surface(_surface)
@@ -221,4 +360,71 @@ __all__ = [
     "TaskPanel",
     "TASK_PANEL_REGISTRY",
     "TaskPanelError",
+    # Streaming renderer
+    "TokenChunk",
+    "StreamingState",
+    "StreamingRenderer",
+    "STREAMING_RENDERER_REGISTRY",
+    "StreamingRendererError",
+    # Session manager
+    "SessionState",
+    "AureliusSession",
+    "SessionManager",
+    "DEFAULT_SESSION_MANAGER",
+    "SESSION_MANAGER_REGISTRY",
+    "SessionManagerError",
+    # Debug panel
+    "DebugMetric",
+    "DebugSection",
+    "DebugPanel",
+    "DebugPanelError",
+    "DEBUG_PANEL_REGISTRY",
+    # Progress renderer
+    "ProgressTask",
+    "ETAEstimator",
+    "ProgressRenderer",
+    "ProgressError",
+    "PROGRESS_RENDERER_REGISTRY",
+    # Hotkey overlay
+    "HotkeyGroup",
+    "HotkeyOverlay",
+    "HotkeyOverlayError",
+    "HOTKEY_OVERLAY_REGISTRY",
+    "DEFAULT_HOTKEY_OVERLAY",
+    # Split pane
+    "SplitDirection",
+    "PaneConfig",
+    "SplitPane",
+    "SplitPaneError",
+    "SPLIT_PANE_REGISTRY",
+    # Model info panel
+    "ModelInfoEntry",
+    "ModelInfoPanel",
+    "ModelInfoError",
+    "MODEL_INFO_PANEL_REGISTRY",
+    "DEFAULT_MODEL_INFO_PANEL",
+    # Tooltip
+    "TooltipRenderer",
+    "TooltipRegistry",
+    "TOOLTIP_REGISTRY",
+    # Context menu
+    "MenuItemKind",
+    "MenuItem",
+    "ContextMenu",
+    "ContextMenuRegistry",
+    "CONTEXT_MENU_REGISTRY",
+    # Notification drawer
+    "NotificationLevel",
+    "Notification",
+    "NotificationDrawer",
+    "DEFAULT_NOTIFICATION_DRAWER",
+    # Color theme
+    "ColorDepth",
+    "ColorSpec",
+    "ColorTheme",
+    "ThemeRenderer",
+    "COLOR_THEME_REGISTRY",
+    "DEFAULT_THEME",
+    "get_theme",
+    "register_theme",
 ]

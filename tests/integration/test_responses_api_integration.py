@@ -32,7 +32,13 @@ class TestRegistryIntegration:
         assert "responses" in API_SHAPE_REGISTRY
 
     def test_api_shape_registry_responses_is_handler(self):
-        assert API_SHAPE_REGISTRY["responses"] is ResponsesAPIHandler
+        # Compare by module/name rather than object identity so this stays
+        # stable even if another test reloads the serving package or imports
+        # it through the top-level ``serving`` alias.
+        handler_cls = API_SHAPE_REGISTRY["responses"]
+        assert handler_cls.__module__.endswith(".responses_api")
+        assert ResponsesAPIHandler.__module__.endswith(".responses_api")
+        assert handler_cls.__name__ == ResponsesAPIHandler.__name__
 
     def test_responses_api_registry_accessible(self):
         assert RESPONSES_API_REGISTRY is not None

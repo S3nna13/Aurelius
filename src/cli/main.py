@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 import textwrap
 from typing import Optional
@@ -452,7 +453,10 @@ def _run_chat(
                 _print_help()
 
             elif cmd == "/clear":
-                os.system("clear" if os.name != "nt" else "cls")
+                if os.name == "nt":
+                    subprocess.run(["cls"], shell=True, check=False)  # nosec B602
+                else:
+                    subprocess.run(["clear"], check=False)
                 _print_banner()
 
             elif cmd == "/reset":

@@ -202,3 +202,192 @@ def test_task_panel_lifecycle() -> None:
     snapshot = panel.to_dict()
     assert isinstance(snapshot, dict)
     assert "integ-1" in snapshot
+
+
+# ---------------------------------------------------------------------------
+# StreamingRenderer lifecycle
+# ---------------------------------------------------------------------------
+
+
+def test_streaming_renderer_lifecycle() -> None:
+    """Push 5 chunks, complete, verify concatenated text, render panel."""
+    from src.ui.streaming_renderer import StreamingRenderer, StreamingState, TokenChunk
+
+    renderer = StreamingRenderer()
+    chunks = [
+        TokenChunk(text="The "),
+        TokenChunk(text="quick "),
+        TokenChunk(text="brown "),
+        TokenChunk(text="fox "),
+        TokenChunk(text="jumps."),
+    ]
+    for chunk in chunks:
+        renderer.push_chunk(chunk)
+
+    assert renderer.token_count() == 5
+    assert renderer.get_text() == "The quick brown fox jumps."
+    assert renderer.word_count() == 5
+    assert renderer._state == StreamingState.STREAMING
+
+    renderer.complete()
+    assert renderer._state == StreamingState.COMPLETE
+
+    console = Console(record=True)
+    renderer.render_panel(console, title="Integration Test")
+    output = console.export_text()
+    assert len(output) > 0
+
+
+# ---------------------------------------------------------------------------
+# SessionManager lifecycle
+# ---------------------------------------------------------------------------
+
+
+def test_debug_panel_update_and_render() -> None:
+    """Update 2 metrics, render, verify to_dict contains updated values."""
+    from src.ui.debug_panel import DebugPanel
+
+    panel = DebugPanel()
+    panel.update_metric("Model", "loss", 0.4321)
+    panel.update_metric("Memory", "gpu_allocated_gb", 12.5)
+
+    console = Console(record=True)
+    panel.render(console)
+    output = console.export_text()
+    assert len(output) > 0
+
+    snapshot = panel.to_dict()
+    assert isinstance(snapshot, dict)
+    model_metrics = {m["name"]: m["value"] for m in snapshot["Model"]["metrics"]}
+    assert model_metrics["loss"] == pytest.approx(0.4321)
+    memory_metrics = {m["name"]: m["value"] for m in snapshot["Memory"]["metrics"]}
+    assert memory_metrics["gpu_allocated_gb"] == pytest.approx(12.5)
+
+
+def test_progress_renderer_lifecycle() -> None:
+    """Add task, advance 10 steps, render, remove."""
+    from src.ui.progress_renderer import ProgressRenderer, ProgressTask
+
+    renderer = ProgressRenderer()
+    task = ProgressTask(task_id="integ-pr-1", description="Integration Train", total=100)
+    renderer.add_task(task)
+
+    for _ in range(10):
+        renderer.advance("integ-pr-1")
+
+    assert renderer._tasks["integ-pr-1"].completed == 10
+
+    console = Console(record=True)
+    renderer.render(console)
+    output = console.export_text()
+    assert "Integration Train" in output
+
+    renderer.remove_task("integ-pr-1")
+    assert "integ-pr-1" not in renderer._tasks
+
+
+def test_hotkey_overlay_render() -> None:
+    """Render DEFAULT_HOTKEY_OVERLAY in both compact and full modes."""
+    from src.ui.hotkey_overlay import DEFAULT_HOTKEY_OVERLAY, HotkeyGroup, HotkeyOverlay
+
+    overlay = HotkeyOverlay()
+    overlay.add_group(HotkeyGroup(name="Test", bindings=[("ctrl+s", "save"), ("ctrl+z", "undo")]))
+
+    console = Console(record=True)
+    overlay.render(console, compact=True)
+    output = console.export_text()
+    assert len(output) > 0
+
+    console2 = Console(record=True)
+    DEFAULT_HOTKEY_OVERLAY.render(console2, compact=False)
+    output2 = console2.export_text()
+    assert len(output2) > 0
+
+
+def test_split_pane_lifecycle() -> None:
+    """Add 2 panes, hide one, resize the other, render with content_map."""
+    from src.ui.split_pane import PaneConfig, SplitPane, SplitPaneError
+
+    pane = SplitPane()
+    pane.add_pane(PaneConfig(pane_id="editor", title="Editor", weight=2.0))
+    pane.add_pane(PaneConfig(pane_id="terminal", title="Terminal", weight=1.0))
+
+    pane.hide("terminal")
+    assert pane._get_pane("terminal").visible is False
+
+    pane.resize("editor", 3.0)
+    assert pane._get_pane("editor").weight == 3.0
+
+    pane.show("terminal")
+    assert pane._get_pane("terminal").visible is True
+
+    console = Console(record=True)
+    pane.render(console, content_map={"editor": "print('hello')", "terminal": "$ ls"})
+    output = console.export_text()
+    assert len(output) > 0
+
+    snapshot = pane.to_dict()
+    assert isinstance(snapshot, dict)
+    assert snapshot["direction"] == "horizontal"
+
+
+def test_model_info_panel_update() -> None:
+    """Update manifest entries, render, verify to_dict round-trip."""
+    from src.ui.model_info_panel import ModelInfoPanel, ModelInfoError
+    import pytest
+
+    panel = ModelInfoPanel()
+    panel.update("family_name", "aurelius")
+    panel.update("vocab_size", 32768)
+    panel.update("n_parameters", 1_395_000_000)
+    panel.update("tokens_per_sec", 42.5)
+
+    assert panel.get("family_name").value == "aurelius"
+    assert panel.get("vocab_size").value == 32768
+
+    import pytest as _pytest
+    with _pytest.raises(ModelInfoError):
+        panel.update("nonexistent", 0)
+
+    console = Console(record=True)
+    panel.render(console)
+    output = console.export_text()
+    assert len(output) > 0
+
+    d = panel.to_dict()
+    assert isinstance(d, dict)
+    assert d["family_name"]["value"] == "aurelius"
+    assert d["vocab_size"]["value"] == 32768
+
+
+def test_session_manager_lifecycle() -> None:
+    """Create 2 sessions, switch_to one, verify other paused, save/load round-trip."""
+    from src.ui.session_manager import SessionManager, SessionState
+
+    manager = SessionManager()
+    s1 = manager.create("Tab Alpha")
+    s2 = manager.create("Tab Beta")
+
+    # Both start ACTIVE.
+    assert manager.get(s1.session_id).state == SessionState.ACTIVE
+    assert manager.get(s2.session_id).state == SessionState.ACTIVE
+
+    # Switching to s2 should pause s1.
+    manager.switch_to(s2.session_id)
+    assert manager.get(s1.session_id).state == SessionState.PAUSED
+    assert manager.get(s2.session_id).state == SessionState.ACTIVE
+
+    # Snapshot and restore.
+    snapshot = manager.save_to_dict()
+    new_manager = SessionManager()
+    new_manager.load_from_dict(snapshot)
+
+    assert new_manager.get(s1.session_id).state == SessionState.PAUSED
+    assert new_manager.get(s2.session_id).state == SessionState.ACTIVE
+    assert new_manager.get(s1.session_id).name == "Tab Alpha"
+
+    # Render should not crash.
+    console = Console(record=True)
+    new_manager.render(console)
+    output = console.export_text()
+    assert "Tab Alpha" in output or "Tab Beta" in output

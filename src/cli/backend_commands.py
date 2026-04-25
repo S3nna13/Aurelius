@@ -22,6 +22,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Callable, TextIO
 
+from src.agent.surface_catalog import describe_backend_surface, describe_engine_surface
 from src.backends.base import BackendAdapterError
 
 __all__ = [
@@ -30,6 +31,8 @@ __all__ = [
     "dispatch_backend_command",
     "handle_backend_check",
     "handle_backend_list",
+    "handle_backend_engine_list",
+    "handle_backend_engine_show",
     "handle_backend_show",
 ]
 
@@ -83,31 +86,63 @@ def _backend_record(adapter: Any) -> dict[str, Any]:
     }
 
 
+def _engine_record_by_name(engine_name: str) -> dict[str, Any] | None:
+    surface = describe_engine_surface()
+    for record in surface["engine_adapters"]:
+        if record["backend_name"] == engine_name:
+            return record
+    return None
+
+
 def handle_backend_list(
     args: argparse.Namespace,
     out_stream: TextIO | None = None,
 ) -> int:
     stream = out_stream if out_stream is not None else sys.stdout
     try:
-        backends = _load_backend_surface()
+        payload = describe_backend_surface()
     except Exception as exc:
         return _error(stream, f"failed to load backend registry: {exc}")
 
-    records: list[dict[str, Any]] = []
-    try:
-        for name in backends.list_backends():
-            adapter = backends.get_backend(name)
-            records.append(_backend_record(adapter))
-    except BackendAdapterError as exc:
-        return _error(stream, str(exc))
+    if not payload:
+        return _error(stream, "failed to describe backend registry")
+    _json_write(stream, payload)
+    return 0
 
-    _json_write(
-        stream,
-        {
-            "count": len(records),
-            "backends": records,
-        },
-    )
+
+def handle_backend_engine_list(
+    args: argparse.Namespace,
+    out_stream: TextIO | None = None,
+) -> int:
+    stream = out_stream if out_stream is not None else sys.stdout
+    try:
+        payload = describe_engine_surface()
+    except Exception as exc:
+        return _error(stream, f"failed to load engine adapter registry: {exc}")
+    _json_write(stream, {"engine_adapters": payload})
+    return 0
+
+
+def handle_backend_engine_show(
+    args: argparse.Namespace,
+    out_stream: TextIO | None = None,
+) -> int:
+    stream = out_stream if out_stream is not None else sys.stdout
+    engine_name = getattr(args, "engine_name", None)
+    if not engine_name:
+        return _error(stream, "backend engine show requires an engine_name")
+    try:
+        record = _engine_record_by_name(engine_name)
+    except Exception as exc:
+        return _error(stream, f"failed to load engine adapter registry: {exc}")
+    if record is None:
+        surface = describe_engine_surface()
+        return _error(
+            stream,
+            f"unknown engine adapter: {engine_name!r}",
+            known_engines=surface["names"],
+        )
+    _json_write(stream, {"engine": record})
     return 0
 
 
@@ -190,6 +225,8 @@ BACKEND_COMMAND_HANDLERS: dict[
 ] = {
     "list": handle_backend_list,
     "show": handle_backend_show,
+    "engine_list": handle_backend_engine_list,
+    "engine_show": handle_backend_engine_show,
     "check": handle_backend_check,
 }
 
@@ -212,6 +249,14 @@ def build_backend_parser(
 
     show_p = backend_sub.add_parser("show", help="show one registered backend")
     show_p.add_argument("backend_name", help="backend name, e.g. 'pytorch'")
+
+    engine_p = backend_sub.add_parser("engine", help="inspect inference engine adapters")
+    engine_sub = engine_p.add_subparsers(dest="backend_engine_command", metavar="backend_engine_command")
+    engine_list_p = engine_sub.add_parser("list", help="list known engine adapters")
+    engine_list_p.set_defaults(backend_command="engine_list")
+    engine_show_p = engine_sub.add_parser("show", help="show one known engine adapter")
+    engine_show_p.add_argument("engine_name", help="engine adapter name, e.g. 'vllm'")
+    engine_show_p.set_defaults(backend_command="engine_show")
 
     check_p = backend_sub.add_parser(
         "check", help="validate checkpoint metadata against a variant"

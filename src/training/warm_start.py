@@ -203,7 +203,7 @@ class WarmStartInitializer:
         if strategy == "interpolate":
             if source_state_dict is None and self.config.source_checkpoint is not None:
                 source_state_dict = torch.load(
-                    self.config.source_checkpoint, map_location="cpu"
+                    self.config.source_checkpoint, map_location="cpu", weights_only=True
                 )
             if source_state_dict is None:
                 raise ValueError("interpolate strategy requires source_state_dict or source_checkpoint")
@@ -212,7 +212,7 @@ class WarmStartInitializer:
         elif strategy in ("stack_layers", "depth_upscale"):
             if source_state_dict is None and self.config.source_checkpoint is not None:
                 source_state_dict = torch.load(
-                    self.config.source_checkpoint, map_location="cpu"
+                    self.config.source_checkpoint, map_location="cpu", weights_only=True
                 )
             if source_state_dict is None:
                 raise ValueError(f"{strategy} requires source_state_dict or source_checkpoint")

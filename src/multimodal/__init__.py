@@ -134,6 +134,41 @@ from src.multimodal.video_encoder import (  # noqa: E402
 register_vision_encoder("VideoEncoder", VideoEncoder)
 
 # ---------------------------------------------------------------------------
+# Cross-modal attention (Q-Former style)
+# ---------------------------------------------------------------------------
+
+from src.multimodal.cross_modal_attention import (  # noqa: E402
+    CROSS_MODAL_REGISTRY,
+    CrossModalAttentionLayer,
+    CrossModalConfig,
+    QFormer,
+)
+
+# ---------------------------------------------------------------------------
+# Audio-speech fusion
+# ---------------------------------------------------------------------------
+
+from src.multimodal.audio_speech_fusion import (  # noqa: E402
+    SPEECH_FUSION_REGISTRY,
+    AudioTextAligner,
+    SpeechFusionConfig,
+    SpeechFusionEncoder,
+)
+
+# ---------------------------------------------------------------------------
+# Multimodal token fusion (late fusion: text + vision + audio)
+# ---------------------------------------------------------------------------
+
+from src.multimodal.multimodal_token_fusion import (  # noqa: E402
+    MULTIMODAL_FUSION_REGISTRY,
+    FusionStrategy,
+    GatedFusion,
+    MultimodalTokenFusion,
+    TokenFusionConfig,
+    WeightedSumFusion,
+)
+
+# ---------------------------------------------------------------------------
 # Document understanding (table/form/layout processor)
 # ---------------------------------------------------------------------------
 
@@ -197,6 +232,16 @@ __all__ = [
     "TemporalPositionEncoding",
     "VideoEncoder",
     "VIDEO_ENCODER_REGISTRY",
+    # Cross-modal attention (Q-Former)
+    "CrossModalConfig",
+    "CrossModalAttentionLayer",
+    "QFormer",
+    "CROSS_MODAL_REGISTRY",
+    # Audio-speech fusion
+    "SpeechFusionConfig",
+    "AudioTextAligner",
+    "SpeechFusionEncoder",
+    "SPEECH_FUSION_REGISTRY",
     # Document understanding
     "DocumentRegionType",
     "DocumentRegion",
@@ -207,4 +252,36 @@ __all__ = [
     "DocumentEmbedder",
     "DOCUMENT_PARSER_REGISTRY",
     "DOCUMENT_EMBEDDER_REGISTRY",
+    # Multimodal token fusion
+    "FusionStrategy",
+    "TokenFusionConfig",
+    "GatedFusion",
+    "WeightedSumFusion",
+    "MultimodalTokenFusion",
+    "MULTIMODAL_FUSION_REGISTRY",
 ]
+
+# --- ViT encoder (additive, cycle-146) -----------------------------------------
+from src.multimodal.vit_encoder import (  # noqa: E402,F401
+    ViTConfig,
+    ViTEncoder,
+    ViTPatchEmbedding,
+    VIT_REGISTRY,
+)
+VISION_ENCODER_REGISTRY.update({k: v for k, v in VIT_REGISTRY.items()})
+
+# --- Vision projector v2 (additive, cycle-146) ---------------------------------
+from src.multimodal.vision_projector_v2 import (  # noqa: E402,F401
+    ProjectorConfig,
+    VisionProjectorV2,
+    VISION_PROJECTOR_V2_REGISTRY,
+)
+MODALITY_PROJECTOR_REGISTRY.update(VISION_PROJECTOR_V2_REGISTRY)
+
+# --- OCR module (additive, cycle-146) ------------------------------------------
+from src.multimodal.ocr_module import (  # noqa: E402,F401
+    OCRConfig,
+    OCRModule,
+    TextRegionEncoder,
+    OCR_MODULE_REGISTRY,
+)

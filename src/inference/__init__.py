@@ -375,3 +375,41 @@ __all__ += [
     "EvictionPolicy",
     "select_victims",
 ]
+
+# ---------------------------------------------------------------------------
+# Speculative Sampler — draft-verify cycle with acceptance criterion
+# ---------------------------------------------------------------------------
+from src.inference.speculative_sampler import (  # noqa: E402
+    DraftToken,
+    SpeculativeConfig,
+    SpeculativeSampler,
+    VerificationResult,
+)
+
+DECODER_REGISTRY["speculative_sampler"] = SpeculativeSampler
+
+__all__ += [
+    "DraftToken",
+    "SpeculativeConfig",
+    "SpeculativeSampler",
+    "VerificationResult",
+]
+
+# ---------------------------------------------------------------------------
+# Continuous Batching V2 — priority queues, preemption, memory budgeting
+# ---------------------------------------------------------------------------
+from src.inference.continuous_batching_v2 import (  # noqa: E402
+    BatchRequest,
+    BatchingConfig,
+    ContinuousBatcherV2,
+    RequestPriority,
+)
+
+SCHEDULER_REGISTRY["continuous_batching_v2"] = ContinuousBatcherV2
+
+__all__ += [
+    "BatchRequest",
+    "BatchingConfig",
+    "ContinuousBatcherV2",
+    "RequestPriority",
+]

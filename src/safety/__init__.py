@@ -113,6 +113,22 @@ from src.safety.knn_known_bad_guard import (
     KnownBadEntry,
     SEED_KNOWN_BAD,
 )
+from src.safety.jailbreak_v2 import (
+    JailbreakSignal,
+    JailbreakDetection,
+    JailbreakClassifierV2,
+)
+from src.safety.output_sanitizer import (
+    SanitizationRule,
+    SanitizationResult,
+    OutputSanitizer,
+)
+from src.safety.policy_audit import (
+    PolicyDecision as AuditPolicyDecision,
+    AuditEntry,
+    PolicyAuditLog,
+    POLICY_AUDIT_LOG,
+)
 from src.safety.hall_of_shame_probe import (
     ADVERSARIAL_PROBE_REGISTRY,
     HALL_OF_SHAME_PROBES,
@@ -144,6 +160,9 @@ SAFETY_FILTER_REGISTRY["reward_hack_detector"] = RewardHackDetector
 SAFETY_FILTER_REGISTRY["rule_engine"] = RuleEngine
 SAFETY_FILTER_REGISTRY["lexical_entropy"] = LexicalEntropyAnomalyDetector
 SAFETY_FILTER_REGISTRY["knn_known_bad_guard"] = KnnKnownBadGuard
+SAFETY_FILTER_REGISTRY["jailbreak_v2"] = JailbreakClassifierV2
+SAFETY_FILTER_REGISTRY["output_sanitizer"] = OutputSanitizer
+SAFETY_FILTER_REGISTRY["policy_audit"] = PolicyAuditLog
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
@@ -222,4 +241,17 @@ __all__ = [
     "score_probe",
     "score_corpus",
     "corpus_hash",
+    # jailbreak_v2
+    "JailbreakSignal",
+    "JailbreakDetection",
+    "JailbreakClassifierV2",
+    # output_sanitizer
+    "SanitizationRule",
+    "SanitizationResult",
+    "OutputSanitizer",
+    # policy_audit
+    "AuditPolicyDecision",
+    "AuditEntry",
+    "PolicyAuditLog",
+    "POLICY_AUDIT_LOG",
 ]

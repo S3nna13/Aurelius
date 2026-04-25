@@ -165,7 +165,7 @@ class CorpusIndexer:
         windows with identical content (possible for blank regions) are
         still distinguishable.
         """
-        h = hashlib.sha1()
+        h = hashlib.sha1(usedforsecurity=False)
         h.update(source_path.encode("utf-8"))
         h.update(b"\x00")
         h.update(str(start).encode("ascii"))

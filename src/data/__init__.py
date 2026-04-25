@@ -93,6 +93,19 @@ from src.data.coreset_selector import (  # noqa: E402
 )
 # CoresetSelector self-registers into DATA_REGISTRY on import.
 
+from src.data.tokenization_pipeline import (  # noqa: E402
+    TokenizationConfig,
+    TokenizationPipeline,
+    TokenizedOutput,
+)
+
+from src.data.data_versioning import (  # noqa: E402
+    DATA_VERSION_REGISTRY,
+    DataDiff,
+    DatasetVersion,
+    DataVersionRegistry,
+)
+
 __all__ = [
     # dataset_config
     "AURELIUS_MIX",
@@ -153,4 +166,32 @@ __all__ = [
     # coreset_selector
     "CoresetConfig",
     "CoresetSelector",
+    # tokenization_pipeline
+    "TokenizationConfig",
+    "TokenizationPipeline",
+    "TokenizedOutput",
+    # data_versioning
+    "DATA_VERSION_REGISTRY",
+    "DataDiff",
+    "DatasetVersion",
+    "DataVersionRegistry",
 ]
+
+# --- Synthetic CoT + SFT builder + dataset analyzer (additive, cycle-147) -----
+from src.data.synthetic_cot_dataset import (  # noqa: E402,F401
+    CoTDatasetConfig,
+    CoTExample,
+    SyntheticCoTDataset,
+    COT_DATASET_REGISTRY,
+)
+from src.data.sft_dataset_builder import (  # noqa: E402,F401
+    SFTDatasetBuilder,
+    SFTDatasetConfig,
+    SFTExample,
+    SFT_BUILDER_REGISTRY,
+)
+from src.data.dataset_analyzer import (  # noqa: E402,F401
+    DatasetAnalyzer,
+    DatasetStats,
+    DATASET_ANALYZER_REGISTRY,
+)

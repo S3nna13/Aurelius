@@ -44,6 +44,8 @@ def test_shell_describe_create_thread_and_render_status():
     assert summary["current_mode"] == shell.current_mode
     assert summary["backend_surface"]["count"] >= 1
     assert "pytorch" in summary["backend_surface"]["names"]
+    assert summary["surface_catalog"]["engine_adapters"]["count"] >= 3
+    assert summary["surface_catalog"]["ui"]["ui_surfaces"]["count"] >= 1
     assert "Implement shell integration" in shell.render_status()
     assert workstream.name in shell.render_status()
     assert thread.thread_id in shell.render_thread_status(thread.thread_id)
@@ -144,6 +146,24 @@ def test_shell_capability_and_journal_commands_route_through_runtime_summaries(m
 
     compaction_payload = json.loads(shell.execute_command("journal compaction main"))
     assert compaction_payload["journal"]["branch_id"] == "main"
+
+
+def test_shell_surface_and_engine_catalog_commands_render_json():
+    shell = _shell()
+
+    surface_payload = json.loads(shell.execute_command("surface summary"))
+    assert surface_payload["surface"]["engine_adapters"]["count"] >= 3
+    assert surface_payload["surface"]["ui"]["ui_surfaces"]["count"] >= 1
+
+    schema_payload = json.loads(shell.execute_command("surface schema"))
+    assert schema_payload["schema"]["schema_name"] == "aurelius.interface.surface-catalog"
+
+    engine_list_payload = json.loads(shell.execute_command("backend engine list"))
+    assert engine_list_payload["engine_surface"]["count"] >= 3
+    assert "vllm" in engine_list_payload["engine_surface"]["names"]
+
+    engine_show_payload = json.loads(shell.execute_command("backend engine show gguf"))
+    assert engine_show_payload["engine"]["backend_name"] == "gguf"
 
 
 def test_shell_approval_checkpoint_resume_subagent_job_and_routing():

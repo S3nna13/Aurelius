@@ -99,6 +99,37 @@ from .cross_layer_kv_sharing import (  # noqa: E402
 
 LONGCONTEXT_STRATEGY_REGISTRY["cross_layer_kv"] = CrossLayerKVStack
 
+from .dynamic_ntk_rope import DynamicNTKRoPE, NTKRoPEConfig  # noqa: E402
+
+LONGCONTEXT_STRATEGY_REGISTRY["dynamic_ntk_rope"] = DynamicNTKRoPE
+
+from .streaming_attention import (  # noqa: E402
+    StreamingConfig,
+    StreamingAttentionCache,
+    compute_streaming_attention,
+)
+
+LONGCONTEXT_STRATEGY_REGISTRY["streaming_attention"] = StreamingAttentionCache
+
+from .memory_mapped_context import (  # noqa: E402
+    ContextChunk,
+    MemoryMappedContext,
+)
+
+LONGCONTEXT_STRATEGY_REGISTRY["memory_mapped_context"] = MemoryMappedContext
+
+from .sliding_window_attention import SlidingWindowAttention, SWAConfig  # noqa: E402
+
+LONGCONTEXT_STRATEGY_REGISTRY["sliding_window_attention"] = SlidingWindowAttention
+
+from .chunk_prefill import ChunkPrefillConfig as ChunkPrefillSchedulerConfig, ChunkPrefillScheduler, ChunkResult  # noqa: E402
+
+LONGCONTEXT_STRATEGY_REGISTRY["chunk_prefill_scheduler"] = ChunkPrefillScheduler
+
+from .context_window_manager import ContextWindowManager, WindowPolicy  # noqa: E402
+
+LONGCONTEXT_STRATEGY_REGISTRY["context_window_manager"] = ContextWindowManager
+
 __all__ = [
     "LONGCONTEXT_STRATEGY_REGISTRY",
     "KVInt8Compressor",
@@ -145,4 +176,21 @@ __all__ = [
     "CrossLayerKVConfig",
     "CrossLayerKVAttention",
     "CrossLayerKVStack",
+    "DynamicNTKRoPE",
+    "NTKRoPEConfig",
+    "StreamingConfig",
+    "StreamingAttentionCache",
+    "compute_streaming_attention",
+    "ContextChunk",
+    "MemoryMappedContext",
+    # sliding_window_attention
+    "SlidingWindowAttention",
+    "SWAConfig",
+    # chunk_prefill (scheduler)
+    "ChunkPrefillSchedulerConfig",
+    "ChunkPrefillScheduler",
+    "ChunkResult",
+    # context_window_manager
+    "ContextWindowManager",
+    "WindowPolicy",
 ]

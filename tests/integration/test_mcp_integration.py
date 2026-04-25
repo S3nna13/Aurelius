@@ -149,6 +149,84 @@ def test_sse_server_handle():
 # ---------------------------------------------------------------------------
 
 
+def test_skill_catalog_find_and_invoke():
+    """Register a skill, find by trigger, record an invocation, verify history."""
+    import time
+
+    from src.mcp.skill_catalog import (
+        SkillCatalog,
+        SkillInvocationRecord,
+        SkillMetadata,
+        SkillTrigger,
+    )
+
+    catalog = SkillCatalog()
+    skill = SkillMetadata(
+        skill_id="integration-skill",
+        name="Integration Test Skill",
+        version="2.0.0",
+        description="Used in integration test.",
+        triggers=[
+            SkillTrigger(
+                pattern="integration",
+                description="Fires on integration keyword.",
+                examples=["run integration"],
+            )
+        ],
+        tags=["integration"],
+    )
+    catalog.register(skill)
+
+    # find by trigger
+    found = catalog.find_by_trigger("run integration test now")
+    assert any(s.skill_id == "integration-skill" for s in found)
+
+    # record invocation
+    record = SkillInvocationRecord(
+        skill_id="integration-skill",
+        invoked_at=time.time(),
+        args={"mode": "test"},
+        result={"status": "ok"},
+        duration_ms=42.0,
+    )
+    catalog.record_invocation(record)
+
+    history = catalog.invocation_history(skill_id="integration-skill")
+    assert len(history) == 1
+    assert history[0].result == {"status": "ok"}
+
+
+def test_extension_manifest_validate():
+    """Validate a valid and an invalid extension manifest via the validator."""
+    from src.mcp.extension_manifest import ExtensionManifest, ExtensionManifestValidator
+
+    validator = ExtensionManifestValidator()
+
+    # Valid manifest
+    valid_m = ExtensionManifest(
+        extension_id="my-ext",
+        display_name="My Extension",
+        version="1.0.0",
+        description="A sufficiently long description for this extension.",
+        mcp_version="1.0",
+        permissions=["file_read"],
+    )
+    result = validator.validate(valid_m)
+    assert result.valid is True
+    assert result.errors == []
+
+    # Invalid manifest: empty id, bad version, short description
+    invalid_m = ExtensionManifest(
+        extension_id="",
+        display_name="X",
+        version="bad",
+        description="short",
+    )
+    bad_result = validator.validate(invalid_m)
+    assert bad_result.valid is False
+    assert len(bad_result.errors) >= 2
+
+
 def test_plugin_host_lifecycle():
     """Register plugin, enable, list, disable, unregister — full lifecycle."""
     from src.mcp.plugin_host import PluginHost, PluginHostError, PluginManifest

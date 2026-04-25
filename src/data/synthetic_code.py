@@ -371,7 +371,7 @@ class SyntheticCodePipeline:
         seen: set = set()
         result: List[CodeExample] = []
         for ex in examples:
-            h = hashlib.md5(ex.code.encode()).hexdigest()
+            h = hashlib.md5(ex.code.encode(), usedforsecurity=False).hexdigest()
             if h not in seen:
                 seen.add(h)
                 result.append(ex)

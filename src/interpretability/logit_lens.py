@@ -1,239 +1,148 @@
 """
-Logit Lens interpretability tool for the Aurelius LLM project.
+logit_lens.py — Logit lens visualization (Nostalgebraist 2020).
 
-Projects intermediate hidden states through the final unembedding matrix
-to inspect which tokens the model predicts at each layer.
+Projects the residual stream through the unembedding matrix at each layer.
+Pure Python, stdlib-only. No torch dependency.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional
-
-import torch
-import torch.nn.functional as F
-from torch import Tensor
+import math
+from dataclasses import dataclass
+from typing import Dict, List
 
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
-@dataclass
-class LogitLensConfig:
-    """Configuration for the LogitLens analysis."""
-    vocab_size: int = 50257
-    d_model: int = 512
-    n_layers: int = 12
-    apply_ln: bool = True
+@dataclass(frozen=True)
+class LogitLensResult:
+    """Result of projecting a single (layer, position) through the unembedding."""
+    layer: int
+    position: int
+    top_token_ids: List[int]
+    top_logits: List[float]
+    entropy: float
 
 
-# ---------------------------------------------------------------------------
-# Functional helpers
-# ---------------------------------------------------------------------------
+class LogitLensAnalyzer:
+    """Projects hidden states through the unembedding matrix at each layer."""
 
-def _layer_norm(
-    x: Tensor,
-    weight: Optional[Tensor],
-    bias: Optional[Tensor],
-    eps: float = 1e-5,
-) -> Tensor:
-    """Apply LayerNorm manually (pure PyTorch, no nn.LayerNorm dependency)."""
-    mean = x.mean(dim=-1, keepdim=True)
-    var = x.var(dim=-1, keepdim=True, unbiased=False)
-    x_norm = (x - mean) / (var + eps).sqrt()
-    if weight is not None:
-        x_norm = x_norm * weight
-    if bias is not None:
-        x_norm = x_norm + bias
-    return x_norm
+    def __init__(self, vocab_size: int) -> None:
+        self.vocab_size = vocab_size
 
-
-def project_hidden_state(
-    hidden: Tensor,
-    unembed: Tensor,
-    ln_weight: Optional[Tensor] = None,
-    ln_bias: Optional[Tensor] = None,
-) -> Tensor:
-    """Project a hidden state tensor through the unembedding matrix.
-
-    Args:
-        hidden:    (B, T, d_model) hidden states.
-        unembed:   (vocab_size, d_model) unembedding / lm_head weight matrix.
-        ln_weight: Optional (d_model,) LayerNorm scale applied before projection.
-        ln_bias:   Optional (d_model,) LayerNorm bias applied before projection.
-
-    Returns:
-        (B, T, vocab_size) raw logits.
-    """
-    if ln_weight is not None or ln_bias is not None:
-        hidden = _layer_norm(hidden, ln_weight, ln_bias)
-    # (B, T, d_model) @ (d_model, vocab_size) -> (B, T, vocab_size)
-    logits = hidden @ unembed.T
-    return logits
-
-
-def get_top_tokens(logits: Tensor, k: int = 5) -> Tensor:
-    """Return the top-k token indices at each (batch, sequence) position.
-
-    Args:
-        logits: (B, T, vocab_size) logits.
-        k:      Number of top tokens to return.
-
-    Returns:
-        (B, T, k) integer tensor of top token indices (highest logit first).
-    """
-    # torch.topk returns (values, indices)
-    _, indices = torch.topk(logits, k=k, dim=-1)
-    return indices
-
-
-def compute_kl_divergence(p_logits: Tensor, q_logits: Tensor) -> Tensor:
-    """Compute KL divergence KL(softmax(p) || softmax(q)) per (B, T) position.
-
-    Args:
-        p_logits: (B, T, vocab_size) logits for distribution P.
-        q_logits: (B, T, vocab_size) logits for distribution Q.
-
-    Returns:
-        (B, T) tensor of KL divergence values (in nats).
-    """
-    log_p = F.log_softmax(p_logits, dim=-1)  # (B, T, V)
-    log_q = F.log_softmax(q_logits, dim=-1)  # (B, T, V)
-    p = log_p.exp()                           # (B, T, V)
-    # KL(P || Q) = Σ p * (log_p - log_q)
-    kl = (p * (log_p - log_q)).sum(dim=-1)   # (B, T)
-    return kl
-
-
-# ---------------------------------------------------------------------------
-# LogitLens class
-# ---------------------------------------------------------------------------
-
-class LogitLens:
-    """Logit Lens: project hidden states at every layer to vocabulary logits."""
-
-    def __init__(
-        self,
-        config: LogitLensConfig,
-        unembed_weight: Tensor,
-        ln_weight: Optional[Tensor] = None,
-        ln_bias: Optional[Tensor] = None,
-    ) -> None:
-        """
-        Args:
-            config:         LogitLensConfig with model hyper-parameters.
-            unembed_weight: (vocab_size, d_model) unembedding matrix.
-            ln_weight:      Optional final LayerNorm scale (d_model,).
-            ln_bias:        Optional final LayerNorm bias (d_model,).
-        """
-        self.config = config
-        self.unembed_weight = unembed_weight
-        self.ln_weight = ln_weight if config.apply_ln else None
-        self.ln_bias = ln_bias if config.apply_ln else None
-
-    def analyze_layer(self, hidden: Tensor) -> Tensor:
-        """Project a single layer's hidden state to logits.
+    def _softmax(self, logits: List[float]) -> List[float]:
+        """Numerically stable softmax (subtract max before exp).
 
         Args:
-            hidden: (B, T, d_model) hidden states for one layer.
+            logits: List of raw logit values.
 
         Returns:
-            (B, T, vocab_size) logits.
+            List of probabilities summing to 1.
         """
-        return project_hidden_state(
-            hidden, self.unembed_weight, self.ln_weight, self.ln_bias
+        if not logits:
+            return []
+        max_val = max(logits)
+        exps = [math.exp(x - max_val) for x in logits]
+        total = sum(exps)
+        return [e / total for e in exps]
+
+    def project(
+        self,
+        layer: int,
+        position: int,
+        hidden: List[float],
+        unembedding: List[List[float]],
+    ) -> LogitLensResult:
+        """Project a hidden state through the unembedding matrix.
+
+        Computes logits = unembedding @ hidden (matrix-vector product).
+        Selects top-5 tokens by logit value.
+        Computes entropy = -sum(softmax[i] * log(softmax[i] + 1e-10)).
+
+        Args:
+            layer: Layer index.
+            position: Token position index.
+            hidden: 1-D list of floats (hidden_dim,).
+            unembedding: 2-D list [vocab_size][hidden_dim] of floats.
+
+        Returns:
+            LogitLensResult with top-5 token ids/logits and entropy.
+        """
+        # Matrix-vector product: logits[v] = dot(unembedding[v], hidden)
+        logits: List[float] = []
+        for vocab_row in unembedding:
+            dot = sum(w * h for w, h in zip(vocab_row, hidden))
+            logits.append(dot)
+
+        # Top-5 by logit value (descending)
+        indexed = sorted(enumerate(logits), key=lambda x: x[1], reverse=True)
+        top_k = 5
+        top_token_ids = [idx for idx, _ in indexed[:top_k]]
+        top_logits_vals = [val for _, val in indexed[:top_k]]
+
+        # Entropy over full distribution
+        probs = self._softmax(logits)
+        entropy = -sum(p * math.log(p + 1e-10) for p in probs)
+
+        return LogitLensResult(
+            layer=layer,
+            position=position,
+            top_token_ids=top_token_ids,
+            top_logits=top_logits_vals,
+            entropy=entropy,
         )
 
-    def analyze_all_layers(self, hiddens: List[Tensor]) -> Tensor:
-        """Project every layer's hidden states to logits.
-
-        Args:
-            hiddens: List of n_layers tensors, each (B, T, d_model).
-
-        Returns:
-            (n_layers, B, T, vocab_size) stacked logits.
-        """
-        layer_logits = [self.analyze_layer(h) for h in hiddens]
-        return torch.stack(layer_logits, dim=0)  # (n_layers, B, T, V)
-
-    def get_prediction_depth(
+    def layer_trajectories(
         self,
-        hiddens: List[Tensor],
-        target_ids: Tensor,
-        k: int = 1,
-    ) -> Tensor:
-        """Find the first layer at which each target token appears in the top-k.
+        results: List[LogitLensResult],
+        token_id: int,
+    ) -> List[float]:
+        """Return the logit value for a given token_id across results sorted by layer.
 
         Args:
-            hiddens:    List of n_layers tensors, each (B, T, d_model).
-            target_ids: (B, T) integer tensor of target token ids.
-            k:          How many top predictions to consider per position.
+            results: List of LogitLensResult objects (may span multiple layers/positions).
+            token_id: Vocabulary token index to track.
 
         Returns:
-            (B, T) integer tensor. Entry is the zero-based layer index of the
-            first layer where the target token is in the top-k predictions.
-            -1 if the target is never in top-k across all layers.
+            List of logit values, one per result sorted by layer ascending.
         """
-        all_logits = self.analyze_all_layers(hiddens)  # (L, B, T, V)
-        n_layers, B, T, _ = all_logits.shape
+        sorted_results = sorted(results, key=lambda r: r.layer)
+        trajectory: List[float] = []
+        for result in sorted_results:
+            # Find the logit for token_id among top tokens, else 0.0
+            if token_id in result.top_token_ids:
+                idx = result.top_token_ids.index(token_id)
+                trajectory.append(result.top_logits[idx])
+            else:
+                trajectory.append(0.0)
+        return trajectory
 
-        top_indices = get_top_tokens(all_logits.view(n_layers * B, T, -1), k=k)
-        # Reshape back: (L, B, T, k)
-        top_indices = top_indices.view(n_layers, B, T, k)
+    def entropy_by_layer(
+        self,
+        results: List[LogitLensResult],
+    ) -> Dict[int, float]:
+        """Compute mean entropy for each layer across all results at that layer.
 
-        # target_ids: (B, T) -> broadcast to (L, B, T, 1) for comparison
-        target = target_ids.unsqueeze(0).unsqueeze(-1)  # (1, B, T, 1)
-        matches = (top_indices == target).any(dim=-1)   # (L, B, T) bool
+        Args:
+            results: List of LogitLensResult objects.
 
-        # For each (b, t), find the first layer (dim=0) where match is True
-        # torch.argmax on bool gives first True; but if no True exists, result is 0
-        # We detect the "never matched" case separately.
-        any_match = matches.any(dim=0)  # (B, T)
-        depth = matches.long().argmax(dim=0)  # (B, T)  — first True layer index
-        depth[~any_match] = -1
-        return depth
+        Returns:
+            Dict mapping layer index to mean entropy at that layer.
+        """
+        layer_entropies: Dict[int, List[float]] = {}
+        for result in results:
+            if result.layer not in layer_entropies:
+                layer_entropies[result.layer] = []
+            layer_entropies[result.layer].append(result.entropy)
+
+        return {
+            layer: sum(entropies) / len(entropies)
+            for layer, entropies in layer_entropies.items()
+        }
 
 
 # ---------------------------------------------------------------------------
-# LayerwiseEntropyTracker
+# Registry
 # ---------------------------------------------------------------------------
 
-class LayerwiseEntropyTracker:
-    """Track per-layer entropy of the logit-lens distributions."""
-
-    def __init__(self) -> None:
-        pass
-
-    def compute_entropy(self, logits: Tensor) -> Tensor:
-        """Compute Shannon entropy H = -Σ p * log(p) in nats.
-
-        Args:
-            logits: (B, T, V) raw logits.
-
-        Returns:
-            (B, T) entropy tensor.
-        """
-        log_p = F.log_softmax(logits, dim=-1)  # (B, T, V)
-        p = log_p.exp()                         # (B, T, V)
-        entropy = -(p * log_p).sum(dim=-1)      # (B, T)
-        return entropy
-
-    def track(self, lens: LogitLens, hiddens: List[Tensor]) -> Tensor:
-        """Compute entropy at every layer.
-
-        Args:
-            lens:    A LogitLens instance.
-            hiddens: List of n_layers tensors, each (B, T, d_model).
-
-        Returns:
-            (n_layers, B, T) entropy tensor.
-        """
-        all_logits = lens.analyze_all_layers(hiddens)  # (L, B, T, V)
-        n_layers, B, T, V = all_logits.shape
-
-        # Compute entropy for each layer
-        entropies = []
-        for l in range(n_layers):
-            entropies.append(self.compute_entropy(all_logits[l]))  # (B, T)
-        return torch.stack(entropies, dim=0)  # (L, B, T)
+LOGIT_LENS_REGISTRY = {
+    "default": LogitLensAnalyzer,
+}

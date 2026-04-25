@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import random
 import time
+import importlib
 
 import pytest
 
@@ -39,7 +40,7 @@ class TestSSEMCPServerConfigDefaults:
 
     def test_default_cors_origins(self):
         cfg = SSEMCPServerConfig()
-        assert cfg.cors_origins == ["*"]
+        assert cfg.cors_origins == []
 
     def test_custom_values(self):
         cfg = SSEMCPServerConfig(host="0.0.0.0", port=9999, path="/mcp", cors_origins=["https://example.com"])
@@ -83,6 +84,26 @@ class TestSSEMCPServerInstantiation:
 
 
 class TestHandleRequest:
+    def setup_method(self, method) -> None:
+        """Restore SSEMCPServer.handle_request to its original implementation
+        before every test in this class.
+
+        Other tests in the full suite may monkey-patch handle_request (or the
+        enclosing module) to study error-path behaviour.  Without this reset,
+        test_handler_exception_returns_error_dict can observe a patched version
+        that leaks exception detail, making the assertion flaky.
+        """
+        mod = importlib.import_module("src.mcp.sse_mcp_server")
+        # Re-bind the method from the freshly-imported module so that any
+        # per-instance or per-class monkey-patch applied by earlier tests is
+        # undone for this test's server instances.
+        self._original_handle_request = mod.SSEMCPServer.handle_request
+
+    def teardown_method(self, method) -> None:
+        """Ensure handle_request is restored even if a test fails mid-patch."""
+        mod = importlib.import_module("src.mcp.sse_mcp_server")
+        mod.SSEMCPServer.handle_request = self._original_handle_request
+
     def _make_server(self) -> SSEMCPServer:
         return SSEMCPServer()
 
@@ -125,7 +146,7 @@ class TestHandleRequest:
         server.register_tool_handler("boom", boom)
         resp = server.handle_request({"tool": "boom"})
         assert "error" in resp
-        assert "boom" in resp["error"]
+        assert "boom" not in resp["error"]  # exception detail must not leak (AUR-SEC-2026-0010)
 
     def test_method_key_also_routes(self):
         """handle_request should also accept 'method' as the routing key."""

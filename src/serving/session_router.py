@@ -33,7 +33,7 @@ class ConsistentHashRouter:
         self._ring.sort(key=lambda x: x[0])
 
     def _hash(self, key: str) -> int:
-        return int(hashlib.md5(key.encode()).hexdigest(), 16)
+        return int(hashlib.blake2b(key.encode(), digest_size=8).hexdigest(), 16)
 
     def route(self, session_id: str) -> int:
         h = self._hash(session_id)

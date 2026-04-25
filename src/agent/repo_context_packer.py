@@ -77,12 +77,12 @@ _PY_IMPORT_RE = re.compile(
 )
 # JS/TS: import ... from 'x'; require('x')
 _JS_IMPORT_RE = re.compile(
-    r"""(?:import\s+(?:.+?\s+from\s+)?['"]([^'"]+)['"])"""
+    r"""(?:import\s+(?:[^\n]{0,200}?\s+from\s+)?['"]([^'"]+)['"])"""
     r"""|(?:require\(\s*['"]([^'"]+)['"]\s*\))""",
     re.MULTILINE,
 )
-# Go: single "fmt" or grouped import blocks.
-_GO_IMPORT_RE = re.compile(r"""import\s*(?:\(\s*([^)]+)\)|"([^"]+)")""", re.DOTALL)
+# Go: single "fmt" or grouped import blocks. Block content bounded to prevent ReDoS.
+_GO_IMPORT_RE = re.compile(r"""import\s*(?:\(\s*([^)]{0,4096})\)|"([^"]+)")""")
 # Rust: use a::b::c;
 _RS_IMPORT_RE = re.compile(r"^\s*use\s+([\w:]+)", re.MULTILINE)
 # Java: import foo.bar;

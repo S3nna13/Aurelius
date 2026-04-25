@@ -151,6 +151,64 @@ def test_document_parser_json():
     assert pages[0].regions[1].region_type == DocumentRegionType.TABLE
 
 
+# ---------------------------------------------------------------------------
+# Cross-modal attention / Q-Former integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_qformer_cross_modal():
+    """Build QFormer via from_config, run forward with random vision features, verify shape."""
+    import torch
+    from src.multimodal.cross_modal_attention import CrossModalConfig, QFormer
+
+    cfg = CrossModalConfig(d_model=64, n_heads=4, n_layers=2, n_query_tokens=8)
+    model = QFormer.from_config(cfg)
+    model.train(False)
+    torch.manual_seed(42)
+    vision = torch.randn(1, 16, cfg.d_model)
+    out = model(vision)
+    assert out.shape == (1, cfg.n_query_tokens, cfg.d_model)
+    assert not out.isnan().any()
+
+
+def test_speech_fusion_encoder():
+    """Build SpeechFusionEncoder, run forward with random audio+text, verify shape."""
+    import torch
+    from src.multimodal.audio_speech_fusion import SpeechFusionConfig, SpeechFusionEncoder
+
+    cfg = SpeechFusionConfig(
+        audio_d_model=32, text_d_model=64, fused_d_model=64, n_heads=4, n_fusion_layers=2
+    )
+    model = SpeechFusionEncoder.from_config(cfg)
+    model.train(False)
+    torch.manual_seed(42)
+    audio = torch.randn(1, 10, cfg.audio_d_model)
+    text = torch.randn(1, 5, cfg.text_d_model)
+    out = model(audio, text)
+    assert out.shape == (1, 5, cfg.fused_d_model)
+    assert not out.isnan().any()
+
+
+def test_multimodal_token_fusion():
+    """Build MultimodalTokenFusion, run forward with text+vision, verify shape and no NaN."""
+    import torch
+    from src.multimodal.multimodal_token_fusion import (
+        FusionStrategy,
+        MultimodalTokenFusion,
+        TokenFusionConfig,
+    )
+
+    cfg = TokenFusionConfig(d_model=64, n_heads=4, strategy=FusionStrategy.GATED)
+    model = MultimodalTokenFusion.from_config(cfg)
+    model.train(False)
+    torch.manual_seed(42)
+    text = torch.randn(1, 4, 64)
+    vision = torch.randn(1, 8, 64)
+    out = model(text, vision=vision, audio=None)
+    assert out.shape == (1, 4, 64)
+    assert not out.isnan().any()
+
+
 def test_document_embedder_shapes():
     """Embed a page and verify output shape is (N_regions, d_model)."""
     import torch

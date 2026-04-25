@@ -279,3 +279,51 @@ class TestTrajectoryIntegration:
         ok, issues = replayer.verify(traj)
         assert ok is True
         assert issues == []
+
+
+# ---------------------------------------------------------------------------
+# WebArena harness integration
+# ---------------------------------------------------------------------------
+
+class TestWebArenaHarnessIntegration:
+    """End-to-end integration: register a task, run with StubBrowserDriver."""
+
+    def test_webarena_harness_run(self):
+        """Register a task, run with a stub agent, verify TaskResult structure."""
+        from src.computer_use.webarena_eval import (
+            WebArenaHarness,
+            WebTask,
+            TaskResult,
+        )
+
+        harness = WebArenaHarness()
+        task = WebTask(
+            task_id="integration_nav",
+            description="Navigate to a target URL.",
+            start_url="https://example.com",
+            success_criteria=["UNREACHABLE_CRITERION_XYZ"],
+            max_steps=3,
+            tags=["integration"],
+        )
+        harness.register_task(task)
+
+        driver = StubBrowserDriver()
+        call_count = {"n": 0}
+
+        def stub_agent(state, task):
+            # Return None after 1 call so the loop exits early.
+            if call_count["n"] >= 1:
+                return None
+            call_count["n"] += 1
+            return GUIAction(action_type=ActionType.CLICK, target_selector="#btn")
+
+        result = harness.run_task("integration_nav", driver, stub_agent)
+
+        assert isinstance(result, TaskResult)
+        assert result.task_id == "integration_nav"
+        # Agent ran one step then returned None — steps_taken should be 1.
+        assert result.steps_taken == 1
+        # Criterion is unreachable, so success must be False.
+        assert result.success is False
+        # No exception should have been raised.
+        assert result.error is None

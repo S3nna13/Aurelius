@@ -1,367 +1,329 @@
-"""Tests for src/alignment/kto_trainer.py — KTO (Ethayarajh et al. 2024).
+"""Unit tests for src/alignment/kto_trainer.py — 20 tests.
 
-Pure PyTorch; no transformers, scipy, sklearn, trl, etc.
-
-Tests: 14 unit tests + 1 integration test = 15 total.
+Uses a tiny model (vocab=256, d=64, n_heads=4, n_layers=2, max_seq=64) for
+all forward and training-step tests. References:
+    Ethayarajh et al. (2024) arXiv:2402.01306 (Apache-2.0)
 """
-
 from __future__ import annotations
 
 import math
 
 import pytest
 import torch
-from torch import Tensor
+import torch.nn as nn
+import torch.optim as optim
 
-from src.alignment.kto_trainer import KTOBatch, KTOConfig, KTOTrainer
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_batch(
-    B: int = 6,
-    T: int = 12,
-    n_desirable: int | None = None,
-    seed: int = 42,
-    lp_offset: float = 0.0,
-    ref_offset: float = 0.0,
-) -> KTOBatch:
-    """Return a synthetic KTOBatch with controllable desirability split."""
-    g = torch.Generator()
-    g.manual_seed(seed)
-    log_probs = torch.randn(B, T, generator=g) - 3.0 + lp_offset
-    ref_log_probs = torch.randn(B, T, generator=g) - 3.0 + ref_offset
-    # All tokens real (no padding) for simplicity
-    attention_mask = torch.ones(B, T)
-
-    if n_desirable is None:
-        n_desirable = B // 2
-    desirable = torch.zeros(B, dtype=torch.bool)
-    desirable[:n_desirable] = True
-
-    return KTOBatch(
-        log_probs=log_probs,
-        ref_log_probs=ref_log_probs,
-        attention_mask=attention_mask,
-        desirable=desirable,
-    )
+from src.alignment.kto_trainer import (
+    KTOBatch,
+    KTOConfig,
+    KTOLoss,
+    KTOTrainer,
+)
+from src.alignment import ALIGNMENT_REGISTRY
 
 
 # ---------------------------------------------------------------------------
-# Test 1: test_config_defaults
+# Tiny causal LM for testing
+# ---------------------------------------------------------------------------
+
+VOCAB = 256
+D_MODEL = 64
+N_HEADS = 4
+N_LAYERS = 2
+MAX_SEQ = 64
+
+
+class TinyLM(nn.Module):
+    """Minimal causal LM: embedding → transformer → linear head."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.embed = nn.Embedding(VOCAB, D_MODEL)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=D_MODEL, nhead=N_HEADS, dim_feedforward=128, batch_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=N_LAYERS)
+        self.head = nn.Linear(D_MODEL, VOCAB)
+
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        x = self.embed(input_ids)
+        x = self.transformer(x)
+        return self.head(x)
+
+
+def _make_models() -> tuple[TinyLM, TinyLM]:
+    torch.manual_seed(42)
+    policy = TinyLM()
+    ref = TinyLM()
+    ref.load_state_dict(policy.state_dict())
+    return policy, ref
+
+
+def _make_batch(B: int = 4, L: int = 16, all_desirable: bool | None = None) -> KTOBatch:
+    torch.manual_seed(42)
+    input_ids = torch.randint(0, VOCAB, (B, L))
+    labels = input_ids.clone()
+    mask = torch.ones(B, L)
+
+    if all_desirable is True:
+        desirable = torch.ones(B, dtype=torch.bool)
+    elif all_desirable is False:
+        desirable = torch.zeros(B, dtype=torch.bool)
+    else:
+        # Mixed: first half desirable, second half not
+        des = torch.zeros(B, dtype=torch.bool)
+        des[: B // 2] = True
+        desirable = des
+
+    return KTOBatch(input_ids=input_ids, labels=labels, mask=mask, desirable=desirable)
+
+
+# ---------------------------------------------------------------------------
+# 1–4. KTOConfig defaults
 # ---------------------------------------------------------------------------
 
 
-def test_config_defaults():
+def test_kto_config_default_beta():
     cfg = KTOConfig()
-    assert cfg.beta == 0.1
-    assert cfg.lambda_u == 1.0
-    assert cfg.kl_num_samples == 8
-    assert cfg.eps > 0.0
+    assert cfg.beta == pytest.approx(0.1)
+
+
+def test_kto_config_default_desirable_weight():
+    cfg = KTOConfig()
+    assert cfg.desirable_weight == pytest.approx(1.0)
+
+
+def test_kto_config_default_undesirable_weight():
+    cfg = KTOConfig()
+    assert cfg.undesirable_weight == pytest.approx(1.0)
+
+
+def test_kto_config_default_learning_rate():
+    cfg = KTOConfig()
+    assert cfg.learning_rate == pytest.approx(1e-6)
 
 
 # ---------------------------------------------------------------------------
-# Test 2: test_sequence_log_ratio_shape
+# 5–8. KTOLoss basic properties
 # ---------------------------------------------------------------------------
 
 
-def test_sequence_log_ratio_shape():
-    trainer = KTOTrainer(KTOConfig())
-    B, T = 5, 10
-    lp = torch.randn(B, T)
-    ref_lp = torch.randn(B, T)
-    mask = torch.ones(B, T)
-    out = trainer.sequence_log_ratio(lp, ref_lp, mask)
-    assert out.shape == (B,), f"Expected shape ({B},), got {out.shape}"
+def test_kto_loss_returns_scalar():
+    torch.manual_seed(42)
+    loss_fn = KTOLoss(beta=0.1)
+    B = 4
+    policy_lp = torch.randn(B)
+    ref_lp = torch.randn(B)
+    des = torch.tensor([True, False, True, False])
+    out = loss_fn(policy_lp, ref_lp, des)
+    assert out.shape == torch.Size([])
+
+
+def test_kto_loss_is_finite():
+    torch.manual_seed(42)
+    loss_fn = KTOLoss(beta=0.1)
+    B = 4
+    policy_lp = torch.randn(B)
+    ref_lp = torch.randn(B)
+    des = torch.tensor([True, False, True, False])
+    out = loss_fn(policy_lp, ref_lp, des)
+    assert torch.isfinite(out)
+
+
+def test_kto_loss_all_desirable_vs_all_undesirable():
+    """KTO is not symmetric: all-desirable loss differs from all-undesirable."""
+    torch.manual_seed(42)
+    loss_fn = KTOLoss(beta=0.1)
+    B = 4
+    policy_lp = torch.randn(B)
+    ref_lp = torch.randn(B)
+
+    des_all = torch.ones(B, dtype=torch.bool)
+    unds_all = torch.zeros(B, dtype=torch.bool)
+
+    loss_des = loss_fn(policy_lp, ref_lp, des_all).item()
+    loss_unds = loss_fn(policy_lp, ref_lp, unds_all).item()
+    # Losses should differ (asymmetric objective)
+    assert loss_des != pytest.approx(loss_unds, abs=1e-6)
+
+
+def test_kto_loss_weights_as_buffers():
+    loss_fn = KTOLoss(beta=0.1, desirable_weight=2.0, undesirable_weight=0.5)
+    buf_names = {n for n, _ in loss_fn.named_buffers()}
+    assert "beta" in buf_names
+    assert "desirable_weight" in buf_names
+    assert "undesirable_weight" in buf_names
+    param_names = [n for n, _ in loss_fn.named_parameters()]
+    assert "beta" not in param_names
 
 
 # ---------------------------------------------------------------------------
-# Test 3: test_sequence_log_ratio_zero — identical probs → all zeros
+# 9–11. KTOTrainer.compute_logprobs
 # ---------------------------------------------------------------------------
 
 
-def test_sequence_log_ratio_zero():
-    trainer = KTOTrainer(KTOConfig())
-    B, T = 4, 8
-    lp = torch.randn(B, T)
-    mask = torch.ones(B, T)
-    out = trainer.sequence_log_ratio(lp, lp, mask)
-    assert torch.allclose(out, torch.zeros(B), atol=1e-6), (
-        f"Expected all zeros when log_probs == ref_log_probs, got {out}"
-    )
+def test_compute_logprobs_output_shape():
+    torch.manual_seed(42)
+    policy, ref = _make_models()
+    cfg = KTOConfig()
+    optimizer = optim.Adam(policy.parameters(), lr=cfg.learning_rate)
+    trainer = KTOTrainer(policy, ref, cfg, optimizer)
+
+    B, L = 4, 16
+    input_ids = torch.randint(0, VOCAB, (B, L))
+    labels = input_ids.clone()
+    mask = torch.ones(B, L)
+
+    lp = trainer.compute_logprobs(policy, input_ids, labels, mask)
+    assert lp.shape == (B,)
+
+
+def test_compute_logprobs_is_finite():
+    torch.manual_seed(42)
+    policy, ref = _make_models()
+    cfg = KTOConfig()
+    optimizer = optim.Adam(policy.parameters(), lr=cfg.learning_rate)
+    trainer = KTOTrainer(policy, ref, cfg, optimizer)
+
+    B, L = 4, 16
+    input_ids = torch.randint(0, VOCAB, (B, L))
+    labels = input_ids.clone()
+    lp = trainer.compute_logprobs(policy, input_ids, labels, None)
+    assert torch.all(torch.isfinite(lp))
+
+
+def test_compute_logprobs_with_none_mask():
+    torch.manual_seed(42)
+    policy, ref = _make_models()
+    cfg = KTOConfig()
+    optimizer = optim.Adam(policy.parameters(), lr=cfg.learning_rate)
+    trainer = KTOTrainer(policy, ref, cfg, optimizer)
+
+    B, L = 2, 16
+    input_ids = torch.randint(0, VOCAB, (B, L))
+    labels = input_ids.clone()
+    lp = trainer.compute_logprobs(policy, input_ids, labels, None)
+    assert lp.shape == (B,)
 
 
 # ---------------------------------------------------------------------------
-# Test 4: test_estimate_kl_non_negative
+# 12–16. KTOTrainer.train_step
 # ---------------------------------------------------------------------------
 
 
-def test_estimate_kl_non_negative():
-    """z_ref must always be >= 0 (clamped from below)."""
-    trainer = KTOTrainer(KTOConfig())
-    B, T = 8, 16
-    # Deliberately force negative mean ratio
-    lp = torch.full((B, T), -5.0)
-    ref_lp = torch.full((B, T), 0.0)
-    mask = torch.ones(B, T)
-    z_ref = trainer.estimate_kl(lp, ref_lp, mask)
-    assert z_ref.item() >= 0.0, f"z_ref={z_ref.item()} should be >= 0"
+def test_train_step_returns_correct_keys():
+    torch.manual_seed(42)
+    policy, ref = _make_models()
+    cfg = KTOConfig()
+    optimizer = optim.Adam(policy.parameters(), lr=cfg.learning_rate)
+    trainer = KTOTrainer(policy, ref, cfg, optimizer)
+    batch = _make_batch()
+    result = trainer.train_step(batch)
+    assert "loss" in result
+    assert "kto_desirable" in result
+    assert "kto_undesirable" in result
+    assert "kl_proxy" in result
+
+
+def test_train_step_loss_is_finite():
+    torch.manual_seed(42)
+    policy, ref = _make_models()
+    cfg = KTOConfig()
+    optimizer = optim.Adam(policy.parameters(), lr=cfg.learning_rate)
+    trainer = KTOTrainer(policy, ref, cfg, optimizer)
+    batch = _make_batch()
+    result = trainer.train_step(batch)
+    assert math.isfinite(result["loss"])
+
+
+def test_train_step_kl_proxy_nonnegative():
+    torch.manual_seed(42)
+    policy, ref = _make_models()
+    cfg = KTOConfig()
+    optimizer = optim.Adam(policy.parameters(), lr=cfg.learning_rate)
+    trainer = KTOTrainer(policy, ref, cfg, optimizer)
+    batch = _make_batch()
+    result = trainer.train_step(batch)
+    assert result["kl_proxy"] >= 0.0
+
+
+def test_train_step_all_desirable():
+    torch.manual_seed(42)
+    policy, ref = _make_models()
+    cfg = KTOConfig()
+    optimizer = optim.Adam(policy.parameters(), lr=cfg.learning_rate)
+    trainer = KTOTrainer(policy, ref, cfg, optimizer)
+    batch = _make_batch(all_desirable=True)
+    result = trainer.train_step(batch)
+    assert math.isfinite(result["loss"])
+    # Undesirable component should be zero
+    assert result["kto_undesirable"] == pytest.approx(0.0)
+
+
+def test_train_step_all_undesirable():
+    torch.manual_seed(42)
+    policy, ref = _make_models()
+    cfg = KTOConfig()
+    optimizer = optim.Adam(policy.parameters(), lr=cfg.learning_rate)
+    trainer = KTOTrainer(policy, ref, cfg, optimizer)
+    batch = _make_batch(all_desirable=False)
+    result = trainer.train_step(batch)
+    assert math.isfinite(result["loss"])
+    # Desirable component should be zero
+    assert result["kto_desirable"] == pytest.approx(0.0)
 
 
 # ---------------------------------------------------------------------------
-# Test 5: test_desirable_loss_bounds — output in (0, 1)
+# 17. Ref model is frozen
 # ---------------------------------------------------------------------------
 
 
-def test_desirable_loss_bounds():
-    trainer = KTOTrainer(KTOConfig(beta=0.1))
-    log_ratio = torch.randn(8)
-    z_ref = torch.tensor(0.05)
-    loss = trainer.desirable_loss(log_ratio, z_ref)
-    assert 0.0 < loss.item() < 1.0, (
-        f"desirable_loss={loss.item()} expected in (0, 1)"
-    )
+def test_ref_model_parameters_frozen():
+    torch.manual_seed(42)
+    policy, ref = _make_models()
+    cfg = KTOConfig()
+    optimizer = optim.Adam(policy.parameters(), lr=cfg.learning_rate)
+    KTOTrainer(policy, ref, cfg, optimizer)
+    for p in ref.parameters():
+        assert not p.requires_grad
 
 
 # ---------------------------------------------------------------------------
-# Test 6: test_undesirable_loss_bounds — output in (0, 1)
+# 18–19. ALIGNMENT_REGISTRY
 # ---------------------------------------------------------------------------
 
 
-def test_undesirable_loss_bounds():
-    trainer = KTOTrainer(KTOConfig(beta=0.1))
-    log_ratio = torch.randn(8)
-    z_ref = torch.tensor(0.05)
-    loss = trainer.undesirable_loss(log_ratio, z_ref)
-    assert 0.0 < loss.item() < 1.0, (
-        f"undesirable_loss={loss.item()} expected in (0, 1)"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Test 7: test_desirable_better_preferred — high log_ratio → lower d_loss
-# ---------------------------------------------------------------------------
-
-
-def test_desirable_better_preferred():
-    """Higher log_ratio (policy >> ref) should reduce desirable loss."""
-    trainer = KTOTrainer(KTOConfig(beta=0.5))
-    z_ref = torch.tensor(0.0)
-    low_ratio = torch.full((8,), -2.0)
-    high_ratio = torch.full((8,), 2.0)
-    loss_low = trainer.desirable_loss(low_ratio, z_ref)
-    loss_high = trainer.desirable_loss(high_ratio, z_ref)
-    assert loss_high.item() < loss_low.item(), (
-        f"Expected d_loss(high={loss_high.item():.4f}) < d_loss(low={loss_low.item():.4f})"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Test 8: test_undesirable_low_preferred — low log_ratio → lower u_loss
-# ---------------------------------------------------------------------------
-
-
-def test_undesirable_low_preferred():
-    """Lower log_ratio (policy << ref) should reduce undesirable loss."""
-    trainer = KTOTrainer(KTOConfig(beta=0.5))
-    z_ref = torch.tensor(0.0)
-    low_ratio = torch.full((8,), -2.0)
-    high_ratio = torch.full((8,), 2.0)
-    loss_low = trainer.undesirable_loss(low_ratio, z_ref)
-    loss_high = trainer.undesirable_loss(high_ratio, z_ref)
-    assert loss_low.item() < loss_high.item(), (
-        f"Expected u_loss(low={loss_low.item():.4f}) < u_loss(high={loss_high.item():.4f})"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Test 9: test_total_loss_keys
-# ---------------------------------------------------------------------------
-
-
-def test_total_loss_keys():
-    trainer = KTOTrainer(KTOConfig())
-    batch = _make_batch(B=6, T=10)
-    result = trainer.total_loss(batch)
-    required = {"loss", "desirable_loss", "undesirable_loss", "z_ref"}
-    assert required == set(result.keys()), (
-        f"Missing or extra keys. Got {set(result.keys())}, expected {required}"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Test 10: test_total_loss_scalar
-# ---------------------------------------------------------------------------
-
-
-def test_total_loss_scalar():
-    trainer = KTOTrainer(KTOConfig())
-    batch = _make_batch(B=6, T=10)
-    result = trainer.total_loss(batch)
-    for key, val in result.items():
-        assert val.shape == (), f"Expected scalar for '{key}', got shape {val.shape}"
-    assert torch.isfinite(result["loss"]), "Total loss must be finite"
-
-
-# ---------------------------------------------------------------------------
-# Test 11: test_all_desirable_batch
-# ---------------------------------------------------------------------------
-
-
-def test_all_desirable_batch():
-    """Batch with only desirable samples: undesirable_loss == 0, loss > 0."""
-    trainer = KTOTrainer(KTOConfig())
-    batch = _make_batch(B=4, T=8, n_desirable=4)
-    result = trainer.total_loss(batch)
-    assert result["undesirable_loss"].item() == 0.0, (
-        f"undesirable_loss should be 0 for all-desirable batch, "
-        f"got {result['undesirable_loss'].item()}"
-    )
-    assert torch.isfinite(result["loss"])
-    assert result["loss"].item() > 0.0
-
-
-# ---------------------------------------------------------------------------
-# Test 12: test_all_undesirable_batch
-# ---------------------------------------------------------------------------
-
-
-def test_all_undesirable_batch():
-    """Batch with only undesirable samples: desirable_loss == 0, loss > 0."""
-    trainer = KTOTrainer(KTOConfig())
-    batch = _make_batch(B=4, T=8, n_desirable=0)
-    result = trainer.total_loss(batch)
-    assert result["desirable_loss"].item() == 0.0, (
-        f"desirable_loss should be 0 for all-undesirable batch, "
-        f"got {result['desirable_loss'].item()}"
-    )
-    assert torch.isfinite(result["loss"])
-    assert result["loss"].item() > 0.0
-
-
-# ---------------------------------------------------------------------------
-# Test 13: test_lambda_u_scaling
-# ---------------------------------------------------------------------------
-
-
-def test_lambda_u_scaling():
-    """Doubling lambda_u should roughly double the undesirable loss contribution."""
-    batch = _make_batch(B=8, T=10, n_desirable=4, seed=99)
-
-    cfg1 = KTOConfig(lambda_u=1.0)
-    cfg2 = KTOConfig(lambda_u=2.0)
-
-    result1 = KTOTrainer(cfg1).total_loss(batch)
-    result2 = KTOTrainer(cfg2).total_loss(batch)
-
-    # The undesirable_loss component itself is independent of lambda_u
-    assert torch.allclose(result1["undesirable_loss"], result2["undesirable_loss"], atol=1e-6), (
-        "undesirable_loss component should not change with lambda_u"
-    )
-
-    # But the total loss should be higher with lambda_u=2.0
-    assert result2["loss"].item() > result1["loss"].item(), (
-        "Higher lambda_u must produce higher total loss"
-    )
-
-    # Quantitative check: total_loss2 - total_loss1 ≈ 1.0 * u_loss
-    delta = result2["loss"].item() - result1["loss"].item()
-    expected_delta = result1["undesirable_loss"].item()
-    assert abs(delta - expected_delta) < 1e-5, (
-        f"Expected Δloss = u_loss = {expected_delta:.6f}, got {delta:.6f}"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Test 14: test_gradient_flows
-# ---------------------------------------------------------------------------
-
-
-def test_gradient_flows():
-    """Gradients should reach log_probs and be finite."""
-    trainer = KTOTrainer(KTOConfig(beta=0.1))
-    B, T = 6, 10
-    log_probs = torch.randn(B, T, requires_grad=True)
-    ref_log_probs = torch.randn(B, T)
-    attention_mask = torch.ones(B, T)
-    desirable = torch.zeros(B, dtype=torch.bool)
-    desirable[:3] = True
-
-    batch = KTOBatch(
-        log_probs=log_probs,
-        ref_log_probs=ref_log_probs,
-        attention_mask=attention_mask,
-        desirable=desirable,
-    )
-
-    result = trainer.total_loss(batch)
-    result["loss"].backward()
-
-    assert log_probs.grad is not None, "Gradient should exist for log_probs"
-    assert torch.isfinite(log_probs.grad).all(), (
-        "Gradients must be finite, found NaN/Inf"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Test 15: Integration — B=8, T=16, 4 desirable + 4 undesirable
-# ---------------------------------------------------------------------------
-
-
-def test_integration_full_batch():
-    """End-to-end integration: forward + backward on a realistic batch."""
-    B, T = 8, 16
-    torch.manual_seed(2024)
-
-    log_probs = torch.randn(B, T, requires_grad=True)
-    ref_log_probs = torch.randn(B, T).detach()
-    # Slight padding at the end to exercise masking
-    attention_mask = torch.ones(B, T)
-    attention_mask[:, -2:] = 0  # last 2 tokens are padding
-
-    desirable = torch.zeros(B, dtype=torch.bool)
-    desirable[:4] = True  # first 4 desirable, last 4 undesirable
-
-    batch = KTOBatch(
-        log_probs=log_probs,
-        ref_log_probs=ref_log_probs,
-        attention_mask=attention_mask,
-        desirable=desirable,
-    )
-
-    cfg = KTOConfig(beta=0.1, lambda_u=1.0, kl_num_samples=4)
-    trainer = KTOTrainer(cfg)
-
-    result = trainer.total_loss(batch)
-
-    # Structural checks
-    assert set(result.keys()) == {"loss", "desirable_loss", "undesirable_loss", "z_ref"}
-    for key, val in result.items():
-        assert val.shape == (), f"'{key}' must be scalar"
-        assert torch.isfinite(val), f"'{key}'={val.item()} is not finite"
-
-    # Both components active
-    assert result["desirable_loss"].item() > 0.0
-    assert result["undesirable_loss"].item() > 0.0
-
-    # Backward pass
-    result["loss"].backward()
-    assert log_probs.grad is not None
-    assert torch.isfinite(log_probs.grad).all(), "Gradients must be finite after backward"
-
-    # Statistics helper
-    stats = trainer.statistics(batch)
-    for k, v in stats.items():
-        assert math.isfinite(v), f"statistic '{k}'={v} is not finite"
-    assert "mean_log_ratio" in stats
-    assert "z_ref" in stats
-    assert "desirable_mean_ratio" in stats
-    assert "undesirable_mean_ratio" in stats
-
-    # Registry
-    from src.alignment import ALIGNMENT_REGISTRY
+def test_alignment_registry_contains_kto():
     assert "kto" in ALIGNMENT_REGISTRY
+
+
+def test_alignment_registry_kto_is_kto_trainer():
     assert ALIGNMENT_REGISTRY["kto"] is KTOTrainer
+
+
+# ---------------------------------------------------------------------------
+# 20. KTOBatch dataclass
+# ---------------------------------------------------------------------------
+
+
+def test_kto_batch_stores_fields():
+    torch.manual_seed(42)
+    B, L = 4, 16
+    ids = torch.randint(0, VOCAB, (B, L))
+    labels = ids.clone()
+    mask = torch.ones(B, L)
+    des = torch.ones(B, dtype=torch.bool)
+    batch = KTOBatch(input_ids=ids, labels=labels, mask=mask, desirable=des)
+    assert batch.input_ids is ids
+    assert batch.labels is labels
+    assert batch.mask is mask
+    assert batch.desirable is des
+
+
+def test_kto_batch_none_mask():
+    B, L = 4, 16
+    ids = torch.randint(0, VOCAB, (B, L))
+    labels = ids.clone()
+    des = torch.ones(B, dtype=torch.bool)
+    batch = KTOBatch(input_ids=ids, labels=labels, mask=None, desirable=des)
+    assert batch.mask is None
