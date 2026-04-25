@@ -86,3 +86,4 @@ cycle-156 | 2026-04-24 | profiling+3(latency_histogram+bandwidth_profiler+kernel
 cycle-160 | 2026-04-25 | FederatedAveraging+WeightedConsensus | surfaces=federation×1,multiagent×1 | +222 tests | sources=FedAvg(McMahan2017)
 cycle-162 | 2026-04-25 | agent_commands+log_ship | surfaces=cli×1,monitoring×1 | +9 tests | sources=N/A
 cycle-163 | 2026-04-25 | adaptive_clipper+fp8_quantizer | surfaces=optimizers×1,quantization×1 | +6 tests
+cycle-164 | 2026-04-25 | dead_letter_queue+priority_store | surfaces=workflow×1,memory×1 | +9 tests
