@@ -221,7 +221,7 @@ def execute_python(code: str, config: ExecutionConfig) -> ExecutionResult:
             compiled = compile(code, "<sandbox>", "exec")
             with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
                 # nosec B102 -- sandboxed run; input validated via sanitize_code() and _MAX_EXEC_LEN; globals come from _make_restricted_globals().
-                exec(compiled, restricted_globals)  # noqa: S102
+                exec(compiled, restricted_globals)  # noqa: S102  # nosec B102
         except Exception as exc:
             exc_holder.append(exc)
 
@@ -340,7 +340,7 @@ class CodeInterpreterSession:
                 compiled = compile(code, "<session>", "exec")
                 with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
                     # nosec B102 -- sandboxed run; input validated via sanitize_code() and _MAX_EXEC_LEN; globals come from _make_restricted_globals().
-                    exec(compiled, namespace)  # noqa: S102
+                    exec(compiled, namespace)  # noqa: S102  # nosec B102
             except Exception as exc:
                 exc_holder.append(exc)
 
