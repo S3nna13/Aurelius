@@ -8,6 +8,8 @@ controls:
   ``max_output_bytes``
 - Restricted ``__builtins__`` (only the explicitly allow-listed names)
 - Size cap on incoming source to prevent compiler DoS
+- getattr/setattr/type/hasattr blocked to prevent sandbox escape via
+  ``type.__subclasses__()`` or ``getattr(object, '__class__')`` traversal
 
 This sandbox does NOT spawn subprocesses and does NOT use ``multiprocessing``;
 it is a best-effort in-process sandbox designed to contain cooperative tool
@@ -16,6 +18,10 @@ code, not to defend against hostile native escapes.
 Inspired by the CERBERUS layered defense model: the sandbox sits in the
 execution boundary layer, mirroring Layer5 perimeter enforcement where every
 call traverses a narrow, explicit allow-list.
+
+AUR-SEC: sandbox hardened per cycle-179 review — getattr/type/setattr/hasattr
+removed from default builtins to prevent Python sandbox escape via MRO
+introspection and attribute traversal.
 
 Pure stdlib.
 """
@@ -32,10 +38,10 @@ from typing import Any, Dict, FrozenSet, Optional
 
 DEFAULT_ALLOWED_BUILTINS: FrozenSet[str] = frozenset({
     "abs", "bool", "bytes", "chr", "dict", "divmod", "enumerate", "filter",
-    "float", "format", "frozenset", "getattr", "hasattr", "int", "isinstance",
+    "float", "format", "frozenset", "int", "isinstance",
     "issubclass", "iter", "len", "list", "map", "max", "min", "next", "object",
-    "ord", "pow", "print", "range", "repr", "reversed", "round", "set", "setattr",
-    "slice", "sorted", "str", "sum", "tuple", "type", "zip",
+    "ord", "pow", "print", "range", "repr", "reversed", "round", "set",
+    "slice", "sorted", "str", "sum", "tuple", "zip",
 })
 
 
@@ -103,6 +109,7 @@ class SandboxExecutor:
         for blocked in (
             "eval", "exec", "compile", "open", "__import__",
             "input", "breakpoint", "exit", "quit",
+            "getattr", "setattr", "type", "hasattr",
         ):
             safe_builtins.pop(blocked, None)
         return {"__builtins__": safe_builtins}

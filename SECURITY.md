@@ -35,6 +35,7 @@ All security findings are tracked in `.aurelius-cves.log` at the repository root
 | AUR-SEC-2026-0017 | Safe archive extractor (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
 | AUR-SEC-2026-0018 | Auth middleware / HMAC timing-safe (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
 | AUR-SEC-2026-0019 | Token-bucket rate limiter (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
+| AUR-SEC-2026-0027 | Sandbox escape via getattr/type/setattr traversal | Medium | CWE-693 | Fixed (cycle-180) |
 
 ## Security Architecture
 
@@ -50,3 +51,4 @@ Aurelius applies defense-in-depth:
 - **Canary tokens**: One-shot exfiltration detection via `src/security/canary_pipeline.py`
 - **Archive safety**: zip-slip/tar-slip/bomb/symlink guards via `src/security/safe_archive.py`
 - **Harm detection**: `_harm_score` returns 1.0 on any single suspicious substring match (fail-closed)
+- **Sandbox escape prevention**: `getattr`, `setattr`, `type`, `hasattr` blocked in sandbox builtins to prevent `type.__subclasses__()` and attribute traversal escapes (AUR-SEC-2026-0027)
