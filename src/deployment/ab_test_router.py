@@ -21,11 +21,13 @@ class Assignment:
 
 
 class ABTestRouter:
-    """Routes incoming requests to variants deterministically via MD5 hashing.
+    """Routes incoming requests to variants deterministically via SHA-256 hashing.
 
     Weights are normalised to [0, 100) on construction and after any mutation.
-    Bucket is derived from the first 8 hex characters of the MD5 digest of the
-    request_id, taken modulo 100.
+    Bucket is derived from the first 8 hex characters of the SHA-256 digest of
+    the request_id, taken modulo 100.
+
+    Security: Finding AUR-SEC-2026-0001; CWE-327 (weak hash).
     """
 
     def __init__(self, variants: list[Variant]) -> None:
@@ -55,7 +57,7 @@ class ABTestRouter:
 
     @staticmethod
     def _bucket(request_id: str) -> int:
-        digest = hashlib.md5(request_id.encode()).hexdigest()
+        digest = hashlib.sha256(request_id.encode()).hexdigest()
         return int(digest[:8], 16) % 100
 
     # ------------------------------------------------------------------
