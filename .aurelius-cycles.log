@@ -107,3 +107,4 @@ cycle-175 | 2026-04-25 | int4_quantizer+shutdown_handler | surfaces=quantization
 cycle-176 | 2026-04-25 | deterministic_runner+mcp_tracing | surfaces=simulation×1,mcp×1 | +7 tests
 sec-177 | 2026-04-25 | integrity_verifier+access_control | surfaces=security×2 | +9 tests | SECURITY-DOMINANT
 cycle-178 | 2026-04-25 | cli_config+audio_features | surfaces=cli×1,multimodal×1 | +8 tests
+cycle-179 | 2026-04-25 | gradient_noise_injector+timeout_wrapper | surfaces=optimizers×1,tools×1 | +5 tests
