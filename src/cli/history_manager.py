@@ -6,8 +6,6 @@ import re
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
 
 
 class HistoryError(ValueError):
@@ -23,10 +21,7 @@ class HistoryEntry:
 class HistoryManager:
     def __init__(self, history_file: str = "~/.aurelius_history.jsonl", max_entries: int = 1000) -> None:
         resolved = os.path.expanduser(history_file)
-        if os.path.isabs(resolved):
-            abs_path = resolved
-        else:
-            abs_path = os.path.abspath(resolved)
+        abs_path = os.path.abspath(resolved)
         cwd = os.path.abspath(os.getcwd())
         if not abs_path.startswith(cwd) and ".." in history_file.split(os.sep):
             raise HistoryError(f"Path traversal rejected: {history_file}")

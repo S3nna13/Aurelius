@@ -37,7 +37,7 @@ class FeatureFlagRegistry:
             )
 
     def _env_override(self, name: str) -> bool | None:
-        env_key = f"AURELIUS_FF_{name.upper()}"
+        env_key = f"AURELIUS_FF_{name.upper().replace('.', '_')}"
         val = os.environ.get(env_key)
         if val is None:
             return None
