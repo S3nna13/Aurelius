@@ -10,6 +10,7 @@ All firing logic is pure Python; no PyTorch, no threading, no external libs.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
@@ -149,6 +150,11 @@ class ProactiveTriggerRegistry:
                 should_fire = spec.trigger_fn(current_time)
             except Exception:
                 # Never let a broken trigger_fn crash the whole loop.
+                logging.getLogger(__name__).warning(
+                    "Trigger %s predicate raised an exception; skipping.",
+                    spec.name,
+                    exc_info=True,
+                )
                 continue
 
             if not should_fire:

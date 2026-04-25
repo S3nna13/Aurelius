@@ -194,7 +194,27 @@ class EvalHarness:
         checkpoint_path: Path,
         spec: BenchmarkSpec,
     ) -> dict[str, Any]:
-        """Use the lm-evaluation-harness Python API directly."""
+        """Use the lm-evaluation-harness Python API directly.
+
+        Security gate: lm-eval is no longer an Aurelius dependency because
+        its transitive dependency sqlitedict<=2.1.0 is vulnerable to
+        insecure deserialization (AUR-SEC-2026-0024, CWE-502).  If a user
+        installs lm-eval manually we still refuse to run when sqlitedict is
+        present in the environment.
+        """
+        # --- security gate -------------------------------------------------
+        try:
+            import sqlitedict  # type: ignore[import-untyped]
+        except ImportError:
+            sqlitedict = None  # type: ignore[assignment]
+        if sqlitedict is not None:
+            raise RuntimeError(
+                "AUR-SEC-2026-0024: sqlitedict (transitive dep of lm-eval) "
+                "is vulnerable to insecure deserialization (CWE-502). "
+                "lm-eval support has been removed from Aurelius. "
+                "Use the internal evaluation scorers in src/eval/ instead."
+            )
+        # --- end security gate ---------------------------------------------
         import lm_eval  # type: ignore[import-untyped]
 
         results = lm_eval.simple_evaluate(

@@ -31,9 +31,10 @@ apple = [
     "mlx>=0.18.0",
     "mlx-lm>=0.18.0",
 ]
-eval = [
-    "lm-eval>=0.4.4",
-]
+# eval extras intentionally empty — lm-eval removed due to AUR-SEC-2026-0024
+# (transitive sqlitedict<=2.1.0 CWE-502 insecure deserialization).
+# Use internal scorers (src/eval/*_scorer.py) instead.
+eval = []
 serve = [
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",

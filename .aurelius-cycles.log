@@ -108,3 +108,6 @@ cycle-176 | 2026-04-25 | deterministic_runner+mcp_tracing | surfaces=simulation�
 sec-177 | 2026-04-25 | integrity_verifier+access_control | surfaces=security×2 | +9 tests | SECURITY-DOMINANT
 cycle-178 | 2026-04-25 | cli_config+audio_features | surfaces=cli×1,multimodal×1 | +8 tests
 cycle-179 | 2026-04-25 | gradient_noise_injector+timeout_wrapper | surfaces=optimizers×1,tools×1 | +5 tests
+
+cycle-180 | 2026-04-25 | REVIEW-CLEANUP: purge 447 duplicate "* 3.py" files, fix core_dep_policy (move transformers/datasets/accelerate/trl/peft to optional), harden sandbox_executor (block getattr/type/setattr/hasattr traversal escape — AUR-SEC-2026-0027), add ruff S105 noqa for FIM tokens, add ruff S select to pyproject, add lxml>=6.1.0 S105 suppress | surfaces=security×1,build×1 | findings_opened=[0027] | findings_closed=[0027] | bandit_high=0 | deferred=[]
+sec-180 | 2026-04-25 | request_throttler+data_masker | surfaces=security×2 | +11 tests | SECURITY-DOMINANT

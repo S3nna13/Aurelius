@@ -8,9 +8,11 @@ pre-validation. Pure standard library.
 from __future__ import annotations
 
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+import logging
 
 __all__ = [
     "ExecutionLanguage",
@@ -133,7 +135,7 @@ class CodeExecutionTool:
         t0 = time.perf_counter()
         try:
             proc = subprocess.run(  # noqa: S603
-                ["python3", "-c", req.code],
+                [sys.executable, "-c", req.code],
                 capture_output=req.capture_output,
                 text=True,
                 timeout=req.timeout_s,
@@ -214,4 +216,7 @@ try:
         },
     )
 except Exception:  # noqa: BLE001
-    pass
+    logging.getLogger(__name__).debug(
+        "TOOL_REGISTRY wiring failed (expected when imported in isolation)",
+        exc_info=True,
+    )

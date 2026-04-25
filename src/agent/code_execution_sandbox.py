@@ -224,7 +224,9 @@ class CodeExecutionSandbox:
             )
             if preexec is not None and os.name == "posix":
                 kwargs["preexec_fn"] = preexec
-            proc = subprocess.run(argv, **kwargs)  # type: ignore[arg-type]
+            # argv is built from validated/canoncalized paths and the caller
+            # has already scrubbed the environment; S603 is acceptable here.
+            proc = subprocess.run(argv, **kwargs)  # noqa: S603 # type: ignore[arg-type]
             exit_code = proc.returncode
             stdout = proc.stdout or ""
             stderr = proc.stderr or ""

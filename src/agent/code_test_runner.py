@@ -254,7 +254,9 @@ def _run_argv_via_sandbox(
     exit_code = 0
     try:
         try:
-            proc = subprocess.run(
+            # argv is constructed by the sandbox from validated source files;
+            # S603 is acceptable in this controlled test-runner context.
+            proc = subprocess.run(  # noqa: S603
                 argv,
                 input=None,
                 capture_output=True,
