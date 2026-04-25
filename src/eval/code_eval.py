@@ -1,4 +1,20 @@
-"""Code generation evaluation: HumanEval-style problems, functional correctness, and metrics."""
+"""Code generation evaluation: HumanEval-style problems, functional correctness, and metrics.
+
+Security note
+-------------
+This module runs model-generated Python code inside a restricted namespace
+(``_SAFE_BUILTINS``) for functional-correctness scoring. The sandboxed-run
+sites below are intentional and annotated with ``# nosec B102``. Callers MUST:
+
+  * pre-validate input via the sanitizer in ``src/inference/code_execution.py``
+    (``sanitize_code``) when the source is untrusted, and
+  * rely on the length guard (``_MAX_EXEC_LEN``) enforced immediately before
+    each sandboxed-run invocation.
+
+Never pass unrestricted globals (e.g. the real ``builtins`` module or module
+globals) to these call sites — doing so would escalate a sandbox escape to
+arbitrary-code execution in the host process.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +23,11 @@ import random
 import re
 from dataclasses import dataclass, field
 from typing import Any
+
+
+# Maximum length of a code string accepted for sandboxed evaluation.
+# Keeps pathological or adversarial inputs from exhausting the compiler/parser.
+_MAX_EXEC_LEN = 100_000
 
 
 # ---------------------------------------------------------------------------
@@ -460,6 +481,12 @@ def execute_code_safely(
     """
     namespace: dict[str, Any] = {"__builtins__": _SAFE_BUILTINS}
 
+    # Size guard: reject pathologically large inputs before compiling.
+    if not code:
+        return False, "empty solution code"
+    if len(code) > _MAX_EXEC_LEN:
+        return False, f"solution too large ({len(code)} chars > {_MAX_EXEC_LEN})"
+
     # Compile and run solution code
     try:
         compiled_solution = compile(code, "<solution>", "exec")
@@ -467,18 +494,24 @@ def execute_code_safely(
         return False, f"SyntaxError in solution: {exc}"
 
     try:
+        # nosec B102 — intentional sandboxed code execution; caller must
+        # validate input via CodeSandbox/sanitize_code and _MAX_EXEC_LEN above.
         exec(compiled_solution, namespace)  # noqa: S102
     except Exception as exc:  # noqa: BLE001
         return False, f"RuntimeError running solution: {type(exc).__name__}: {exc}"
 
     # Run each test case
     for test in test_cases:
+        if not test or len(test) > _MAX_EXEC_LEN:
+            return False, f"test case rejected by size guard: len={len(test)}"
         try:
             compiled_test = compile(test, "<test>", "exec")
         except SyntaxError as exc:
             return False, f"SyntaxError in test case '{test}': {exc}"
 
         try:
+            # nosec B102 — intentional sandboxed code execution; caller must
+            # validate input via CodeSandbox/sanitize_code and _MAX_EXEC_LEN above.
             exec(compiled_test, namespace)  # noqa: S102
         except AssertionError:
             return False, f"AssertionError: test case failed: {test}"

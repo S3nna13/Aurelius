@@ -1,8 +1,7 @@
-"""Aurelius MCP client abstraction layer.
+"""Aurelius MCP protocol client (stub, no actual network).
 
-Provides transport-agnostic client classes for the Model Context Protocol,
-including an in-process ``LocalMCPClient`` that routes directly to a registered
-MCPServer instance with no network or socket dependencies.
+Provides a transport-agnostic stub client for the Model Context Protocol,
+with request/response logging and configurable retry behaviour.
 
 Inspired by cline/cline (MCP integration), continuedev/continue (context providers),
 Apache-2.0, clean-room reimplementation.
@@ -10,171 +9,218 @@ Apache-2.0, clean-room reimplementation.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .mcp_server import MCPServer
-
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
-_VALID_TRANSPORTS = frozenset({"stdio", "sse", "http", "local"})
-
-
-@dataclass
-class MCPClientConfig:
-    """Configuration for an MCP client instance."""
-
-    server_name: str = "default"
-    transport: str = "local"
-    endpoint: str = ""
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.server_name, str) or not self.server_name:
-            raise ValueError("server_name must be a non-empty string")
-        if self.transport not in _VALID_TRANSPORTS:
-            raise ValueError(
-                f"transport must be one of {sorted(_VALID_TRANSPORTS)!r}, "
-                f"got {self.transport!r}"
-            )
+    from src.mcp.mcp_server import StdioMCPServer
 
 
 # ---------------------------------------------------------------------------
-# Abstract base
+# Dataclasses
 # ---------------------------------------------------------------------------
 
 
-class MCPClient(ABC):
-    """Abstract base class for MCP client implementations."""
+@dataclass(frozen=True)
+class MCPRequest:
+    """Represents a single outbound MCP protocol request.
 
-    @abstractmethod
-    def call_tool(self, name: str, args: dict) -> dict:
-        """Invoke the named tool with *args* and return the result dict.
-
-        Raises ``MCPClientError`` for unrecoverable failures.
-        """
-
-    @abstractmethod
-    def list_tools(self) -> list[dict]:
-        """Return a list of tool descriptors available on the connected server."""
-
-
-class MCPClientError(Exception):
-    """Raised for unrecoverable MCP client-side failures."""
-
-
-# ---------------------------------------------------------------------------
-# Local (in-process) implementation
-# ---------------------------------------------------------------------------
-
-
-class LocalMCPClient(MCPClient):
-    """In-process MCP client that routes directly to an ``MCPServer`` instance.
-
-    No network, no sockets — suitable for unit tests and tightly-coupled
-    in-process usage.
+    Attributes:
+        method:     RPC method name (e.g. "tools/call").
+        params:     Arbitrary key/value parameters for the method.
+        request_id: Unique identifier; auto-assigned via uuid4 if empty.
     """
 
-    def __init__(self, server: "MCPServer", config: MCPClientConfig | None = None) -> None:
-        self._server = server
-        self.config = config or MCPClientConfig(transport="local")
+    method: str
+    params: dict
+    request_id: str = ""
 
-    def call_tool(self, name: str, args: dict) -> dict:
-        """Route a ``tools/call`` JSON-RPC request to the backing server.
+    def __post_init__(self) -> None:
+        # Assign a random ID when the caller leaves it blank.
+        if not self.request_id:
+            object.__setattr__(self, "request_id", uuid.uuid4().hex[:8])
 
-        Raises ``MCPClientError`` if the server returns a JSON-RPC error or
-        if the tool name is not found.
+
+@dataclass(frozen=True)
+class MCPResponse:
+    """Represents a single inbound MCP protocol response.
+
+    Attributes:
+        request_id: Echoes the originating ``MCPRequest.request_id``.
+        result:     Payload dict on success; ``None`` on error.
+        error:      Human-readable error message; ``None`` on success.
+    """
+
+    request_id: str
+    result: dict | None
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class MCPClientConfig:
+    """Configuration for an ``MCPClient`` instance.
+
+    Attributes:
+        server_name: Logical name of the target MCP server.
+        timeout_ms:  Per-call timeout in milliseconds (default 5 000).
+        max_retries: Maximum retry attempts for ``call_with_retry`` (default 3).
+        transport:   Transport type ("local", "stdio", "sse", etc.). Default "local".
+    """
+
+    server_name: str
+    timeout_ms: int = 5000
+    max_retries: int = 3
+    transport: str = "local"
+
+
+# ---------------------------------------------------------------------------
+# Default transport
+# ---------------------------------------------------------------------------
+
+
+def _default_transport(req: MCPRequest) -> MCPResponse:
+    """Echo transport: returns the request params under the key 'echo'."""
+    return MCPResponse(request_id=req.request_id, result={"echo": req.params})
+
+
+# ---------------------------------------------------------------------------
+# Client
+# ---------------------------------------------------------------------------
+
+
+class MCPClient:
+    """Stub MCP protocol client.
+
+    Parameters
+    ----------
+    config:
+        Client configuration (server name, timeout, retry limit).
+    transport_fn:
+        Callable that accepts an ``MCPRequest`` and returns an
+        ``MCPResponse``.  Defaults to :func:`_default_transport` which
+        echoes the request params back to the caller.
+    """
+
+    def __init__(
+        self,
+        config: MCPClientConfig,
+        transport_fn: Callable[[MCPRequest], MCPResponse] | None = None,
+    ) -> None:
+        self._config = config
+        self._transport_fn: Callable[[MCPRequest], MCPResponse] = (
+            transport_fn if transport_fn is not None else _default_transport
+        )
+        self._request_log: list[MCPRequest] = []
+        self._response_log: list[MCPResponse] = []
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
+    @property
+    def request_log(self) -> list[MCPRequest]:
+        """Ordered list of every request dispatched by this client."""
+        return list(self._request_log)
+
+    @property
+    def response_log(self) -> list[MCPResponse]:
+        """Ordered list of every response received by this client."""
+        return list(self._response_log)
+
+    # ------------------------------------------------------------------
+    # Core helpers
+    # ------------------------------------------------------------------
+
+    def _dispatch(self, method: str, params: dict) -> MCPResponse:
+        """Build an MCPRequest, call the transport, and log both ends."""
+        req = MCPRequest(method=method, params=params)
+        self._request_log.append(req)
+        resp = self._transport_fn(req)
+        self._response_log.append(resp)
+        return resp
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def call(self, method: str, params: dict) -> MCPResponse:
+        """Dispatch a single MCP call and return the response."""
+        return self._dispatch(method, params)
+
+    def call_with_retry(self, method: str, params: dict) -> MCPResponse:
+        """Dispatch an MCP call, retrying up to ``config.max_retries`` times.
+
+        Retries are triggered when ``MCPResponse.error`` is not ``None``.
+        The last response is returned regardless of whether it succeeded.
         """
-        if not isinstance(name, str) or not name:
-            raise MCPClientError("tool name must be a non-empty string")
-
-        payload = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": name, "arguments": args},
-        }
-        response = self._server.handle_request(payload)
-        if "error" in response:
-            error = response["error"]
-            raise MCPClientError(
-                f"MCP server error [{error.get('code')}]: {error.get('message')}"
-            )
-        return response.get("result", {})
-
-    def list_tools(self) -> list[dict]:
-        """Return the list of tools exposed by the backing server."""
-        payload = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/list",
-            "params": {},
-        }
-        response = self._server.handle_request(payload)
-        if "error" in response:
-            error = response["error"]
-            raise MCPClientError(
-                f"MCP server error [{error.get('code')}]: {error.get('message')}"
-            )
-        result = response.get("result", {})
-        tools = result.get("tools", [])
-        if not isinstance(tools, list):
-            raise MCPClientError(
-                f"Expected 'tools' to be a list, got {type(tools).__name__}"
-            )
-        return tools
+        resp: MCPResponse | None = None
+        for _ in range(self._config.max_retries):
+            resp = self._dispatch(method, params)
+            if resp.error is None:
+                return resp
+        # Return whatever the last attempt produced.
+        assert resp is not None  # max_retries >= 1 guaranteed by usage
+        return resp
 
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
-#: Maps transport names to MCPClient subclasses.
-MCP_CLIENT_REGISTRY: dict[str, type[MCPClient]] = {}
+#: Maps logical client names to ``MCPClient`` (sub)classes.
+MCP_CLIENT_REGISTRY: dict[str, type[MCPClient]] = {"default": MCPClient}
 
 
-def register_mcp_client(name: str, cls: type[MCPClient]) -> None:
-    """Register an MCPClient subclass under *name*.
+class LocalMCPClient(MCPClient):
+    """Local in-process MCP client backed by a StdioMCPServer.
 
-    Raises ``TypeError`` if *cls* is not a subclass of ``MCPClient``.
+    Wraps a running ``StdioMCPServer`` and exposes the standard
+    ``MCPClient`` interface with the server's local transport.
     """
-    if not (isinstance(cls, type) and issubclass(cls, MCPClient)):
-        raise TypeError(f"{cls!r} must be a subclass of MCPClient")
-    MCP_CLIENT_REGISTRY[name] = cls
 
+    def __init__(
+        self,
+        server: StdioMCPServer,
+        config: MCPClientConfig,
+    ) -> None:
+        self._server = server
+        self._config = config
+        self._request_log: list[MCPRequest] = []
+        self._response_log: list[MCPResponse] = []
 
-def get_mcp_client(name: str) -> type[MCPClient]:
-    """Return the MCPClient class registered under *name*.
+    @property
+    def request_log(self) -> list[MCPRequest]:
+        return list(self._request_log)
 
-    Raises ``KeyError`` with a descriptive message if not found.
-    """
-    if name not in MCP_CLIENT_REGISTRY:
-        raise KeyError(
-            f"No MCP client registered under {name!r}. "
-            f"Available: {sorted(MCP_CLIENT_REGISTRY)!r}"
-        )
-    return MCP_CLIENT_REGISTRY[name]
+    @property
+    def response_log(self) -> list[MCPResponse]:
+        return list(self._response_log)
 
+    def list_tools(self) -> list[dict]:
+        """Call the server's tools/list method and return the result list."""
+        req = MCPRequest(method="tools/list", params={})
+        self._request_log.append(req)
+        resp = self._server.handle_request({"method": "tools/list"})
+        err = resp.get("error") if isinstance(resp, dict) else None
+        self._response_log.append(MCPResponse(request_id=req.request_id, result=resp, error=err))
+        return resp.get("tools", []) if isinstance(resp, dict) else []
 
-def list_mcp_clients() -> list[str]:
-    """Return a sorted list of all registered MCP client names."""
-    return sorted(MCP_CLIENT_REGISTRY)
-
-
-# Pre-populate the registry.
-register_mcp_client("local", LocalMCPClient)
+    def call(self, method: str, params: dict) -> MCPResponse:
+        req = MCPRequest(method=method, params=params)
+        self._request_log.append(req)
+        resp = self._server.handle_request({"method": method, **params})
+        err = resp.get("error") if isinstance(resp, dict) else None
+        self._response_log.append(MCPResponse(request_id=req.request_id, result=resp, error=err))
+        return self._response_log[-1]
 
 
 __all__ = [
     "LocalMCPClient",
     "MCPClient",
     "MCPClientConfig",
-    "MCPClientError",
+    "MCPRequest",
+    "MCPResponse",
     "MCP_CLIENT_REGISTRY",
-    "get_mcp_client",
-    "list_mcp_clients",
-    "register_mcp_client",
 ]

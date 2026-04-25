@@ -9,11 +9,70 @@ Loop: parse -> execute -> append result -> continue generation until
 
 from __future__ import annotations
 
+import ast
 import json
+import operator
 import re
 from dataclasses import dataclass
 
 import torch
+
+
+# Maximum length of a calculator expression accepted by the built-in tool.
+_MAX_EXPR_LEN = 1_000
+
+# Operator table for the AST-walker arithmetic evaluator. No names, no calls,
+# no attribute access — strictly numeric literals and these operators.
+_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+_UNARYOPS = {
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+
+def _calc_walk(node: ast.AST) -> float | int:
+    """Recursively compute a numeric AST without invoking the dynamic code
+    evaluator. This is strictly safer than feeding the compiled tree to a
+    code-evaluation primitive because no Python runtime code path is taken."""
+    if isinstance(node, ast.Expression):
+        return _calc_walk(node.body)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, (int, float)) and not isinstance(
+            node.value, bool
+        ):
+            return node.value
+        raise ValueError(
+            f"Disallowed constant type: {type(node.value).__name__}"
+        )
+    if isinstance(node, ast.BinOp) and type(node.op) in _BINOPS:
+        return _BINOPS[type(node.op)](
+            _calc_walk(node.left), _calc_walk(node.right)
+        )
+    if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARYOPS:
+        return _UNARYOPS[type(node.op)](_calc_walk(node.operand))
+    raise ValueError(f"Disallowed node type: {type(node).__name__}")
+
+
+def _safe_arith_eval(expression: str) -> float | int:
+    """Evaluate an arithmetic expression via a strict AST walker.
+
+    This replaces a prior use of the built-in dynamic code evaluator on
+    user-supplied input (finding AUR-SEC-2026-0022). Only numeric literals
+    and a small set of arithmetic operators are accepted."""
+    if not expression or len(expression) > _MAX_EXPR_LEN:
+        raise ValueError(
+            f"expression rejected by size guard: len={len(expression)}"
+        )
+    tree = ast.parse(expression.strip(), mode="eval")
+    return _calc_walk(tree)
 
 
 # ---------------------------------------------------------------------------
@@ -357,8 +416,9 @@ def build_agent_prompt(
 
 def _calc_fn(args: dict) -> str:
     expr = args.get("expr", "0")
-    # Sandboxed eval: no builtins, no globals
-    return str(eval(expr, {"__builtins__": {}}, {}))  # noqa: S307
+    # Hardened: AST-walker arithmetic evaluator (no dynamic code path).
+    # Replaces prior use of the dynamic code evaluator (AUR-SEC-2026-0022).
+    return str(_safe_arith_eval(expr))
 
 
 CALCULATOR_TOOL = Tool(

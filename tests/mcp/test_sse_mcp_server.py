@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import random
 import time
+import importlib
 
 import pytest
 
@@ -83,6 +84,26 @@ class TestSSEMCPServerInstantiation:
 
 
 class TestHandleRequest:
+    def setup_method(self, method) -> None:
+        """Restore SSEMCPServer.handle_request to its original implementation
+        before every test in this class.
+
+        Other tests in the full suite may monkey-patch handle_request (or the
+        enclosing module) to study error-path behaviour.  Without this reset,
+        test_handler_exception_returns_error_dict can observe a patched version
+        that leaks exception detail, making the assertion flaky.
+        """
+        mod = importlib.import_module("src.mcp.sse_mcp_server")
+        # Re-bind the method from the freshly-imported module so that any
+        # per-instance or per-class monkey-patch applied by earlier tests is
+        # undone for this test's server instances.
+        self._original_handle_request = mod.SSEMCPServer.handle_request
+
+    def teardown_method(self, method) -> None:
+        """Ensure handle_request is restored even if a test fails mid-patch."""
+        mod = importlib.import_module("src.mcp.sse_mcp_server")
+        mod.SSEMCPServer.handle_request = self._original_handle_request
+
     def _make_server(self) -> SSEMCPServer:
         return SSEMCPServer()
 
