@@ -80,7 +80,7 @@ class TestFeatureToggleManagerDisabled(unittest.TestCase):
 
 class TestFeatureToggleManagerPercentage(unittest.TestCase):
     def _bucket(self, name: str, user_id: str) -> int:
-        return int(hashlib.md5((name + user_id).encode()).hexdigest(), 16) % 100
+        return int(hashlib.sha256((name + user_id).encode()).hexdigest(), 16) % 100
 
     def test_percentage_deterministic(self):
         mgr = FeatureToggleManager()

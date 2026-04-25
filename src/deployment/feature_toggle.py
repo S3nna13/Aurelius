@@ -28,7 +28,7 @@ class FeatureToggle:
 
 
 class FeatureToggleManager:
-    """Manages feature flags and toggles for gradual rollouts."""
+    """Manages feature flags and toggles for gradual rollouts via SHA-256 hashing."""
 
     def __init__(self) -> None:
         self._toggles: dict[str, FeatureToggle] = {}
@@ -57,9 +57,8 @@ class FeatureToggleManager:
         if toggle.state == ToggleState.DISABLED:
             return False
         if toggle.state == ToggleState.PERCENTAGE:
-            bucket = int(
-                hashlib.md5((name + user_id).encode()).hexdigest(), 16
-            ) % 100
+            digest = hashlib.sha256((name + user_id).encode()).hexdigest()
+            bucket = int(digest, 16) % 100
             return bucket < toggle.percentage
         if toggle.state == ToggleState.ALLOWLIST:
             return user_id in toggle.allowlist
