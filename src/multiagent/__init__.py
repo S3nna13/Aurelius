@@ -15,6 +15,18 @@ MULTIAGENT_REGISTRY: dict[str, object] = {
     "pool": AGENT_POOL,
 }
 
+# --- Message bus (cycle-197) -------------------------------------------------
+from .message_bus import AgentMessage, MessageBus, MESSAGE_BUS  # noqa: F401
+MULTIAGENT_REGISTRY["message_bus"] = MESSAGE_BUS
+
+# --- Broadcast dispatcher (cycle-197) ----------------------------------------
+from .broadcast_dispatcher import (  # noqa: F401
+    BroadcastDispatcher,
+    BROADCAST_DISPATCHER_REGISTRY,
+    DEFAULT_BROADCAST_DISPATCHER,
+)
+MULTIAGENT_REGISTRY["broadcast_dispatcher"] = DEFAULT_BROADCAST_DISPATCHER
+
 # --- Debate framework (additive, cycle-146, Du et al. 2023) --------------------
 from .debate_framework import (  # noqa: F401
     DebateConfig,

@@ -145,6 +145,18 @@ SECURITY_REGISTRY: dict = {
     "audit_trail": AUDIT_TRAIL_REGISTRY,
 }
 
+# --- Message content filter (cycle-197) --------------------------------------
+from .message_content_filter import (  # noqa: F401
+    FilterConfig,
+    FilterMatch,
+    FilterResult,
+    FilterVerdict,
+    MessageContentFilter,
+    MESSAGE_FILTER_REGISTRY,
+    DEFAULT_MESSAGE_FILTER,
+)
+SECURITY_REGISTRY["message_filter"] = MESSAGE_FILTER_REGISTRY
+
 __all__ = [
     "ModelStealingDefense",
     "QueryAuditEntry",

@@ -14,3 +14,14 @@ PROTOCOL_REGISTRY: dict[str, object] = {
     "conversation": CONVERSATION_PROTOCOL,
     "streaming": STREAMING_PROTOCOL,
 }
+
+# --- Delivery tracker (cycle-197) --------------------------------------------
+from .delivery_tracker import (  # noqa: F401
+    DeliveryConfig,
+    DeliveryRecord,
+    DeliveryStatus,
+    DeliveryTracker,
+    DELIVERY_TRACKER_REGISTRY,
+    DEFAULT_DELIVERY_TRACKER,
+)
+PROTOCOL_REGISTRY["delivery_tracker"] = DEFAULT_DELIVERY_TRACKER
