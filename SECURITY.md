@@ -6,7 +6,7 @@ Aurelius is under active development. Security fixes are applied to the `main` b
 
 ## Reporting a Vulnerability
 
-Please report security vulnerabilities to **cantonio@bluegracegroup.com**.
+Please report security vulnerabilities to **S3nna13**.
 
 Do not open public GitHub issues for security vulnerabilities. We will acknowledge reports within 48 hours and aim to release a fix within 14 days for confirmed high/critical findings.
 
