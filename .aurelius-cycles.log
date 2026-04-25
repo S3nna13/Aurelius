@@ -86,6 +86,8 @@ cycle-156 | 2026-04-24 | profiling+3(latency_histogram+bandwidth_profiler+kernel
 cycle-160 | 2026-04-25 | FederatedAveraging+WeightedConsensus | surfaces=federation×1,multiagent×1 | +222 tests | sources=FedAvg(McMahan2017)
 cycle-162 | 2026-04-25 | agent_commands+log_ship | surfaces=cli×1,monitoring×1 | +9 tests | sources=N/A
 cycle-163 | 2026-04-25 | adaptive_clipper+fp8_quantizer | surfaces=optimizers×1,quantization×1 | +6 tests
+
+cycle-164 | 2026-04-24 | SECURITY-DOMINANT: Close AUR-SEC-2026-0024 (HIGH), harden subprocess paths (CWE-78), fix silent exception swallowing (CWE-400/CWE-209) | surfaces=eval×1,agent×4 | findings_opened=[0026-LOW-waived] | findings_closed=[0024-HIGH] | +9 regression tests | ruff_high=0 | bandit_high=0 | tests=61 security green | branch=sec/164-cwe502-lm-eval-removal | vuln_classes=[Supply Chain Compromise,Insecure Deserialization,Command Injection] | injection_vectors=[Code Injection,Command Injection] | stride=[Elevation of Privilege,Tampering,DoS,Information Disclosure]
 cycle-164 | 2026-04-25 | dead_letter_queue+priority_store | surfaces=workflow×1,memory×1 | +9 tests
 
 cycle-164 | 2026-04-25 | FEATURE | reference-harvest from Reference Models | surfaces=trading(NEW)×2,agent×1,safety×1,retrieval×1,data×1,multiagent×1 | modules=TechnicalAnalyzer, MLForecaster, CostAwareRouter, EmergencyKillSwitch, KnowledgeGraphBuilder, HtmlScraper, SM2Scheduler, CurriculumBuilder | tests_added=75 | commit=d0c46bb | branch=cycle/165-exact-timer | sources=Heavens_Gate/BEAR_MARKET(analysis+forecaster), NEXUS(multi_model_manager→cost_aware_router+emergency_system→kill_switch), GRAND_SCHOLAR(knowledge_graph+scraper+spaced_repetition), AGI-TRD(safety_events→inspiration) | ref_dir=/Users/christienantonio/Desktop/Reference Models | bandit_high=0 | findings_opened=0 | findings_closed=0 | deferred=[]
@@ -93,3 +95,4 @@ cycle-165 | 2026-04-25 | exact_match+profiling_timer | surfaces=evaluation×1,pr
 
 cycle-165 | 2026-04-25 | SECURITY-DOMINANT | reference-harvest from NEXUS | surfaces=security×3 | modules=WebScanner, ThreatMonitor, AutoUpdater | tests_added=27 | commit=39d3255 | branch=sec/165-web-threat-audit | sources=NEXUS/modules(web_scanner→web_scanner, threat_monitor→threat_monitor, auto_updater→auto_updater) | ref_dir=/Users/christienantonio/Desktop/Reference Models | bandit_high=0 | findings_opened=0 | findings_closed=0 | deferred=[]
 cycle-166 | 2026-04-25 | scenario_sweeper+retry_tool+circuit_breaker | surfaces=simulation×1,tools×1,protocol×1 | +14 tests
+cycle-167 | 2026-04-25 | scheduler+silo_comparator | surfaces=workflow×1,federation×1 | +9 tests
