@@ -40,7 +40,8 @@ class PersonaSwitcher:
             raise ValueError(f"Persona name must be a string, got {type(name).__name__}")
         if not _PERSONA_NAME_RE.match(name):
             raise ValueError(
-                f"Invalid persona name {name!r}: must be 1–64 chars, alphanumeric/underscore/hyphen only."
+                f"Invalid persona name {name!r}: must be 1–64 chars, "
+                "alphanumeric/underscore/hyphen only."
             )
         return name
 
