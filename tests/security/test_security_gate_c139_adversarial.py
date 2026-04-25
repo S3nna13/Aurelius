@@ -79,27 +79,34 @@ def test_corpus_indexer_sha1_uses_usedforsecurity_false():
 
 
 # ---------------------------------------------------------------------------
-# C139-5  ShellTool deny-list blocks every listed dangerous pattern
+# C139-5  ShellTool allow-list rejects dangerous commands
 # ---------------------------------------------------------------------------
 
-def test_shell_tool_deny_list_blocks_all_patterns():
-    """C139-5: ShellTool.is_denied() must return True for every deny pattern."""
-    from src.tools.shell_tool import ShellTool, SHELL_DENY_PATTERNS
+def test_shell_tool_allow_list_rejects_dangerous_commands():
+    """C139-5: ShellTool must reject dangerous commands not in the allow-list."""
+    from src.tools.shell_tool import ShellTool
 
     tool = ShellTool()
-    for pattern in SHELL_DENY_PATTERNS:
-        cmd = f"echo hello; {pattern}"
-        assert tool.is_denied(cmd), (
-            f"ShellTool failed to block deny-pattern: {pattern!r}"
+    dangerous = [
+        "rm -rf /tmp",
+        "mkfs.ext4 /dev/sdb",
+        "shutdown now",
+        "reboot",
+        "chmod 777 /",
+    ]
+    for cmd in dangerous:
+        result = tool.run(cmd)
+        assert result.success is False, (
+            f"ShellTool failed to block dangerous command: {cmd!r}"
         )
 
 
 # ---------------------------------------------------------------------------
-# C139-6  ShellTool allows benign commands (deny-list is not over-broad)
+# C139-6  ShellTool allows benign commands (allow-list is not over-broad)
 # ---------------------------------------------------------------------------
 
 def test_shell_tool_allows_benign_commands():
-    """C139-6: ShellTool.is_denied() must return False for benign commands."""
+    """C139-6: ShellTool must allow benign commands in the allow-list."""
     from src.tools.shell_tool import ShellTool
 
     tool = ShellTool()
@@ -110,20 +117,24 @@ def test_shell_tool_allows_benign_commands():
         "cat /etc/hostname",
     ]
     for cmd in benign:
-        assert not tool.is_denied(cmd), (
+        result = tool.run(cmd)
+        assert result.success is True, (
             f"ShellTool incorrectly blocked benign command: {cmd!r}"
         )
 
 
 # ---------------------------------------------------------------------------
-# C139-7  shell_tool.py carries the # nosec B602 annotation
+# C139-7  shell_tool.py uses shell=False (hardened post-C139)
 # ---------------------------------------------------------------------------
 
-def test_shell_tool_has_nosec_annotation():
-    """C139-7: shell=True in shell_tool.py must be annotated with # nosec B602."""
+def test_shell_tool_uses_shell_false():
+    """C139-7: src/tools/shell_tool.py must use shell=False (not shell=True)."""
     src = pathlib.Path("src/tools/shell_tool.py").read_text()
-    assert "# nosec B602" in src, (
-        "# nosec B602 annotation missing from src/tools/shell_tool.py"
+    assert "shell=False" in src, (
+        "shell=False missing from src/tools/shell_tool.py"
+    )
+    assert "shell=True" not in src, (
+        "shell=True still present in src/tools/shell_tool.py"
     )
 
 

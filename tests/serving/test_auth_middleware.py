@@ -277,10 +277,15 @@ def test_auth_middleware_registry_is_dict() -> None:
     assert isinstance(AUTH_MIDDLEWARE_REGISTRY, dict)
 
 
-def test_default_auth_middleware_is_open() -> None:
-    """DEFAULT_AUTH_MIDDLEWARE must be in dev mode (require_auth=False)."""
+def test_default_auth_middleware_is_closed() -> None:
+    """DEFAULT_AUTH_MIDDLEWARE must be fail-closed (require_auth=True).
+
+    Regression test for AUR-SEC-2026-0028: the previous default was
+    require_auth=False, which left APIs accidentally open in production.
+    """
     result = DEFAULT_AUTH_MIDDLEWARE.authenticate({})
-    assert result.authenticated is True
+    assert result.authenticated is False
+    assert result.error is not None
 
 
 # ---------------------------------------------------------------------------
