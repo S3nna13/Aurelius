@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-
 # Valid persona names: alphanumeric, underscore, hyphen; 1–64 characters.
 _PERSONA_NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _MAX_PROMPT_LENGTH = 4096

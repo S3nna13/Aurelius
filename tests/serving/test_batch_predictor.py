@@ -39,7 +39,9 @@ class TestConstruction:
         assert bp._max_batch_size == 8
 
     def test_custom_init(self):
-        bp = BatchPredictor(backend=_identity_backend, max_batch_size=4, max_wait_ms=20.0)
+        bp = BatchPredictor(
+            backend=_identity_backend, max_batch_size=4, max_wait_ms=20.0
+        )
         assert bp._max_batch_size == 4
         assert bp._max_wait_s == 0.02
 
@@ -93,7 +95,9 @@ class TestSubmit:
 
 class TestBatching:
     def test_batching_collects_multiple_requests(self):
-        bp = BatchPredictor(backend=_identity_backend, max_batch_size=4, max_wait_ms=100_000.0)
+        bp = BatchPredictor(
+            backend=_identity_backend, max_batch_size=4, max_wait_ms=100_000.0
+        )
         fids = [bp.submit(f"req-{i}", torch.tensor([float(i)])) for i in range(4)]
         results = bp.collect_results(fids, timeout=5.0)
         assert len(results) == 4
@@ -102,7 +106,9 @@ class TestBatching:
         bp.shutdown()
 
     def test_batch_triggered_by_max_wait(self):
-        bp = BatchPredictor(backend=_identity_backend, max_batch_size=10, max_wait_ms=50.0)
+        bp = BatchPredictor(
+            backend=_identity_backend, max_batch_size=10, max_wait_ms=50.0
+        )
         fid = bp.submit("req-1", torch.tensor([1.0]))
         time.sleep(0.06)
         results = bp.collect_results([fid], timeout=5.0)
@@ -110,7 +116,9 @@ class TestBatching:
         bp.shutdown()
 
     def test_backend_transform_applied(self):
-        bp = BatchPredictor(backend=_double_backend, max_batch_size=2, max_wait_ms=100_000.0)
+        bp = BatchPredictor(
+            backend=_double_backend, max_batch_size=2, max_wait_ms=100_000.0
+        )
         fids = [bp.submit(f"req-{i}", torch.tensor([float(i)])) for i in range(2)]
         results = bp.collect_results(fids, timeout=5.0)
         for i, fid in enumerate(fids):
@@ -118,7 +126,9 @@ class TestBatching:
         bp.shutdown()
 
     def test_multiple_batches(self):
-        bp = BatchPredictor(backend=_identity_backend, max_batch_size=2, max_wait_ms=100_000.0)
+        bp = BatchPredictor(
+            backend=_identity_backend, max_batch_size=2, max_wait_ms=100_000.0
+        )
         fids = [bp.submit(f"req-{i}", torch.tensor([float(i)])) for i in range(5)]
         bp.flush()
         results = bp.collect_results(fids, timeout=5.0)
@@ -133,7 +143,9 @@ class TestBatching:
 
 class TestFlush:
     def test_flush_forces_immediate_processing(self):
-        bp = BatchPredictor(backend=_identity_backend, max_batch_size=10, max_wait_ms=100_000.0)
+        bp = BatchPredictor(
+            backend=_identity_backend, max_batch_size=10, max_wait_ms=100_000.0
+        )
         fids = [bp.submit(f"req-{i}", torch.tensor([float(i)])) for i in range(3)]
         bp.flush()
         results = bp.collect_results(fids, timeout=5.0)
@@ -159,14 +171,18 @@ class TestCollectResultsTimeout:
         bp.shutdown()
 
     def test_timeout_when_backend_is_slow(self):
-        bp = BatchPredictor(backend=_slow_backend, max_batch_size=10, max_wait_ms=100_000.0)
+        bp = BatchPredictor(
+            backend=_slow_backend, max_batch_size=10, max_wait_ms=100_000.0
+        )
         fid = bp.submit("req-1", torch.tensor([1.0]))
         with pytest.raises(TimeoutError):
             bp.collect_results([fid], timeout=0.01)
         bp.shutdown()
 
     def test_partial_results_not_returned_on_timeout(self):
-        bp = BatchPredictor(backend=_identity_backend, max_batch_size=10, max_wait_ms=100_000.0)
+        bp = BatchPredictor(
+            backend=_identity_backend, max_batch_size=10, max_wait_ms=100_000.0
+        )
         fid1 = bp.submit("req-1", torch.tensor([1.0]))
         bp.flush()
         bp.collect_results([fid1], timeout=2.0)
@@ -184,7 +200,9 @@ class TestCollectResultsTimeout:
 
 class TestThreadSafety:
     def test_concurrent_submissions(self):
-        bp = BatchPredictor(backend=_double_backend, max_batch_size=4, max_wait_ms=100_000.0)
+        bp = BatchPredictor(
+            backend=_double_backend, max_batch_size=4, max_wait_ms=100_000.0
+        )
         fids: list[tuple[str, float]] = []
         lock = threading.Lock()
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 import threading
 import time
 import uuid
-from dataclasses import dataclass
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import torch
 
