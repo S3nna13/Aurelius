@@ -116,3 +116,4 @@ cycle-182 | 2026-04-25 | event_emitter+version_manifest | surfaces=tools×1,runt
 
 cycle-183 | 2026-04-25 | FEATURE: surface_flags registry (extract 50+ booleans from AureliusConfig into per-surface FeatureFlag groups: SafetyFlags, EvalFlags, ServingFlags, AgentFlags, ChatFlags, InferenceFlags, TrainingFlags, DataFlags, RetrievalFlags, LongcontextFlags, AlignmentFlags, ModelFlags, SecurityFlags); AureliusConfig now delegates via properties to FeatureFlagRegistry; backward-compatible aliases preserved | surfaces=runtime×1,model×1 | +13 tests | findings_opened=0 | findings_closed=0 | bandit_high=0 | deferred=[remove-legacy-bool-fields-from-config-in-future-cycle]
 sec-183 | 2026-04-25 | encryptor+token_generator | surfaces=security×2 | +4 tests | SECURITY-DOMINANT
+cycle-184 | 2026-04-25 | heartbeat_monitor+stratified_sampler | surfaces=protocol×1,data×1 | +8 tests
