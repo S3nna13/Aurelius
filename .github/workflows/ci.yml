@@ -29,7 +29,7 @@ jobs:
 
       - name: Run pytest (subset)
         run: |
-          pytest --tb=short -q tests/eval/test_webarena_scorer.py tests/deployment/test_github_actions.py
+          python -m pytest --tb=short -q tests/eval/test_webarena_scorer.py tests/deployment/test_github_actions.py
 
   lint:
     name: Lint
