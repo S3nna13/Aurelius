@@ -97,8 +97,8 @@ class MemorySnapshot:
             from src.memory.working_memory import WorkingMemory
 
             inst = WorkingMemory()
-            for e in payload.get("entries", []):
-                inst.store(e.get("role", ""), e.get("content", ""))
+            for s in payload.get("slots", []):
+                inst.set(s.get("key", ""), s.get("value"), s.get("ttl_seconds", 60.0))
             return inst
         elif store_type == "SemanticMemory":
             from src.memory.semantic_memory import SemanticMemory
@@ -107,7 +107,7 @@ class MemorySnapshot:
             for c in payload.get("concepts", []):
                 inst.add_concept(c.get("name", ""), c.get("attributes", {}))
             for r in payload.get("relations", []):
-                inst.add_relation(r.get("source", ""), r.get("target", ""), r.get("relation", ""))
+                inst.add_relation(r.get("source", ""), r.get("relation_type", ""), r.get("target", ""))
             return inst
         else:
             raise SnapshotCorruptedError(f"unsupported store type: {store_type}")
