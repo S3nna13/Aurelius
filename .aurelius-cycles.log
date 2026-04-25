@@ -126,3 +126,4 @@ deploy-190 | 2026-04-25 | service_registry+drainer | surfaces=deployment×2 | +8
 cycle-191 | 2026-04-25 | retry_decorator+rate_limit_decorator | surfaces=tools×2 | +3 tests
 sec-192 | 2026-04-25 | audit_export+input_schema | surfaces=security×2 | +7 tests | SECURITY-DOMINANT
 cycle-193 | 2026-04-25 | string_diff+conversation_tracker | surfaces=tools×1,chat×1 | +9 tests
+cycle-194 | 2026-04-25 | query_engine+protocol_negotiator | surfaces=tools×1,protocol×1 | +11 tests
