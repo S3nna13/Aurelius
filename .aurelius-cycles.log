@@ -87,3 +87,6 @@ cycle-160 | 2026-04-25 | FederatedAveraging+WeightedConsensus | surfaces=federat
 cycle-162 | 2026-04-25 | agent_commands+log_ship | surfaces=cli×1,monitoring×1 | +9 tests | sources=N/A
 cycle-163 | 2026-04-25 | adaptive_clipper+fp8_quantizer | surfaces=optimizers×1,quantization×1 | +6 tests
 cycle-164 | 2026-04-25 | dead_letter_queue+priority_store | surfaces=workflow×1,memory×1 | +9 tests
+
+cycle-164 | 2026-04-25 | FEATURE | reference-harvest from Reference Models | surfaces=trading(NEW)×2,agent×1,safety×1,retrieval×1,data×1,multiagent×1 | modules=TechnicalAnalyzer, MLForecaster, CostAwareRouter, EmergencyKillSwitch, KnowledgeGraphBuilder, HtmlScraper, SM2Scheduler, CurriculumBuilder | tests_added=75 | commit=d0c46bb | branch=cycle/165-exact-timer | sources=Heavens_Gate/BEAR_MARKET(analysis+forecaster), NEXUS(multi_model_manager→cost_aware_router+emergency_system→kill_switch), GRAND_SCHOLAR(knowledge_graph+scraper+spaced_repetition), AGI-TRD(safety_events→inspiration) | ref_dir=/Users/christienantonio/Desktop/Reference Models | bandit_high=0 | findings_opened=0 | findings_closed=0 | deferred=[]
+cycle-165 | 2026-04-25 | exact_match+profiling_timer | surfaces=evaluation×1,profiling×1 | +11 tests
