@@ -1,0 +1,58 @@
+{
+  "$schema": "https://raw.githubusercontent.com/CycloneDX/cyclonedx-schema/master/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "serialNumber": "urn:uuid:aurelius-sbom-cycle-184",
+  "metadata": {
+    "timestamp": "2026-04-25T00:00:00Z",
+    "tools": [{"name": "aurelius-sbom-generator", "version": "0.1.0"}],
+    "component": {
+      "type": "library",
+      "bom-ref": "pkg:pypi/aurelius@0.1.0",
+      "name": "aurelius",
+      "version": "0.1.0",
+      "description": "Aurelius — 1.3B decoder-only LLM trained from scratch",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/aurelius@0.1.0"
+    }
+  },
+  "components": [
+    {"type": "library", "name": "torch", "version": ">=2.3.0", "purl": "pkg:pypi/torch@2.3.0"},
+    {"type": "library", "name": "tokenizers", "version": ">=0.20.0", "purl": "pkg:pypi/tokenizers@0.20.0"},
+    {"type": "library", "name": "safetensors", "version": ">=0.4.0", "purl": "pkg:pypi/safetensors@0.4.0"},
+    {"type": "library", "name": "einops", "version": ">=0.8.0", "purl": "pkg:pypi/einops@0.8.0"},
+    {"type": "library", "name": "pyyaml", "version": ">=6.0", "purl": "pkg:pypi/pyyaml@6.0"},
+    {"type": "library", "name": "rich", "version": ">=13.0.0", "purl": "pkg:pypi/rich@13.0.0"},
+    {"type": "library", "name": "numpy", "version": ">=1.26.0", "purl": "pkg:pypi/numpy@1.26.0"},
+    {"type": "library", "name": "lxml", "version": ">=6.1.0", "purl": "pkg:pypi/lxml@6.1.0"},
+    {"type": "library", "name": "transformers", "version": ">=4.45.0", "scope": "optional", "purl": "pkg:pypi/transformers@4.45.0"},
+    {"type": "library", "name": "datasets", "version": ">=3.0.0", "scope": "optional", "purl": "pkg:pypi/datasets@3.0.0"},
+    {"type": "library", "name": "accelerate", "version": ">=1.0.0", "scope": "optional", "purl": "pkg:pypi/accelerate@1.0.0"},
+    {"type": "library", "name": "trl", "version": ">=0.12.0", "scope": "optional", "purl": "pkg:pypi/trl@0.12.0"},
+    {"type": "library", "name": "peft", "version": ">=0.13.0", "scope": "optional", "purl": "pkg:pypi/peft@0.13.0"}
+  ],
+  "vulnerabilities": [
+    {
+      "id": "AUR-SEC-2026-0024",
+      "source": {"name": "aurelius-cves", "url": ".aurelius-cves.log"},
+      "description": "sqlitedict insecure deserialization (transitive via lm-eval)",
+      "severity": "HIGH",
+      "status": "fixed"
+    },
+    {
+      "id": "AUR-SEC-2026-0025",
+      "source": {"name": "aurelius-cves", "url": ".aurelius-cves.log"},
+      "description": "lxml XXE via iterparse resolve_entities",
+      "severity": "HIGH",
+      "status": "fixed"
+    },
+    {
+      "id": "AUR-SEC-2026-0027",
+      "source": {"name": "aurelius-cves", "url": ".aurelius-cves.log"},
+      "description": "Sandbox escape via getattr/type/setattr/hasattr traversal",
+      "severity": "MEDIUM",
+      "status": "fixed"
+    }
+  ]
+}
