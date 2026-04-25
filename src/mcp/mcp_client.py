@@ -7,11 +7,15 @@ Inspired by cline/cline (MCP integration), continuedev/continue (context provide
 Apache-2.0, clean-room reimplementation.
 """
 
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
 from __future__ import annotations
 
-import uuid
-from dataclasses import dataclass, field
-from typing import Callable
+if TYPE_CHECKING:
+    from src.mcp.mcp_server import StdioMCPServer
 
 
 # ---------------------------------------------------------------------------
@@ -62,11 +66,13 @@ class MCPClientConfig:
         server_name: Logical name of the target MCP server.
         timeout_ms:  Per-call timeout in milliseconds (default 5 000).
         max_retries: Maximum retry attempts for ``call_with_retry`` (default 3).
+        transport:   Transport type ("local", "stdio", "sse", etc.). Default "local".
     """
 
     server_name: str
     timeout_ms: int = 5000
     max_retries: int = 3
+    transport: str = "local"
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +172,52 @@ class MCPClient:
 #: Maps logical client names to ``MCPClient`` (sub)classes.
 MCP_CLIENT_REGISTRY: dict[str, type[MCPClient]] = {"default": MCPClient}
 
+
+class LocalMCPClient(MCPClient):
+    """Local in-process MCP client backed by a StdioMCPServer.
+
+    Wraps a running ``StdioMCPServer`` and exposes the standard
+    ``MCPClient`` interface with the server's local transport.
+    """
+
+    def __init__(
+        self,
+        server: StdioMCPServer,
+        config: MCPClientConfig,
+    ) -> None:
+        self._server = server
+        self._config = config
+        self._request_log: list[MCPRequest] = []
+        self._response_log: list[MCPResponse] = []
+
+    @property
+    def request_log(self) -> list[MCPRequest]:
+        return list(self._request_log)
+
+    @property
+    def response_log(self) -> list[MCPResponse]:
+        return list(self._response_log)
+
+    def list_tools(self) -> list[dict]:
+        """Call the server's tools/list method and return the result list."""
+        req = MCPRequest(method="tools/list", params={})
+        self._request_log.append(req)
+        resp = self._server.handle_request({"method": "tools/list"})
+        err = resp.get("error") if isinstance(resp, dict) else None
+        self._response_log.append(MCPResponse(request_id=req.request_id, result=resp, error=err))
+        return resp.get("tools", []) if isinstance(resp, dict) else []
+
+    def call(self, method: str, params: dict) -> MCPResponse:
+        req = MCPRequest(method=method, params=params)
+        self._request_log.append(req)
+        resp = self._server.handle_request({"method": method, **params})
+        err = resp.get("error") if isinstance(resp, dict) else None
+        self._response_log.append(MCPResponse(request_id=req.request_id, result=resp, error=err))
+        return self._response_log[-1]
+
+
 __all__ = [
+    "LocalMCPClient",
     "MCPClient",
     "MCPClientConfig",
     "MCPRequest",
