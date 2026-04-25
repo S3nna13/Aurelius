@@ -14,3 +14,13 @@ MONITORING_REGISTRY: dict[str, object] = {
     "alerts": ALERT_MANAGER,
     "health": HEALTH_CHECKER,
 }
+
+# --- Message metrics (cycle-197) ---------------------------------------------
+from .message_metrics import (  # noqa: F401
+    InstrumentedMessageBus,
+    MessageMetrics,
+    MessageMetricsConfig,
+    MESSAGE_METRICS_REGISTRY,
+    DEFAULT_MESSAGE_METRICS,
+)
+MONITORING_REGISTRY["message_metrics"] = DEFAULT_MESSAGE_METRICS
