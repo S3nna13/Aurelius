@@ -31,6 +31,22 @@ from .trace_collector import (
     TraceCollector,
     TRACE_COLLECTOR_REGISTRY,
 )
+from .power_profiler import (
+    PowerReading,
+    TDPConfig,
+    PowerProfiler,
+    POWER_PROFILER_REGISTRY,
+)
+from .cpu_profiler import (
+    CPUSample,
+    CPUProfiler,
+    CPU_PROFILER_REGISTRY,
+)
+from .gpu_profiler import (
+    GPUStats,
+    GPUProfiler,
+    GPU_PROFILER_REGISTRY,
+)
 
 __all__ = [
     "FLOPsConfig",
@@ -54,4 +70,14 @@ __all__ = [
     "TraceEvent",
     "TraceCollector",
     "TRACE_COLLECTOR_REGISTRY",
+"PowerReading",
+    "TDPConfig",
+    "PowerProfiler",
+    "POWER_PROFILER_REGISTRY",
+    "CPUSample",
+    "CPUProfiler",
+    "CPU_PROFILER_REGISTRY",
+    "GPUStats",
+    "GPUProfiler",
+    "GPU_PROFILER_REGISTRY",
 ]

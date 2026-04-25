@@ -161,8 +161,29 @@ from .code_execution_sandbox import (  # noqa: E402
 )
 
 __all__ += [
-    "CodeExecutionSandbox",
-    "ExecutionResult",
+    "ExecutionEventType",
+    "ExecutionEvent",
+    "ExecutionTracer",
+    "EXECUTION_TRACER_REGISTRY",
+    "ToolCallStatus",
+    "ToolCall",
+    "ToolTrace",
+    "ToolUseTracer",
+    "TOOL_USE_TRACER_REGISTRY",
+]
+
+# --- tool orchestrator (additive) -------------------------------------------
+from .tool_orchestrator import (  # noqa: E402
+    TOOL_ORCHESTRATOR,
+    ToolCall as ToolCallOrch,
+    ToolCallOutcome,
+    ToolOrchestrator,
+)
+
+__all__ += [
+    "TOOL_ORCHESTRATOR",
+    "ToolCallOutcome",
+    "ToolOrchestrator",
 ]
 
 
@@ -621,17 +642,9 @@ __all__ += [
 ]
 
 
-# --- tool orchestrator (additive) -------------------------------------------
-from .tool_orchestrator import (  # noqa: E402
-    TOOL_ORCHESTRATOR,
-    ToolCall,
-    ToolCallOutcome,
-    ToolOrchestrator,
-)
+from .execution_tracer import ExecutionEventType, ExecutionEvent, ExecutionTracer, EXECUTION_TRACER_REGISTRY  # noqa: F401
+from .tool_use_tracer import ToolCallStatus, ToolCall, ToolTrace, ToolUseTracer, TOOL_USE_TRACER_REGISTRY  # noqa: F401
 
-__all__ += [
-    "TOOL_ORCHESTRATOR",
-    "ToolCall",
-    "ToolCallOutcome",
-    "ToolOrchestrator",
-]
+AGENT_LOOP_REGISTRY["execution_tracer"] = ExecutionTracer
+
+TOOL_CALL_PARSER_REGISTRY  # silence unused warning
