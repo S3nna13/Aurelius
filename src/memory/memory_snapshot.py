@@ -50,8 +50,8 @@ class MemorySnapshot:
             raw_entries = list(memory._entries)
         elif hasattr(memory, "entries"):
             raw_entries = list(memory.entries)
-        else:
-            raise SnapshotCorruptedError("memory store has no entries attribute")
+        # Stores like WorkingMemory (_slots) or SemanticMemory (_concepts/_relations)
+        # may not have entries; that is valid.
 
         for entry in raw_entries:
             if hasattr(entry, "__dict__"):
@@ -63,12 +63,12 @@ class MemorySnapshot:
 
         slots: list[dict[str, Any]] = []
         if hasattr(memory, "_slots"):
-            slots = [s.__dict__ if hasattr(s, "__dict__") else dict(s) for s in memory._slots]
+            slots = [s.__dict__ if hasattr(s, "__dict__") else dict(s) for s in memory._slots.values()]
 
         concepts: list[dict[str, Any]] = []
         relations: list[dict[str, Any]] = []
         if hasattr(memory, "_concepts"):
-            concepts = [c.__dict__ if hasattr(c, "__dict__") else dict(c) for c in memory._concepts]
+            concepts = [c.__dict__ if hasattr(c, "__dict__") else dict(c) for c in memory._concepts.values()]
         if hasattr(memory, "_relations"):
             relations = [
                 r.__dict__ if hasattr(r, "__dict__") else dict(r) for r in memory._relations

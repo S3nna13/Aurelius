@@ -39,7 +39,7 @@ class TestEpisodicRoundtrip:
 class TestWorkingMemoryRoundtrip:
     def test_working_memory(self, tmp_path):
         mem = WorkingMemory()
-        mem.store("user", "task")
+        mem.set("user", "task")
         path = str(tmp_path / "wm.json")
         MemorySnapshot.save(mem, path)
         loaded = MemorySnapshot.load(path)
@@ -50,7 +50,8 @@ class TestSemanticMemoryRoundtrip:
     def test_semantic_memory(self, tmp_path):
         mem = SemanticMemory()
         mem.add_concept("cat", {"legs": 4})
-        mem.add_relation("cat", "animal", "is_a")
+        mem.add_concept("animal", {})
+        mem.add_relation("cat", "is_a", "animal")
         path = str(tmp_path / "sm.json")
         MemorySnapshot.save(mem, path)
         loaded = MemorySnapshot.load(path)
