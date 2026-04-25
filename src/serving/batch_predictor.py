@@ -6,7 +6,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 
@@ -112,12 +112,12 @@ class BatchPredictor:
 
     def flush(self) -> None:
         """Force immediate processing of any pending batch."""
-        self._flush_event.set()
         while True:
             with self._lock:
                 if not self._queue and self._inflight == 0:
                     self._flush_event.clear()
                     break
+            self._flush_event.set()
             time.sleep(0.001)
 
     def shutdown(self) -> None:

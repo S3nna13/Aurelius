@@ -10,7 +10,6 @@ import torch
 
 from src.serving.batch_predictor import BatchPredictor
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -186,13 +185,13 @@ class TestCollectResultsTimeout:
 class TestThreadSafety:
     def test_concurrent_submissions(self):
         bp = BatchPredictor(backend=_double_backend, max_batch_size=4, max_wait_ms=100_000.0)
-        fids: list[str] = []
+        fids: list[tuple[str, float]] = []
         lock = threading.Lock()
 
         def worker(i: int) -> None:
             fid = bp.submit(f"req-{i}", torch.tensor([float(i)]))
             with lock:
-                fids.append(fid)
+                fids.append((fid, float(i)))
 
         threads = [threading.Thread(target=worker, args=(i,)) for i in range(20)]
         for t in threads:
@@ -202,8 +201,9 @@ class TestThreadSafety:
 
         assert len(fids) == 20
         bp.flush()
-        results = bp.collect_results(fids, timeout=10.0)
+        fid_list = [t[0] for t in fids]
+        results = bp.collect_results(fid_list, timeout=10.0)
         assert len(results) == 20
-        for i, fid in enumerate(fids):
-            assert torch.equal(results[fid], torch.tensor([float(i) * 2]))
+        for fid, val in fids:
+            assert torch.equal(results[fid], torch.tensor([val * 2]))
         bp.shutdown()
