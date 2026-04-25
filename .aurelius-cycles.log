@@ -122,3 +122,4 @@ sec-186 | 2026-04-25 | session_manager+cors_validator | surfaces=security×2 | +
 cycle-187 | 2026-04-25 | json_validator+kv_store | surfaces=tools×2 | +9 tests
 cycle-188 | 2026-04-25 | base_config+prompt_templates | surfaces=runtime×1,chat×1 | +9 tests
 sec-189 | 2026-04-25 | csp_validator+api_key_manager | surfaces=security×2 | +8 tests | SECURITY-DOMINANT
+deploy-190 | 2026-04-25 | service_registry+drainer | surfaces=deployment×2 | +8 tests | DEPLOYMENT CYCLE
