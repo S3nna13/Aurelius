@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import src.safety as safety
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_registry():
@@ -19,7 +20,8 @@ def test_jailbreak_filter_intact():
 
 
 def test_smoke_score_with_flag():
-    cfg = AureliusConfig(safety_lexical_entropy_anomaly_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="safety.lexical_entropy_anomaly", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.safety_lexical_entropy_anomaly_enabled is True
     det = safety.LexicalEntropyAnomalyDetector()
     r = det.score("x " * 40)

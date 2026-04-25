@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import src.data as data
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_dedup_registry():
@@ -19,7 +20,8 @@ def test_loader_registry_intact():
 
 
 def test_smoke_cluster():
-    cfg = AureliusConfig(data_ngram_deduplication_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="data.ngram_deduplication", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.data_ngram_deduplication_enabled is True
     g = data.NgramDeduplicationToolkit.cluster_duplicates(["aa", "aa", "bb"], n=1, threshold=1.0)
     assert len(g) == 2

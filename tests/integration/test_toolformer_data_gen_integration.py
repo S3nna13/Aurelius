@@ -17,6 +17,7 @@ from src.agent.toolformer_data_gen import (
     ToolformerDataGenerator,
 )
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +64,13 @@ def test_aurelius_config_has_toolformer_keys():
 
 def test_toolformer_config_constructed_from_aurelius_config():
     """ToolformerConfig can be constructed from AureliusConfig values."""
+    FEATURE_FLAG_REGISTRY.register(
+        FeatureFlag(
+            name="model.toolformer_data_gen",
+            enabled=False,
+            metadata={"utility_threshold": 0.25},
+        )
+    )
     aurelius_cfg = AureliusConfig(
         d_model=64,
         n_layers=2,
@@ -72,7 +80,6 @@ def test_toolformer_config_constructed_from_aurelius_config():
         d_ff=128,
         vocab_size=256,
         max_seq_len=64,
-        toolformer_utility_threshold=0.25,
     )
     tf_cfg = ToolformerConfig(utility_threshold=aurelius_cfg.toolformer_utility_threshold)
     assert tf_cfg.utility_threshold == 0.25

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import src.chat as chat
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_encoder_in_template_registry():
@@ -25,7 +26,8 @@ def test_config_default_off():
 
 
 def test_config_flag_toggleable():
-    cfg = AureliusConfig(chat_system_prompt_priority_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="chat.system_prompt_priority", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.chat_system_prompt_priority_enabled is True
 
 

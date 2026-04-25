@@ -5,6 +5,7 @@ from __future__ import annotations
 from src.agent import AGENT_LIFECYCLE_REGISTRY
 from src.agent.five_state_controller import AgentState, FiveStateController
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_controller_registered_in_lifecycle_registry():
@@ -18,7 +19,8 @@ def test_config_flag_defaults_off():
 
 
 def test_config_flag_settable():
-    cfg = AureliusConfig(agent_five_state_controller_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="agent.five_state_controller", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.agent_five_state_controller_enabled is True
 
 
@@ -31,6 +33,7 @@ def test_construct_and_initial_state_idle():
 
 
 def test_feature_flag_off_preserves_default_behavior():
+    FEATURE_FLAG_REGISTRY._flags.pop("agent.five_state_controller", None)
     cfg = AureliusConfig()
     assert cfg.agent_five_state_controller_enabled is False
     # Registry remains inspectable regardless of flag value.

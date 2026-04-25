@@ -15,6 +15,7 @@ from src.model import (
     slerp_merge,
     ties_merge,
 )
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_merging_registry_contains_all_strategies() -> None:
@@ -28,7 +29,8 @@ def test_merging_registry_contains_all_strategies() -> None:
 def test_model_merging_config_flag_defaults_off() -> None:
     cfg = AureliusConfig()
     assert cfg.model_merging_enabled is False
-    cfg2 = AureliusConfig(model_merging_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="model.merging", enabled=True))
+    cfg2 = AureliusConfig()
     assert cfg2.model_merging_enabled is True
 
 

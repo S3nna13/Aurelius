@@ -12,6 +12,7 @@ from src.chat.security_personas import (
     SecurityPersonaRegistry,
 )
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_security_personas_registered_in_chat_template_registry() -> None:
@@ -50,7 +51,8 @@ def test_config_flag_defaults_off() -> None:
 
 
 def test_config_flag_is_toggleable() -> None:
-    cfg = AureliusConfig(chat_security_personas_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="chat.security_personas", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.chat_security_personas_enabled is True
 
 

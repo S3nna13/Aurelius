@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 from src.safety import (
     SAFETY_FILTER_REGISTRY,
     RewardHackDetector,
@@ -36,12 +37,14 @@ def test_config_flag_defaults_off() -> None:
 
 
 def test_config_flag_settable() -> None:
-    cfg = AureliusConfig(safety_reward_hack_detector_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="safety.reward_hack_detector", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.safety_reward_hack_detector_enabled is True
 
 
 def test_end_to_end_scan_via_registry_when_enabled() -> None:
-    cfg = AureliusConfig(safety_reward_hack_detector_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="safety.reward_hack_detector", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.safety_reward_hack_detector_enabled is True
     cls = SAFETY_FILTER_REGISTRY["reward_hack_detector"]
     detector = cls()
@@ -83,6 +86,7 @@ def test_end_to_end_scan_via_registry_when_enabled() -> None:
 
 
 def test_detector_no_op_when_flag_off() -> None:
+    FEATURE_FLAG_REGISTRY._flags.pop("safety.reward_hack_detector", None)
     cfg = AureliusConfig()
     if cfg.safety_reward_hack_detector_enabled:  # pragma: no cover
         raise AssertionError("flag should default OFF")

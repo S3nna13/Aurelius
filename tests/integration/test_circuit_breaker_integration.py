@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 from src.serving import (
     API_SHAPE_REGISTRY,
     DECODER_REGISTRY,
@@ -34,7 +35,8 @@ def test_config_flag_defaults_off() -> None:
 
 
 def test_config_flag_can_be_enabled() -> None:
-    cfg = AureliusConfig(serving_circuit_breaker_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="serving.circuit_breaker", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.serving_circuit_breaker_enabled is True
 
 
@@ -100,7 +102,8 @@ def test_breaker_recovers_after_timeout() -> None:
 
 def test_config_flag_gates_construction_in_userland() -> None:
     # Downstream code pattern: gate construction behind the config flag.
-    cfg = AureliusConfig(serving_circuit_breaker_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="serving.circuit_breaker", enabled=True))
+    cfg = AureliusConfig()
     cb = (
         RESILIENCE_REGISTRY["circuit_breaker"](name="gated")
         if cfg.serving_circuit_breaker_enabled

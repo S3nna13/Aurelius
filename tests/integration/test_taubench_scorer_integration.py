@@ -21,6 +21,7 @@ from src.eval.taubench_scorer import (
     TauBenchTrajectory,
 )
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +90,10 @@ def test_config_defaults():
 
 
 def test_config_fields_can_be_set():
-    cfg = AureliusConfig(enable_taubench_eval=True, taubench_domain="retail")
+    FEATURE_FLAG_REGISTRY.register(
+        FeatureFlag(name="eval.taubench", enabled=True, metadata={"domain": "retail"})
+    )
+    cfg = AureliusConfig()
     assert cfg.enable_taubench_eval is True
     assert cfg.taubench_domain == "retail"
 
@@ -100,7 +104,10 @@ def test_config_fields_can_be_set():
 
 
 def test_end_to_end_coding_domain():
-    cfg = AureliusConfig(enable_taubench_eval=True, taubench_domain="coding")
+    FEATURE_FLAG_REGISTRY.register(
+        FeatureFlag(name="eval.taubench", enabled=True, metadata={"domain": "coding"})
+    )
+    cfg = AureliusConfig()
     tasks = TauBenchDataset.get_sample_tasks(domain=cfg.taubench_domain, n=5)
     trajectories = [TauBenchDataset.make_successful_trajectory(t) for t in tasks]
 
@@ -155,7 +162,10 @@ def test_end_to_end_mixed_success():
 
 
 def test_end_to_end_retail_domain():
-    cfg = AureliusConfig(enable_taubench_eval=True, taubench_domain="retail")
+    FEATURE_FLAG_REGISTRY.register(
+        FeatureFlag(name="eval.taubench", enabled=True, metadata={"domain": "retail"})
+    )
+    cfg = AureliusConfig()
     tasks = TauBenchDataset.get_sample_tasks(domain=cfg.taubench_domain, n=3)
     trajectories = [TauBenchDataset.make_successful_trajectory(t) for t in tasks]
 

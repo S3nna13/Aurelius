@@ -4,6 +4,7 @@ constructable from AureliusConfig behind a feature flag that defaults OFF."""
 from __future__ import annotations
 
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 from src.safety import (
     HARM_CLASSIFIER_REGISTRY,
     SAFETY_FILTER_REGISTRY,
@@ -53,7 +54,8 @@ def test_default_config_architecture_unchanged() -> None:
 
 
 def test_end_to_end_via_registry_and_config() -> None:
-    cfg = AureliusConfig(safety_hallucination_guard_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="safety.hallucination_guard", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.safety_hallucination_guard_enabled is True
     cls = SAFETY_FILTER_REGISTRY["hallucination_guard"]
     guard = cls(
@@ -90,6 +92,7 @@ def test_end_to_end_via_registry_and_config() -> None:
 def test_flag_off_is_no_op_path() -> None:
     """With the flag OFF we never instantiate the guard; verify the default
     config path does not require the guard to function."""
+    FEATURE_FLAG_REGISTRY._flags.pop("safety.hallucination_guard", None)
     cfg = AureliusConfig()
     # Simulate the gate a caller would write.
     if cfg.safety_hallucination_guard_enabled:  # pragma: no cover - flag OFF
