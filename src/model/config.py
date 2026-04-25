@@ -1,6 +1,19 @@
-"""Aurelius 1.3B model configuration."""
+"""Aurelius 1.3B model configuration.
+
+Backbone runtime config for one variant — model architecture fields only.
+Feature flags have been migrated to per-surface registries in
+src/runtime/surface_flags.py and are looked up via FeatureFlagRegistry.
+The legacy boolean fields remain as backward-compatible aliases that delegate
+to the FeatureFlagRegistry, and will be removed in a future version.
+
+Per v8 mandate: "AureliusConfig is the backbone runtime config for one variant,
+not a dumping ground. Prefer family manifests, variant configs, adapters, or
+downstream surface configs over adding booleans to the backbone config."
+"""
 
 from dataclasses import dataclass
+
+from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY
 
 
 @dataclass
@@ -9,15 +22,20 @@ class AureliusConfig:
 
     Architecture: decoder-only transformer with GQA, SwiGLU FFN, RoPE, RMSNorm.
     Target parameter count: ~1.3B.
+
+    Feature flags are now in src/runtime/surface_flags.py via FeatureFlagRegistry.
+    The boolean fields below are backward-compatible aliases that delegate to
+    the registry. New flags should be added to the surface-specific groups,
+    NOT as new booleans here.
     """
 
     # Model dimensions
     d_model: int = 2048
     n_layers: int = 24
-    n_heads: int = 16       # query heads
-    n_kv_heads: int = 8     # key/value heads (GQA ratio 2:1)
-    head_dim: int = 128      # d_model // n_heads
-    d_ff: int = 5632         # SwiGLU intermediate dim ≈ 2/3 × 4 × d_model
+    n_heads: int = 16
+    n_kv_heads: int = 8
+    head_dim: int = 128
+    d_ff: int = 5632
 
     # Vocabulary and sequence
     vocab_size: int = 128_000
@@ -27,9 +45,9 @@ class AureliusConfig:
     rope_theta: float = 500_000.0
 
     # RoPE scaling for context extension
-    rope_scaling_type: str = "none"   # "none" or "yarn"
-    rope_scaling_factor: float = 1.0  # scale factor for YaRN (e.g., 4.0 for 4x extension)
-    rope_original_max_seq_len: int = 8192  # original training context length
+    rope_scaling_type: str = "none"
+    rope_scaling_factor: float = 1.0
+    rope_original_max_seq_len: int = 8192
 
     # Normalization
     rms_norm_eps: float = 1e-6
@@ -43,158 +61,250 @@ class AureliusConfig:
     # Training efficiency
     use_gradient_checkpointing: bool = False
 
-    # Toolformer data generation (default OFF)
-    enable_toolformer_data_gen: bool = False
-    toolformer_utility_threshold: float = 0.1
+    # Context extension (moved from boolean-per-strategy to a single field)
+    context_extension_strategy: str = "none"
+    context_target_len: int = 8192
 
-    # τ-bench evaluation (default OFF)
-    enable_taubench_eval: bool = False
-    taubench_domain: str = "coding"
+    # --- Backward-compatible feature-flag aliases -------------------------
+    # These delegate to FeatureFlagRegistry. Do NOT add new ones here;
+    # add them to src/runtime/surface_flags.py instead.
 
-    # Structured output / grammar-constrained decoding (serving, default OFF)
-    enable_structured_output: bool = False
-    structured_output_type: str = "json_schema"
+    @property
+    def enable_toolformer_data_gen(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("model.toolformer_data_gen")
 
-    # Dynamic context window extension via NTK-aware / YaRN / LongRoPE (default OFF)
-    context_extension_strategy: str = "none"   # "none", "auto", "linear", "ntk", "yarn", "longrope"
-    context_target_len: int = 8192             # target inference context length
+    @property
+    def toolformer_utility_threshold(self) -> float:
+        flag = FEATURE_FLAG_REGISTRY._flags.get("model.toolformer_data_gen")
+        return flag.metadata.get("utility_threshold", 0.1) if flag else 0.1
 
-    # Process Reward Model (PRM) -- step-level reward scoring (default OFF)
-    enable_prm_training: bool = False
-    prm_step_token_id: int = 50256   # token ID marking step boundaries
-    prm_aggregation: str = "min"     # "min" or "mean" for best-of-N selection
+    @property
+    def enable_taubench_eval(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("eval.taubench")
 
-    # Hallucination guard: claim-vs-evidence validator (default OFF)
-    safety_hallucination_guard_enabled: bool = False
-    hallucination_similarity_threshold: float = 0.5
-    hallucination_confidence_decay: float = 0.5
+    @property
+    def taubench_domain(self) -> str:
+        flag = FEATURE_FLAG_REGISTRY._flags.get("eval.taubench")
+        return flag.metadata.get("domain", "coding") if flag else "coding"
 
-    # Adversarial code battle: red-vs-blue code patching loop (default OFF)
-    alignment_adversarial_code_battle_enabled: bool = False
+    @property
+    def enable_structured_output(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("serving.structured_output")
 
-    # 15-dimension layered constitution scoring (alignment; default OFF)
-    alignment_constitution_dimensions_enabled: bool = False
+    @property
+    def structured_output_type(self) -> str:
+        flag = FEATURE_FLAG_REGISTRY._flags.get("serving.structured_output")
+        return flag.metadata.get("type", "json_schema") if flag else "json_schema"
 
-    # Runtime canary-token guard for prompt-injection defense (default OFF)
-    safety_canary_token_guard_enabled: bool = False
+    @property
+    def enable_prm_training(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("training.prm_training")
 
-    # Skill Markdown supply-chain scanner (default OFF)
-    safety_skill_scanner_enabled: bool = False
+    @property
+    def prm_step_token_id(self) -> int:
+        flag = FEATURE_FLAG_REGISTRY._flags.get("training.prm_training")
+        return flag.metadata.get("step_token_id", 50256) if flag else 50256
 
-    # CWE synthetic (vulnerable, secure) pair generator (default OFF)
-    data_cwe_synthesis_enabled: bool = False
+    @property
+    def prm_aggregation(self) -> str:
+        flag = FEATURE_FLAG_REGISTRY._flags.get("training.prm_training")
+        return flag.metadata.get("aggregation", "min") if flag else "min"
 
-    # Reward-hacking trajectory detector (default OFF)
-    safety_reward_hack_detector_enabled: bool = False
+    @property
+    def safety_hallucination_guard_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("safety.hallucination_guard")
 
-    # Parallel fan-out dispatch-task agent primitive (default OFF)
-    agent_dispatch_task_enabled: bool = False
+    @property
+    def hallucination_similarity_threshold(self) -> float:
+        return 0.5
 
-    # Serving-layer circuit breaker resilience primitive (default OFF)
-    serving_circuit_breaker_enabled: bool = False
+    @property
+    def hallucination_confidence_decay(self) -> float:
+        return 0.5
 
-    # Crescendo multi-turn jailbreak probe (llm_red_team eval; default OFF)
-    eval_crescendo_probe_enabled: bool = False
+    @property
+    def alignment_adversarial_code_battle_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("alignment.adversarial_code_battle")
 
-    # Many-shot jailbreak probe (llm_red_team eval; default OFF)
-    eval_many_shot_jailbreak_probe_enabled: bool = False
+    @property
+    def alignment_constitution_dimensions_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("alignment.constitution_dimensions")
 
-    # Tree-of-Attacks-with-Pruning probe (llm_red_team eval; default OFF)
-    eval_tree_of_attacks_probe_enabled: bool = False
+    @property
+    def safety_canary_token_guard_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("safety.canary_token_guard")
 
-    # Intent-level vibe code reviewer (eval; default OFF)
-    eval_vibe_code_reviewer_enabled: bool = False
+    @property
+    def safety_skill_scanner_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("safety.skill_scanner")
 
-    # Behavioral-audit 40-dimension taxonomy (eval; default OFF)
-    eval_behavioral_audit_taxonomy_enabled: bool = False
+    @property
+    def data_cwe_synthesis_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("data.cwe_synthesis")
 
-    # SHADE-Arena sabotage-vs-monitor long-horizon eval (default OFF)
-    eval_shade_arena_enabled: bool = False
+    @property
+    def safety_reward_hack_detector_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("safety.reward_hack_detector")
 
-    # Threat-intelligence analyst persona for chat surface (default OFF)
-    chat_threat_intel_persona_enabled: bool = False
+    @property
+    def agent_dispatch_task_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("agent.dispatch_task")
 
-    # Security-assistant personas (red/blue/purple) for chat surface (default OFF)
-    chat_security_personas_enabled: bool = False
+    @property
+    def serving_circuit_breaker_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("serving.circuit_breaker")
 
-    # Budget-bounded ReAct wrapper (tool-call cap; default OFF registry flag)
-    agent_budget_bounded_loop_enabled: bool = False
-    agent_budget_max_tool_invocations: int = 8
+    @property
+    def eval_crescendo_probe_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("eval.crescendo_probe")
 
-    # Tool-span supervision loss head (default OFF)
-    training_tool_call_supervision_enabled: bool = False
+    @property
+    def eval_many_shot_jailbreak_probe_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("eval.many_shot_jailbreak")
 
-    # Synthetic jailbreak probe generator for eval harnesses (default OFF)
-    eval_synthetic_jailbreak_generator_enabled: bool = False
+    @property
+    def eval_tree_of_attacks_probe_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("eval.tree_of_attacks")
 
-    # SSE wire encoder for streaming responses (default OFF)
-    serving_sse_stream_encoder_enabled: bool = False
+    @property
+    def eval_vibe_code_reviewer_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("eval.vibe_code_reviewer")
 
-    # OpenAI-compatible SSE chat-completion stream framing (default OFF)
-    serving_sse_chat_stream_enabled: bool = False
+    @property
+    def eval_behavioral_audit_taxonomy_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("eval.behavioral_audit")
 
-    # Sink-token logit bias helper for decoding (default OFF)
-    inference_sink_logit_bias_enabled: bool = False
-    inference_sink_logit_bonus: float = 1.0
-    inference_sink_last_n_positions: int = 4
+    @property
+    def eval_shade_arena_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("eval.shade_arena")
 
-    # Pre-tool-execution policy denylist (Tracecat-inspired; default OFF)
-    agent_tool_sandbox_denylist_enabled: bool = False
+    @property
+    def chat_threat_intel_persona_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("chat.threat_intel_persona")
 
-    # Guard0 declarative rule engine for agentic-safety checks (default OFF)
-    safety_rule_engine_enabled: bool = False
+    @property
+    def chat_security_personas_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("chat.security_personas")
 
-    # Sliding-window causal additive mask builder (long-context; default OFF)
-    longcontext_sliding_window_causal_mask_enabled: bool = False
-    longcontext_sliding_window_size: int = 512
+    @property
+    def agent_budget_bounded_loop_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("agent.budget_bounded_loop")
 
-    # SOC-style defensive pipeline (ingest->normalize->enrich->decide->route; default OFF)
-    security_soc_pipeline_enabled: bool = False
+    @property
+    def agent_budget_max_tool_invocations(self) -> int:
+        flag = FEATURE_FLAG_REGISTRY._flags.get("agent.budget_bounded_loop")
+        return flag.metadata.get("max_tool_invocations", 8) if flag else 8
 
-    # PRF query expansion for retrieval (default OFF)
-    retrieval_prf_query_expander_enabled: bool = False
+    @property
+    def training_tool_call_supervision_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("training.tool_call_supervision")
 
-    # Citation tracker for RAG output audit trails (default OFF)
-    retrieval_citation_tracker_enabled: bool = False
+    @property
+    def eval_synthetic_jailbreak_generator_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("eval.synthetic_jailbreak")
 
-    # Code-aware dense embedder (identifier/signature/import/comment-weighted pooling; default OFF)
-    retrieval_code_aware_embedder_enabled: bool = False
+    @property
+    def serving_sse_stream_encoder_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("serving.sse_stream_encoder")
 
-    # Per-role token budget allocator for chat packing (default OFF)
-    chat_token_budget_allocator_enabled: bool = False
+    @property
+    def serving_sse_chat_stream_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("serving.sse_chat_stream")
 
-    # System-prompt principal-hierarchy priority encoder (default OFF)
-    chat_system_prompt_priority_enabled: bool = False
+    @property
+    def inference_sink_logit_bias_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("inference.sink_logit_bias")
 
-    # Beam index selection from verifier scores (default OFF)
-    inference_beam_verifier_selector_enabled: bool = False
+    @property
+    def inference_sink_logit_bonus(self) -> float:
+        flag = FEATURE_FLAG_REGISTRY._flags.get("inference.sink_logit_bias")
+        return flag.metadata.get("bonus", 1.0) if flag else 1.0
 
-    # N-gram Jaccard deduplication utilities (data; default OFF)
-    data_ngram_deduplication_enabled: bool = False
+    @property
+    def inference_sink_last_n_positions(self) -> int:
+        flag = FEATURE_FLAG_REGISTRY._flags.get("inference.sink_logit_bias")
+        return flag.metadata.get("last_n", 4) if flag else 4
 
-    # Lexical entropy anomaly filter (safety; default OFF)
-    safety_lexical_entropy_anomaly_enabled: bool = False
+    @property
+    def agent_tool_sandbox_denylist_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("agent.tool_sandbox_denylist")
 
-    # kNN known-bad prompt guard (safety; default OFF)
-    safety_knn_known_bad_guard_enabled: bool = False
+    @property
+    def safety_rule_engine_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("safety.rule_engine")
 
-    # PentestGPT-style five-state agent lifecycle controller (default OFF)
-    agent_five_state_controller_enabled: bool = False
+    @property
+    def longcontext_sliding_window_causal_mask_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("longcontext.sliding_window_causal_mask")
 
-    # Tiered compaction trigger manager (longcontext; default OFF)
-    longcontext_compaction_trigger_enabled: bool = False
+    @property
+    def longcontext_sliding_window_size(self) -> int:
+        flag = FEATURE_FLAG_REGISTRY._flags.get("longcontext.sliding_window_causal_mask")
+        return flag.metadata.get("window_size", 512) if flag else 512
 
-    # Agent Red Teaming (ART) benchmark (eval/llm_red_team; default OFF)
-    eval_agent_red_team_bench_enabled: bool = False
+    @property
+    def security_soc_pipeline_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("security.soc_pipeline")
 
-    # Structured web-browse / web-fetch tool descriptor (default OFF)
-    agent_web_browse_tool_enabled: bool = False
+    @property
+    def retrieval_prf_query_expander_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("retrieval.prf_query_expander")
 
-    # Function-calling API shape validator (serving; default OFF)
-    serving_function_calling_api_enabled: bool = False
+    @property
+    def retrieval_citation_tracker_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("retrieval.citation_tracker")
 
-    # Weight-space model merging (linear/slerp/ties/dare; default OFF)
-    model_merging_enabled: bool = False
+    @property
+    def retrieval_code_aware_embedder_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("retrieval.code_aware_embedder")
+
+    @property
+    def chat_token_budget_allocator_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("chat.token_budget_allocator")
+
+    @property
+    def chat_system_prompt_priority_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("chat.system_prompt_priority")
+
+    @property
+    def inference_beam_verifier_selector_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("inference.beam_verifier_selector")
+
+    @property
+    def data_ngram_deduplication_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("data.ngram_deduplication")
+
+    @property
+    def safety_lexical_entropy_anomaly_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("safety.lexical_entropy_anomaly")
+
+    @property
+    def safety_knn_known_bad_guard_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("safety.knn_known_bad_guard")
+
+    @property
+    def agent_five_state_controller_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("agent.five_state_controller")
+
+    @property
+    def longcontext_compaction_trigger_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("longcontext.compaction_trigger")
+
+    @property
+    def eval_agent_red_team_bench_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("eval.agent_red_team")
+
+    @property
+    def agent_web_browse_tool_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("agent.web_browse_tool")
+
+    @property
+    def serving_function_calling_api_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("serving.function_calling_api")
+
+    @property
+    def model_merging_enabled(self) -> bool:
+        return FEATURE_FLAG_REGISTRY.is_enabled("model.merging")
 
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (
