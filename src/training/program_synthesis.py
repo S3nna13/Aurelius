@@ -98,7 +98,7 @@ def execute_program_safe(
         old_stdout = sys.stdout
         try:
             sys.stdout = buf
-            exec(code, namespace)  # noqa: S102
+            exec(code, namespace)  # noqa: S102  # nosec B102
             output = buf.getvalue()
             result_holder[0] = output
             result_holder[1] = True

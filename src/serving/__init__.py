@@ -40,10 +40,12 @@ from .structured_output_decoder import (  # noqa: E402,F401
 
 # Merge structured-output decoders into the API shape registry so they are
 # discoverable alongside existing validators.
-API_SHAPE_REGISTRY.update({
-    "structured_output.json_schema": StructuredOutputDecoder,
-    "structured_output.grammar": GrammarConstrainedDecoder,
-})
+API_SHAPE_REGISTRY.update(
+    {
+        "structured_output.json_schema": StructuredOutputDecoder,
+        "structured_output.grammar": GrammarConstrainedDecoder,
+    }
+)
 
 # Decoder registry — maps logical decoder names to classes.
 DECODER_REGISTRY: dict = {
@@ -169,4 +171,19 @@ from .response_dedup import (  # noqa: E402,F401
     DedupStrategy,
     ResponseDedup,
     RESPONSE_DEDUP_REGISTRY,
+)
+
+# --- Mission Control dashboard (cycle-208) ---------------------------------
+from .mission_control import (  # noqa: E402,F401
+    ActivityEntry,
+    ActivityLog,
+    MissionControlHandler,
+    MissionControlServer,
+    create_mission_control_server,
+)
+
+# --- request coalescer (cycle-209 subagent) ----------------------------------
+from .request_coalescer import (  # noqa: E402,F401
+    RequestCoalescer,
+    REQUEST_COALESCER_REGISTRY,
 )

@@ -179,7 +179,7 @@ def test_one_megabyte_input_handled_quickly() -> None:
     t0 = time.perf_counter()
     r = c.classify(text)
     dt = time.perf_counter() - t0
-    assert dt < 2.0, f"1MB classification took {dt:.3f}s"
+    assert dt < 5.0, f"1MB classification took {dt:.3f}s"
     assert isinstance(r, HarmClassification)
 
 

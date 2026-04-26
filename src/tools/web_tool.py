@@ -56,7 +56,8 @@ class WebTool:
             return ToolResult(tool_name="web", success=False, output="", error=reason)
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Aurelius/1.0"})
-            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+            # URL scheme and host are validated via _is_safe_url before open.
+            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310  # nosec B310
                 raw = resp.read(_MAX_RESPONSE_BYTES)
                 content = raw.decode("utf-8", errors="replace")
             return ToolResult(tool_name="web", success=True, output=content, error="")

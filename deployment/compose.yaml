@@ -1,11 +1,14 @@
 version: "3.9"
 services:
   aurelius:
-    build: .
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 30s
       timeout: 10s
+      start_period: 5s
       retries: 3

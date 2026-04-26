@@ -1,0 +1,145 @@
+output_dir: "./data/aurelius-1.3b"
+seed: 42
+
+data_mix:
+  arxiv: 0.35
+  reddit: 0.25
+  synthetic_code: 0.15
+  synthetic_instructions: 0.10
+  synthetic_math: 0.08
+  synthetic_safety: 0.05
+  synthetic_agent: 0.02
+
+arxiv:
+  categories:
+    - cs.AI
+    - cs.LG
+    - cs.CL
+    - cs.SE
+    - cs.PL
+    - stat.ML
+    - math.NA
+    - physics
+    - q-bio
+    - q-fin
+  max_papers_per_category: null
+  include_abstracts: true
+  include_full_text: true
+  include_code_blocks: true
+  min_text_length: 1000
+  max_text_length: 100000
+  download_dir: ./data/arxiv/sources
+  output_dir: ./data/arxiv/processed
+  s3_bucket: arxiv
+  s3_prefix: src/
+  concurrency: 4
+
+reddit:
+  subreddits:
+    technical:
+      - MachineLearning
+      - learnprogramming
+      - Python
+      - javascript
+      - golang
+      - rust
+      - compsci
+      - algorithms
+      - datascience
+      - typescript
+    discussion:
+      - explainlikeimfive
+      - askscience
+      - askhistorians
+      - philosophy
+      - changemyview
+      - depthhub
+    creative:
+      - WritingPrompts
+      - worldbuilding
+    exclude:
+      - gonewild
+      - nsfw
+      - politic
+      - conspiracy
+  min_score_submissions: 1
+  min_score_comments: 2
+  min_text_length: 50
+  max_text_length: 10000
+  include_conversations: true
+  max_conversation_depth: 5
+  state_file: _state.json
+  request_delay: 1.0
+
+tokenizer:
+  vocab_size: 128000
+  path: tokenizers/aurelius-128k
+
+pretrain:
+  shard_size: 16384
+
+sft:
+  num_samples: 10000
+  max_turns: 5
+  categories:
+    coding: 0.30
+    reasoning: 0.25
+    writing: 0.20
+    analysis: 0.15
+    general: 0.10
+
+dpo:
+  num_samples: 10000
+  categories:
+    helpfulness: 0.40
+    harmlessness: 0.30
+    honesty: 0.15
+    coding_quality: 0.15
+
+code:
+  types:
+    python: 0.35
+    javascript: 0.20
+    typescript: 0.10
+    go: 0.10
+    rust: 0.10
+    cpp: 0.08
+    java: 0.07
+
+math:
+  types:
+    arithmetic: 0.20
+    algebra: 0.25
+    geometry: 0.10
+    probability: 0.15
+    word_problems: 0.20
+    formal_proofs: 0.10
+  difficulty:
+    easy: 0.25
+    medium: 0.50
+    hard: 0.25
+
+agent:
+  num_samples: 5000
+  max_tools: 8
+  max_turns: 6
+  categories:
+    tool_use: 0.35
+    code_execution: 0.30
+    web_search: 0.20
+    multi_step: 0.15
+
+safety:
+  num_samples: 5000
+  categories:
+    toxicity: 0.30
+    bias: 0.25
+    harmful_instructions: 0.25
+    jailbreak_attempts: 0.20
+
+tokenize:
+  shard_size: 16384
+  val_ratio: 0.1
+  max_length: 8192
+  num_workers: 4
+  verify_integrity: true

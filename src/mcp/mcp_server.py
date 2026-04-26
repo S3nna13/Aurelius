@@ -13,6 +13,7 @@ import io
 import json
 import logging
 import sys
+import types
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import ClassVar
@@ -139,7 +140,12 @@ class StdioMCPServer(MCPServer):
                 req_id, _INVALID_REQUEST, "missing or invalid 'method' field"
             )
 
-        params = payload.get("params") or {}
+        raw_params = payload.get("params")
+        if raw_params is not None and not isinstance(raw_params, dict):
+            return _error_response(
+                req_id, _INVALID_REQUEST, "'params' must be a JSON object or null"
+            )
+        params = raw_params or {}
         handler = self._METHOD_HANDLERS.get(method)
         if handler is None:
             return _error_response(
@@ -170,15 +176,19 @@ class StdioMCPServer(MCPServer):
     def _handle_ping(self, params: dict) -> dict:
         return {}
 
-    _METHOD_HANDLERS: ClassVar[dict] = {
+    _METHOD_HANDLERS: ClassVar[types.MappingProxyType] = types.MappingProxyType({
         "initialize": _handle_initialize,
         "tools/list": _handle_tools_list,
         "ping": _handle_ping,
-    }
+    })
 
     # ------------------------------------------------------------------
     # Line-oriented loop (for real stdio usage)
     # ------------------------------------------------------------------
+
+    #: Maximum line length (1 MiB) to prevent memory exhaustion from a
+    #: single malicious JSON line.
+    _MAX_LINE_LENGTH: int = 1_048_576
 
     def run_loop(self) -> None:
         """Read newline-delimited JSON-RPC from stdin and write responses to stdout.
@@ -192,7 +202,14 @@ class StdioMCPServer(MCPServer):
             line = line.strip()
             if not line:
                 continue
-            response = self._process_line(line)
+            if len(line) > self._MAX_LINE_LENGTH:
+                response = _error_response(
+                    None,
+                    _PARSE_ERROR,
+                    f"line exceeds maximum length ({self._MAX_LINE_LENGTH} bytes)",
+                )
+            else:
+                response = self._process_line(line)
             self._stdout.write(json.dumps(response) + "\n")
             self._stdout.flush()
 

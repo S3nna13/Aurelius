@@ -157,22 +157,21 @@ def test_unknown_mcp_version_is_warning_not_error():
 
 
 # ---------------------------------------------------------------------------
-# 7. Unknown permission "camera" → warnings not empty (not an error)
+# 7. Unknown permission "camera" → error (security fix: reject unknown perms)
 # ---------------------------------------------------------------------------
 
 
-def test_unknown_permission_is_warning_not_error():
+def test_unknown_permission_is_error():
     result = _validator.validate(_valid_manifest(permissions=["camera"]))
-    assert result.valid is True
-    assert result.errors == []
-    assert any("camera" in w for w in result.warnings)
+    assert result.valid is False
+    assert any("camera" in e for e in result.errors)
 
 
-def test_multiple_unknown_permissions_all_warned():
+def test_multiple_unknown_permissions_all_errored():
     result = _validator.validate(_valid_manifest(permissions=["camera", "microphone"]))
-    assert result.valid is True
-    assert any("camera" in w for w in result.warnings)
-    assert any("microphone" in w for w in result.warnings)
+    assert result.valid is False
+    assert any("camera" in e for e in result.errors)
+    assert any("microphone" in e for e in result.errors)
 
 
 # ---------------------------------------------------------------------------

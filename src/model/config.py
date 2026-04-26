@@ -102,8 +102,14 @@ class AureliusConfig:
 
     @property
     def prm_step_token_id(self) -> int:
+        if hasattr(self, "_prm_step_token_id"):
+            return self._prm_step_token_id  # type: ignore[return-value]
         flag = FEATURE_FLAG_REGISTRY._flags.get("training.prm_training")
         return flag.metadata.get("step_token_id", 50256) if flag else 50256
+
+    @prm_step_token_id.setter
+    def prm_step_token_id(self, value: int) -> None:
+        self._prm_step_token_id = value
 
     @property
     def prm_aggregation(self) -> str:

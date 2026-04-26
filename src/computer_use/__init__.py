@@ -49,6 +49,10 @@ if TYPE_CHECKING:
         ScreenRegion,
         COMPUTER_USE_REGISTRY as _SCREEN_STATE_REGISTRY,
     )
+    from src.computer_use.screen_analyzer import (  # noqa: F401
+        ScreenAnalyzer,
+        SCREEN_ANALYZER_REGISTRY,
+    )
 
 __all__ = [
     "SCREEN_PARSER_REGISTRY",
@@ -62,6 +66,7 @@ __all__ = [
     "webarena_eval",
     "action_planner",
     "screen_state_tracker",
+    "screen_analyzer",
     # action_planner exports
     "ActionPlanner",
     "ActionPlan",
@@ -71,6 +76,9 @@ __all__ = [
     "ScreenStateTracker",
     "ScreenState",
     "ScreenRegion",
+    # screen_analyzer exports
+    "ScreenAnalyzer",
+    "SCREEN_ANALYZER_REGISTRY",
     # browser_driver exports
     "BrowserDriver",
     "StubBrowserDriver",
@@ -91,7 +99,7 @@ __all__ = [
     "WEBARENA_DEFAULT_TASKS",
 ]
 
-_SUBMODULES = ("screen_parser", "gui_action", "action_verifier", "browser_driver", "trajectory_replay", "webarena_eval", "action_planner", "screen_state_tracker")
+_SUBMODULES = ("screen_parser", "gui_action", "action_verifier", "browser_driver", "trajectory_replay", "webarena_eval", "action_planner", "screen_state_tracker", "screen_analyzer")
 
 _REGISTRY_ATTRS: dict[str, tuple[str, str]] = {
     "SCREEN_PARSER_REGISTRY": ("screen_parser", "SCREEN_PARSER_REGISTRY"),
@@ -101,6 +109,7 @@ _REGISTRY_ATTRS: dict[str, tuple[str, str]] = {
     "WEBARENA_HARNESS_REGISTRY": ("webarena_eval", "WEBARENA_HARNESS_REGISTRY"),
     "WEBARENA_DEFAULT_TASKS": ("webarena_eval", "WEBARENA_DEFAULT_TASKS"),
     "COMPUTER_USE_REGISTRY": ("action_planner", "COMPUTER_USE_REGISTRY"),
+    "SCREEN_ANALYZER_REGISTRY": ("screen_analyzer", "SCREEN_ANALYZER_REGISTRY"),
 }
 
 _CLASS_ATTRS: dict[str, tuple[str, str]] = {
@@ -124,6 +133,8 @@ _CLASS_ATTRS: dict[str, tuple[str, str]] = {
     "ScreenStateTracker": ("screen_state_tracker", "ScreenStateTracker"),
     "ScreenState": ("screen_state_tracker", "ScreenState"),
     "ScreenRegion": ("screen_state_tracker", "ScreenRegion"),
+    # screen_analyzer
+    "ScreenAnalyzer": ("screen_analyzer", "ScreenAnalyzer"),
 }
 
 

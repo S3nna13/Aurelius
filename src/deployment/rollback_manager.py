@@ -1,101 +1,76 @@
-"""
-rollback_manager.py — Manages deployment rollback operations.
-Aurelius LLM Project — stdlib only.
-"""
-
+"""Rollback manager with persistent manifest snapshots."""
 from __future__ import annotations
 
-import time
-import uuid
-from collections import deque
-from dataclasses import dataclass
-from enum import Enum
-from typing import Optional
-
-
-class RollbackReason(Enum):
-    MANUAL = "manual"
-    AUTO_HEALTH_FAIL = "auto_health_fail"
-    AUTO_ERROR_RATE = "auto_error_rate"
-    AUTO_LATENCY = "auto_latency"
-    CANARY_FAIL = "canary_fail"
-
-
-@dataclass(frozen=True)
-class DeploymentSnapshot:
-    snapshot_id: str
-    version: str
-    config: dict
-    created_at: float
+import json
+import os
+from pathlib import Path
 
 
 class RollbackManager:
-    """Tracks deployment snapshots and manages rollback operations."""
+    def __init__(self, artifact_dir: str, max_revisions: int = 5) -> None:
+        if max_revisions < 1:
+            raise ValueError("max_revisions must be >= 1.")
+        self._artifact_dir = Path(artifact_dir)
+        self._artifact_dir.mkdir(parents=True, exist_ok=True)
+        self._max_revisions = max_revisions
 
-    def __init__(self, max_snapshots: int = 10) -> None:
-        if max_snapshots < 1:
-            raise ValueError("max_snapshots must be >= 1.")
-        self._max_snapshots = max_snapshots
-        # deque ordered oldest→newest
-        self._snapshots: deque[DeploymentSnapshot] = deque()
-        self._index: dict[str, DeploymentSnapshot] = {}
+    def _validate_version(self, version: str) -> None:
+        if not isinstance(version, str) or not version:
+            raise ValueError("version must be a non-empty string.")
+        if ".." in version:
+            raise ValueError("version must not contain path traversal characters.")
+        if len(version) > 64:
+            raise ValueError("version must not exceed 64 characters.")
 
-    def snapshot(self, version: str, config: dict) -> DeploymentSnapshot:
-        """
-        Create and store a snapshot of the current deployment state.
+    def snapshot(self, version: str, manifest: dict) -> str:
+        self._validate_version(version)
+        version_dir = self._artifact_dir / version
+        version_dir.mkdir(parents=True, exist_ok=True)
+        snapshot_path = version_dir / "snapshot.json"
+        snapshot_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        return str(snapshot_path)
 
-        Auto-assigns snapshot_id (uuid4 hex[:8]) and created_at (time.monotonic()).
-        Evicts the oldest snapshot when the maximum capacity is reached.
-        """
-        snap = DeploymentSnapshot(
-            snapshot_id=uuid.uuid4().hex[:8],
-            version=version,
-            config=dict(config),
-            created_at=time.monotonic(),
-        )
+    def list_revisions(self) -> list[str]:
+        revisions: list[tuple[str, float]] = []
+        for entry in self._artifact_dir.iterdir():
+            if not entry.is_dir():
+                continue
+            snapshot_path = entry / "snapshot.json"
+            if not snapshot_path.exists():
+                continue
+            try:
+                mtime = os.stat(snapshot_path).st_mtime
+            except OSError:
+                continue
+            revisions.append((entry.name, mtime))
+        revisions.sort(key=lambda x: x[1], reverse=True)
+        return [name for name, _ in revisions]
 
-        if len(self._snapshots) >= self._max_snapshots:
-            oldest = self._snapshots.popleft()
-            self._index.pop(oldest.snapshot_id, None)
+    def get_manifest(self, version: str) -> dict:
+        self._validate_version(version)
+        snapshot_path = self._artifact_dir / version / "snapshot.json"
+        if not snapshot_path.exists():
+            raise FileNotFoundError(f"Snapshot not found for version '{version}'.")
+        return json.loads(snapshot_path.read_text(encoding="utf-8"))
 
-        self._snapshots.append(snap)
-        self._index[snap.snapshot_id] = snap
-        return snap
+    def rollback(self, target_version: str) -> dict:
+        self._validate_version(target_version)
+        snapshot_path = self._artifact_dir / target_version / "snapshot.json"
+        if not snapshot_path.exists():
+            raise FileNotFoundError(f"Snapshot not found for version '{target_version}'.")
+        return json.loads(snapshot_path.read_text(encoding="utf-8"))
 
-    def rollback_to(self, snapshot_id: str, reason: RollbackReason) -> dict:
-        """
-        Record a rollback to the identified snapshot.
-
-        Returns a dict with snapshot_id, version, reason, rolled_back_at.
-        Raises KeyError if the snapshot_id is not found.
-        """
-        snap = self._index.get(snapshot_id)
-        if snap is None:
-            raise KeyError(f"Snapshot '{snapshot_id}' not found.")
-        return {
-            "snapshot_id": snap.snapshot_id,
-            "version": snap.version,
-            "reason": reason.value,
-            "rolled_back_at": time.monotonic(),
-        }
-
-    def latest(self) -> Optional[DeploymentSnapshot]:
-        """Return the most recently created snapshot, or None if empty."""
-        if not self._snapshots:
-            return None
-        return self._snapshots[-1]
-
-    def history(self) -> list:
-        """Return all snapshots, newest first."""
-        return list(reversed(self._snapshots))
-
-    def __len__(self) -> int:
-        return len(self._snapshots)
+    def prune_old_revisions(self) -> None:
+        revisions = self.list_revisions()
+        if len(revisions) <= self._max_revisions:
+            return
+        for old_version in revisions[self._max_revisions :]:
+            old_dir = self._artifact_dir / old_version
+            if old_dir.exists():
+                snapshot = old_dir / "snapshot.json"
+                if snapshot.exists():
+                    snapshot.unlink()
+                os.rmdir(old_dir)
 
 
-# ---------------------------------------------------------------------------
-# Module registry
-# ---------------------------------------------------------------------------
-ROLLBACK_MANAGER_REGISTRY: dict = {"default": RollbackManager}
-
-REGISTRY = ROLLBACK_MANAGER_REGISTRY
+ROLLBACK_MANAGER_REGISTRY: dict[str, type[RollbackManager]] = {"default": RollbackManager}

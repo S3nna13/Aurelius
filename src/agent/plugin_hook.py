@@ -1,5 +1,11 @@
 """Plugin Hook Registry — Claude Code-inspired extensible agent lifecycle hooks.
 Enables logging, rate-limiting, safety filtering without modifying the agent loop.
+
+.. warning::
+    Hooks execute in-process with full access to ``**kwargs``.  Do **not**
+    register untrusted callables in security-sensitive contexts.  For
+    untrusted plugins, create a scoped :class:`PluginHookRegistry`
+    instance rather than using the global singleton.
 """
 from __future__ import annotations
 
@@ -31,7 +37,14 @@ class PluginHookRegistry:
                 f"Unknown hook point {point!r}. Valid points: {HOOK_POINTS}"
             )
         for fn in self._hooks[point]:
-            fn(**kwargs)
+            try:
+                fn(**kwargs)
+            except Exception:
+                # Hooks must not break the caller.  Log and continue.
+                import logging
+                logging.getLogger(__name__).exception(
+                    "Hook %r at %r raised an exception; continuing", fn, point
+                )
 
     def clear(self, point: str | None = None) -> None:
         if point is None:
@@ -49,5 +62,6 @@ class PluginHookRegistry:
         return HOOK_POINTS
 
 
-# Module-level singleton
+# Module-level singleton — for trusted / first-party use only.
+# Untrusted plugins should receive a scoped registry instance.
 HOOK_REGISTRY = PluginHookRegistry()

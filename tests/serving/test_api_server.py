@@ -14,6 +14,9 @@ from src.serving.api_server import (
     create_server,
     make_mock_generate_fn,
 )
+from src.serving.auth_middleware import AuthConfig, AuthMiddleware
+from src.serving.rate_limiter import RateLimitConfig, TokenBucketLimiter
+from src.serving.request_coalescer import RequestCoalescer
 
 
 class _NoCloseBytesIO(io.BytesIO):
@@ -65,9 +68,33 @@ def _invoke(
     path: str,
     payload: dict | None = None,
     generate_fn=None,
+    auth_middleware=None,
+    rate_limiter=None,
+    coalescer=None,
+    extra_headers: dict | None = None,
 ):
-    socket = _MemorySocket(_request_bytes(method, path, payload))
-    server = SimpleNamespace(generate_fn=generate_fn or make_mock_generate_fn())
+    body = b""
+    headers = [
+        f"{method} {path} HTTP/1.1",
+        "Host: localhost",
+        "Connection: close",
+    ]
+    if extra_headers:
+        for k, v in extra_headers.items():
+            headers.append(f"{k}: {v}")
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        headers.append(f"Content-Length: {len(body)}")
+        headers.append("Content-Type: application/json")
+    request_bytes = ("\r\n".join(headers) + "\r\n\r\n").encode("utf-8") + body
+
+    socket = _MemorySocket(request_bytes)
+    server = SimpleNamespace(
+        generate_fn=generate_fn or make_mock_generate_fn(),
+        auth_middleware=auth_middleware,
+        rate_limiter=rate_limiter,
+        coalescer=coalescer,
+    )
     handler_cls(socket, ("127.0.0.1", 12345), server)
     raw = socket.response_bytes()
     head, _, body = raw.partition(b"\r\n\r\n")
@@ -231,3 +258,198 @@ def test_server_handles_multiple_sequential_requests():
         assert status == 200
         assert headers["Content-Type"] == "application/json"
         assert "choices" in json.loads(body)
+
+
+# ---------------------------------------------------------------------------
+# Auth middleware wiring tests
+# ---------------------------------------------------------------------------
+
+
+def _auth_mw(key: str | None = None) -> AuthMiddleware:
+    mw = AuthMiddleware(AuthConfig(keys={}, require_auth=True))
+    if key is not None:
+        mw.add_key("test-key", key, frozenset({"read"}))
+    return mw
+
+
+def test_auth_rejects_missing_credentials():
+    mw = _auth_mw("secret")
+    status, _, body = _invoke(
+        AureliusRequestHandler,
+        "GET",
+        "/v1/models",
+        auth_middleware=mw,
+    )
+    assert status == 401
+    error_payload = json.loads(body)["error"]
+    assert "message" in error_payload
+    assert "credential" in error_payload["message"].lower()
+
+
+def test_auth_allows_valid_bearer_token():
+    mw = _auth_mw("secret")
+    status, _, body = _invoke(
+        AureliusRequestHandler,
+        "GET",
+        "/v1/models",
+        auth_middleware=mw,
+        extra_headers={"Authorization": "Bearer secret"},
+    )
+    assert status == 200
+    assert json.loads(body)["object"] == "list"
+
+
+def test_auth_allows_valid_api_key_header():
+    mw = _auth_mw("secret")
+    status, _, body = _invoke(
+        AureliusRequestHandler,
+        "POST",
+        "/v1/chat/completions",
+        payload={"model": "aurelius", "messages": [{"role": "user", "content": "Hi"}]},
+        auth_middleware=mw,
+        extra_headers={"X-API-Key": "secret"},
+    )
+    assert status == 200
+    assert "choices" in json.loads(body)
+
+
+def test_health_skips_auth():
+    mw = _auth_mw("secret")
+    status, _, body = _invoke(
+        AureliusRequestHandler,
+        "GET",
+        "/health",
+        auth_middleware=mw,
+    )
+    assert status == 200
+    assert json.loads(body)["status"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# Rate limiter wiring tests
+# ---------------------------------------------------------------------------
+
+
+def test_rate_limiter_rejects_when_exceeded():
+    limiter = TokenBucketLimiter(
+        RateLimitConfig(requests_per_second=0.0, burst_size=0)
+    )
+    status, headers, body = _invoke(
+        AureliusRequestHandler,
+        "GET",
+        "/v1/models",
+        rate_limiter=limiter,
+    )
+    assert status == 429
+    assert "Retry-After" in headers
+    assert "Rate limit exceeded" in json.loads(body)["error"]
+
+
+def test_rate_limiter_allows_when_within_limit():
+    limiter = TokenBucketLimiter(
+        RateLimitConfig(requests_per_second=100.0, burst_size=10)
+    )
+    status, _, body = _invoke(
+        AureliusRequestHandler,
+        "GET",
+        "/v1/models",
+        rate_limiter=limiter,
+    )
+    assert status == 200
+    assert json.loads(body)["object"] == "list"
+
+
+def test_rate_limiter_uses_key_id_when_authenticated():
+    mw = _auth_mw("secret")
+    limiter = TokenBucketLimiter(
+        RateLimitConfig(requests_per_second=0.0, burst_size=0)
+    )
+    status, _, body = _invoke(
+        AureliusRequestHandler,
+        "GET",
+        "/v1/models",
+        auth_middleware=mw,
+        rate_limiter=limiter,
+        extra_headers={"Authorization": "Bearer secret"},
+    )
+    assert status == 429
+    assert "Rate limit exceeded" in json.loads(body)["error"]
+
+
+def test_create_server_forwards_auth_and_rate_limiter():
+    mw = _auth_mw()
+    limiter = TokenBucketLimiter(
+        RateLimitConfig(requests_per_second=1.0, burst_size=1)
+    )
+    server = create_server(
+        "127.0.0.1",
+        0,
+        make_mock_generate_fn(),
+        auth_middleware=mw,
+        rate_limiter=limiter,
+        bind_and_activate=False,
+    )
+    assert server.auth_middleware is mw
+    assert server.rate_limiter is limiter
+    server.server_close()
+
+
+# ---------------------------------------------------------------------------
+# Request coalescer wiring tests
+# ---------------------------------------------------------------------------
+
+
+def test_coalescer_dedups_concurrent_requests():
+    import threading
+    import time
+
+    calls = 0
+    lock = threading.Lock()
+
+    def slow_generate(request: ChatRequest) -> str:
+        nonlocal calls
+        with lock:
+            calls += 1
+        time.sleep(0.3)
+        return f"resp-{calls}"
+
+    coalescer = RequestCoalescer(ttl_s=5.0)
+
+    payload = {"model": "aurelius", "messages": [{"role": "user", "content": "Hi"}]}
+    results: list[tuple[int, bytes]] = []
+
+    def worker():
+        status, _, body = _invoke(
+            AureliusRequestHandler,
+            "POST",
+            "/v1/chat/completions",
+            payload=payload,
+            generate_fn=slow_generate,
+            coalescer=coalescer,
+        )
+        results.append((status, body))
+
+    t1 = threading.Thread(target=worker)
+    t2 = threading.Thread(target=worker)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    assert len(results) == 2
+    assert all(s == 200 for s, _ in results)
+    # Concurrent identical requests should be coalesced to a single compute
+    assert calls == 1
+
+
+def test_create_server_forwards_coalescer():
+    coalescer = RequestCoalescer(ttl_s=5.0)
+    server = create_server(
+        "127.0.0.1",
+        0,
+        make_mock_generate_fn(),
+        coalescer=coalescer,
+        bind_and_activate=False,
+    )
+    assert server.coalescer is coalescer
+    server.server_close()

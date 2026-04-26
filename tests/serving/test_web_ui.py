@@ -13,6 +13,8 @@ from src.serving.web_ui import (
     create_ui_server,
     make_mock_generate_fn,
 )
+from src.serving.auth_middleware import AuthConfig, AuthMiddleware
+from src.serving.rate_limiter import RateLimitConfig, TokenBucketLimiter
 
 
 class _NoCloseBytesIO(io.BytesIO):
@@ -65,11 +67,31 @@ def _invoke(
     payload: dict | None = None,
     generate_fn=None,
     api_url: str | None = None,
+    auth_middleware=None,
+    rate_limiter=None,
+    extra_headers: dict | None = None,
 ):
-    socket = _MemorySocket(_request_bytes(method, path, payload))
+    body = b""
+    headers = [
+        f"{method} {path} HTTP/1.1",
+        "Host: localhost",
+        "Connection: close",
+    ]
+    if extra_headers:
+        for k, v in extra_headers.items():
+            headers.append(f"{k}: {v}")
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        headers.append(f"Content-Length: {len(body)}")
+        headers.append("Content-Type: application/json")
+    request_bytes = ("\r\n".join(headers) + "\r\n\r\n").encode("utf-8") + body
+
+    socket = _MemorySocket(request_bytes)
     server = SimpleNamespace(
         generate_fn=generate_fn or make_mock_generate_fn(),
         api_url=api_url,
+        auth_middleware=auth_middleware,
+        rate_limiter=rate_limiter,
     )
     handler_cls(socket, ("127.0.0.1", 12345), server)
     raw = socket.response_bytes()
@@ -241,3 +263,124 @@ def test_post_api_chat_proxies_to_configured_upstream(monkeypatch):
         {"role": "assistant", "content": "prior reply"},
         {"role": "user", "content": "hello"},
     ]
+
+
+# ---------------------------------------------------------------------------
+# Auth middleware wiring tests
+# ---------------------------------------------------------------------------
+
+
+def _auth_mw(key: str | None = None) -> AuthMiddleware:
+    mw = AuthMiddleware(AuthConfig(keys={}, require_auth=True))
+    if key is not None:
+        mw.add_key("test-key", key, frozenset({"read"}))
+    return mw
+
+
+def test_auth_rejects_api_chat_without_credentials():
+    mw = _auth_mw("secret")
+    payload = {"message": "hello", "history": []}
+    status, _, body = _invoke(
+        WebUIHandler,
+        "POST",
+        "/api/chat",
+        payload=payload,
+        auth_middleware=mw,
+    )
+    assert status == 401
+    assert "Unauthorized" in json.loads(body)["error"]
+
+
+def test_auth_allows_api_chat_with_valid_key():
+    mw = _auth_mw("secret")
+    payload = {"message": "hello", "history": []}
+    status, _, body = _invoke(
+        WebUIHandler,
+        "POST",
+        "/api/chat",
+        payload=payload,
+        auth_middleware=mw,
+        extra_headers={"X-API-Key": "secret"},
+    )
+    assert status == 200
+    assert "response" in json.loads(body)
+
+
+def test_root_page_skips_auth():
+    mw = _auth_mw("secret")
+    status, _, body = _invoke(
+        WebUIHandler,
+        "GET",
+        "/",
+        auth_middleware=mw,
+    )
+    assert status == 200
+    assert body.decode("utf-8").startswith("<!DOCTYPE html>")
+
+
+def test_health_skips_auth():
+    mw = _auth_mw("secret")
+    status, _, body = _invoke(
+        WebUIHandler,
+        "GET",
+        "/health",
+        auth_middleware=mw,
+    )
+    assert status == 200
+    assert json.loads(body)["status"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# Rate limiter wiring tests
+# ---------------------------------------------------------------------------
+
+
+def test_rate_limiter_rejects_api_chat_when_exceeded():
+    limiter = TokenBucketLimiter(
+        RateLimitConfig(requests_per_second=0.0, burst_size=0)
+    )
+    payload = {"message": "hello", "history": []}
+    status, headers, body = _invoke(
+        WebUIHandler,
+        "POST",
+        "/api/chat",
+        payload=payload,
+        rate_limiter=limiter,
+    )
+    assert status == 429
+    assert "Retry-After" in headers
+    assert "Rate limit exceeded" in json.loads(body)["error"]
+
+
+def test_rate_limiter_allows_api_chat_when_within_limit():
+    limiter = TokenBucketLimiter(
+        RateLimitConfig(requests_per_second=100.0, burst_size=10)
+    )
+    payload = {"message": "hello", "history": []}
+    status, _, body = _invoke(
+        WebUIHandler,
+        "POST",
+        "/api/chat",
+        payload=payload,
+        rate_limiter=limiter,
+    )
+    assert status == 200
+    assert "response" in json.loads(body)
+
+
+def test_create_ui_server_forwards_auth_and_rate_limiter():
+    mw = _auth_mw()
+    limiter = TokenBucketLimiter(
+        RateLimitConfig(requests_per_second=1.0, burst_size=1)
+    )
+    srv = create_ui_server(
+        "127.0.0.1",
+        0,
+        make_mock_generate_fn(),
+        auth_middleware=mw,
+        rate_limiter=limiter,
+        bind_and_activate=False,
+    )
+    assert srv.auth_middleware is mw
+    assert srv.rate_limiter is limiter
+    srv.server_close()
