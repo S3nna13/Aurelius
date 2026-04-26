@@ -60,7 +60,10 @@ class _Bucket:
             else:
                 # Calculate how long until next token is available
                 deficit = 1.0 - self._tokens
-                retry_after_s = deficit / self._refill_rate
+                if self._refill_rate > 0.0:
+                    retry_after_s = deficit / self._refill_rate
+                else:
+                    retry_after_s = 3600.0
                 return False, 0, retry_after_s
 
     def reset(self) -> None:
