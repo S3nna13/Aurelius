@@ -1,6 +1,7 @@
-// Copyright (c) 2025 Aurelius Systems, Inc. All rights reserved.
-// This file is proprietary and confidential. Unauthorized use is strictly prohibited.
-// See LICENSE for full terms.
+// Copyright (c) 2025 Aurelius Systems, Inc.
+// Licensed under the Aurelius Open License.
+// Free to use, modify, and distribute. See LICENSE for full terms.
+// The Aurelius architecture remains the intellectual property of the authors.
 
 import { useState, useEffect } from 'react';
 import { Shield, KeyRound, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';

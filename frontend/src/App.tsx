@@ -1,6 +1,7 @@
-// Copyright (c) 2025 Aurelius Systems, Inc. All rights reserved.
-// This file is proprietary and confidential. Unauthorized use is strictly prohibited.
-// See LICENSE for full terms.
+// Copyright (c) 2025 Aurelius Systems, Inc.
+// Licensed under the Aurelius Open License.
+// Free to use, modify, and distribute. See LICENSE for full terms.
+// The Aurelius architecture remains the intellectual property of the authors.
 
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
@@ -14,7 +15,7 @@ import GlobalSearch from './components/GlobalSearch';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import SessionLock from './components/SessionLock';
 import OnboardingTour from './components/OnboardingTour';
-import LicenseGate from './components/LicenseGate';
+
 import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
 import Notifications from './pages/Notifications';
@@ -121,7 +122,6 @@ function App() {
   }, [togglePalette, navigate]);
 
   return (
-    <LicenseGate>
     <ToastProvider>
       <div className="flex h-screen bg-aurelius-bg text-aurelius-text">
         <Sidebar />
@@ -140,7 +140,6 @@ function App() {
       <SessionLock />
       <OnboardingTour />
     </ToastProvider>
-    </LicenseGate>
   );
 }
 

@@ -1,60 +1,41 @@
-AURELIUS PROPRIETARY SOFTWARE LICENSE AGREEMENT
-================================================
+AURELIUS OPEN LICENSE
+====================
 
 Copyright (c) 2025 Aurelius Systems, Inc. All rights reserved.
 
-THIS SOFTWARE AND ASSOCIATED DOCUMENTATION FILES (THE "SOFTWARE") ARE THE
-EXCLUSIVE PROPERTY OF AURELIUS SYSTEMS, INC. ("LICENSOR"). THE SOFTWARE IS
-PROTECTED BY COPYRIGHT LAWS AND INTERNATIONAL TREATIES.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. OWNERSHIP
-   All title, ownership rights, and intellectual property rights in and to the
-   Software, including but not limited to code, algorithms, architectures,
-   designs, documentation, user interfaces, and trade secrets, are and shall
-   remain the exclusive property of Licensor.
+1. COPYRIGHT NOTICE
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
 
-2. NO LICENSE GRANTED
-   No license, express or implied, is granted to any person or entity to use,
-   reproduce, modify, distribute, display, perform, or create derivative works
-   of the Software, in whole or in part, without prior written authorization
-   from Licensor.
+2. ATTRIBUTION
+   Any distribution, modification, or derivative work must provide reasonable
+   attribution to the original Aurelius project and its authors.
 
-3. RESTRICTIONS
-   You may NOT:
-   a) Copy, reproduce, or distribute the Software or any portion thereof.
-   b) Reverse engineer, decompile, disassemble, or otherwise attempt to derive
-      the source code of the Software.
-   c) Modify, adapt, translate, or create derivative works based on the Software.
-   d) Remove, alter, or obscure any copyright, trademark, or proprietary notices.
-   e) Transfer, sublicense, lease, lend, sell, rent, or otherwise convey the
-      Software to any third party.
-   f) Use the Software for any purpose other than as expressly authorized.
+3. ARCHITECTURE IP
+   The underlying Aurelius architecture, including but not limited to its
+   core design patterns, agent orchestration model, memory hierarchy,
+   and system topology, remains the intellectual property of the Licensor.
+   Users may not claim ownership of, or register patents on, the Aurelius
+   architecture itself. Users are free to modify, extend, and adapt the
+   Software for their own purposes.
 
-4. CONFIDENTIALITY
-   The Software contains trade secrets and proprietary information of Licensor.
-   You agree to maintain the confidentiality of the Software and to protect it
-   from unauthorized disclosure using at least the same degree of care you use
-   to protect your own confidential information.
+4. TRADEMARK
+   This license does not grant permission to use the trade names, trademarks,
+   service marks, or product names of the Licensor, except as required for
+   reasonable and customary use in describing the origin of the Software.
 
-5. TERMINATION
-   Any unauthorized use of the Software automatically terminates any rights
-   you may have and may result in civil and criminal penalties.
-
-6. NO WARRANTY
-   THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
-   FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.
-
-7. LIMITATION OF LIABILITY
-   IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY DAMAGES ARISING FROM THE USE
-   OR INABILITY TO USE THE SOFTWARE.
-
-8. GOVERNING LAW
-   This Agreement shall be governed by and construed in accordance with the
-   laws of the jurisdiction in which Licensor is established.
-
-For licensing inquiries, contact: licensing@aurelius.systems
-
-Unauthorized access, use, or distribution is strictly prohibited and may
-violate applicable laws including the Computer Fraud and Abuse Act (CFAA),
-the Digital Millennium Copyright Act (DMCA), and international treaties.
+5. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.

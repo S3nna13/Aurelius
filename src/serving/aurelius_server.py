@@ -1,6 +1,7 @@
-# Copyright (c) 2025 Aurelius Systems, Inc. All rights reserved.
-# This file is proprietary and confidential. Unauthorized use is strictly prohibited.
-# See LICENSE for full terms.
+# Copyright (c) 2025 Aurelius Systems, Inc.
+# Licensed under the Aurelius Open License.
+# Free to use, modify, and distribute. See LICENSE for full terms.
+# The Aurelius architecture remains the intellectual property of the authors.
 
 """Aurelius unified frontend server.
 
@@ -129,13 +130,6 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         # Security: prevent directory traversal
         safe_path = relative_path.lstrip("/")
         if ".." in safe_path:
-            self.send_response(403)
-            self.end_headers()
-            return
-
-        # Security: block source code and sensitive file access
-        blocked_exts = {".py", ".ts", ".tsx", ".jsx", ".map", ".env", ".git", ".lock", ".toml", ".cfg", ".ini"}
-        if any(safe_path.lower().endswith(ext) for ext in blocked_exts):
             self.send_response(403)
             self.end_headers()
             return
