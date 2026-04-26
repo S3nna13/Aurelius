@@ -203,7 +203,8 @@ def split_into_sections(text: str) -> dict[str, str]:
                 if body:
                     sections[current_heading] = body
             current_heading = m.group(1).strip().lower()
-            current_lines = []
+            content_after = line[m.end():].strip()
+            current_lines = [content_after] if content_after else []
         else:
             current_lines.append(line)
 

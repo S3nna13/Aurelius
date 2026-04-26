@@ -42,30 +42,20 @@ class TokenizePipeline:
             return tok
 
     def _build_fallback_tokenizer(self) -> Callable:
-        try:
-            from tokenizers import Tokenizer as HFTokenizer
-            from tokenizers.models import BPE
-            from tokenizers.pre_tokenizers import ByteLevel
+        logger.warning("tokenizers package not installed, using simple character tokenizer")
 
-            tok = HFTokenizer(BPE(unk_token="<|unk|>"))
-            tok.pre_tokenizer = ByteLevel(add_prefix_space=False)
-            self._vocab_size = 128_000
-            return tok
-        except ImportError:
-            logger.warning("tokenizers package not installed, using simple whitespace splitter")
+        class SimpleTokenizer:
+            @property
+            def vocab_size(self) -> int:
+                return 128_000
 
-            class SimpleTokenizer:
-                @property
-                def vocab_size(self) -> int:
-                    return 128_000
+            def encode(self, text: str) -> list[int]:
+                return [min(ord(c), 127_999) for c in text]
 
-                def encode(self, text: str) -> list[int]:
-                    return [min(ord(c), 127_999) for c in text]
+            def encode_batch(self, texts: list[str]) -> list[list[int]]:
+                return [self.encode(t) for t in texts]
 
-                def encode_batch(self, texts: list[str]) -> list[list[int]]:
-                    return [self.encode(t) for t in texts]
-
-            return SimpleTokenizer()  # type: ignore
+        return SimpleTokenizer()  # type: ignore
 
     def _tokenize_text(self, tokenizer: Callable, text: str) -> list[int]:
         try:

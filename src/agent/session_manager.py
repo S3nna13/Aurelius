@@ -52,9 +52,34 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+import re
+
+_SAFE_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
 def _require_non_empty(value: str, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise InterfaceFrameworkError(f"{field_name} must be a non-empty string")
+    return value
+
+
+def _safe_filename(value: str, field_name: str) -> str:
+    """Validate *value* is safe to use as a filename component.
+
+    Rejects path separators and parent-directory references to prevent
+    directory-traversal attacks.
+    """
+    _require_non_empty(value, field_name)
+    if not _SAFE_ID_RE.match(value):
+        raise InterfaceFrameworkError(
+            f"{field_name} contains invalid characters; "
+            "only alphanumeric characters, hyphens, and underscores are allowed"
+        )
+    lower = value.lower()
+    if ".." in lower:
+        raise InterfaceFrameworkError(
+            f"{field_name} contains directory-traversal patterns"
+        )
     return value
 
 
@@ -69,7 +94,16 @@ def _coerce_optional_text(value: Any, field_name: str) -> str | None:
 
 
 def _json_safe(value: Any) -> Any:
-    return json.loads(json.dumps(value, sort_keys=True))
+    """Return a JSON-round-trippable copy of *value*.
+
+    Non-serializable objects are coerced to strings rather than crashing.
+    """
+    def _default(obj: Any) -> Any:
+        return str(obj)
+    try:
+        return json.loads(json.dumps(value, sort_keys=True, default=_default))
+    except (TypeError, ValueError) as exc:
+        raise InterfaceFrameworkError(f"value is not JSON-serializable: {exc}") from exc
 
 
 def _skill_from_payload(payload: Mapping[str, Any]) -> SkillBundle:
@@ -1325,7 +1359,8 @@ class SessionManager:
     # helpers
     # ------------------------------------------------------------------
     def _journal_path(self, session_id: str) -> Path:
-        return self._journal_dir / f"{session_id}.json"
+        safe_id = _safe_filename(session_id, "session_id")
+        return self._journal_dir / f"{safe_id}.json"
 
     def _persist_journal(self, journal: SessionJournal) -> None:
         if not self.persist:
@@ -1362,7 +1397,8 @@ class SessionManager:
         tags: tuple[str, ...] | list[str] | tuple[Any, ...] | list[Any] = (),
     ) -> SessionJournalEntry:
         journal = self.get_journal(session_id)
-        assert journal is not None
+        if journal is None:
+            raise InterfaceFrameworkError(f"journal not found for session: {session_id!r}")
         entry = journal.append(
             kind=kind,
             summary=summary,
@@ -1380,7 +1416,8 @@ class SessionManager:
         return entry
 
     def _session_path(self, session_id: str) -> Path:
-        return self.state_dir / f"{session_id}.json"
+        safe_id = _safe_filename(session_id, "session_id")
+        return self.state_dir / f"{safe_id}.json"
 
     def _persist(self, session: SessionRecord) -> None:
         if not self.persist:

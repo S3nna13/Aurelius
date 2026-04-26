@@ -181,8 +181,8 @@ class TestQualityFilters:
         assert compute_math_ratio(text) < 0.5
 
     def test_math_ratio_high(self):
-        text = "$\\alpha \\beta \\gamma \\delta \\epsilon \\phi \\sum \\int$"
-        assert compute_math_ratio(text) > 0.3
+        text = "$$∑∫∏∂∇∃∀∈∉⊂⊃∪∩∧∨¬⇒⇔λμπσαβγδϵϕ$$" + "$$∑∫∏∂∇∃∀∈∉⊂⊃∪∩∧∨¬⇒⇔$$"
+        assert compute_math_ratio(text) > 0.55
 
     def test_quality_score_short_text(self):
         text = "Short"
