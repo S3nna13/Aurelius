@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ToastProvider';
+import { LineChart, BarChart, DonutChart } from '../components/charts';
 
 interface AgentStatus {
   id: string;
@@ -286,6 +287,59 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Activity Trend */}
+        <div className="aurelius-card space-y-4">
+          <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
+            <Activity size={16} className="text-[#4fc3f7]" />
+            Activity Trend
+          </h3>
+          {activityData && activityData.entries.length > 0 ? (
+            <LineChart
+              data={activityData.entries.slice(-20).map((e, i) => ({
+                label: `${i + 1}`,
+                value: e.success ? 1 : 0,
+              }))}
+              color="#4fc3f7"
+            />
+          ) : (
+            <p className="text-sm text-[#9e9eb0] text-center py-6">No activity data yet.</p>
+          )}
+        </div>
+
+        {/* Agent Status Distribution */}
+        <div className="aurelius-card space-y-4">
+          <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
+            <Bot size={16} className="text-[#4fc3f7]" />
+            Agent Status
+          </h3>
+          {statusData && statusData.agents.length > 0 ? (
+            <DonutChart
+              data={[
+                {
+                  label: 'Active',
+                  value: statusData.agents.filter((a) => a.state.toUpperCase() === 'ACTIVE' || a.state.toUpperCase() === 'RUNNING').length,
+                  color: '#34d399',
+                },
+                {
+                  label: 'Idle',
+                  value: statusData.agents.filter((a) => a.state.toUpperCase() === 'IDLE').length,
+                  color: '#fbbf24',
+                },
+                {
+                  label: 'Other',
+                  value: statusData.agents.filter((a) => !['ACTIVE', 'RUNNING', 'IDLE'].includes(a.state.toUpperCase())).length,
+                  color: '#f87171',
+                },
+              ]}
+            />
+          ) : (
+            <p className="text-sm text-[#9e9eb0] text-center py-6">No agent data yet.</p>
+          )}
+        </div>
+      </div>
+
       {/* Skills Overview */}
       {statusData && statusData.skills && statusData.skills.length > 0 && (
         <div className="aurelius-card space-y-4">
@@ -307,6 +361,13 @@ export default function Dashboard() {
               </span>
             ))}
           </div>
+          <BarChart
+            data={[
+              { label: 'Active', value: counts.skills_active, color: '#34d399' },
+              { label: 'Inactive', value: counts.skills_total - counts.skills_active, color: '#f87171' },
+            ]}
+            title="Skill Activity"
+          />
         </div>
       )}
     </div>
