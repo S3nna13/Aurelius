@@ -187,3 +187,20 @@ from .request_coalescer import (  # noqa: E402,F401
     RequestCoalescer,
     REQUEST_COALESCER_REGISTRY,
 )
+
+# --- Hermes notification system (cycle-212) ----------------------------------
+from .hermes_notifier import (  # noqa: E402,F401
+    HermesNotifier,
+    Notification,
+    DeliveryResult,
+    HermesError,
+    DEFAULT_HERMES_NOTIFIER,
+    HERMES_NOTIFIER_REGISTRY,
+)
+
+# --- Aurelius unified frontend server (cycle-212) ----------------------------
+from .aurelius_server import (  # noqa: E402,F401
+    AureliusHandler,
+    AureliusServer,
+    create_aurelius_server,
+)
