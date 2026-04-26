@@ -11,6 +11,7 @@ Endpoints:
 
 import json
 import logging
+import math
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -18,6 +19,13 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+#: Maximum allowed request body size (1 MiB) to prevent memory-exhaustion DoS.
+_MAX_CONTENT_LENGTH = 1_048_576
+#: Maximum number of messages per request.
+_MAX_MESSAGES = 1_024
+#: Maximum characters per message content.
+_MAX_MESSAGE_CHARS = 65_536
 
 
 @dataclass
@@ -50,6 +58,53 @@ class ChatResponse:
         }
 
 
+def _validate_chat_request(body: dict) -> ChatRequest:
+    """Validate and construct a :class:`ChatRequest` from the raw JSON body.
+
+    Enforces caps on message count, message size, temperature range, and
+    max_tokens bounds to prevent CPU / memory exhaustion.
+    """
+    messages = body.get("messages", [])
+    if not isinstance(messages, list):
+        raise ValueError("messages must be a list")
+    if len(messages) > _MAX_MESSAGES:
+        raise ValueError(
+            f"messages list exceeds maximum length ({_MAX_MESSAGES})"
+        )
+    for i, msg in enumerate(messages):
+        if not isinstance(msg, dict):
+            raise ValueError(f"messages[{i}] must be an object")
+        content = msg.get("content")
+        if content is not None and (
+            not isinstance(content, str) or len(content) > _MAX_MESSAGE_CHARS
+        ):
+            raise ValueError(
+                f"messages[{i}].content must be a string <= {_MAX_MESSAGE_CHARS} chars"
+            )
+        role = msg.get("role")
+        if role is not None and (not isinstance(role, str) or not role.strip()):
+            raise ValueError(f"messages[{i}].role must be a non-empty string")
+
+    temperature = float(body.get("temperature", 0.7))
+    if math.isnan(temperature) or math.isinf(temperature):
+        raise ValueError("temperature must be a finite number")
+    if not (0.0 <= temperature <= 2.0):
+        raise ValueError("temperature must be between 0.0 and 2.0")
+
+    max_tokens = int(body.get("max_tokens", 512))
+    if not (1 <= max_tokens <= 32_768):
+        raise ValueError("max_tokens must be between 1 and 32768")
+
+    return ChatRequest(
+        model=str(body.get("model", "aurelius")),
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        stream=bool(body.get("stream", False)),
+        system=body.get("system"),
+    )
+
+
 class AureliusRequestHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
@@ -65,6 +120,20 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
 
     def _send_error(self, status: int, message: str) -> None:
         self._send_json(status, {"error": {"message": message, "type": "api_error"}})
+
+    def _read_body(self) -> bytes:
+        """Read the request body enforcing :data:`_MAX_CONTENT_LENGTH`."""
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+        except ValueError as exc:
+            raise ValueError("Invalid Content-Length header") from exc
+        if content_length < 0:
+            raise ValueError("Negative Content-Length")
+        if content_length > _MAX_CONTENT_LENGTH:
+            raise ValueError(
+                f"Content-Length {content_length} exceeds maximum {_MAX_CONTENT_LENGTH}"
+            )
+        return self.rfile.read(content_length)
 
     def do_GET(self):
         if self.path == "/health":
@@ -85,15 +154,18 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                 },
             )
         else:
-            self._send_error(404, f"Not found: {self.path}")
+            self._send_error(404, "Not found")
 
     def do_POST(self):
         if self.path != "/v1/chat/completions":
-            self._send_error(404, f"Not found: {self.path}")
+            self._send_error(404, "Not found")
             return
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw_body = self.rfile.read(content_length)
+        try:
+            raw_body = self._read_body()
+        except ValueError as exc:
+            self._send_error(413, str(exc))
+            return
 
         try:
             body = json.loads(raw_body)
@@ -106,23 +178,16 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            request = ChatRequest(
-                model=body.get("model", "aurelius"),
-                messages=body["messages"],
-                temperature=float(body.get("temperature", 0.7)),
-                max_tokens=int(body.get("max_tokens", 512)),
-                stream=bool(body.get("stream", False)),
-                system=body.get("system"),
-            )
-        except (TypeError, ValueError) as exc:
+            request = _validate_chat_request(body)
+        except ValueError as exc:
             self._send_error(400, f"Invalid request parameters: {exc}")
             return
 
         try:
             content = self.server.generate_fn(request)
-        except Exception as exc:
+        except Exception:
             logger.exception("generate_fn raised an exception")
-            self._send_error(500, f"Generation error: {exc}")
+            self._send_error(500, "Internal server error")
             return
 
         prompt_tokens = sum(len(m.get("content", "").split()) for m in request.messages)
