@@ -64,3 +64,14 @@
 - `src/training/nce_objectives.py` — NCEObjectives: NCE/InfoNCE/NT-Xent contrastive losses (16 tests)
 - `src/eval/speculative_acceptance_eval.py` — SpeculativeAcceptanceEval: acceptance rate/speedup (17 tests)
 **Tests added:** 101 | **Commits:** de5bcbb 5cdf282 c70001e cd40ecd ad84a43 d320040
+
+## Cycle 213 — 2026-04-25
+**Scope:** Skills Deepening — Wire real Aurelius skills into React frontend
+**Modules:**
+- `src/serving/aurelius_server.py` — Enhanced `/api/skills` with full fields; added `GET /api/skills/<id>` detail endpoint; added `POST /api/skills/execute` execution endpoint
+- `frontend/src/pages/Skills.tsx` — Live skill catalog fetch, detail modal with instructions/scripts, variable input, execution UI with results
+- `tests/serving/test_aurelius_server.py` — 5 new tests for skills fields, detail, fallback, execute missing body, execute with body
+**Tests added:** 5 | **Total tests:** 850 passing (serving + agent skill tests)
+**Commits:** 72c0864
+**Security:** bandit 0 High findings | Foreign imports: clean
+
