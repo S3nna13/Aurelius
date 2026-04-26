@@ -115,9 +115,7 @@ class SkillTriggerEngine:
         for matched in trigger_result.matches:
             instructions = self._resolve_instructions(matched.skill_id)
             try:
-                result = self.executor.execute(
-                    matched.skill_id, instructions, context
-                )
+                result = self.executor.execute(matched.skill_id, instructions, context)
             except SkillExecutionError as exc:
                 result = ExecutionResult(
                     output=str(exc),
@@ -133,10 +131,7 @@ class SkillTriggerEngine:
     def add_skill(self, skill_metadata: SkillMetadata) -> None:
         """Register *skill_metadata* into the engine's internal store."""
         self._skills[skill_metadata.skill_id] = skill_metadata
-        if (
-            self.skill_catalog is not None
-            and hasattr(self.skill_catalog, "register")
-        ):
+        if self.skill_catalog is not None and hasattr(self.skill_catalog, "register"):
             try:
                 self.skill_catalog.register(skill_metadata)
             except SkillCatalogError:
@@ -152,10 +147,7 @@ class SkillTriggerEngine:
         """Resolve instructions for *skill_id*."""
         if skill_id in self._skills:
             return self._skills[skill_id].description
-        if (
-            self.skill_catalog is not None
-            and hasattr(self.skill_catalog, "get")
-        ):
+        if self.skill_catalog is not None and hasattr(self.skill_catalog, "get"):
             try:
                 skill = self.skill_catalog.get(skill_id)
                 if hasattr(skill, "description"):

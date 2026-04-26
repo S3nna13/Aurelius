@@ -214,9 +214,7 @@ class TestMatchAndExecute:
                 )
             ]
         )
-        engine = SkillTriggerEngine(
-            skill_catalog=catalog, executor=EchoExecutor()
-        )
+        engine = SkillTriggerEngine(skill_catalog=catalog, executor=EchoExecutor())
         result = engine.match_and_execute("please review this")
         assert len(result.executed) == 1
         assert "code-review" in result.executed[0].output
@@ -235,9 +233,7 @@ class TestMatchAndExecute:
                 )
             ]
         )
-        engine = SkillTriggerEngine(
-            skill_catalog=catalog, executor=FailExecutor()
-        )
+        engine = SkillTriggerEngine(skill_catalog=catalog, executor=FailExecutor())
         result = engine.match_and_execute("review")
         assert len(result.executed) == 1
         assert result.executed[0].success is False

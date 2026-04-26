@@ -107,9 +107,7 @@ class TestCompositionStep:
         assert step.output_key == "output"
 
     def test_custom_output_key(self) -> None:
-        step = CompositionStep(
-            skill_id="s1", instructions="do x", output_key="result"
-        )
+        step = CompositionStep(skill_id="s1", instructions="do x", output_key="result")
         assert step.output_key == "result"
 
 

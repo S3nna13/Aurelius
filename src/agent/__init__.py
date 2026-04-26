@@ -635,3 +635,111 @@ __all__ += [
     "ToolCallOutcome",
     "ToolOrchestrator",
 ]
+
+# --- skill executor (cycle-204) ---------------------------------------------
+from .skill_executor import (  # noqa: E402
+    SkillExecutionError,
+    SkillContext,
+    ExecutionResult as SkillExecutionResult,
+    SkillExecutor,
+    DEFAULT_SKILL_EXECUTOR,
+    SKILL_EXECUTOR_REGISTRY,
+)
+
+__all__ += [
+    "SkillExecutionError",
+    "SkillContext",
+    "SkillExecutionResult",
+    "SkillExecutor",
+    "DEFAULT_SKILL_EXECUTOR",
+    "SKILL_EXECUTOR_REGISTRY",
+]
+
+# --- plugin loader (cycle-204) -----------------------------------------------
+from .plugin_loader import (  # noqa: E402
+    PluginLoadError,
+    LoadedPlugin,
+    PluginLoader,
+    DEFAULT_PLUGIN_LOADER,
+    PLUGIN_LOADER_REGISTRY,
+)
+
+__all__ += [
+    "PluginLoadError",
+    "LoadedPlugin",
+    "PluginLoader",
+    "DEFAULT_PLUGIN_LOADER",
+    "PLUGIN_LOADER_REGISTRY",
+]
+
+# --- plugin dependency resolver (cycle-204) ----------------------------------
+from .plugin_dependency_resolver import (  # noqa: E402
+    DependencyCycleError,
+    DependencyResolver,
+    DEFAULT_DEPENDENCY_RESOLVER,
+    DEPENDENCY_RESOLVER_REGISTRY,
+)
+
+__all__ += [
+    "DependencyCycleError",
+    "DependencyResolver",
+    "DEFAULT_DEPENDENCY_RESOLVER",
+    "DEPENDENCY_RESOLVER_REGISTRY",
+]
+
+# --- skill composer (cycle-204b) --------------------------------------------
+from .skill_composer import (  # noqa: E402
+    SkillCompositionError,
+    CompositionStep,
+    CompositionResult,
+    SkillComposer,
+    DEFAULT_SKILL_COMPOSER,
+    SKILL_COMPOSER_REGISTRY,
+)
+
+__all__ += [
+    "SkillCompositionError",
+    "CompositionStep",
+    "CompositionResult",
+    "SkillComposer",
+    "DEFAULT_SKILL_COMPOSER",
+    "SKILL_COMPOSER_REGISTRY",
+]
+
+# --- plugin sandbox (cycle-204b) ---------------------------------------------
+from .plugin_sandbox import (  # noqa: E402
+    SandboxViolationError,
+    SandboxConfig,
+    SandboxResult,
+    PluginSandbox,
+    DEFAULT_PLUGIN_SANDBOX,
+    PLUGIN_SANDBOX_REGISTRY,
+)
+
+__all__ += [
+    "SandboxViolationError",
+    "SandboxConfig",
+    "SandboxResult",
+    "PluginSandbox",
+    "DEFAULT_PLUGIN_SANDBOX",
+    "PLUGIN_SANDBOX_REGISTRY",
+]
+
+# --- skill trigger engine (cycle-204b) ---------------------------------------
+from .skill_trigger_engine import (  # noqa: E402
+    TriggerEngineError,
+    MatchedSkill,
+    TriggerResult,
+    SkillTriggerEngine,
+    DEFAULT_TRIGGER_ENGINE,
+    TRIGGER_ENGINE_REGISTRY,
+)
+
+__all__ += [
+    "TriggerEngineError",
+    "MatchedSkill",
+    "TriggerResult",
+    "SkillTriggerEngine",
+    "DEFAULT_TRIGGER_ENGINE",
+    "TRIGGER_ENGINE_REGISTRY",
+]
