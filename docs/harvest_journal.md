@@ -64,3 +64,67 @@
 - `src/training/nce_objectives.py` — NCEObjectives: NCE/InfoNCE/NT-Xent contrastive losses (16 tests)
 - `src/eval/speculative_acceptance_eval.py` — SpeculativeAcceptanceEval: acceptance rate/speedup (17 tests)
 **Tests added:** 101 | **Commits:** de5bcbb 5cdf282 c70001e cd40ecd ad84a43 d320040
+
+## Cycle 213 — 2026-04-25
+**Scope:** Skills Deepening — Wire real Aurelius skills into React frontend
+**Modules:**
+- `src/serving/aurelius_server.py` — Enhanced `/api/skills` with full fields; added `GET /api/skills/<id>` detail endpoint; added `POST /api/skills/execute` execution endpoint
+- `frontend/src/pages/Skills.tsx` — Live skill catalog fetch, detail modal with instructions/scripts, variable input, execution UI with results
+- `tests/serving/test_aurelius_server.py` — 5 new tests for skills fields, detail, fallback, execute missing body, execute with body
+**Tests added:** 5 | **Total tests:** 850 passing (serving + agent skill tests)
+**Commits:** 72c0864
+**Security:** bandit 0 High findings | Foreign imports: clean
+
+## Cycle 214 — 2026-04-25
+**Scope:** Workflows Deepening — Wire real workflow engine into React frontend
+**Modules:**
+- `src/serving/aurelius_server.py` — Enhanced `GET /api/workflows` with live status/summary; added `GET /api/workflows/<id>` detail with event history; added `POST /api/workflows/<id>/trigger` for state transitions; wired `WorkflowMonitor` into server
+- `frontend/src/pages/Workflows.tsx` — Live workflow fetch with 5s polling, summary cards, inline trigger buttons, detail modal with event timeline
+- `tests/serving/test_aurelius_server.py` — 4 new tests for workflows list, detail, trigger, trigger missing body
+**Tests added:** 4 | **Total tests:** 829 passing (serving tests)
+**Commits:** b68eb9f
+**Security:** bandit 0 High findings | Foreign imports: clean
+
+## Cycle 215 — 2026-04-25
+**Scope:** Frontend Stability & Resilience — Error boundaries, robust API layer, toast notifications, wire remaining pages
+**Modules:**
+- `frontend/src/components/ErrorBoundary.tsx` — React error boundary with retry UI
+- `frontend/src/components/ToastProvider.tsx` — Global toast notifications (success/error/warning/info)
+- `frontend/src/hooks/useApi.ts` — Enhanced with timeout, exponential backoff retry, AbortController cancellation, auto-refresh intervals
+- `frontend/src/pages/Notifications.tsx` — Live Hermes notifications with polling, stats, mark-read/all
+- `frontend/src/pages/Memory.tsx` — Live memory layer counts from `/api/memory` with polling
+- `frontend/src/pages/Skills.tsx` — Migrated to enhanced useApi with auto-refresh
+- `frontend/src/pages/Workflows.tsx` — Migrated to enhanced useApi with auto-refresh
+- `frontend/src/App.tsx` — Wrapped routes in ErrorBoundary, app in ToastProvider
+**Tests:** 27 aurelius_server tests pass; 829 total serving tests pass
+**Commits:** 25058ef
+**Security:** bandit 0 High findings | Foreign imports: clean
+
+## Cycle 216 — 2026-04-25
+**Scope:** Chat Deepening — Wire interactive chat to backend command API
+**Modules:**
+- `frontend/src/pages/Chat.tsx` — Fully interactive chat: POST /api/command integration, localStorage persistence, typing indicators, auto-scroll, SSE real-time notifications, quick action buttons, clear history
+**Tests:** 27 aurelius_server tests pass; 829 total serving tests pass
+**Commits:** 208541b
+**Security:** bandit 0 High findings | Foreign imports: clean
+
+## Cycle 217 — 2026-04-25
+**Scope:** Dashboard Deepening — Wire live backend data into Dashboard
+**Modules:**
+- `src/serving/aurelius_server.py` — Enhanced `GET /api/status` with aggregated `counts` object (agents_online, skills_active, plugins_total, notifications_unread)
+- `frontend/src/pages/Dashboard.tsx` — Live dashboard fetching `/api/status` and `/api/activity` with 10s polling, real agent list, activity feed, skills overview, dynamic health percentage
+- `tests/serving/test_aurelius_server.py` — Added `counts` field verification to `test_status`
+**Tests:** 28 aurelius_server tests pass; 829 total serving tests pass
+**Commits:** 0efeaed a11c375
+**Security:** bandit 0 High findings | Foreign imports: clean
+
+## Cycle 218 — 2026-04-25
+**Scope:** Settings Deepening — Wire runtime config persistence into Settings page
+**Modules:**
+- `src/serving/aurelius_server.py` — Added `GET /api/config` and `POST /api/config` endpoints with scalar type validation; default runtime_config with agent_mode, log_level, api_endpoint, security toggles
+- `frontend/src/pages/Settings.tsx` — Live settings fetching modes from `/api/modes` and config from `/api/config`, editable log level/API endpoint/security toggles, save with toast feedback
+- `tests/serving/test_aurelius_server.py` — 3 new tests for config get, post, and invalid post
+**Tests:** 30 aurelius_server tests pass; 832 total serving tests pass
+**Commits:** 6f49757 37d28c1
+**Security:** bandit 0 High findings | Foreign imports: clean
+

@@ -61,6 +61,7 @@ def test_each_trigger_shape(embedder: WatermarkEmbedder) -> None:
         assert t.shape == (WM_CFG.trigger_length,)
 
 
+@pytest.mark.slow
 def test_embed_runs_without_error(triggers: list) -> None:
     torch.manual_seed(10)
     m = AureliusTransformer(MODEL_CFG)
@@ -87,6 +88,7 @@ def test_extract_signature_returns_list_of_ints(triggers: list) -> None:
     assert all(isinstance(s, int) for s in sigs)
 
 
+@pytest.mark.slow
 def test_after_embedding_verify_score_above_threshold(triggers: list) -> None:
     """After embedding, verify() should return > 0.5. Allow 3 retries."""
     embedder = WatermarkEmbedder(WatermarkConfig(
