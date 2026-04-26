@@ -59,50 +59,53 @@ export default function Skills() {
     timeout: 8000,
   });
 
-  const { execute: fetchDetail } = useApi<SkillDetail>('/skills');
-  const { execute: execSkill } = useApi<ExecutionResult>('/skills/execute');
-
   const skills = skillsData?.skills || [];
 
-  const openDetail = async (skillId: string) => {
+  const openDetail = useCallback(async (skillId: string) => {
     setExecResult(null);
     setVariables({});
-    const data = await fetchDetail({ method: 'GET' });
-    if (data) {
+    try {
+      const res = await fetch(`/api/skills/${skillId}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
       setSelected(data as SkillDetail);
-    } else {
-      toast('Failed to load skill details', 'error');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Failed to load skill details', 'error');
     }
-  };
+  }, [toast]);
 
-  const executeSkill = async () => {
+  const executeSkill = useCallback(async () => {
     if (!selected) return;
     setExecuting(true);
     setExecResult(null);
-    const data = await execSkill({
-      method: 'POST',
-      body: {
-        skill_id: selected.id,
-        variables,
-      },
-    });
-    if (data) {
-      setExecResult(data);
+    try {
+      const res = await fetch('/api/skills/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          skill_id: selected.id,
+          variables,
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setExecResult(data as ExecutionResult);
       if (data.success) {
         toast('Skill executed successfully', 'success');
       } else {
         toast(data.output || 'Skill execution failed', 'error');
       }
-    } else {
-      setExecResult({
-        success: false,
-        output: 'Request failed — check connection',
-        duration_ms: 0,
-      });
-      toast('Skill execution request failed', 'error');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setExecResult({ success: false, output: msg, duration_ms: 0 });
+      toast(msg, 'error');
+    } finally {
+      setExecuting(false);
     }
-    setExecuting(false);
-  };
+  }, [selected, variables, toast]);
 
   const filtered = skills.filter(
     (s) =>

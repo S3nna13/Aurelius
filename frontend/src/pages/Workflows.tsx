@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   GitBranch,
   Play,
@@ -12,6 +12,8 @@ import {
   X,
   AlertTriangle,
 } from 'lucide-react';
+import { useApi } from '../hooks/useApi';
+import { useToast } from '../components/ToastProvider';
 
 interface Workflow {
   id: string;
@@ -68,9 +70,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-import { useApi } from '../hooks/useApi';
-import { useToast } from '../components/ToastProvider';
-
 export default function Workflows() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<WorkflowDetail | null>(null);
@@ -81,35 +80,40 @@ export default function Workflows() {
     data: wfData,
     loading,
     error,
-    refresh: fetchWorkflows,
+    refresh: refreshWorkflows,
   } = useApi<{ workflows: Workflow[]; summary: { total: number; running: number; completed: number; failed: number } }>('/workflows', {
     refreshInterval: 5000,
+    retries: 2,
+    timeout: 8000,
   });
 
   const workflows = wfData?.workflows || [];
   const summary = wfData?.summary || { total: 0, running: 0, completed: 0, failed: 0 };
 
-  const openDetail = async (wfId: string) => {
+  const openDetail = useCallback(async (wfId: string) => {
     try {
-      const res = await fetch(`/api/workflows/${wfId}`);
+      const res = await fetch(`/api/workflows/${wfId}`, {
+        signal: AbortSignal.timeout(8000),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setSelected(data as WorkflowDetail);
     } catch (err) {
-      toast(err instanceof Error ? err.message : String(err), 'error');
+      toast(err instanceof Error ? err.message : 'Failed to load workflow details', 'error');
     }
-  };
+  }, [toast]);
 
-  const triggerWorkflow = async (wfId: string, trigger: string) => {
+  const triggerWorkflow = useCallback(async (wfId: string, trigger: string) => {
     setTriggering(wfId);
     try {
       const res = await fetch(`/api/workflows/${wfId}/trigger`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trigger }),
+        signal: AbortSignal.timeout(15000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      await fetchWorkflows();
+      await refreshWorkflows();
       if (selected && selected.id === wfId) {
         await openDetail(wfId);
       }
@@ -119,7 +123,7 @@ export default function Workflows() {
     } finally {
       setTriggering(null);
     }
-  };
+  }, [refreshWorkflows, selected, openDetail, toast]);
 
   const filtered = workflows.filter(
     (w) =>
@@ -172,6 +176,12 @@ export default function Workflows() {
         <div className="aurelius-card border-rose-500/30 bg-rose-500/5 text-rose-300">
           <AlertTriangle size={18} className="inline mr-2" />
           {error.message}
+          <button
+            onClick={refreshWorkflows}
+            className="ml-4 text-xs underline hover:text-rose-200"
+          >
+            Retry
+          </button>
         </div>
       )}
 
