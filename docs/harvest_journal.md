@@ -75,3 +75,13 @@
 **Commits:** 72c0864
 **Security:** bandit 0 High findings | Foreign imports: clean
 
+## Cycle 214 — 2026-04-25
+**Scope:** Workflows Deepening — Wire real workflow engine into React frontend
+**Modules:**
+- `src/serving/aurelius_server.py` — Enhanced `GET /api/workflows` with live status/summary; added `GET /api/workflows/<id>` detail with event history; added `POST /api/workflows/<id>/trigger` for state transitions; wired `WorkflowMonitor` into server
+- `frontend/src/pages/Workflows.tsx` — Live workflow fetch with 5s polling, summary cards, inline trigger buttons, detail modal with event timeline
+- `tests/serving/test_aurelius_server.py` — 4 new tests for workflows list, detail, trigger, trigger missing body
+**Tests added:** 4 | **Total tests:** 829 passing (serving tests)
+**Commits:** b68eb9f
+**Security:** bandit 0 High findings | Foreign imports: clean
+
