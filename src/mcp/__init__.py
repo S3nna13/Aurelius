@@ -24,6 +24,7 @@ _MCP_SUBMODULES = (
     "plugin_host",
     "skill_catalog",
     "extension_manifest",
+    "capability_negotiator",
     "tool_result_formatter",
     "session_manager",
 )
@@ -54,6 +55,8 @@ __all__ = [
     "ExtensionManifestValidator",
     "ExtensionManifest",
     "ManifestValidationResult",
+    "CapabilityNegotiator",
+    "CAPABILITY_NEGOTIATOR_REGISTRY",
     *_MCP_SUBMODULES,
 ]
 
@@ -116,6 +119,14 @@ def __getattr__(name: str):
         from .skill_catalog import SKILL_CATALOG_REGISTRY  # noqa: PLC0415
         globals()["SKILL_CATALOG_REGISTRY"] = SKILL_CATALOG_REGISTRY
         return SKILL_CATALOG_REGISTRY
+    if name == "CapabilityNegotiator":
+        from .capability_negotiator import CapabilityNegotiator  # noqa: PLC0415
+        globals()["CapabilityNegotiator"] = CapabilityNegotiator
+        return CapabilityNegotiator
+    if name == "CAPABILITY_NEGOTIATOR_REGISTRY":
+        from .capability_negotiator import CAPABILITY_NEGOTIATOR_REGISTRY  # noqa: PLC0415
+        globals()["CAPABILITY_NEGOTIATOR_REGISTRY"] = CAPABILITY_NEGOTIATOR_REGISTRY
+        return CAPABILITY_NEGOTIATOR_REGISTRY
     if name == "ExtensionManifestValidator":
         from .extension_manifest import ExtensionManifestValidator  # noqa: PLC0415
         globals()["ExtensionManifestValidator"] = ExtensionManifestValidator

@@ -25,6 +25,10 @@ from .checkpoint_manager import (
     CheckpointData,
     CHECKPOINT_MANAGER_REGISTRY,
 )
+from .workflow_orchestrator import (
+    WorkflowOrchestrator,
+    WORKFLOW_ORCHESTRATOR_REGISTRY,
+)
 
 __all__ = [
     "DAGExecutor", "DAGNode", "ExecutionResult", "NodeStatus", "DAG_EXECUTOR_REGISTRY",
@@ -33,4 +37,5 @@ __all__ = [
     "WorkflowEngine", "WorkflowState", "WorkflowContext", "Transition", "WORKFLOW_ENGINE_REGISTRY",
     "EventBus", "Event", "Subscription", "EVENT_BUS_REGISTRY",
     "CheckpointManager", "CheckpointData", "CHECKPOINT_MANAGER_REGISTRY",
+    "WorkflowOrchestrator", "WORKFLOW_ORCHESTRATOR_REGISTRY",
 ]

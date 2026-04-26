@@ -777,3 +777,41 @@ __all__ += [
     "DEFAULT_COMMAND_DISPATCHER",
     "COMMAND_DISPATCHER_REGISTRY",
 ]
+
+# --- agent mode registry (cycle-209) -----------------------------------------
+from .agent_mode_registry import (  # noqa: E402
+    AgentModeError,
+    AgentMode,
+    AgentModeRegistry,
+    DEFAULT_MODE_REGISTRY,
+    AGENT_MODE_REGISTRY,
+)
+
+__all__ += [
+    "AgentModeError",
+    "AgentMode",
+    "AgentModeRegistry",
+    "DEFAULT_MODE_REGISTRY",
+    "AGENT_MODE_REGISTRY",
+]
+
+# --- workflow engine (cycle-209) ---------------------------------------------
+from .workflow_engine import (  # noqa: E402
+    WorkflowError,
+    WorkflowCheckpoint,
+    WorkflowNode,
+    WorkflowDAG,
+    WorkflowExecutor,
+    DEFAULT_WORKFLOW_EXECUTOR,
+    WORKFLOW_EXECUTOR_REGISTRY,
+)
+
+__all__ += [
+    "WorkflowError",
+    "WorkflowCheckpoint",
+    "WorkflowNode",
+    "WorkflowDAG",
+    "WorkflowExecutor",
+    "DEFAULT_WORKFLOW_EXECUTOR",
+    "WORKFLOW_EXECUTOR_REGISTRY",
+]

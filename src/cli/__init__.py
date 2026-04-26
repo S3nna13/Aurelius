@@ -29,3 +29,14 @@ try:
     )
 except Exception:  # pragma: no cover
     pass
+
+try:
+    from .output_compressor import (
+        CompressionConfig,
+        CompressionResult,
+        OutputCompressor,
+        DEFAULT_COMPRESSOR,
+        OUTPUT_COMPRESSOR_REGISTRY,
+    )
+except Exception:  # pragma: no cover
+    pass
