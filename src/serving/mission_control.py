@@ -428,7 +428,7 @@ class ActivityLog:
         )
         self._entries.append(entry)
         if len(self._entries) > self._max_entries:
-            self._entries = self._entries[-self._max_entries:]
+            self._entries = self._entries[-self._max_entries :]
         return entry
 
     def list_entries(self, limit: int = 50) -> list[ActivityEntry]:
@@ -532,7 +532,9 @@ class MissionControlHandler(BaseHTTPRequestHandler):
                         }
                     )
             except Exception:
-                logger.warning("MissionControl: failed to enumerate skills", exc_info=True)
+                logger.warning(
+                    "MissionControl: failed to enumerate skills", exc_info=True
+                )
         else:
             status["skills"].append({"id": "code-review", "active": True})
 
@@ -543,7 +545,9 @@ class MissionControlHandler(BaseHTTPRequestHandler):
                 for pid in plugin_loader.list_loaded():
                     status["plugins"].append({"id": pid})
             except Exception:
-                logger.warning("MissionControl: failed to enumerate plugins", exc_info=True)
+                logger.warning(
+                    "MissionControl: failed to enumerate plugins", exc_info=True
+                )
         else:
             status["plugins"].append({"id": "mcp-core"})
 
@@ -685,7 +689,9 @@ def create_mission_control_server(
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
+    )
 
     arg_parser = argparse.ArgumentParser(description="Aurelius Mission Control")
     arg_parser.add_argument(

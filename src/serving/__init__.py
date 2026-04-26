@@ -40,10 +40,12 @@ from .structured_output_decoder import (  # noqa: E402,F401
 
 # Merge structured-output decoders into the API shape registry so they are
 # discoverable alongside existing validators.
-API_SHAPE_REGISTRY.update({
-    "structured_output.json_schema": StructuredOutputDecoder,
-    "structured_output.grammar": GrammarConstrainedDecoder,
-})
+API_SHAPE_REGISTRY.update(
+    {
+        "structured_output.json_schema": StructuredOutputDecoder,
+        "structured_output.grammar": GrammarConstrainedDecoder,
+    }
+)
 
 # Decoder registry — maps logical decoder names to classes.
 DECODER_REGISTRY: dict = {
