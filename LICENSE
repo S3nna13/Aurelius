@@ -1,7 +1,6 @@
-AURELIUS OPEN LICENSE
-====================
+MIT License
 
-Copyright (c) 2025 Aurelius Systems, Inc. All rights reserved.
+Copyright (c) 2025 Aurelius Systems, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -10,32 +9,13 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-1. COPYRIGHT NOTICE
-   The above copyright notice and this permission notice shall be included in
-   all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-2. ATTRIBUTION
-   Any distribution, modification, or derivative work must provide reasonable
-   attribution to the original Aurelius project and its authors.
-
-3. ARCHITECTURE IP
-   The underlying Aurelius architecture, including but not limited to its
-   core design patterns, agent orchestration model, memory hierarchy,
-   and system topology, remains the intellectual property of the Licensor.
-   Users may not claim ownership of, or register patents on, the Aurelius
-   architecture itself. Users are free to modify, extend, and adapt the
-   Software for their own purposes.
-
-4. TRADEMARK
-   This license does not grant permission to use the trade names, trademarks,
-   service marks, or product names of the Licensor, except as required for
-   reasonable and customary use in describing the origin of the Software.
-
-5. NO WARRANTY
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-   DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
