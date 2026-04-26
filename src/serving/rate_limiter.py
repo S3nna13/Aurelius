@@ -73,19 +73,38 @@ class _Bucket:
 class TokenBucketLimiter:
     """Thread-safe per-identifier token bucket rate limiter."""
 
+    #: Maximum number of distinct buckets to retain.  When the limit is
+    #: reached the oldest bucket is evicted (LRU).  This prevents memory
+    #: exhaustion when attackers rotate identifiers.
+    MAX_BUCKETS: int = 10_000
+
     def __init__(self, config: RateLimitConfig) -> None:
         self.config = config
         self._buckets: Dict[str, _Bucket] = {}
+        self._access_order: list[str] = []
         self._registry_lock = threading.Lock()
 
     def _get_or_create_bucket(self, identifier: str) -> _Bucket:
         with self._registry_lock:
-            if identifier not in self._buckets:
-                self._buckets[identifier] = _Bucket(
-                    capacity=self.config.burst_size,
-                    refill_rate=self.config.requests_per_second,
-                )
-            return self._buckets[identifier]
+            if identifier in self._buckets:
+                # Move to most-recently-used position
+                if identifier in self._access_order:
+                    self._access_order.remove(identifier)
+                self._access_order.append(identifier)
+                return self._buckets[identifier]
+
+            # Evict oldest bucket if at capacity
+            if len(self._buckets) >= self.MAX_BUCKETS:
+                oldest = self._access_order.pop(0)
+                self._buckets.pop(oldest, None)
+
+            bucket = _Bucket(
+                capacity=self.config.burst_size,
+                refill_rate=self.config.requests_per_second,
+            )
+            self._buckets[identifier] = bucket
+            self._access_order.append(identifier)
+            return bucket
 
     def _resolve_identifier(self, identifier: str) -> str:
         """For global limiters, all requests share the same bucket."""
@@ -122,6 +141,7 @@ class TokenBucketLimiter:
             for bucket in self._buckets.values():
                 bucket.reset()
             self._buckets.clear()
+            self._access_order.clear()
 
 
 class RateLimiterChain:
