@@ -454,7 +454,7 @@ def _run_chat(
 
             elif cmd == "/clear":
                 if os.name == "nt":
-                    subprocess.run(["cls"], shell=True, check=False)  # nosec B602
+                    subprocess.run(["cmd", "/c", "cls"], check=False)
                 else:
                     subprocess.run(["clear"], check=False)
                 _print_banner()

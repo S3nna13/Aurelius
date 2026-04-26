@@ -17,14 +17,10 @@ Two registries are exposed:
 
 from __future__ import annotations
 
-import builtins
 import sys
 
-_cached_hall_of_shame_probe = getattr(
-    builtins, "_aurelius_hall_of_shame_probe_module", None
-)
+_cached_hall_of_shame_probe = sys.modules.get("src.safety.hall_of_shame_probe")
 if _cached_hall_of_shame_probe is not None:
-    sys.modules["src.safety.hall_of_shame_probe"] = _cached_hall_of_shame_probe
     sys.modules["safety.hall_of_shame_probe"] = _cached_hall_of_shame_probe
 
 from src.safety.jailbreak_detector import JailbreakDetector, JailbreakScore

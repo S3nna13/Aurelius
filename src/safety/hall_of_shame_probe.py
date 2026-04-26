@@ -32,7 +32,6 @@ benign-control baseline that must *not* be blocked.
 from __future__ import annotations
 
 import hashlib
-import builtins
 import re
 import sys
 from dataclasses import dataclass
@@ -718,4 +717,4 @@ __all__ = [
 _module = sys.modules[__name__]
 sys.modules["src.safety.hall_of_shame_probe"] = _module
 sys.modules["safety.hall_of_shame_probe"] = _module
-setattr(builtins, "_aurelius_hall_of_shame_probe_module", _module)
+# Module reference stored in sys.modules only; builtins pollution removed.

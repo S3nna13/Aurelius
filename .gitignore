@@ -63,3 +63,13 @@ wandb/
 .eggs/
 dist/
 build/
+
+# Root data / training artefacts (auto-generated during local runs)
+generate_jsonl.py
+train_jsonl.py
+train_reference.py
+generate_updated_report.py
+.current_source
+.data_offsets.json
+training_data/
+/tools/
