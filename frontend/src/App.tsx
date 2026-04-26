@@ -29,6 +29,8 @@ import ScheduledTasks from './pages/ScheduledTasks';
 import AgentComparison from './pages/AgentComparison';
 import HealthCheckPage from './pages/HealthCheck';
 import ApiDocs from './pages/ApiDocs';
+import Models from './pages/Models';
+import Training from './pages/Training';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -62,6 +64,9 @@ function AnimatedRoutes() {
           <Route path="/tasks" element={<ScheduledTasks />} />
           <Route path="/health" element={<HealthCheckPage />} />
           <Route path="/api-docs" element={<ApiDocs />} />
+          <Route path="/models" element={<Models />} />
+          <Route path="/training" element={<Training />} />
+          <Route path="/training/:id" element={<Training />} />
         </Routes>
       </motion.div>
     </AnimatePresence>

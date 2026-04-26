@@ -1,406 +1,125 @@
-import { useState, useEffect, useMemo } from 'react';
-import {
-  Brain,
-  Search,
-  Layers,
-  Database,
-  Clock,
-  Loader2,
-  AlertTriangle,
-  RefreshCw,
-  Eye,
-  X,
-  SlidersHorizontal,
-} from 'lucide-react';
-import { useApi } from '../hooks/useApi';
-import { useToast } from '../components/ToastProvider';
+import { useState, useEffect, useCallback } from 'react'
+import { Brain, Layers, Plus, Loader2, RefreshCw, Search, Clock, TrendingUp } from 'lucide-react'
+import { useToast } from '../components/ToastProvider'
 
-interface MemoryLayer {
-  name: string;
-  entries: number;
-  size: string;
-  description: string;
-  color: string;
-  bg: string;
-  border: string;
-}
-
-interface MemoryEntry {
-  id: string;
-  content: string;
-  layer: string;
-  timestamp: string;
-  access_count: number;
-  importance_score: number;
-}
-
-const layerMeta: Record<string, Omit<MemoryLayer, 'entries'>> = {
-  'L0 Meta Rules': {
-    name: 'Meta Rules',
-    size: '2 MB',
-    description: 'Core agent behavior rules and constraints.',
-    color: 'text-[#4fc3f7]',
-    bg: 'bg-[#4fc3f7]/10',
-    border: 'border-[#4fc3f7]/20',
-  },
-  'L1 Insight Index': {
-    name: 'Insight Index',
-    size: '8 MB',
-    description: 'Indexed insights and pattern recognitions.',
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/20',
-  },
-  'L2 Global Facts': {
-    name: 'Global Facts',
-    size: '45 MB',
-    description: 'Persistent knowledge and learned patterns.',
-    color: 'text-amber-400',
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/20',
-  },
-  'L3 Task Skills': {
-    name: 'Task Skills',
-    size: '12 MB',
-    description: 'Active task context and skill mappings.',
-    color: 'text-rose-400',
-    bg: 'bg-rose-500/10',
-    border: 'border-rose-500/20',
-  },
-  'L4 Session Archive': {
-    name: 'Session Archive',
-    size: '210 MB',
-    description: 'Archived conversation sessions and history.',
-    color: 'text-purple-400',
-    bg: 'bg-purple-500/10',
-    border: 'border-purple-500/20',
-  },
-};
-
-const fallbackLayers = [
-  { name: 'Short-term', entries: 1240, size: '12 MB', description: 'Recent conversations and temporary context.', color: 'text-[#4fc3f7]', bg: 'bg-[#4fc3f7]/10', border: 'border-[#4fc3f7]/20' },
-  { name: 'Working', entries: 342, size: '45 MB', description: 'Active task context and intermediate results.', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-  { name: 'Long-term', entries: 8901, size: '210 MB', description: 'Persistent knowledge and learned patterns.', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-  { name: 'Episodic', entries: 567, size: '34 MB', description: 'Event-based memories with timestamps.', color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
-];
-
-function timeAgo(ts: string): string {
-  const d = new Date(ts).getTime();
-  const diff = (Date.now() - d) / 1000;
-  if (isNaN(diff) || diff < 0) return 'Just now';
-  if (diff < 60) return 'Just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
-  return `${Math.floor(diff / 86400)} days ago`;
-}
+interface MemoryLayer { name: string; entries: number }
+interface MemoryEntry { id: string; content: string; layer: string; timestamp: string; accessCount: number; importanceScore: number }
 
 export default function Memory() {
-  const [search, setSearch] = useState('');
-  const [selectedLayer, setSelectedLayer] = useState<string>('all');
-  const [detailEntry, setDetailEntry] = useState<MemoryEntry | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [minImportance, setMinImportance] = useState(0);
-  const [dateRange, setDateRange] = useState<'all' | '24h' | '7d' | '30d'>('all');
-  const [minAccessCount, setMinAccessCount] = useState(0);
-  const { toast } = useToast();
+  const { toast } = useToast()
+  const [layers, setLayers] = useState<MemoryLayer[]>([])
+  const [entries, setEntries] = useState<MemoryEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedLayer, setSelectedLayer] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [newEntryLayer, setNewEntryLayer] = useState('')
+  const [newEntryContent, setNewEntryContent] = useState('')
+  const [adding, setAdding] = useState(false)
 
-  const {
-    data,
-    loading,
-    error,
-    refresh,
-  } = useApi<{ layers: Record<string, number> }>('/memory', {
-    refreshInterval: 10000,
-  });
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (selectedLayer) params.set('layer', selectedLayer)
+      if (searchQuery) params.set('query', searchQuery)
+      const [layersRes, entriesRes] = await Promise.all([
+        fetch('/api/memory/layers'),
+        fetch(`/api/memory/entries?${params}`),
+      ])
+      if (layersRes.ok) setLayers((await layersRes.json()).layers || [])
+      if (entriesRes.ok) setEntries((await entriesRes.json()).entries || [])
+    } catch { /* ignore */ }
+    setLoading(false)
+  }, [selectedLayer, searchQuery])
 
-  const {
-    data: entriesData,
-    loading: entriesLoading,
-    error: entriesError,
-    refresh: refreshEntries,
-  } = useApi<{ entries: MemoryEntry[] }>(
-    `/memory/entries?limit=50${search ? `&q=${encodeURIComponent(search)}` : ''}${selectedLayer !== 'all' ? `&layer=${encodeURIComponent(selectedLayer)}` : ''}`,
-    { refreshInterval: 10000 }
-  );
+  useEffect(() => { fetchData() }, [fetchData])
 
-  useEffect(() => {
-    if (error) toast('Failed to load memory data', 'error');
-    if (entriesError) toast('Failed to load memory entries', 'error');
-  }, [error, entriesError, toast]);
-
-  const memoryLayers: MemoryLayer[] = data?.layers
-    ? Object.entries(data.layers).map(([key, count]) => {
-        const meta = layerMeta[key];
-        if (meta) {
-          return { ...meta, name: meta.name, entries: count };
-        }
-        return {
-          name: key,
-          entries: count,
-          size: '—',
-          description: key,
-          color: 'text-[#9e9eb0]',
-          bg: 'bg-[#2d2d44]/20',
-          border: 'border-[#2d2d44]/40',
-        };
+  const addEntry = async () => {
+    if (!newEntryLayer || !newEntryContent.trim()) return
+    setAdding(true)
+    try {
+      const res = await fetch('/api/memory/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layer: newEntryLayer, content: newEntryContent.trim() }),
       })
-    : fallbackLayers;
-
-  const rawEntries = entriesData?.entries || [];
-
-  const filteredEntries = useMemo(() => {
-    let result = [...rawEntries];
-    if (minImportance > 0) {
-      result = result.filter((e) => (e.importance_score * 100) >= minImportance);
-    }
-    if (dateRange !== 'all') {
-      const now = Date.now();
-      const ranges: Record<string, number> = { '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
-      const cutoff = now - ranges[dateRange];
-      result = result.filter((e) => new Date(e.timestamp).getTime() >= cutoff);
-    }
-    if (minAccessCount > 0) {
-      result = result.filter((e) => e.access_count >= minAccessCount);
-    }
-    return result;
-  }, [rawEntries, minImportance, dateRange, minAccessCount]);
-
-  const entries = filteredEntries;
-  const totalEntries = memoryLayers.reduce((sum, l) => sum + l.entries, 0);
-
-  const refreshAll = () => {
-    refresh();
-    refreshEntries();
-  };
+      const data = await res.json()
+      if (data.success) {
+        toast('Memory entry added', 'success')
+        setNewEntryContent('')
+        fetchData()
+      }
+    } catch { toast('Failed to add entry', 'error') }
+    setAdding(false)
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
-          <Brain size={20} className="text-[#4fc3f7]" />
-          Memory Explorer
-        </h2>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-[#9e9eb0]">
-            {totalEntries.toLocaleString()} total entries
-          </span>
-          <button
-            onClick={refreshAll}
-            disabled={loading}
-            className="aurelius-btn-outline flex items-center gap-2 text-sm disabled:opacity-50"
-          >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-            Refresh
-          </button>
-        </div>
+        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2"><Brain size={20} className="text-[#4fc3f7]" /> Memory</h2>
+        <button onClick={fetchData} disabled={loading} className="aurelius-btn-outline flex items-center gap-1.5 text-sm disabled:opacity-50"><RefreshCw size={14} /> Refresh</button>
       </div>
 
-      {error && (
-        <div className="aurelius-card border-rose-500/30 bg-rose-500/5 text-rose-300">
-          <AlertTriangle size={18} className="inline mr-2" />
-          {error.message}
-        </div>
-      )}
-
-      {/* Search + Filter Toggle */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9eb0]" />
-          <input
-            type="text"
-            placeholder="Search memory entries..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg pl-9 pr-4 py-2.5 text-sm text-[#e0e0e0] placeholder:text-[#9e9eb0] focus:outline-none focus:border-[#4fc3f7]"
-          />
-        </div>
-        <button
-          onClick={() => setShowFilters((v) => !v)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
-            showFilters
-              ? 'bg-aurelius-accent/10 text-aurelius-accent border-aurelius-accent/30'
-              : 'bg-[#0f0f1a] text-[#9e9eb0] border-[#2d2d44] hover:border-aurelius-accent/30'
-          }`}
-        >
-          <SlidersHorizontal size={14} />
-          Filters
-        </button>
-      </div>
-
-      {/* Advanced Filters */}
-      {showFilters && (
-        <div className="aurelius-card space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs text-[#9e9eb0] mb-1.5">Min Importance: {minImportance}%</label>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={minImportance}
-                onChange={(e) => setMinImportance(Number(e.target.value))}
-                className="w-full accent-[#4fc3f7]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-[#9e9eb0] mb-1.5">Date Range</label>
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value as any)}
-                className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-2 text-sm text-[#e0e0e0] focus:outline-none focus:border-[#4fc3f7]"
-              >
-                <option value="all">All time</option>
-                <option value="24h">Last 24 hours</option>
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-[#9e9eb0] mb-1.5">Min Access Count</label>
-              <input
-                type="number"
-                min={0}
-                value={minAccessCount}
-                onChange={(e) => setMinAccessCount(Number(e.target.value))}
-                className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-2 text-sm text-[#e0e0e0] focus:outline-none focus:border-[#4fc3f7]"
-              />
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-1 space-y-4">
+          <div className="aurelius-card space-y-3">
+            <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2"><Layers size={16} className="text-[#4fc3f7]" /> Layers</h3>
+            <div className="space-y-1">
+              <button onClick={() => setSelectedLayer('')} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!selectedLayer ? 'bg-[#4fc3f7]/10 text-[#4fc3f7]' : 'text-[#9e9eb0] hover:text-[#e0e0e0] hover:bg-[#0f0f1a]/50'}`}>All Layers</button>
+              {layers.map((layer) => (
+                <button key={layer.name} onClick={() => setSelectedLayer(layer.name)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${selectedLayer === layer.name ? 'bg-[#4fc3f7]/10 text-[#4fc3f7]' : 'text-[#9e9eb0] hover:text-[#e0e0e0] hover:bg-[#0f0f1a]/50'}`}>
+                  <span>{layer.name}</span>
+                  <span className="text-[10px] opacity-60">{layer.entries}</span>
+                </button>
+              ))}
             </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                setMinImportance(0);
-                setDateRange('all');
-                setMinAccessCount(0);
-              }}
-              className="text-xs text-aurelius-muted hover:text-aurelius-text transition-colors"
-            >
-              Reset filters
-            </button>
-            <span className="text-xs text-aurelius-muted ml-auto">
-              {entries.length} entries match
-            </span>
+
+          <div className="aurelius-card space-y-3">
+            <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2"><Plus size={16} className="text-[#4fc3f7]" /> Add Entry</h3>
+            <select value={newEntryLayer} onChange={(e) => setNewEntryLayer(e.target.value)} className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-2 text-sm text-[#e0e0e0] focus:outline-none focus:border-[#4fc3f7]">
+              <option value="">Select layer...</option>
+              {layers.map((l) => <option key={l.name} value={l.name}>{l.name}</option>)}
+            </select>
+            <textarea value={newEntryContent} onChange={(e) => setNewEntryContent(e.target.value)} placeholder="Memory content..." rows={3}
+              className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-2 text-sm text-[#e0e0e0] placeholder:text-[#9e9eb0] focus:outline-none focus:border-[#4fc3f7] resize-none" />
+            <button onClick={addEntry} disabled={adding || !newEntryLayer || !newEntryContent.trim()} className="w-full aurelius-btn text-sm disabled:opacity-50">{adding ? <Loader2 size={14} className="animate-spin" /> : 'Add Entry'}</button>
           </div>
         </div>
-      )}
 
-      {/* Layers */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <button
-          onClick={() => setSelectedLayer('all')}
-          className={`aurelius-card space-y-3 text-left transition-colors ${selectedLayer === 'all' ? 'border-aurelius-accent/50' : 'hover:border-[#4fc3f7]/30'}`}
-        >
-          <div className="flex items-center gap-2">
-            <Layers size={16} className="text-aurelius-accent" />
-            <h3 className="text-sm font-semibold text-[#e0e0e0]">All Layers</h3>
+        <div className="lg:col-span-3 space-y-4">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9eb0]" />
+            <input type="text" placeholder="Search memory entries..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') fetchData() }}
+              className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg pl-9 pr-3 py-2 text-sm text-[#e0e0e0] placeholder:text-[#9e9eb0] focus:outline-none focus:border-[#4fc3f7]" />
           </div>
-          <p className="text-xs text-[#9e9eb0]">View entries across all memory tiers.</p>
-          <div className="flex items-center justify-between pt-2 border-t border-[#2d2d44]">
-            <div className="flex items-center gap-1 text-xs text-[#9e9eb0]">
-              <Database size={12} />
-              {totalEntries.toLocaleString()} entries
-            </div>
-          </div>
-        </button>
-        {memoryLayers.map((layer) => (
-          <button
-            key={layer.name}
-            onClick={() => setSelectedLayer(Object.keys(layerMeta).find(k => layerMeta[k].name === layer.name) || layer.name)}
-            className={`aurelius-card space-y-3 text-left transition-colors ${selectedLayer === (Object.keys(layerMeta).find(k => layerMeta[k].name === layer.name) || layer.name) ? 'border-aurelius-accent/50' : 'hover:border-[#4fc3f7]/30'}`}
-          >
-            <div className="flex items-center gap-2">
-              <Layers size={16} className={layer.color} />
-              <h3 className="text-sm font-semibold text-[#e0e0e0]">{layer.name}</h3>
-            </div>
-            <p className="text-xs text-[#9e9eb0]">{layer.description}</p>
-            <div className="flex items-center justify-between pt-2 border-t border-[#2d2d44]">
-              <div className="flex items-center gap-1 text-xs text-[#9e9eb0]">
-                <Database size={12} />
-                {layer.entries.toLocaleString()} entries
-              </div>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded ${layer.bg} ${layer.color} border ${layer.border}`}>
-                {layer.size}
-              </span>
-            </div>
-          </button>
-        ))}
-      </div>
 
-      {/* Recent Entries */}
-      <div className="aurelius-card space-y-4">
-        <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
-          <Clock size={16} className="text-[#4fc3f7]" />
-          Recent Entries
-        </h3>
-        {entriesLoading && entries.length === 0 && (
-          <div className="text-center py-8 text-[#9e9eb0]">
-            <Loader2 size={24} className="mx-auto mb-2 animate-spin opacity-60" />
-            <p className="text-sm">Loading entries...</p>
-          </div>
-        )}
-        <div className="space-y-2">
-          {entries.map((entry) => (
-            <div
-              key={entry.id}
-              onClick={() => setDetailEntry(entry)}
-              className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-[#0f0f1a]/50 border border-[#2d2d44]/50 hover:border-[#4fc3f7]/20 transition-colors cursor-pointer"
-            >
-              <p className="text-sm text-[#e0e0e0] truncate max-w-[60%]">{entry.content}</p>
-              <div className="flex items-center gap-3 shrink-0">
-                <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#2d2d44]/20 text-[#9e9eb0] border border-[#2d2d44]/40">
-                  {entry.layer}
-                </span>
-                <span className="text-xs text-[#9e9eb0]">{timeAgo(entry.timestamp)}</span>
-                <Eye size={14} className="text-aurelius-muted opacity-0 group-hover:opacity-100" />
-              </div>
+          {loading ? (
+            <div className="aurelius-card text-center py-12 text-[#9e9eb0]"><Loader2 size={24} className="mx-auto mb-2 animate-spin opacity-60" /><p>Loading memory...</p></div>
+          ) : entries.length === 0 ? (
+            <div className="aurelius-card text-center py-12 text-[#9e9eb0]"><Brain size={32} className="mx-auto mb-2 opacity-40" /><p>No memory entries found.</p></div>
+          ) : (
+            <div className="space-y-2">
+              {entries.map((entry) => (
+                <div key={entry.id} className="aurelius-card">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[#e0e0e0]">{entry.content}</p>
+                      <div className="flex items-center gap-3 mt-2 text-[10px] text-[#9e9eb0]/60">
+                        <span className="flex items-center gap-1"><Layers size={10} />{entry.layer}</span>
+                        <span className="flex items-center gap-1"><Clock size={10} />{entry.timestamp}</span>
+                        <span className="flex items-center gap-1"><TrendingUp size={10} />{entry.importanceScore.toFixed(2)}</span>
+                        <span>Access: {entry.accessCount}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-          {entries.length === 0 && !entriesLoading && (
-            <p className="text-sm text-[#9e9eb0] text-center py-6">No entries found.</p>
           )}
         </div>
       </div>
-
-      {/* Detail Modal */}
-      {detailEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-aurelius-card border border-aurelius-border rounded-xl p-6 max-w-lg w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-aurelius-text">Memory Entry</h3>
-              <button
-                onClick={() => setDetailEntry(null)}
-                className="p-1 rounded-lg text-aurelius-muted hover:text-aurelius-text hover:bg-aurelius-border/40 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-aurelius-muted uppercase tracking-wider mb-1">Content</p>
-                <p className="text-sm text-aurelius-text leading-relaxed">{detailEntry.content}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-aurelius-bg border border-aurelius-border rounded-lg p-3">
-                  <p className="text-xs text-aurelius-muted uppercase tracking-wider">Layer</p>
-                  <p className="text-sm font-medium text-aurelius-text mt-0.5">{detailEntry.layer}</p>
-                </div>
-                <div className="bg-aurelius-bg border border-aurelius-border rounded-lg p-3">
-                  <p className="text-xs text-aurelius-muted uppercase tracking-wider">Access Count</p>
-                  <p className="text-sm font-medium text-aurelius-text mt-0.5">{detailEntry.access_count}</p>
-                </div>
-                <div className="bg-aurelius-bg border border-aurelius-border rounded-lg p-3">
-                  <p className="text-xs text-aurelius-muted uppercase tracking-wider">Importance</p>
-                  <p className="text-sm font-medium text-aurelius-text mt-0.5">{(detailEntry.importance_score * 100).toFixed(0)}%</p>
-                </div>
-                <div className="bg-aurelius-bg border border-aurelius-border rounded-lg p-3">
-                  <p className="text-xs text-aurelius-muted uppercase tracking-wider">Timestamp</p>
-                  <p className="text-sm font-medium text-aurelius-text mt-0.5">{new Date(detailEntry.timestamp).toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  );
+  )
 }

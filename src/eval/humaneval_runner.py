@@ -6,7 +6,7 @@ Chen et al. (2021) "Evaluating Large Language Models Trained on Code"
   * ``HumanEvalProblem``  — problem dataclass mirroring the HumanEval format
   * ``ExecutionResult``   — result of running a solution
   * ``HumanEvalRunner``   — load, execute, and batch-evaluate solutions
-  * ``BENCHMARK_REGISTRY["humaneval"]`` — singleton runner instance
+  * ``BENCHMARK_REGISTRY["humaneval_runner"]`` — singleton runner instance
 
 Execution is done in a sandboxed subprocess.  Only stdlib modules from a
 curated ALLOW_LIST are accessible inside the executed code.
@@ -354,4 +354,4 @@ try:
 except Exception:
     BENCHMARK_REGISTRY: dict = {}  # type: ignore[assignment]
 
-BENCHMARK_REGISTRY["humaneval"] = HumanEvalRunner()
+BENCHMARK_REGISTRY.setdefault("humaneval_runner", HumanEvalRunner())

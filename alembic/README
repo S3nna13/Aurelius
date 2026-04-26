@@ -1,0 +1,7 @@
+Generic single-database Alembic configuration for Aurelius.
+
+Run migrations:
+    alembic upgrade head
+
+Create new migration:
+    alembic revision --autogenerate -m "description"

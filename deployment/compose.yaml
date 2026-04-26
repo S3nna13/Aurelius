@@ -26,6 +26,42 @@ services:
           cpus: '2'
           memory: 8G
 
+  middle:
+    build:
+      context: ..
+      dockerfile: middle/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - MIDDLE_HOST=0.0.0.0
+      - MIDDLE_PORT=3001
+      - UPSTREAM_URL=http://aurelius:8080
+      - CORS_ORIGIN=http://localhost:5173
+      - MIDDLE_LOG_LEVEL=info
+      - AURELIUS_API_KEY=${AURELIUS_API_KEY:-dev-key}
+    depends_on:
+      aurelius:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/healthz', r => process.exit(r.statusCode===200?0:1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployment/frontend.Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:3001}
+    depends_on:
+      - middle
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     ports:
@@ -38,18 +74,8 @@ services:
     restart: unless-stopped
     volumes:
       - redis-data:/data
-
-  frontend:
-    build:
-      context: ..
-      dockerfile: deployment/frontend.Dockerfile
-    ports:
-      - "3000:80"
-    environment:
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8080}
-    depends_on:
-      - aurelius
-    restart: unless-stopped
+    profiles:
+      - cache
 
 volumes:
   redis-data:

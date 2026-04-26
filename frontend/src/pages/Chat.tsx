@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Aurelius Systems, Inc.
+// Licensed under the Aurelius Open License.
+// Free to use, modify, and distribute. See LICENSE for full terms.
+// The Aurelius architecture remains the intellectual property of the authors.
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   MessageSquare,
@@ -57,15 +62,6 @@ function loadHistory(): ChatMessage[] {
   ];
 }
 
-function saveHistory(messages: ChatMessage[]) {
-  try {
-    const trimmed = messages.slice(-MAX_HISTORY);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
-  } catch {
-    // ignore
-  }
-}
-
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>(loadHistory);
   const [input, setInput] = useState('');
@@ -75,59 +71,57 @@ export default function Chat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Auto-scroll to bottom
+  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Persist to localStorage
+  // Persist history
   useEffect(() => {
-    saveHistory(messages);
+    try {
+      const trimmed = messages.slice(-MAX_HISTORY);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+    } catch {
+      // ignore
+    }
   }, [messages]);
 
-  // SSE for real-time system events
+  // SSE connection
   useEffect(() => {
     const es = new EventSource('/api/events');
     es.onopen = () => setSseConnected(true);
     es.onerror = () => setSseConnected(false);
-    es.addEventListener('notification', (e) => {
+    es.addEventListener('system', (e) => {
       try {
         const data = JSON.parse(e.data);
+        const text = data.message || JSON.stringify(data);
         setMessages((prev) => [
           ...prev,
-          {
-            id: generateId(),
-            from: 'system',
-            text: `**${data.title}**\n${data.body}`,
-            timestamp: Date.now(),
-          },
+          { id: generateId(), from: 'system', text, timestamp: Date.now() },
         ]);
       } catch {
-        // ignore parse errors
+        // ignore
       }
     });
-    return () => es.close();
+    return () => {
+      es.close();
+      setSseConnected(false);
+    };
   }, []);
 
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || sending) return;
+      const trimmed = text.trim();
       const userMsg: ChatMessage = {
         id: generateId(),
         from: 'user',
-        text: text.trim(),
+        text: trimmed,
         timestamp: Date.now(),
       };
-      const pendingMsg: ChatMessage = {
-        id: generateId(),
-        from: 'agent',
-        text: '',
-        timestamp: Date.now(),
-        pending: true,
-      };
-      setMessages((prev) => [...prev, userMsg, pendingMsg]);
+      setMessages((prev) => [...prev, userMsg]);
       setInput('');
       setSending(true);
 
@@ -135,36 +129,27 @@ export default function Chat() {
         const res = await fetch('/api/command', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ command: text.trim() }),
+          body: JSON.stringify({ command: trimmed }),
         });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        setMessages((prev) => {
-          const filtered = prev.filter((m) => m.id !== pendingMsg.id);
-          const response: ChatMessage = {
-            id: generateId(),
-            from: data.success ? 'agent' : 'system',
-            text: data.output || data.error || 'No response',
-            timestamp: Date.now(),
-          };
-          return [...filtered, response];
-        });
+        const response: ChatMessage = {
+          id: generateId(),
+          from: data.success ? 'agent' : 'system',
+          text: data.output || data.error || 'No response',
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, response]);
         if (!data.success) {
           toast(data.error || 'Command failed', 'error');
         }
       } catch (err) {
-        setMessages((prev) => {
-          const filtered = prev.filter((m) => m.id !== pendingMsg.id);
-          return [
-            ...filtered,
-            {
-              id: generateId(),
-              from: 'system',
-              text: err instanceof Error ? err.message : 'Network error',
-              timestamp: Date.now(),
-            },
-          ];
-        });
-        toast('Failed to send message', 'error');
+        const msg = err instanceof Error ? err.message : 'Network error';
+        setMessages((prev) => [
+          ...prev,
+          { id: generateId(), from: 'system', text: msg, timestamp: Date.now() },
+        ]);
+        toast(msg, 'error');
       } finally {
         setSending(false);
         inputRef.current?.focus();
@@ -173,7 +158,7 @@ export default function Chat() {
     [sending, toast]
   );
 
-  // Listen for command palette dispatch
+  // Command palette listener
   useEffect(() => {
     const handler = (e: CustomEvent<string>) => {
       sendMessage(e.detail);
@@ -187,7 +172,7 @@ export default function Chat() {
       {
         id: generateId(),
         from: 'agent',
-        text: 'Chat history cleared. How can I assist you?',
+        text: 'Chat history cleared. How can I help?',
         timestamp: Date.now(),
       },
     ]);

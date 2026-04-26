@@ -1,0 +1,27 @@
+# Default owners
+* @s3nna13
+
+# Core model and training
+/src/model/ @s3nna13
+/src/training/ @s3nna13
+/training_data/ @s3nna13
+
+# Serving layer
+/src/serving/ @s3nna13
+
+# Frontend
+/frontend/ @s3nna13
+
+# Security-critical paths
+/src/security/ @s3nna13
+/src/safety/ @s3nna13
+SECURITY.md @s3nna13
+
+# Deployment
+/deployment/ @s3nna13
+/.github/workflows/ @s3nna13
+
+# Infrastructure
+/.github/ @s3nna13
+alembic/ @s3nna13
+Makefile @s3nna13

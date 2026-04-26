@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  aurelius:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - AURELIUS_DEVICE=cuda
+      - AURELIUS_DTYPE=bfloat16

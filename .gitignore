@@ -64,6 +64,21 @@ frontend/dist/
 frontend/.env
 frontend/.env.local
 
+# Middle layer
+middle/node_modules/
+middle/dist/
+
+# Server layer
+server/node_modules/
+
+# Rust crates
+crates/data-engine/node_modules/
+crates/data-engine/target/
+crates/data-engine/*.node
+crates/token-counter/node_modules/
+crates/token-counter/target/
+crates/token-counter/*.node
+
 # Alembic
 alembic/versions/*.pyc
 
@@ -71,3 +86,26 @@ alembic/versions/*.pyc
 htmlcov/
 .coverage
 coverage/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Runtime artifacts
+.current_source
+.data_offsets.json
+*.pid
+
+# Training artifacts
+training_data/
+*.jsonl
+*.parquet
+
+# Rust crates (usage-store)
+crates/usage-store/target/
+crates/usage-store/*.node
+crates/usage-store/Cargo.lock
+
+# Tools submodule (uninitialized)
+tools/jsonl-merge/

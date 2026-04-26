@@ -195,5 +195,5 @@ def test_batch_evaluate_length_mismatch_raises(
 def test_benchmark_registry_humaneval():
     from src.eval.humaneval_runner import BENCHMARK_REGISTRY
 
-    assert "humaneval" in BENCHMARK_REGISTRY
-    assert isinstance(BENCHMARK_REGISTRY["humaneval"], HumanEvalRunner)
+    assert "humaneval_runner" in BENCHMARK_REGISTRY
+    assert isinstance(BENCHMARK_REGISTRY["humaneval_runner"], HumanEvalRunner)

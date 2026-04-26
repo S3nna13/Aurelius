@@ -16,6 +16,8 @@ import {
   BarChart3,
   HeartPulse,
   BookOpen,
+  LineChart,
+  Cpu,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 
@@ -27,6 +29,8 @@ const navItems = [
   { to: '/workflows', icon: GitBranch, label: 'Workflows', badgeKey: 'workflows' as const },
   { to: '/memory', icon: Brain, label: 'Memory', badge: null },
   { to: '/tasks', icon: CalendarClock, label: 'Tasks', badge: null },
+  { to: '/training', icon: LineChart, label: 'Training', badge: null },
+  { to: '/models', icon: Cpu, label: 'Models', badge: null },
   { to: '/agents', icon: BarChart3, label: 'Agents', badge: null },
   { to: '/settings', icon: Settings, label: 'Settings', badge: null },
   { to: '/health', icon: HeartPulse, label: 'Health', badge: null },

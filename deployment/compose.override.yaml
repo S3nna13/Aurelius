@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  aurelius:
+    build:
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    environment:
+      - AURELIUS_LOG_LEVEL=debug
+      - AURELIUS_RELOAD=true
+    volumes:
+      - ../src:/app/src
+    ports:
+      - "8080:8080"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+volumes:
+  redis-data:

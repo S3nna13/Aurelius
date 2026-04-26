@@ -1,0 +1,71 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    assignees:
+      - "s3nna13"
+    labels:
+      - "dependencies"
+      - "python"
+    groups:
+      torch-deps:
+        patterns:
+          - "torch*"
+      dev-deps:
+        patterns:
+          - "pytest*"
+          - "ruff*"
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    assignees:
+      - "s3nna13"
+    labels:
+      - "dependencies"
+      - "frontend"
+    groups:
+      react-deps:
+        patterns:
+          - "react*"
+          - "@types/react*"
+
+  - package-ecosystem: "cargo"
+    directory: "/crates/usage-store"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+      - "rust"
+
+  - package-ecosystem: "cargo"
+    directory: "/tools/jsonl-merge"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+      - "rust"
+
+  - package-ecosystem: "docker"
+    directory: "/deployment"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "ci"

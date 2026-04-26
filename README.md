@@ -1,91 +1,150 @@
 # Aurelius
 
-Aurelius is a **model family** — from 69M-parameter experiments to 1.395B-parameter agentic coding LLMs — built entirely in pure PyTorch. No HuggingFace Transformers, no einops, no framework wrappers at runtime. Every algorithm is written from scratch. Talk to it like ChatGPT or Claude, extend it like a research codebase. The family architecture (FamilyManifest + ModelVariant + factory + version compatibility gate) lets specialized variants (base / chat / coding / long-context / retrieval / agent / safety / deployment-footprint) coexist under a stable contract.
+> **A 1.395B-parameter decoder-only transformer** built entirely in pure PyTorch. No HuggingFace Transformers, no einops, no framework wrappers at runtime. Every algorithm is written from scratch. Talk to it like ChatGPT or Claude, extend it like a research codebase.
+
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch 2.4+](https://img.shields.io/badge/PyTorch-2.4+-ee4c2c.svg)](https://pytorch.org/)
+[![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178c6.svg)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4+-06b6d4.svg)](https://tailwindcss.com/)
+[![License: Aurelius Open License](https://img.shields.io/badge/License-Aurelius%20Open%20License-green.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-32%2C400%2B%20passing-brightgreen.svg)]()
+[![Security](https://img.shields.io/badge/security-0%20High%20findings-success.svg)]()
 
 ---
 
-## 🧪 Training Experiments (Latest)
+## 🚀 What is Aurelius?
 
-| Model | Params | Dataset | Tokens | Steps | Final Loss | Time | Checkpoint |
-|-------|--------|---------|--------|-------|------------|------|------------|
-| **Aurelius-JSONL** | 69.2M | 52K conversations (arXiv + Reddit) | 2.0M | 1,000 | 5.86 | 23 min | `checkpoints/aurelius-jsonl/final.pt` |
-| **Aurelius-Reference** | 69.2M | 2,379 code/docs files | 1.0M | 100 | 5.43 | 4 min | `checkpoints/aurelius-reference/` |
-| **Aurelius-GLM5** | 66.3M | GLM-5 paper (memorization test) | 29K | 500 | 0.40 | 4.5 min | `checkpoints/glm5/` |
-| **Aurelius-Small** | 87.5M | Synthetic phrases | 256K | 500 | 3.78 | 5.5 min | `checkpoints/small/` |
+Aurelius is a **full-stack AI assistant platform** — from a 1.395B-parameter transformer to a production-ready API server, to a modern React web dashboard. It is designed for researchers who want full control over every layer of the stack, and for builders who want a deployable conversational AI with memory, agents, tools, and safety guardrails.
 
-**Key finding:** The 69M model learns conversation structure (### User/Assistant/System) within 1,000 steps on diverse web corpus. Semantic content improves with extended training (5K–10K steps recommended).
+### Highlights
 
-**Hardware:** All experiments run on Apple Silicon (M1 Pro, MPS backend) and CPU. No CUDA required.
+- **Pure PyTorch** — No runtime dependencies on HF Transformers, flash-attn, bitsandbytes, PEFT, TRL, or DeepSpeed
+- **Family Architecture** — `FamilyManifest` + `ModelVariant` + factory pattern lets base / chat / coding / long-context / retrieval / agent / safety variants coexist under a stable contract
+- **Modern Web UI** — React 19 + Vite + TypeScript + Tailwind CSS with PWA support, dark/light themes, and real-time streaming
+- **Production-Grade Serving** — OpenAI-compatible HTTP API, WebSocket chat streaming, SSE events, session routing, and semantic memory
+- **157+ Implementation Cycles** — Continuously expanded with 1,720+ Python modules across model, training, alignment, inference, eval, data, security, agents, and more
+
+> **🔒 Training materials, datasets, and proprietary resources are confidential and internal-only.** See [`CONFIDENTIAL.md`](CONFIDENTIAL.md) for details. The architecture, inference engine, API, and web UI remain open under the Aurelius Open License.
 
 ---
 
+## 📦 What's Inside
+
+| Layer | Stack | Highlights |
+|---|---|---|
+| **Model** | Pure PyTorch | 1.395B decoder-only transformer, GQA, RoPE/YaRN, SwiGLU, RMSNorm, MoE, SSMs (Mamba, RWKV, Griffin), diffusion LM head, 150+ architecture modules |
+| **Training Framework** | Custom trainers | Muon + AdamW + ZClip, async RL (double-sided IS), Shampoo, SOAP, GaLore, ReLoRA, DoRA, gradient checkpointing, curriculum, distillation, RLHF, 200+ utilities |
+| **Alignment** | From-scratch | DPO, GRPO, SimPO, ORPO, KTO, SPIN, RLOO, Nash-MD, constitutional AI, debate alignment, 150+ modules |
+| **Inference** | Optimized | Speculative decoding (Eagle, Medusa), flash prefill, continuous batching, paged KV cache, structured output, MCTS reasoning, 200+ modules |
+| **Security** | Hardened | Gradient inversion defense, GCG adversarial search, prompt injection detector, STRIP backdoor scan, MITRE ATT&CK classifier, YARA-like engine, 24 modules |
+| **Agent** | Tool-capable | ReAct loop with timeouts, tool-call parser (XML + JSON), argument validation, budget-bounded termination, multi-step chaining |
+| **Serving** | Full-stack | OpenAI-compatible API, WebSocket streaming, React dashboard, session memory, tool calling, 6 personas, safety guardrails |
+| **Frontend** | React 19 + Vite | Real-time chat, agent management, memory browser, workflow designer, system health, settings, PWA, dark/light mode |
+
 ---
 
-## Quick start — talk to Aurelius right now
+## 🖥️ Screenshots
+
+*The Aurelius dashboard features a modern dark-mode UI with real-time metrics, interactive chat, agent management, and system health monitoring.*
+
+**Key UI Pages:**
+- **Dashboard** — Live metrics with line charts, bar charts, and donut charts
+- **Chat** — Streaming responses with slash commands, suggestions, and history persistence
+- **Agents** — Agent comparison, detail views, and performance analytics
+- **Memory** — Layered memory browser with advanced filtering (importance, date range, access count)
+- **Workflows** — Visual workflow designer with status tracking
+- **System Health** — Health check dashboard with component status and API documentation
+- **Settings** — Runtime config, plugin manager, notification preferences, import/restore
+
+---
+
+## 🏁 Quick Start
+
+### 1. Clone & Install
 
 ```bash
-# Install
-git clone https://github.com/S3nna13/Aurelius
+git clone https://github.com/S3nna13/Aurelius.git
 cd Aurelius
-pip install -e .
-
-# Launch
-aurelius
+pip install -e ".[serve,dev]"
 ```
 
-That opens an interactive terminal chat session. No checkpoint required to try the interface — connect a trained checkpoint with `--model-path` to get real responses.
+### 2. Start the Backend
+
+```bash
+# Full assistant stack (API + web UI)
+aurelius serve
+
+# Or directly:
+python -m src.serving.aurelius_server --port 7870
+```
+
+### 3. Start the Frontend (Development)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The web UI will be available at `http://localhost:5173` (or the port Vite assigns).
+
+### 4. Build for Production
+
+```bash
+cd frontend
+npm run build
+```
+
+The production build is served statically by the backend from `frontend/dist/`.
 
 ---
 
-## The `aurelius` command
+## 💻 The `aurelius` CLI
 
-```
-aurelius                              interactive chat (default)
-aurelius chat                         same as above
-aurelius chat -s coding               use the built-in coding persona
-aurelius chat -s security             use the security expert persona
-aurelius chat --model-path <ckpt>     load trained weights
-aurelius serve                        start API server + browser web UI
-aurelius serve --port 8080            custom API port (default: 8080)
-aurelius train --config configs/...   launch pretraining
-aurelius eval checkpoints/<run>       run evaluation harness
-aurelius --version                    print version
-aurelius --help                       full help
+```bash
+aurelius                              # interactive chat (default)
+aurelius chat                         # same as above
+aurelius chat -s coding               # use the built-in coding persona
+aurelius chat -s security             # use the security expert persona
+aurelius chat --model-path <ckpt>     # load trained weights
+aurelius serve                        # start API server + browser web UI
+aurelius serve --port 8080            # custom API port (default: 7870)
+aurelius --version                    # print version
+aurelius --help                       # full help
 ```
 
-### Chat slash commands
+### Chat Slash Commands
 
-Once inside `aurelius`, type these at the prompt:
-
-| Command | What it does |
+| Command | Description |
 |---|---|
-| `/help` | list all commands |
-| `/reset` | clear conversation history |
-| `/history` | show conversation so far |
-| `/system <prompt>` | swap the system prompt on the fly |
-| `/save <id>` | save conversation to `~/.aurelius/conversations/` |
-| `/load <id>` | restore a saved conversation |
-| `/list` | list all saved conversations |
-| `/model` | show loaded model info |
-| `/clear` | clear the screen |
-| `/quit` | exit |
+| `/help` | List all commands |
+| `/reset` | Clear conversation history |
+| `/history` | Show conversation so far |
+| `/system <prompt>` | Swap the system prompt on the fly |
+| `/save <id>` | Save conversation to `~/.aurelius/conversations/` |
+| `/load <id>` | Restore a saved conversation |
+| `/list` | List all saved conversations |
+| `/model` | Show loaded model info |
+| `/clear` | Clear the screen |
+| `/quit` | Exit |
 
-### Built-in personas (`-s` flag)
+### Built-in Personas (`-s` flag)
 
 | Name | Purpose |
 |---|---|
-| `default` | general helpful assistant |
-| `coding` | software engineer, gives code examples |
-| `security` | cybersecurity expert, authorized testing |
-| `researcher` | analytical, multi-perspective |
-| `concise` | short answers only |
-| `creative` | storyteller, expressive |
+| `default` | General helpful assistant |
+| `coding` | Software engineer, gives code examples |
+| `security` | Cybersecurity expert, authorized testing |
+| `researcher` | Analytical, multi-perspective |
+| `concise` | Short answers only |
+| `creative` | Storyteller, expressive |
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
-**1.395B decoder-only transformer**
+### Transformer Core
 
 | Hyperparameter | Value |
 |---|---|
@@ -95,155 +154,46 @@ Once inside `aurelius`, type these at the prompt:
 | `n_kv_heads` | 8 (GQA) |
 | `head_dim` | 128 |
 | `d_ff` | 5632 (SwiGLU) |
-| `vocab_size` | 128 000 |
-| `max_seq_len` | 8 192 |
+| `vocab_size` | 128,000 |
+| `max_seq_len` | 8,192 |
 
-Positional encoding: RoPE (θ = 500K) with YaRN context extension. Normalization: RMSNorm. Activation: SwiGLU. Attention: Grouped Query Attention (GQA).
+- **Positional encoding:** RoPE (θ = 500K) with YaRN context extension
+- **Normalization:** RMSNorm
+- **Activation:** SwiGLU
+- **Attention:** Grouped Query Attention (GQA)
+- **Forward signature:** `(loss, logits, present_key_values)` — plain tuple
 
-Model forward signature: `(loss, logits, present_key_values)` — plain tuple.
+### Full-Stack Diagram
 
----
-
-## What is in this repo
-
-| Directory | Contents |
-|---|---|
-| `src/cli/` | `aurelius` terminal command — interactive REPL, subcommands (chat/serve/train/eval), ANSI colors, slash commands, persona routing |
-| `src/model/` | Transformer core, GQA, RoPE/YaRN, MoE (sparse + balanced + upcycling), MoD, dynamic sparse attention, parallel residual blocks, Fourier positional encodings, sliding window attention, linear/sparse/ring attention, SSMs (Mamba, S4, RWKV, Griffin, Jamba, GLA, RetNet, Hyena/H3), diffusion LM head, nGPT, Titans, xLSTM, NSA, TTT-Linear, minGRU, Gated Delta Net, and 150+ architecture modules |
-| `src/training/` | Muon + AdamW + ZClip trainer, async RL trainer (double-sided IS + staleness filtering), Shampoo, SOAP, SAM, Lion, NesterovAdan, GaLore, ReLoRA, DoRA, LoRA+, active learning, gradient checkpointing, scheduled sampling, spectral filtering, EWC, curriculum, distillation, RLHF, self-improvement loop, MTP, and 200+ training utilities |
-| `src/optimizers/` | Adafactor, LAMB, Lookahead, RAdam, CAME, ADOPT, FAdam, Fira, Signum |
-| `src/alignment/` | DPO, GRPO, Dr. GRPO, SimPO, ORPO, KTO, IPO, SPIN, RLOO, Nash-MD, DAPO, WARP, BOND, STILL, SALMON, DITTO, RLHF (PPO), RLCD, PRIME, ODIN, online DPO, double-sided IS loss, constitutional AI (v1–v3), debate alignment, process supervision, reward modeling, red teaming, scheduled sampling, and 150+ alignment modules |
-| `src/inference/` | Speculative decoding (standard, tree, Eagle/Eagle-2, Medusa, cascade), Chain of Draft, entropix adaptive sampling, flash/chunked prefill, continuous batching, paged KV cache, KV quantization, prompt compression, lookahead/Jacobi decoding, RAG (FiD, fusion, attributed), structured output, watermarking, MCTS reasoning, test-time compute scaling, arithmetic coding, and 200+ inference modules |
-| `src/eval/` | LM harness, BERTScore, LLM-as-judge, causal tracing, ROME weight editing, calibration suite, OOD detection, conformal prediction, probing classifiers, logit lens, tuned lens, membership inference, Vendi score, MT-Bench, faithfulness metrics, model-written evals, and 100+ eval modules |
-| `src/data/` | BPE + byte tokenizers, Magpie, FIM, sequence packing, data mixing, curriculum sampling, difficulty scoring, quality filtering, QuRating scorer, synthetic instruction generation, augmentation, deduplication, and 80+ data modules |
-| `src/interpretability/` | Activation patching, circuit discovery, LEACE concept erasure, polysemanticity/superposition detector, function vectors, distributed alignment search (DAS), JumpReLU sparse autoencoder, Patchscopes, logit lens, probing, neuron analysis, representation engineering, and 20+ interpretability tools |
-| `src/security/` | 24 security modules: gradient inversion, model extraction, STRIP backdoor detector, GCG adversarial suffix search, canary memorization auditor, prompt injection detector, randomized smoothing, Rényi DP privacy accountant, PII/toxicity output scanner, adversarial text augmentation, network intrusion detector, semantic similarity defense, federated aggregator, per-sample gradient clipping, model fingerprinting, robustness evaluator, red-team dataset generator, additive secret sharing, model-stealing defense, threat-intel correlator, MITRE ATT&CK taxonomy classifier (81 techniques, all 12 enterprise tactics, kill-chain ordering), IOC extractor (IPs / domains / URLs / email / hashes / CVE / paths / registry / Bitcoin, with defang/refang), YARA-like rule engine (text + hex + regex strings, AND/OR/NOT, count, filesize), PE file analyzer (DOS + NT + sections + entropy for packer detection), log anomaly detector (volume spike, rare-token, high-entropy URL, off-hours, auth-cluster) |
-| `src/agent/` | Tool-call parser (XML Anthropic-style + JSON OpenAI-style, injection-hardened state-machine scan), ReAct agent loop (plan → act → observe → reflect) with per-tool wall-clock timeouts, argument validation via `inspect.signature`, and budget-bounded termination |
-| `src/chat/` | ChatML template (injection-hardened encode/decode, role-break rejection), Llama-3 template (`<|begin_of_text|>` / `<|start_header_id|>` format, ipython + tool roles), pluggable tokenizer-agnostic token-id path |
-| `src/longcontext/` | INT8 symmetric per-head KV cache quantizer with streaming append, StreamingLLM attention-sinks windowing (sink + rolling buffer with shifted RoPE positions per Xiao 2023) |
-| `src/retrieval/` | BM25 (Robertson-Sparck Jones IDF, postings-walk scorer, pure stdlib), hybrid retriever (BM25 + dense cosine with Reciprocal Rank Fusion k=60 or min-max weighted fusion) |
-| `src/safety/` | Jailbreak detector (keyword + role-confusion + prompt-injection + repetition-burst, NFKC-normalized, weighted signal fusion), prompt-injection scanner for indirect injection via tool outputs / retrieved docs (HTML/script, homoglyph, zero-width char, embedded-instruction detection) |
-| `src/serving/` | `aurelius` CLI REPL, OpenAI-compatible HTTP API server, browser web UI, token-by-token SSE streaming, tool calling + multi-step tool chaining, 6 curated system prompt personas, conversation history (JSON persistence), semantic cross-session memory, session router (consistent hash ring + LRU), response formatter, runtime safety guardrails, ChatML session manager |
-| `src/eval/` additions | Needle-in-a-Haystack benchmark (Kamradt protocol, model-agnostic generate_fn), RULER (Hsieh 2024) with multi-key NIAH, multi-value NIAH, variable tracking, common-words extraction, aggregation tasks |
-| `configs/` | Training, tokenizer, merge (SLERP/TIES), curriculum, and Ollama configs |
-| `scripts/` | Data prep, training, SFT, DPO, model merging, GGUF conversion, local serving, corpus extraction, tokenizer training |
-| `train_*.py` | Standalone training scripts (reference corpus, JSONL conversations, GLM-5 paper, synthetic data) |
-| `generate_*.py` | Inference scripts for trained checkpoints |
-
----
-
-## Installation
-
-```bash
-git clone https://github.com/S3nna13/Aurelius
-cd Aurelius
-pip install -e .
 ```
-
-For development and the full test suite:
-
-```bash
-pip install -e .[dev]
-```
-
-**Requirements:** Python 3.12+, PyTorch ≥ 2.4. No runtime dependencies beyond PyTorch.
-
----
-
-## Running tests
-
-Full suite (15 000+ tests, ~15 min on CPU):
-
-```bash
-pytest -q
-```
-
-Focused module tests:
-
-```bash
-pytest -q tests/alignment/test_grpo.py
-pytest -q tests/security/test_gcg_attack.py
-pytest -q tests/serving/test_api_server.py
+┌─────────────────────────────────────────────────────────────┐
+│                      React 19 Frontend                       │
+│  (Vite + TypeScript + Tailwind + Framer Motion + Zustand)   │
+│  Dashboard · Chat · Agents · Memory · Workflows · Settings  │
+└────────────────────────────┬────────────────────────────────┘
+                             │ HTTP / WebSocket / SSE
+┌────────────────────────────▼────────────────────────────────┐
+│              Aurelius Server (Python / FastAPI)              │
+│  REST API · OpenAI-compatible /v1 · WebSocket chat · SSE    │
+│  Auth (opt-in) · Session routing · Semantic memory · Tools  │
+└────────────────────────────┬────────────────────────────────┘
+                             │
+┌────────────────────────────▼────────────────────────────────┐
+│              Aurelius Transformer (Pure PyTorch)             │
+│  1.395B params · GQA · RoPE · YaRN · SwiGLU · RMSNorm      │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Training workflows
+## 🔌 API Usage
 
-### 1. Train a tokenizer
-
-```bash
-bash scripts/train_tokenizer.sh
-# Or train on your own corpus:
-python scripts/tokenize_jsonl_corpus.py
-```
-
-### 2. Prepare data
-
-```bash
-bash scripts/prepare_data.sh
-# Or extract from local reference material:
-python scripts/extract_reference_corpus.py
-python scripts/convert_jsonl_corpus.py
-python scripts/encode_jsonl_corpus.py
-```
-
-### 3. Pretrain
-
-```bash
-aurelius train --config configs/train_1b.yaml
-# Resume:
-aurelius train --config configs/train_1b.yaml --resume checkpoints/<dir>
-
-# Quick experiments (no config needed):
-python train_jsonl.py        # 69M on conversations
-python train_reference.py    # 69M on code/docs
-python train_glm5.py         # 66M on GLM-5 paper
-python train_small_checkpoint.py  # 87M synthetic validation
-```
-
-### 4. Alignment (SFT → DPO → RLHF)
-
-```bash
-python -m src.alignment.sft --help
-python -m src.alignment.dpo --help
-bash scripts/run_sft.sh
-bash scripts/run_dpo.sh
-```
-
-### 5. Evaluate
-
-```bash
-aurelius eval checkpoints/<dir>
-```
-
-### 6. Serve
-
-```bash
-# Full assistant stack (API + browser UI)
-aurelius serve
-
-# Just the API (OpenAI-compatible)
-python -m src.serving.api_server --port 8080
-
-# Just the browser UI
-python -m src.serving.web_ui --port 7860
-
-# Via Ollama (GGUF)
-bash scripts/convert_to_gguf.sh <checkpoint> [output-dir]
-bash scripts/serve_local.sh --model-path models/gguf/aurelius-1.3b-q4_k_m.gguf
-```
-
----
-
-## Using the OpenAI-compatible API
-
-Once `aurelius serve` is running, any OpenAI client works:
+### OpenAI-Compatible Endpoint
 
 ```python
 import openai
 
-client = openai.OpenAI(base_url="http://localhost:8080/v1", api_key="none")
+client = openai.OpenAI(base_url="http://localhost:7870/v1", api_key="none")
 
 response = client.chat.completions.create(
     model="aurelius",
@@ -255,96 +205,167 @@ print(response.choices[0].message.content)
 Or with curl:
 
 ```bash
-curl http://localhost:8080/v1/chat/completions \
+curl http://localhost:7870/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"aurelius","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
----
+### Key REST Endpoints
 
-## Package imports
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/modes` | GET | List agent modes |
+| `/api/config` | GET / POST | Runtime configuration |
+| `/api/memory/entries` | GET | Memory entries with layer/filter/search |
+| `/api/logs` | GET | System logs (500-record ring buffer) |
+| `/api/notifications/preferences` | GET / POST | Notification preferences |
+| `/api/events` | SSE | Real-time system events |
+| `/ws` | WebSocket | Bi-directional chat streaming |
 
-Both styles work:
+### WebSocket Chat Streaming
 
-```python
-from src.model.transformer import AureliusTransformer
-from aurelius.model.transformer import AureliusTransformer
+```javascript
+const ws = new WebSocket('ws://localhost:7870/ws');
+ws.onopen = () => ws.send(JSON.stringify({ type: 'subscribe', channel: 'chat' }));
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+  console.log(msg.token); // stream tokens in real-time
+};
 ```
 
 ---
 
-## Key design principles
+## 🧪 Running Tests
 
-- **Pure PyTorch.** No HuggingFace Transformers, einops, flash-attn, bitsandbytes, peft, trl, accelerate, or deepspeed at runtime.
-- **Additive development.** Each cycle adds new modules; existing files are not modified.
-- **Full test coverage.** Every module ships with 10–16 tests covering shape/dtype, gradient flow, determinism, edge cases, and numerical stability.
-- **Production assistant.** The `aurelius` CLI, API server, web UI, tool calling, streaming, memory, and guardrails make this a deployable conversational AI — not just a research codebase.
+### Backend (Python)
 
----
+```bash
+# Full suite (32,400+ tests, ~30 min on CPU)
+pytest -q
 
-## Config files
+# Focused module tests
+pytest -q tests/alignment/test_grpo.py
+pytest -q tests/security/test_gcg_attack.py
+pytest -q tests/serving/test_api_server.py
+```
 
-| File | Purpose |
-|---|---|
-| `configs/train_1b.yaml` | Default pretraining config |
-| `configs/curriculum.yaml` | Curriculum learning settings |
-| `configs/merge_slerp.yaml` | Model merging (SLERP/TIES) |
-| `configs/ollama.Modelfile` | Ollama model definition |
-| `configs/tokenizer_config.json` | Tokenizer metadata |
+### Frontend (TypeScript / Vitest)
 
----
+```bash
+cd frontend
+npm test          # run once
+npm run test:watch # watch mode
+npm run test:coverage # with coverage
+```
 
-## Current status
+### Security Scan
 
-- **157+ implementation cycles** completed (security hardening cycle-139-sec complete)
-- **32 421+ tests** passing (full suite ~30 min on CPU)
-- **1 720+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, mcp, computer_use, multimodal, deployment, memory, tools, reasoning, search, protocol, monitoring, quantization, simulation, compression, federation, multiagent, runtime, and **backends** surface dirs
-- **Trained checkpoints available:** 69M (conversation), 87M (synthetic), 66M (paper) — see Training Experiments table above
-- **Data pipeline:** BPE tokenizer training, JSONL corpus ingestion, reference corpus extraction, train/val sharding — all pure PyTorch + `tokenizers`
-- Open security findings: 0 High, 0 Critical (CVE ledger: AUR-SEC-2026-0001..0019 all closed)
-- Recent cycles:
-  - **cycle-157** — surface deepening ×18: evaluation: Leaderboard (rankings/best/rank_of/history_of, tie-break by timestamp) + CrossValidator (k-fold split, stratified_split round-robin, CVResult mean/std) + CalibrationScorer (ECE/MCE, confidence==1.0 clamped into last bin, reliability_diagram_data); computer_use: ElementLocator (case-insensitive selector substring, spatial region filter, find_at point containment) + FormFiller (EMAIL/NUMBER/CHECKBOX/SELECT validation, required-field guard, fill_form) + ClipboardManager (deque LRU history, copy/paste/paste_nth/search, stats by_type); mcp: MCPRouter (regex {param} path extraction, exact-path priority over parameterized, dispatch injects params into payload) + SessionStore (TTL expiry via time.monotonic, max_sessions capacity, expire_all) + MCPEventLogger (DEBUG/INFO/WARNING/ERROR/CRITICAL levels, oldest-first eviction, query with level+substring+limit filter); deployment: FeatureToggleManager (ENABLED/DISABLED/PERCENTAGE/ALLOWLIST, MD5 deterministic bucket) + DeploymentManifest (ResourceSpec/ContainerSpec, validate cpu/memory/replicas/image, to_yaml_stub) + RollbackManager (deque-eviction snapshots, rollback_to, history); agent: MemoryWriter (OBSERVATION/DECISION/REFLECTION/FACT/PLAN, recall AND-combined filter, stats by_type) + ToolUseTracker (ToolBudget, most_used Counter, success_rate per-tool/overall) + ReflectionEngine (5 ReflectionType rule-based, confidence=min(n/10,1.0), latest with type filter); search: SnippetExtractor (window-based hit centring, overlap merging, score=terms covered, highlight regex) + SpellCorrector (Levenshtein DP, 100-word dict, suggestions ordered by distance) + SearchAnalytics (FIFO max_log, top_queries, zero_result_queries, CTR, query_volume_by_hour); sandbox_executor timeout path improved to shutdown(wait=False); bandit HIGH=0; +616 tests
-  - **cycle-156** — surface deepening ×18: profiling: LatencyHistogram (bucket-based recording, linear interpolation p50/p95/p99, to_dict) + BandwidthProfiler (A100 HBM2e 900Gbps default, read/write/total bandwidth properties, utilization clamped [0,100]) + KernelProfiler (throughput_gflops, top_kernels desc, summary_by_name); workflow: RetryWorkflow (IMMEDIATE/FIXED_DELAY/EXPONENTIAL_BACKOFF, injectable no-op sleep_fn, run_pipeline stops on failure) + ParallelStepExecutor (threading, order-preserved, per-task timeout via thread.join) + WorkflowVisualizer (DOT fillcolor by NodeStyle, ASCII BFS tree, Mermaid flowchart LR); simulation: MonteCarloSimulator (discounted returns backward pass, estimate_value, value_variance pstdev) + StateTracker (time.monotonic transitions, Markov matrix, action_counts) + TransitionMatrix (power iteration stationary dist, is_absorbing, BFS reachability); safety: JailbreakDetector2 (6-category regex, risk_score clamped 10.0) + OutputFilter (REDACT/BLOCK/WARN/ALLOW, PII rules: email/phone/SSN) + ContentClassifier (7-category keyword, confidence=min(matches/3,1.0)); interpretability: AttentionFlowAnalyzer (per-layer/head recording, top_flows, head_importance) + LogitLensAnalyzer (matrix-vector project, stable softmax, entropy_by_layer) + ConceptBottleneck (Koh 2020, linear probe, sigmoid score, intervention stub); compression: WeightSharing (Lloyd's k-means, reconstruct, compression_ratio) + PruningScheduler (CONSTANT/LINEAR/POLYNOMIAL/CUBIC sparsity, should_prune frequency) + SparseOptimizer (skip_sparse_ratio gate, SGD on non-zero grads); bandit HIGH=0; +607 tests
-  - **cycle-155** — surface deepening ×18: runtime: ModelGCManager (GCPolicy LRU/EAGER/DEFERRED, evict_candidates, acquire/release ref-count) + SessionManager (uuid session_id, idle timeout expire, cleanup TERMINATED+EXPIRED) + HotReloader (loader_fn registry, rollback on failure, ReloadEvent history); federation: TopologyManager (NodeRole SERVER/CLIENT/AGGREGATOR/OBSERVER, available_clients filter) + ClientSelector (RANDOM/POWER_OF_CHOICE/RESOURCE_AWARE/ROUND_ROBIN, last_selected_round) + PrivacyBudgetTracker (epsilon+delta cumulative, ValueError on overflow, summary); evaluation: BLEUScorer (Papineni 2002, clipped n-gram precision, brevity penalty, geometric mean) + FaithfulnessScorer (Jaccard claim overlap, split on punctuation) + F1Scorer (Counter intersection, both-empty→1.0, mean_f1); multiagent: Blackboard (version tracking, subscriber callbacks on write) + TaskDispatcher (PENDING→ASSIGNED→COMPLETED/FAILED, agent_load) + AgentLifecycleManager (INITIALIZING→RUNNING→PAUSED/TERMINATED/CRASHED, crash_reason metadata); protocol: RateLimitingMiddleware (TOKEN_BUCKET/FIXED_WINDOW/SLIDING_LOG, injectable now) + MessageSigner (HMAC-SHA256, constant-time verify, rotate_key) + ProtocolNegotiator (highest common version, required/optional cap negotiation); data: TokenizerCache (LRU+SHA256 hash, hit_rate tracking) + Vocabulary (min_freq/max_vocab, special tokens, build()) + DataAugmenter (6 strategies: SYNONYM_SWAP/DELETION/INSERTION/SWAP_WORDS/LOWERCASE/UPPERCASE); bandit HIGH=0; +647 tests
-  - **cycle-154** — surface deepening ×18: deployment: CanaryController (5/25/50/100% stages, PENDING→RUNNING→SUCCEEDED/FAILED/ROLLED_BACK) + ABTestRouter (MD5-bucket deterministic assignment, weight normalization) + ConfigDriftDetector (recursive dot-notation compare, drift_pct); evaluation: PerplexityScorer (exp(-mean(log_probs)), inf on empty) + RougeScorer (ROUGE-1/2/L, rolling-row DP LCS) + CodeEvaluator (restricted exec namespace, solution() fn, stdout capture); serving: ModelMultiplexer (tag-rule routing, priority+alpha fallback) + RequestBatcher (size OR age trigger, priority ordering) + ResponseStreamer (chunk_size chars, stream_tokens, collect, buffer_chunks); agent: TaskPlanner (keyword decomp: research/write/fix/analyze, sequential deps) + ExecutionMonitor (budget steps/time/cost gate) + ContextCompressor (every-Nth-word summary, keep_recent); backends: LoadBalancer (ROUND_ROBIN/WEIGHTED/LEAST_CONN/RANDOM, acquire/release) + CircuitBreaker (CLOSED→OPEN→HALF_OPEN, timeout probe) + RetryPolicy (exponential backoff, jitter, injectable sleep_fn); security: RateAbuseDetector (burst sliding window, sustained, distributed 10-client) + IPAllowlist (CIDR via socket+struct, deny wins) + AuditTrail (append-only, SHA-256 integrity hash, JSONL export); bandit HIGH=0; +550 tests
-  - **cycle-153** — surface deepening ×18: quantization: SmoothQuantCalibrator (per-channel scale s[c]=act_max^α/weight_max^(1-α), apply/inverse scale) + Int4Tensor (pack/unpack 4-bit nibbles, high nibble first, zero-pad odd) + CalibrationDataset (bounded add, subsample with seed, stats); search: InvertedIndex (postings, AND intersection) + SearchCache (LRU+TTL via OrderedDict) + QueryParser (recursive-descent boolean AST, NOT>AND>OR precedence, implicit AND); memory: MemoryGraph (BFS shortest-path, relation-filtered neighbors, edge cleanup on remove_node) + MemoryCompressor (DEDUP/TRUNCATE/MERGE_SIMILAR, char-level Jaccard) + AssociativeMemory (cosine similarity recall, capacity guard); NEW evaluation surface: EvalHarness (exact-match default, custom score_fn, filter_by_category) + BenchmarkRunner (run_suite, leaderboard sorted desc) + MetricAggregator (weighted avg, equal-weight fallback, best-n); computer_use: ScreenRecorder (deque maxlen, diff, export_log) + ActionHistory (uuid action_id, undo, replay, filter_by_type) + TaskDecomposer (keyword rule engine: open/type/click/scroll/default); mcp: MCPClient (stub transport, call_with_retry up to max_retries) + ToolRegistry (OpenAI-schema to_schema, validate_call) + CapabilityCatalog (negotiate accepted/rejected/optional_missing, compatible_with); bandit HIGH=0; +590 tests
-  - **cycle-152** — surface deepening ×18: data: DomainTemplate (6-domain frozen dataclass registry) + MagpieGenerator (ICLR 2025 self-play synthetic instruction pairs, User:/Assistant: split, JSONL export) + DataIngestPipeline (IngestPolicy allowed-source/license-tier gating, TrainingSample uuid-auto-id, JSONL export); safety: VulnFinding (uuid4 8-char id, VulnSeverity enum, VulnCollection by_severity/stats) + SARIFExporter (SARIF 2.1.0 with rule dedup, physicalLocation) + SecurityReportBuilder (exec summary top-3, markdown/text/json/html output); runtime: InferenceEngine (warmup, throughput_tokens_per_s, stub generate_fn) + RuntimeMonitor (p50/p99 latency health, error-rate check, deque(1000)) + ResourceGovernor (REJECT>THROTTLE>ALLOW, headroom pct); federation: SplitLearningCoordinator (SmashData/GradientPacket auto batch_id) + DPAggregator (L2 clip, Gaussian noise, DP epsilon=inf when noise_mult=0) + FederatedEvaluator (weighted avg by num_samples, pstdev); protocol: RequestEnvelope (base64 body, immutable add_header) + WebSocketProtocol (opcode state machine TEXT/BINARY/CLOSE/PING/PONG) + GRPCAdapter (4-byte big-endian length prefix, GRPCStatus); multiagent: AgentMemory (EPISODIC/SEMANTIC/PROCEDURAL/WORKING, TTL, importance recall) + NegotiationProtocol (Offer/counter-offer, 5% mean-value tolerance) + BeliefState (Bayesian update, contradiction detection); bandit HIGH=0; +529 tests
-  - **cycle-151** — reference extraction II + surface deepening: training deepening: PEFTConfig (LoRA/P-Tuning/Adapter/IA3, SFT/DPO/GRPO/SIMPO/ORPO modes, validate_config) + RewardFunction (DirectionalRewardFn ported from Heavens_Gate bear_market_reward, LengthRewardFn, FormatRewardFn) + ModelEvaluator (regression gate: perplexity + accuracy compare, is_deployment_safe); safety deepening: CVSSAssessor (v3.1 vectors from severity, parse_vector, compare_severity) + CWERemediation (17-CWE map, _sanitize_for_prompt with injection redaction) + ThreatIntelEngine (EPSS+CVSS combined scoring, prioritize, high_risk_ids); profiling deepening: ModelBenchmarker (p50/p95/p99/throughput sweep) + MemoryMonitor (torch.cuda+resource.getrusage, watermarks) + TraceCollector (Chrome trace JSON export); workflow deepening: WorkflowEngine (state machine, 9 DEFAULT_TRANSITIONS) + EventBus (pub/sub, wildcard, max_deliveries) + CheckpointManager (JSON persistence, load-latest); simulation deepening: EnvironmentRegistry (EnvSpec, DEFAULT_REGISTRY with 3 mock envs) + EpsilonGreedyPolicy (decay, td_error, compute_returns) + RolloutBuffer (deque-backed, compute_episode_returns); compression deepening: ModelPruner (MAGNITUDE/STRUCTURED/RANDOM) + DistillationTrainer (T² soft loss, KL divergence, CE) + QuantizationScheduler (LINEAR/COSINE/STEP/CONSTANT); bandit HIGH=0; +533 tests
-  - **cycle-150** — reference extraction (Heavens_Gate + bugbounty-agent + autonomous-coding-agent + my_llm_project): training deepening: ExperimentTracker (JSON+optional-MLflow backend, context-manager run(), best_run max/min, RLock-safe JSONBackend) + HubPublisher (HF Hub model card generation, dry-run when no token) + DataProvenance (ProvenanceRecord with source/license/task lineage, ProvenanceLedger CRUD+JSONL export); safety deepening: SeverityTriage (31-keyword weighted ML-optional scorer, CRITICAL/HIGH/MEDIUM/LOW/INFO) + FindingVerifier (multi-check with prompt-injection sanitization, CVSS/severity consistency) + RedTeamProbe (6-category adversarial probe suite, DEFAULT_TEMPLATES, refusal detection); agent deepening: PersonalityRouter (5-personality keyword routing: ARCHITECT/DETECTIVE/GUARDIAN/ANALYST/TEACHER) + PlanObserveReflect (PLAN→ACT→OBSERVE→REFLECT with numbered-step parsing, per-step exception handling) + GoalHierarchy (nested goal trees, active-path traversal, completion-ratio); quantization deepening: GPTQQuantizer (sym/asym int quantization, dequantize, MSE error) + QuantBenchmark (ASCII report, compression-ratio compare); monitoring deepening: AnomalyDetector (z-score/IQR/rolling-look-back/threshold, look-back-only rolling to avoid self-contamination) + DashboardExporter (JSON/Prometheus/InfluxDB line-protocol/CSV) + CapacityPlanner (stdlib linear regression, trend classify, days-to-limit, at-risk filter); NEW workflow surface: DAGExecutor (Kahn topological sort, cycle detection, dep-kwarg passing) + StepPipeline (fluent builder, retries, hooks) + WorkflowScheduler (heapq priority queue, cancel, FIFO within priority); bandit HIGH=0; +531 tests
-  - **cycle-148** — safety deepening: ToxicityScorer (6-category pattern match) + PromptInjectionDetector (5-signal regex+base64) + WatermarkDetector (z-score, Kirchenbauer 2023); interpretability deepening: NeuronActivationAnalyzer (dead/monosemantic) + SparseAutoencoder (MSE+L1 loss) + TokenAttributor (grad-norm/grad-input/IG); serving deepening: ModelRouter (ROUND_ROBIN/LEAST_LOADED/HASH/LATENCY_AWARE) + ResponseCache (LRU+TTL+SHA256 key) + LoadShedder (DROP_TAIL/TOKEN_BUCKET/ADAPTIVE/p99); protocol deepening: CapabilityNegotiator (6-cap intersection) + BackpressureController (NONE/SOFT/HARD/CRITICAL) + SchemaValidator (type checking); monitoring deepening: TracingCollector (Jaeger-format export) + LogAggregator (ring-buffer, error-rate) + SLOTracker (burn-rate, multi-type); federation deepening: SecureAggregator (ADDITIVE/PAIRWISE_MASK/SHAMIR_STUB) + ModelVersionRegistry (round lineage, sha256 diff) + StalenessHandler (DECAY/BOUNDED_DELAY); bandit HIGH=0; +247 tests
-  - **cycle-147** — quantization deepening: AWQQuantizer (activation-aware weight quant, Lin 2023) + BnBQuantizer (INT8 outlier-preserving, Dettmers 2022) + QATWrapper (fake-quantize STE, Jacob 2018); runtime deepening: AureliusProfiler (torch.profiler wrapper, FLOPS/memory summary) + JITCache (SHA-256 LRU cache for torch.compile artifacts); simulation deepening: RewardShaper (DENSE/POTENTIAL_BASED/CURIOSITY/CLIP, Ng 1999) + MultiAgentEnv (cooperative N-agent grid) + CurriculumEnv (rolling success window, mastery gating); compression deepening: GradientCompressor (TOP_K/RANDOM_K/THRESHOLD/SIGN_SGD) + SpeculativeDecodingCompressor (draft-buffer, acceptance threshold) + LosslessPacker (int4 bit-pack, RLE, delta); computer_use deepening: ActionPlanner (rule-based goal→action) + ScreenStateTracker (diff, 10-state history); MCP deepening: ToolResultFormatter (TEXT/JSON/MARKDOWN/CODE/ERROR) + MCPSessionManager (create/prune/list_active); eval deepening: GSM8KScorer (#### parser, ±0.01 tolerance) + HumanEvalRunner (subprocess sandbox, pass@1); +280 tests
-  - **cycle-146** — **NEW runtime surface**: CompileManager (torch.compile backend selection: inductor/eager/aot, stats, cache invalidation) + MemoryProfiler (peak/live tensor tracking, OOM risk scoring, leak detection); backends deepening: BackendHealth (latency histogram, probe enum) + HttpBackend (SSRF-hardened async HTTP inference) + OllamaAdapter (streaming JSON-lines REST); deployment deepening: KubernetesOperator (CRD reconcile loop, rollout pause/resume) + ModelPackager (SafeTensors+SHA-256 manifest) + ServeConfig (autoscaling policy, resource limits); multiagent deepening: ConsensusEngine (majority/weighted/quorum) + DebateFramework (multi-round structured debate) + RolePlayManager (persona assignment, turn scheduling); multimodal deepening: OCRModule + VisionProjectorV2 (cross-attention BLIP-2 style) + ViTEncoder (patch embed + CLS, nn.Module); training: ElasticCoordinator (rank remapping) + FSDPWrapper (size-based auto-wrap) + PipelineParallel (1F1B interleaved update); +280 tests
-  - **cycle-145** — Security gate: 4 HIGH bandit findings fixed (B605/B602 shell injection CWE-78, B324 weak-hash CWE-327×2, CWE-502 frozen-file weights_only); conftest.py registry-isolation fixtures added; committed orphaned cycle-143 bonus modules: MCTSReasoner (DeepSeek-R1/STILL-3 MCTS step-level reasoner), BM25Index (Okapi BM25, Robertson 2009), HybridSearchIndex (BM25+TF-IDF via RRF k=60, Cormack 2009), EditTool (diff-based search-replace, Aider-inspired), GrepTool (regex+context), WebTool (SSRF-hardened fetch); ColorTheme (3 palettes, ANSI 16/256/truecolor, NO_COLOR aware); committed cycle-144 orphans: multiagent surface (AgentPool+Orchestrator+TaskRouter); +621 tests
-  - **cycle-144** — **NEW federation surface**: FederatedClient+Server (FedAvg, McMahan2017) + GradientAggregator (FedAvg/FedMedian/Krum/TrimmedMean) + DifferentialPrivacy (Gaussian/Laplace noise, ε-δ budget tracking, Dwork2006); alignment RLHFPipeline (SFT→RM→PPO orchestration, InstructGPT 2022) + PreferenceCollector (pairwise, ChatML, seeded sampling); interpretability LinearProbe (gradient-descent CE training) + ActivationPatcher (causal tracing) + CircuitAnalyzer (subgraph, ablation, composition, Elhage2021)
-  - **cycle-143** — **NEW compression surface**: KVCacheCompressor (RECENCY/ATTENTION_SCORE/RANDOM/H2O eviction, int8 quant) + ActivationCompressor (topK/threshold sparsify, FP8) + ModelPruner (magnitude/structured, cubic schedule); longcontext DynamicNTKRoPE (base scaling, 2023) + StreamingAttentionCache (sink-preserving, 2309.17453) + MemoryMappedContext (chunked random-access); eval BenchmarkRunner + ABComparison (Cohen's d, win/loss) + EvalPipeline (staged, cached); bonus: MCTS reasoner, BM25+hybrid search, edit/grep/web tools, color theme
-  - **cycle-142** — **NEW simulation surface**: GridWorldEnv (5×5, clamp-safe, reward shaping) + AgentHarness (random/greedy policy, trajectory collection) + EpisodeRecorder (query/stats/export, eviction); optimizers MuPScaler (lr ∝ base_width/width, per-layer-type init-std, Yang et al. 2203.03466); chat MultiAgentConversation (N agents, role routing, thread filtering) + MessageThreader (reply chains, branching) + ConversationSummarizer (extractive/bullets/abstractive, stopword filtering)
-  - **cycle-141** — **NEW monitoring surface**: MetricsCollector (ring-buffer, p50/p95/p99) + AlertManager (5 comparisons, no-refire) + HealthChecker (readiness+liveness); retrieval CrossEncoderReranker + DenseRetriever (cosine ANN) + HybridFusionV2 (RRF/LINEAR/CONVEX + alpha tuning); inference SpeculativeSampler (draft-verify, acceptance criterion) + ContinuousBatcherV2 (priority queue, preemption, token budget); **NEW quantization surface**: GPTQCalibrator (Welford/Hessian-diag, 2210.17323) + MixedPrecisionPlanner (sensitivity scoring, budget enforcement)
-  - **cycle-140** — **NEW protocol surface**: MessageBus (pub/sub, per-subscriber mailbox) + ConversationProtocol (state machine INIT→USER→ASSISTANT→TOOL_CALL→TOOL_RESULT→ENDED) + StreamingProtocol (SSE event framing, TEXT_DELTA accumulation); safety JailbreakClassifierV2 (5-signal ensemble) + OutputSanitizer (PII/email/phone/SSN/API_KEY/IP rules) + PolicyAuditLog (ALLOW/BLOCK/WARN/REDACT, sha256 hash, JSONL export); interpretability AttentionRollout (residual chain-matmul) + GradientAttribution (saliency/grad-x-input/integrated-gradients)
-  - **cycle-139** — **NEW reasoning surface**: ChainOfThought (numbered/bullet/XML/freeform parse, consistency scoring) + ToTPlanner (beam search over thought branches, Yao et al. 2305.10601) + Scratchpad (pinned entries, tag search); **NEW search surface**: WebSearchStub (token-match, score-ranked) + SemanticSearch (TF-IDF inverted index) + ResultRanker (RRF fusion, min-max normalize, deduplicate); memory SemanticMemory (concept graph, BFS path) + MemoryConsolidator (decay factor, importance threshold); agent PlanExecutor (dependency DAG, transitive skip) + ToolOrchestrator (retry logic, batch dispatch)
-  - **cycle-138** — deployment RolloutManager (canary/blue-green/rolling traffic split) + SecretProvider (ENV/FILE/MEMORY backends, redaction); CLI PluginCommands + DebugCommands (log level, traces, metric snapshot); **NEW memory surface**: EpisodicMemory (importance scoring, BM25 search, eviction) + WorkingMemory (TTL + LRU) + MemoryIndex (TF-IDF inverted index); **NEW tools surface**: ToolRegistry (OpenAI-format spec, exception-safe dispatch) + ShellTool (deny-list sandbox) + FileTool (path deny-list, base_dir)
-  - **cycle-137** — UI tooltip system (hover-delay/position/registry) + ContextMenu (items/sections/keyboard-nav) + NotificationDrawer (severity/dismiss/history) → **UI at 25 files ✅**, serving ToolCallStreamAccumulator (partial JSON delta accumulation) + ContextCompressor (truncate/summarize_middle/drop_tool_results), eval MathBenchmark (7 categories, symbolic+numeric verify, BENCHMARK_REGISTRY["math"]) + CodeReviewScorer (5-dimension weighted rubric, grade A-F), alignment DPO trainer (sigmoid/hinge/IPO, label smoothing, 2305.18290) + RewardCalibrator (temperature/Platt/isotonic, ECE)
-  - **cycle-136** — UI expansion (HotkeyOverlay + SplitPane + ModelInfoPanel, now 22 files), MCP expansion (SkillCatalog + ExtensionManifestValidator, now 7 files), agent coding tools (ASTAnalyzer + FIMTokenizer PSM/SPM/RANDOM, PatchSynthesizer via difflib), CodeExecutionTool (DENY_PATTERNS subprocess sandbox), OSWorld eval scorer (6 stub tasks, BENCHMARK_REGISTRY)
-  - **cycle-135** — multimodal GatedFusion + WeightedSumFusion (sigmoid/softmax-normalized), WebArena harness + eval scorer, UI DebugPanel + ProgressRenderer (ETAEstimator ring buffer), GitHub Actions CI real workflow file — **anti-stagnation resolved**: multimodal→8 ✅, computer_use→6 ✅
-  - **cycle-134** — Helm chart generator (4 YAML templates), OpenTelemetry instrumentation (Tracer + PrometheusMetrics), UI StreamingRenderer + SessionManager (multi-tab PAUSED semantics), QFormer cross-modal attention (2301.12597), SPIN trainer (2401.01335), KTO trainer (2402.01306)
-  - **cycle-133** — UI expansion (TranscriptViewer + DiffViewer + TaskPanel, now 14 files), multimodal expansion (VideoEncoder 3D-patch + JSONLayoutParser + DocumentEmbedder, now 5 files), MCP expansion (SSEMCPServer stdio/SSE + PluginHost semver-validated hot-reload, now 5 files), Responses API serving (GPT-5 parity — InputItem/ResponseTool/ResponseOutputItem/streaming events CREATED→DELTA→COMPLETED), computer-use expansion (StubBrowserDriver + TrajectoryRecorder/Replayer, now 5 files)
-  - **cycle-132** — **6 new surface roots**: MCP server/client/tool-schema registry (stdio+in-process, cline/continue inspired), computer-use screen parser + GUI action predictor + action verifier (accessibility tree, OpenDevin/Kimi-Dev inspired), multimodal registry hub (VISION_ENCODER/AUDIO_ENCODER/MODALITY_PROJECTOR/TOKENIZER registries wiring existing model encoders), deployment surface (DockerfileBuilder + SBOMGenerator + HealthzHandler WSGI + real `deployment/Dockerfile` + `deployment/compose.yaml`), vLLM + SGLang backend adapters (lazy-import isolation), UI command palette + status-hierarchy tree + keyboard nav controller + onboarding flow (Rich, keyboard-first)
-- `aurelius` works as a terminal command after `pip install -e .`
-- Frontier-tier surfaces wired in cycles 100–103:
-  - **agent** — 10 modules: tool-call parsers, ReAct loop, dispatcher, ToT planner, error recovery, repo-context packer, unified-diff generator, shell planner, code-execution sandbox, task decomposer (DAG + topo sort + parallelizable-group extraction)
-  - **chat** — 10 modules: ChatML/Llama-3/Harmony, tool-message formatter, conversation memory, instruction-tuning data, role-aware masks, FIM, multi-turn state, 5-strategy message-truncation policy
-  - **longcontext** — 10 modules: INT8/INT4 KV, attention sinks, ring/Infini attention, context compaction, YaRN utilities, chunked prefill, paged KV cache, prefix cache (block-trie + LRU + refcount pinning)
-  - **retrieval** — 10 modules: BM25, hybrid RRF, fusion suite, cross-encoder + MMR/Jaccard rerankers, dense embedder, code-aware tokenizer, instruction-prefix embedder, corpus indexer, hard-negative miner (bm25-hard / embedding-hard / in-batch)
-  - **safety** — 10 modules: jailbreak, prompt-injection, harm-taxonomy, PII, output filter, prompt-integrity, refusal, constitutional, malicious-code, policy engine (declarative rule pipeline over all sub-filters)
-  - **eval** — 9 modules: NIAH, RULER, HumanEval, MBPP, SWE-bench-lite, IFEval, MT-Bench, AlpacaEval, Arena-Hard (Bradley-Terry + bootstrap CIs)
-  - **inference** additions — Orca-style continuous-batching scheduler, JSON-mode constrained decoder (structural JSON validity via stack parser)
-  - **training** additions — FSDP-lite sharded-DDP wrapper (single-process simulation)
-  - **serving** additions — OpenAI Chat Completions request/response validator + API_SHAPE_REGISTRY
-  - **optimizers** additions — Schedule-Free AdamW (Defazio 2024, no LR schedule required)
-  - **data** additions — instruction-dataset packer with FFD bin-packing + block-diagonal attention mask + response-only loss mask
-  - **eval** additions — GPQA (graduate-level MCQ scorer)
+```bash
+bandit -r src/ -f json -o bandit-report.json
+```
 
 ---
 
-## License
+## 📁 Repository Structure
 
-Aurelius is released under the [MIT License](LICENSE). You may use, modify, and distribute this code freely with attribution.
+```
+Aurelius/
+├── src/
+│   ├── model/           # Transformer core, attention, SSMs, 150+ modules
+│   ├── training/        # Training framework code (open architecture)
+│   ├── alignment/       # DPO, GRPO, RLHF, constitutional AI, 150+ modules
+│   ├── inference/       # Speculative decoding, batching, caching, 200+ modules
+│   ├── eval/            # Benchmarks, scorers, calibration, 100+ modules
+│   ├── data/            # Data processing framework code (open architecture)
+│   ├── interpretability/# Activation patching, SAEs, probing, 20+ tools
+│   ├── security/        # Adversarial defense, backdoor scan, MITRE ATT&CK, 24 modules
+│   ├── agent/           # ReAct loop, tool parser, planner, memory writer
+│   ├── chat/            # ChatML, Llama-3 templates, conversation management
+│   ├── longcontext/     # KV quantization, attention sinks, StreamingLLM
+│   ├── retrieval/       # BM25, hybrid search, dense retriever
+│   ├── safety/          # Jailbreak detector, output filter, PII scanner
+│   ├── serving/         # API server, web UI, streaming, session router
+│   ├── cli/             # aurelius terminal command
+│   └── ... (20+ surfaces)
+├── frontend/            # React 19 + Vite + TypeScript + Tailwind
+│   ├── src/
+│   │   ├── pages/       # Dashboard, Chat, Agents, Memory, Settings, etc.
+│   │   ├── components/  # Charts, Tables, Modals, Toasts, Sidebar
+│   │   ├── hooks/       # useApi, useWebSocket, usePushNotifications
+│   │   └── stores/      # Zustand state management
+│   └── dist/            # Production build (tracked in git)
+├── configs/             # ⚠️ Confidential — internal training configs
+├── scripts/             # ⚠️ Confidential — internal data & training scripts
+├── tests/               # 32,400+ tests across all surfaces
+├── deployment/          # Dockerfile, docker-compose, Helm charts
+├── docs/                # ⚠️ Confidential — internal documentation
+└── CONFIDENTIAL.md      # Confidentiality policy
+```
+
+> **Note:** `src/training/` and `src/data/` contain the open **framework code** for training and data processing. The actual training runs, datasets, checkpoints, and proprietary configurations are confidential. See [`CONFIDENTIAL.md`](CONFIDENTIAL.md).
+
+---
+
+## 🎨 Frontend Features
+
+- **Real-time Chat** — WebSocket streaming with typing indicators, slash commands, and quick actions
+- **Interactive Dashboard** — Line charts, bar charts, donut charts with live data
+- **Agent Management** — Agent comparison, detail views, lifecycle tracking
+- **Memory Browser** — Layered memory with importance scoring, date filtering, and search
+- **Workflow Designer** — Visual workflow status and task scheduling
+- **System Health** — Component health checks, API docs, log viewer
+- **Settings Panel** — Runtime config, plugin manager, notification preferences, import/restore
+- **PWA Support** — Service worker, offline capability, installable app
+- **Dark / Light Theme** — System-aware with manual toggle
+- **Keyboard Shortcuts** — `?` for help, `/` for search, `G` + key for navigation
+- **Global Search** — Command palette (`Cmd+K`) for quick navigation
+- **Toast Notifications** — Animated stack with pause-on-hover
+- **Responsive Design** — Mobile-friendly sidebar and layouts
+
+---
+
+## 🔐 Security
+
+- **0 High / 0 Critical** findings (continuously monitored with `bandit`)
+- Opt-in API authentication (`require_auth` defaults to `false`)
+- API key and session token support
+- SSRF-hardened HTTP backend
+- Prompt injection detection and sanitization
+- Gradient inversion defense and model fingerprinting
+- Full CVE ledger: AUR-SEC-2026-0001 through AUR-SEC-2026-0019 (all closed)
+
+---
+
+## 📜 License
+
+Aurelius is released under the **[Aurelius Open License](LICENSE)**.
+
+> **Free to use, modify, and distribute** — for any purpose, personal or commercial. The underlying Aurelius architecture (agent orchestration model, memory hierarchy, design patterns) remains the intellectual property of the authors. You may not claim ownership of the architecture or file patents on it. The Aurelius name and logo are reserved trademarks.
+
+See [`LICENSE`](LICENSE) and [`EULA.md`](EULA.md) for full terms.
+
+### Confidential Materials
+
+Training datasets, proprietary configurations, checkpoint files, experiment logs, and harvest journals are **confidential and internal-only**. They are not licensed for redistribution. See [`CONFIDENTIAL.md`](CONFIDENTIAL.md) for the full confidentiality policy.
+
+---
+
+## 🤝 Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines on:
+- Code style (Black formatter, Ruff linter)
+- Test requirements (every module ships with 10–16 tests)
+- Security review process
+- Cycle-based development workflow
+
+---
+
+## 📬 Repository
+
+**GitHub:** [https://github.com/S3nna13/Aurelius](https://github.com/S3nna13/Aurelius)
+
+**Issues & Discussions:** Open an issue for bugs, a discussion for questions.
+
+---
+
+*Built with ❤️ by the Aurelius team. Pure PyTorch. No compromises.*
