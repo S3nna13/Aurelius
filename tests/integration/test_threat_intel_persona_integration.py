@@ -11,6 +11,7 @@ from src.chat.threat_intel_persona import (
     ThreatIntelPersona,
 )
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_threat_intel_persona_registered_in_chat_template_registry() -> None:
@@ -39,7 +40,8 @@ def test_config_flag_defaults_off() -> None:
 
 
 def test_config_flag_is_toggleable() -> None:
-    cfg = AureliusConfig(chat_threat_intel_persona_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="chat.threat_intel_persona", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.chat_threat_intel_persona_enabled is True
 
 

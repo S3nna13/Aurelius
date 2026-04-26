@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import src.safety as safety
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_registry():
@@ -15,7 +16,8 @@ def test_config_default_off():
 
 
 def test_config_opt_in():
-    cfg = AureliusConfig(safety_knn_known_bad_guard_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="safety.knn_known_bad_guard", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.safety_knn_known_bad_guard_enabled is True
 
 

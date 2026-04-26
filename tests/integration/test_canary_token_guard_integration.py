@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 from src.safety import (
     SAFETY_FILTER_REGISTRY,
     CanaryDetection,
@@ -37,7 +38,8 @@ def test_config_flag_defaults_off() -> None:
 
 
 def test_config_flag_can_be_enabled() -> None:
-    cfg = AureliusConfig(safety_canary_token_guard_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="safety.canary_token_guard", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.safety_canary_token_guard_enabled is True
 
 

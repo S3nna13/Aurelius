@@ -20,11 +20,11 @@ _MCP_SUBMODULES = (
     "mcp_server",
     "mcp_client",
     "tool_schema_registry",
+    "tool_schema_validator",
     "sse_mcp_server",
     "plugin_host",
     "skill_catalog",
     "extension_manifest",
-    "capability_negotiator",
     "tool_result_formatter",
     "session_manager",
 )
@@ -55,8 +55,9 @@ __all__ = [
     "ExtensionManifestValidator",
     "ExtensionManifest",
     "ManifestValidationResult",
-    "CapabilityNegotiator",
-    "CAPABILITY_NEGOTIATOR_REGISTRY",
+    "ToolSchemaValidator",
+    "DEFAULT_TOOL_SCHEMA_VALIDATOR",
+    "TOOL_SCHEMA_VALIDATOR_REGISTRY",
     *_MCP_SUBMODULES,
 ]
 
@@ -119,14 +120,6 @@ def __getattr__(name: str):
         from .skill_catalog import SKILL_CATALOG_REGISTRY  # noqa: PLC0415
         globals()["SKILL_CATALOG_REGISTRY"] = SKILL_CATALOG_REGISTRY
         return SKILL_CATALOG_REGISTRY
-    if name == "CapabilityNegotiator":
-        from .capability_negotiator import CapabilityNegotiator  # noqa: PLC0415
-        globals()["CapabilityNegotiator"] = CapabilityNegotiator
-        return CapabilityNegotiator
-    if name == "CAPABILITY_NEGOTIATOR_REGISTRY":
-        from .capability_negotiator import CAPABILITY_NEGOTIATOR_REGISTRY  # noqa: PLC0415
-        globals()["CAPABILITY_NEGOTIATOR_REGISTRY"] = CAPABILITY_NEGOTIATOR_REGISTRY
-        return CAPABILITY_NEGOTIATOR_REGISTRY
     if name == "ExtensionManifestValidator":
         from .extension_manifest import ExtensionManifestValidator  # noqa: PLC0415
         globals()["ExtensionManifestValidator"] = ExtensionManifestValidator
@@ -163,6 +156,18 @@ def __getattr__(name: str):
         from .session_manager import SessionState  # noqa: PLC0415
         globals()["SessionState"] = SessionState
         return SessionState
+    if name == "ToolSchemaValidator":
+        from .tool_schema_validator import ToolSchemaValidator  # noqa: PLC0415
+        globals()["ToolSchemaValidator"] = ToolSchemaValidator
+        return ToolSchemaValidator
+    if name == "DEFAULT_TOOL_SCHEMA_VALIDATOR":
+        from .tool_schema_validator import DEFAULT_TOOL_SCHEMA_VALIDATOR  # noqa: PLC0415
+        globals()["DEFAULT_TOOL_SCHEMA_VALIDATOR"] = DEFAULT_TOOL_SCHEMA_VALIDATOR
+        return DEFAULT_TOOL_SCHEMA_VALIDATOR
+    if name == "TOOL_SCHEMA_VALIDATOR_REGISTRY":
+        from .tool_schema_validator import TOOL_SCHEMA_VALIDATOR_REGISTRY  # noqa: PLC0415
+        globals()["TOOL_SCHEMA_VALIDATOR_REGISTRY"] = TOOL_SCHEMA_VALIDATOR_REGISTRY
+        return TOOL_SCHEMA_VALIDATOR_REGISTRY
     if name in _MCP_SUBMODULES:
         module = import_module(f"src.mcp.{name}")
         globals()[name] = module

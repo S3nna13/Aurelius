@@ -36,6 +36,7 @@ All security findings are tracked in `.aurelius-cves.log` at the repository root
 | AUR-SEC-2026-0018 | Auth middleware / HMAC timing-safe (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
 | AUR-SEC-2026-0019 | Token-bucket rate limiter (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
 | AUR-SEC-2026-0027 | Sandbox escape via getattr/type/setattr traversal | Medium | CWE-693 | Fixed (cycle-180) |
+| AUR-SEC-2026-0028 | In-process sandbox escape via `object.__subclasses__()` + SSRF via missing IP blocklist + default-open auth + `shell=True` command injection | Critical / High | CWE-693 / CWE-918 / CWE-306 / CWE-78 | Fixed (cycle-200-sec) |
 
 ## Security Architecture
 

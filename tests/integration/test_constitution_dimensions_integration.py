@@ -5,6 +5,7 @@ from __future__ import annotations
 from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.constitution_dimensions import ConstitutionScorer
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_alignment_registry_has_constitution_dimensions():
@@ -18,7 +19,8 @@ def test_config_flag_defaults_off():
 
 
 def test_config_flag_togglable():
-    cfg = AureliusConfig(alignment_constitution_dimensions_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="alignment.constitution_dimensions", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.alignment_constitution_dimensions_enabled is True
 
 

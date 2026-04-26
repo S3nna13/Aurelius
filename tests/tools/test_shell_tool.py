@@ -1,90 +1,92 @@
-"""Tests for ShellTool: deny list, execution, output truncation."""
+"""Tests for ShellTool: allow-list, execution, output truncation."""
 from __future__ import annotations
 
 import pytest
 
-from src.tools.shell_tool import ShellTool, SHELL_TOOL, SHELL_DENY_PATTERNS
+from src.tools.shell_tool import ShellTool, SHELL_TOOL, SHELL_ALLOWLIST
 from src.tools.tool_registry import ToolResult, ToolSpec, TOOL_REGISTRY
 
 
 # ---------------------------------------------------------------------------
-# SHELL_DENY_PATTERNS
+# SHELL_ALLOWLIST
 # ---------------------------------------------------------------------------
 
-class TestShellDenyPatterns:
+class TestShellAllowlist:
     def test_is_frozenset(self):
-        assert isinstance(SHELL_DENY_PATTERNS, frozenset)
+        assert isinstance(SHELL_ALLOWLIST, frozenset)
 
     def test_has_at_least_eight_entries(self):
-        assert len(SHELL_DENY_PATTERNS) >= 8
+        assert len(SHELL_ALLOWLIST) >= 8
 
-    def test_contains_rm_rf(self):
-        assert "rm -rf" in SHELL_DENY_PATTERNS
+    def test_contains_safe_commands(self):
+        assert "echo" in SHELL_ALLOWLIST
+        assert "ls" in SHELL_ALLOWLIST
+        assert "cat" in SHELL_ALLOWLIST
+        assert "git" in SHELL_ALLOWLIST
 
-    def test_contains_fork_bomb(self):
-        assert ":(){ :|:& };:" in SHELL_DENY_PATTERNS
-
-    def test_contains_dd_if(self):
-        assert "dd if=" in SHELL_DENY_PATTERNS
-
-    def test_contains_mkfs(self):
-        assert "mkfs" in SHELL_DENY_PATTERNS
-
-    def test_contains_shutdown(self):
-        assert "shutdown" in SHELL_DENY_PATTERNS
-
-    def test_contains_reboot(self):
-        assert "reboot" in SHELL_DENY_PATTERNS
-
-    def test_contains_chmod_777(self):
-        assert "chmod 777 /" in SHELL_DENY_PATTERNS
-
-    def test_contains_eval_dollar(self):
-        assert "eval $(" in SHELL_DENY_PATTERNS
+    def test_does_not_contain_dangerous_commands(self):
+        assert "rm" not in SHELL_ALLOWLIST
+        assert "mkfs" not in SHELL_ALLOWLIST
+        assert "shutdown" not in SHELL_ALLOWLIST
+        assert "reboot" not in SHELL_ALLOWLIST
 
 
 # ---------------------------------------------------------------------------
-# ShellTool.is_denied
+# ShellTool._validate
 # ---------------------------------------------------------------------------
 
-class TestShellToolIsDenied:
-    def test_rm_rf_is_denied(self):
+class TestShellToolValidate:
+    def test_empty_command_rejected(self):
         tool = ShellTool()
-        assert tool.is_denied("rm -rf /tmp/test") is True
+        argv, error = tool._validate("")
+        assert argv is None
+        assert "non-empty" in error
 
-    def test_echo_is_not_denied(self):
+    def test_metachar_pipe_rejected(self):
         tool = ShellTool()
-        assert tool.is_denied("echo hello") is False
+        argv, error = tool._validate("echo hello | cat")
+        assert argv is None
+        assert "metacharacter" in error
 
-    def test_ls_is_not_denied(self):
+    def test_metachar_semicolon_rejected(self):
         tool = ShellTool()
-        assert tool.is_denied("ls -la /tmp") is False
+        argv, error = tool._validate("echo a; echo b")
+        assert argv is None
+        assert "metacharacter" in error
 
-    def test_shutdown_is_denied(self):
+    def test_metachar_dollar_rejected(self):
         tool = ShellTool()
-        assert tool.is_denied("sudo shutdown now") is True
+        argv, error = tool._validate("echo $HOME")
+        assert argv is None
+        assert "metacharacter" in error
 
-    def test_reboot_is_denied(self):
+    def test_allowlisted_command_accepted(self):
         tool = ShellTool()
-        assert tool.is_denied("reboot") is True
+        argv, error = tool._validate("echo hello")
+        assert argv == ["echo", "hello"]
+        assert error == ""
 
-    def test_mkfs_is_denied(self):
+    def test_denylisted_command_rejected(self):
         tool = ShellTool()
-        assert tool.is_denied("mkfs.ext4 /dev/sdb") is True
+        argv, error = tool._validate("rm -rf /tmp")
+        assert argv is None
+        assert "not in the allowlist" in error
 
-    def test_custom_deny_patterns(self):
-        tool = ShellTool(deny_patterns=frozenset(["forbidden_cmd"]))
-        assert tool.is_denied("run forbidden_cmd now") is True
-        assert tool.is_denied("echo safe") is False
-
-    def test_empty_deny_patterns(self):
-        tool = ShellTool(deny_patterns=frozenset())
-        assert tool.is_denied("rm -rf /") is False
-
-    def test_case_sensitive(self):
+    def test_absolute_path_resolved(self):
         tool = ShellTool()
-        # deny patterns are lowercase; uppercase ECHO should not match
-        assert tool.is_denied("ECHO hello") is False
+        argv, error = tool._validate("/bin/echo hello")
+        assert argv == ["/bin/echo", "hello"]
+        assert error == ""
+
+    def test_custom_allowlist(self):
+        tool = ShellTool(allowlist=frozenset(["allowed_cmd"]))
+        argv, error = tool._validate("allowed_cmd arg")
+        assert argv == ["allowed_cmd", "arg"]
+        assert error == ""
+
+        argv, error = tool._validate("echo hello")
+        assert argv is None
+        assert "not in the allowlist" in error
 
 
 # ---------------------------------------------------------------------------
@@ -97,10 +99,10 @@ class TestShellToolRun:
         result = tool.run("rm -rf /tmp/fake_test_path")
         assert result.success is False
 
-    def test_denied_command_error_mentions_pattern(self):
+    def test_denied_command_error_mentions_allowlist(self):
         tool = ShellTool()
         result = tool.run("rm -rf /tmp/fake_test_path")
-        assert "rm -rf" in result.error
+        assert "not in the allowlist" in result.error
 
     def test_denied_result_is_toolresult(self):
         tool = ShellTool()
@@ -124,7 +126,7 @@ class TestShellToolRun:
 
     def test_failing_command_returns_failure(self):
         tool = ShellTool()
-        result = tool.run("exit 1")
+        result = tool.run("python3 -c 'import sys; sys.exit(1)'")
         assert result.success is False
 
     def test_output_truncated_to_2000_chars(self):
@@ -147,16 +149,23 @@ class TestShellToolRun:
         result = tool.run("echo hi")
         assert result.tool_name == "shell"
 
-    def test_empty_command_runs_without_crash(self):
+    def test_empty_command_rejected(self):
         tool = ShellTool()
         result = tool.run("")
-        assert isinstance(result, ToolResult)
+        assert result.success is False
+        assert "non-empty" in result.error
 
     def test_multiline_output(self):
         tool = ShellTool()
         result = tool.run("printf 'line1\\nline2\\nline3'")
         assert "line1" in result.output
         assert "line3" in result.output
+
+    def test_pipeline_rejected(self):
+        tool = ShellTool()
+        result = tool.run("echo hello | wc -l")
+        assert result.success is False
+        assert "metacharacter" in result.error
 
 
 # ---------------------------------------------------------------------------

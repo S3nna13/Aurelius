@@ -1,91 +1,102 @@
-"""Aurelius monitoring: metric_exporter — exports collected metrics in multiple formats."""
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
-from enum import Enum
-from typing import List
+import threading
+from collections import defaultdict
+from typing import Any
+
+from src.monitoring import MONITORING_REGISTRY
+from src.monitoring.metrics_collector import MetricType
+
+DEFAULT_BUCKETS = [
+    0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+]
 
 
-class ExportFormat(Enum):
-    PROMETHEUS = "prometheus"
-    JSON = "json"
-    CSV = "csv"
-    INFLUX = "influx"
+def _escape_label(v: str) -> str:
+    return v.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
-@dataclass(frozen=True)
-class MetricPoint:
-    name: str
-    value: float
-    labels: dict  # dict[str, str]
-    timestamp: float
+def _fmt_labels(labels: dict[str, str]) -> str:
+    if not labels:
+        return ""
+    parts = [f'{k}="{_escape_label(v)}"' for k, v in sorted(labels.items())]
+    return "{" + ",".join(parts) + "}"
+
+
+def _fmt_counter(name: str, value: float, labels: dict[str, str]) -> list[str]:
+    lp = _fmt_labels(labels)
+    return [
+        f"# HELP {name} Counter metric",
+        f"# TYPE {name} counter",
+        f"{name}{lp} {value}",
+    ]
+
+
+def _fmt_gauge(name: str, value: float, labels: dict[str, str]) -> list[str]:
+    lp = _fmt_labels(labels)
+    return [
+        f"# HELP {name} Gauge metric",
+        f"# TYPE {name} gauge",
+        f"{name}{lp} {value}",
+    ]
+
+
+def _fmt_histogram(name: str, samples: list[float], labels: dict[str, str]) -> list[str]:
+    lp = _fmt_labels(labels)
+    n = len(samples)
+    total = sum(samples)
+    lines = [
+        f"# HELP {name} Histogram metric",
+        f"# TYPE {name} histogram",
+    ]
+    buckets = sorted(set(DEFAULT_BUCKETS + [float("inf")]))
+    for bound in buckets:
+        count = sum(1 for s in samples if s <= bound)
+        le = "+Inf" if bound == float("inf") else str(bound)
+        bl = dict(labels)
+        bl["le"] = le
+        lines.append(f"{name}_bucket{_fmt_labels(bl)} {count}")
+    lines.append(f"{name}_count{lp} {n}")
+    lines.append(f"{name}_sum{lp} {total}")
+    return lines
 
 
 class MetricExporter:
-    """Collects MetricPoint objects and exports them in various wire formats."""
+    def __init__(self, collector: Any | None = None) -> None:
+        self._lock = threading.Lock()
+        self._collector = collector
 
-    def __init__(self) -> None:
-        self._points: List[MetricPoint] = []
-
-    def add(self, point: MetricPoint) -> None:
-        self._points.append(point)
-
-    def export(self, fmt: ExportFormat) -> str:
-        if fmt is ExportFormat.PROMETHEUS:
-            return self._export_prometheus()
-        if fmt is ExportFormat.JSON:
-            return self._export_json()
-        if fmt is ExportFormat.CSV:
-            return self._export_csv()
-        if fmt is ExportFormat.INFLUX:
-            return self._export_influx()
-        raise ValueError(f"Unknown format: {fmt}")
-
-    def _label_str_prometheus(self, labels: dict) -> str:
-        if not labels:
+    def generate(self) -> str:
+        mc = self._collector or MONITORING_REGISTRY.get("metrics")
+        if mc is None:
             return ""
-        parts = [f'{k}="{v}"' for k, v in labels.items()]
-        return "{" + ",".join(parts) + "}"
-
-    def _export_prometheus(self) -> str:
-        lines = []
-        for p in self._points:
-            ts_ms = int(p.timestamp * 1000)
-            label_part = self._label_str_prometheus(p.labels)
-            lines.append(f"{p.name}{label_part} {p.value} {ts_ms}")
-        return "\n".join(lines) + ("\n" if lines else "")
-
-    def _export_json(self) -> str:
-        records = [
-            {"name": p.name, "value": p.value, "labels": p.labels, "timestamp": p.timestamp}
-            for p in self._points
-        ]
-        return json.dumps(records)
-
-    def _export_csv(self) -> str:
-        rows = ["name,value,labels,timestamp"]
-        for p in self._points:
-            label_part = ";".join(f"{k}={v}" for k, v in p.labels.items())
-            rows.append(f"{p.name},{p.value},{label_part},{p.timestamp}")
-        return "\n".join(rows) + "\n"
-
-    def _export_influx(self) -> str:
-        lines = []
-        for p in self._points:
-            ts_ns = int(p.timestamp * 1e9)
-            label_part = ",".join(f"{k}={v}" for k, v in p.labels.items())
-            tag_set = f",{label_part}" if label_part else ""
-            lines.append(f"{p.name}{tag_set} value={p.value} {ts_ns}")
-        return "\n".join(lines) + ("\n" if lines else "")
-
-    def clear(self) -> None:
-        self._points.clear()
-
-    def __len__(self) -> int:
-        return len(self._points)
+        by_name: dict[str, list[Any]] = defaultdict(list)
+        for name in mc.metric_names():
+            for sample in mc.get_samples(name):
+                by_name[name].append(sample)
+        lines: list[str] = []
+        for name in sorted(by_name):
+            samples = by_name[name]
+            metric_type = samples[0].metric_type
+            by_labels: dict[tuple, list[Any]] = defaultdict(list)
+            for s in samples:
+                key = tuple(sorted(s.labels.items())) if s.labels else ()
+                by_labels[key].append(s)
+            for label_key, group in by_labels.items():
+                labels = dict(label_key)
+                values = [s.value for s in group]
+                if metric_type == MetricType.COUNTER:
+                    lines.extend(_fmt_counter(name, sum(values), labels))
+                elif metric_type == MetricType.GAUGE:
+                    lines.extend(_fmt_gauge(name, values[-1], labels))
+                elif metric_type == MetricType.HISTOGRAM:
+                    lines.extend(_fmt_histogram(name, values, labels))
+        return "\n".join(lines) + "\n" if lines else ""
 
 
-METRIC_EXPORTER_REGISTRY: dict = {"default": MetricExporter}
+METRICS_EXPORTER = MetricExporter()
 
-REGISTRY = METRIC_EXPORTER_REGISTRY
+
+def handle_metrics() -> str:
+    """Return Prometheus-formatted metrics. Intended for /metrics endpoints."""
+    return METRICS_EXPORTER.generate()

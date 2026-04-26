@@ -636,253 +636,38 @@ __all__ += [
     "ToolOrchestrator",
 ]
 
-# --- skill executor (cycle-204) ---------------------------------------------
-from .skill_executor import (  # noqa: E402
-    SkillExecutionError,
-    SkillContext,
-    ExecutionResult as SkillExecutionResult,
-    SkillExecutor,
-    DEFAULT_SKILL_EXECUTOR,
-    SKILL_EXECUTOR_REGISTRY,
+
+# --- message handler (cycle-201) ---------------------------------------------
+from .message_handler import (  # noqa: E402
+    MessageHandler,
+    MESSAGE_HANDLER_REGISTRY,
+    DEFAULT_MESSAGE_HANDLER,
 )
 
+AGENT_LOOP_REGISTRY["message_handler"] = MessageHandler
+
 __all__ += [
-    "SkillExecutionError",
-    "SkillContext",
-    "SkillExecutionResult",
-    "SkillExecutor",
-    "DEFAULT_SKILL_EXECUTOR",
-    "SKILL_EXECUTOR_REGISTRY",
+    "MessageHandler",
+    "MESSAGE_HANDLER_REGISTRY",
+    "DEFAULT_MESSAGE_HANDLER",
 ]
 
-# --- plugin loader (cycle-204) -----------------------------------------------
-from .plugin_loader import (  # noqa: E402
-    PluginLoadError,
-    LoadedPlugin,
-    PluginLoader,
-    DEFAULT_PLUGIN_LOADER,
-    PLUGIN_LOADER_REGISTRY,
+
+# --- supervisor (cycle-201) --------------------------------------------------
+from .supervisor import (  # noqa: E402
+    AgentState,
+    AgentSupervisor,
+    SupervisorConfig,
+    SUPERVISOR_REGISTRY,
+    DEFAULT_SUPERVISOR,
 )
 
-__all__ += [
-    "PluginLoadError",
-    "LoadedPlugin",
-    "PluginLoader",
-    "DEFAULT_PLUGIN_LOADER",
-    "PLUGIN_LOADER_REGISTRY",
-]
-
-# --- plugin dependency resolver (cycle-204) ----------------------------------
-from .plugin_dependency_resolver import (  # noqa: E402
-    DependencyCycleError,
-    DependencyResolver,
-    DEFAULT_DEPENDENCY_RESOLVER,
-    DEPENDENCY_RESOLVER_REGISTRY,
-)
+AGENT_LIFECYCLE_REGISTRY["supervisor"] = AgentSupervisor
 
 __all__ += [
-    "DependencyCycleError",
-    "DependencyResolver",
-    "DEFAULT_DEPENDENCY_RESOLVER",
-    "DEPENDENCY_RESOLVER_REGISTRY",
-]
-
-# --- skill composer (cycle-204b) --------------------------------------------
-from .skill_composer import (  # noqa: E402
-    SkillCompositionError,
-    CompositionStep,
-    CompositionResult,
-    SkillComposer,
-    DEFAULT_SKILL_COMPOSER,
-    SKILL_COMPOSER_REGISTRY,
-)
-
-__all__ += [
-    "SkillCompositionError",
-    "CompositionStep",
-    "CompositionResult",
-    "SkillComposer",
-    "DEFAULT_SKILL_COMPOSER",
-    "SKILL_COMPOSER_REGISTRY",
-]
-
-# --- plugin sandbox (cycle-204b) ---------------------------------------------
-from .plugin_sandbox import (  # noqa: E402
-    SandboxViolationError,
-    SandboxConfig,
-    SandboxResult,
-    PluginSandbox,
-    DEFAULT_PLUGIN_SANDBOX,
-    PLUGIN_SANDBOX_REGISTRY,
-)
-
-__all__ += [
-    "SandboxViolationError",
-    "SandboxConfig",
-    "SandboxResult",
-    "PluginSandbox",
-    "DEFAULT_PLUGIN_SANDBOX",
-    "PLUGIN_SANDBOX_REGISTRY",
-]
-
-# --- skill trigger engine (cycle-204b) ---------------------------------------
-from .skill_trigger_engine import (  # noqa: E402
-    TriggerEngineError,
-    MatchedSkill,
-    TriggerResult,
-    SkillTriggerEngine,
-    DEFAULT_TRIGGER_ENGINE,
-    TRIGGER_ENGINE_REGISTRY,
-)
-
-__all__ += [
-    "TriggerEngineError",
-    "MatchedSkill",
-    "TriggerResult",
-    "SkillTriggerEngine",
-    "DEFAULT_TRIGGER_ENGINE",
-    "TRIGGER_ENGINE_REGISTRY",
-]
-
-# --- natural language command parser (cycle-208) -----------------------------
-from .nl_command_parser import (  # noqa: E402
-    NLCommandParseError,
-    ParsedCommand,
-    NLCommandParser,
-    DEFAULT_NL_PARSER,
-    NL_PARSER_REGISTRY,
-)
-
-__all__ += [
-    "NLCommandParseError",
-    "ParsedCommand",
-    "NLCommandParser",
-    "DEFAULT_NL_PARSER",
-    "NL_PARSER_REGISTRY",
-]
-
-# --- command dispatcher (cycle-208) ------------------------------------------
-from .command_dispatcher import (  # noqa: E402
-    CommandDispatchError,
-    DispatchResult,
-    CommandDispatcher,
-    DEFAULT_COMMAND_DISPATCHER,
-    COMMAND_DISPATCHER_REGISTRY,
-)
-
-__all__ += [
-    "CommandDispatchError",
-    "DispatchResult",
-    "CommandDispatcher",
-    "DEFAULT_COMMAND_DISPATCHER",
-    "COMMAND_DISPATCHER_REGISTRY",
-]
-
-# --- agent mode registry (cycle-209) -----------------------------------------
-from .agent_mode_registry import (  # noqa: E402
-    AgentModeError,
-    AgentMode,
-    AgentModeRegistry,
-    DEFAULT_MODE_REGISTRY,
-    AGENT_MODE_REGISTRY,
-)
-
-__all__ += [
-    "AgentModeError",
-    "AgentMode",
-    "AgentModeRegistry",
-    "DEFAULT_MODE_REGISTRY",
-    "AGENT_MODE_REGISTRY",
-]
-
-# --- workflow engine (cycle-209) ---------------------------------------------
-from .workflow_engine import (  # noqa: E402
-    WorkflowError,
-    WorkflowCheckpoint,
-    WorkflowNode,
-    WorkflowDAG,
-    WorkflowExecutor,
-    DEFAULT_WORKFLOW_EXECUTOR,
-    WORKFLOW_EXECUTOR_REGISTRY,
-)
-
-__all__ += [
-    "WorkflowError",
-    "WorkflowCheckpoint",
-    "WorkflowNode",
-    "WorkflowDAG",
-    "WorkflowExecutor",
-    "DEFAULT_WORKFLOW_EXECUTOR",
-    "WORKFLOW_EXECUTOR_REGISTRY",
-]
-
-# --- trace analyzer (cycle-209 subagent) --------------------------------------
-from .trace_analyzer import (  # noqa: E402
-    TraceAnalysis,
-    TraceAnalyzer,
-    ToolSummary,
-    TRACE_ANALYZER_REGISTRY,
-)
-
-__all__ += [
-    "TraceAnalysis",
-    "TraceAnalyzer",
-    "ToolSummary",
-    "TRACE_ANALYZER_REGISTRY",
-]
-
-# --- socratic tutor (additive) ----------------------------------------------
-from .socratic_tutor import (  # noqa: E402
-    DEFAULT_SOCRATIC_TUTOR,
-    SOCRATIC_TUTOR_REGISTRY,
-    ConceptMastery,
-    SocraticTutor,
-    SocraticTutorError,
-    TutorSession,
-)
-
-__all__ += [
-    "DEFAULT_SOCRATIC_TUTOR",
-    "SOCRATIC_TUTOR_REGISTRY",
-    "ConceptMastery",
-    "SocraticTutor",
-    "SocraticTutorError",
-    "TutorSession",
-]
-# --- skill evolver (cycle-211) -----------------------------------------------
-from .skill_evolver import (  # noqa: E402
-    CrystallizedSkill,
-    SkillEvolutionError,
-    SkillEvolver,
-    DEFAULT_SKILL_EVOLVER,
-    SKILL_EVOLVER_REGISTRY,
-)
-
-__all__ += [
-    "CrystallizedSkill",
-    "SkillEvolutionError",
-    "SkillEvolver",
-    "DEFAULT_SKILL_EVOLVER",
-    "SKILL_EVOLVER_REGISTRY",
-]
-
-# --- tutorial engine (cycle-211) ---------------------------------------------
-from .tutorial_engine import (  # noqa: E402
-    Tutorial,
-    TutorialEngine,
-    TutorialEngineError,
-    TutorialProgress,
-    TutorialStep,
-    DEFAULT_TUTORIAL_ENGINE,
-    TUTORIAL_ENGINE_REGISTRY,
-)
-
-__all__ += [
-    "Tutorial",
-    "TutorialEngine",
-    "TutorialEngineError",
-    "TutorialProgress",
-    "TutorialStep",
-    "DEFAULT_TUTORIAL_ENGINE",
-    "TUTORIAL_ENGINE_REGISTRY",
+    "AgentState",
+    "AgentSupervisor",
+    "SupervisorConfig",
+    "SUPERVISOR_REGISTRY",
+    "DEFAULT_SUPERVISOR",
 ]

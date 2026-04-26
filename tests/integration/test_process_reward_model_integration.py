@@ -15,6 +15,7 @@ import torch
 import pytest
 
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 import src.alignment as alignment_pkg
 from src.training.process_reward_model import ProcessRewardModel
 from src.training.trainer import build_model_for_training
@@ -28,6 +29,13 @@ STEP_TOKEN_ID = 5  # < vocab_size=256
 
 
 def tiny_prm_config() -> AureliusConfig:
+    FEATURE_FLAG_REGISTRY.register(
+        FeatureFlag(
+            name="training.prm_training",
+            enabled=True,
+            metadata={"step_token_id": STEP_TOKEN_ID, "aggregation": "min"},
+        )
+    )
     cfg = AureliusConfig(
         n_layers=2,
         d_model=64,
@@ -37,9 +45,6 @@ def tiny_prm_config() -> AureliusConfig:
         d_ff=128,
         vocab_size=256,
         max_seq_len=64,
-        enable_prm_training=True,
-        prm_step_token_id=STEP_TOKEN_ID,
-        prm_aggregation="min",
     )
     return cfg
 
@@ -91,6 +96,7 @@ def test_build_model_prm_enabled():
 def test_build_model_default_path():
     from src.model.transformer import AureliusTransformer
 
+    FEATURE_FLAG_REGISTRY._flags.pop("training.prm_training", None)
     cfg = tiny_base_config()
     model = build_model_for_training(cfg)
     assert isinstance(model, AureliusTransformer), (
@@ -154,6 +160,7 @@ def test_prm_inference_end_to_end():
 # ---------------------------------------------------------------------------
 
 def test_config_prm_fields_defaults():
+    FEATURE_FLAG_REGISTRY._flags.pop("training.prm_training", None)
     cfg = AureliusConfig(
         n_layers=2, d_model=64, n_heads=4, n_kv_heads=2,
         head_dim=16, d_ff=128, vocab_size=256, max_seq_len=64,

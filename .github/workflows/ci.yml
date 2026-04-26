@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - 'main'
-      - 'codex/*'
       - 'cycle/*'
+      - 'sec/*'
+      - 'feat/*'
+      - 'deploy/*'
   pull_request:
     branches:
       - 'main'
@@ -31,49 +33,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Run pytest (core modules)
+      - name: Run pytest
         run: |
-          python -m pytest --tb=short -q \
-            tests/model/ \
-            tests/training/ \
-            tests/inference/ \
-            tests/data/ \
-            -x || true
+          python -m pytest --tb=short -q
 
-      - name: Run pytest (security & safety)
-        run: |
-          python -m pytest --tb=short -q \
-            tests/security/ \
-            tests/safety/ \
-            -x || true
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: .coverage
+        if: always()
 
   lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-
-      - name: Syntax check (src)
-        run: |
-          find src -name "*.py" -exec python -m py_compile {} + || true
-
-      - name: Syntax check (tests)
-        run: |
-          find tests -name "*.py" -exec python -m py_compile {} + || true
-
-  typecheck:
-    name: Type check
+    name: Lint and type check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -89,6 +61,41 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Run mypy (optional)
+      - name: Run Ruff lint
         run: |
-          mypy src/model/ src/training/ src/data/ --ignore-missing-imports || true
+          python -m ruff check src/ tests/
+
+      - name: Run Ruff format check
+        run: |
+          python -m ruff format --check src/ tests/
+
+      - name: Run py_compile on all Python files
+        run: |
+          find src tests -name "*.py" -exec python -m py_compile {} +
+
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit pip-audit
+          pip install -e ".[dev]"
+
+      - name: Run Bandit
+        run: |
+          bandit -r src/ -f json -o bandit-report.json || true
+          bandit -r src/ -ll
+
+      - name: Run pip-audit
+        run: |
+          pip-audit --desc

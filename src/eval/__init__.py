@@ -1079,3 +1079,53 @@ from src.eval.hellaswag_scorer import (  # noqa: E402,F401
     HellaSwagScorer,
     HELLASWAG_REGISTRY,
 )
+
+# --- Additive registration for Chain-of-Thought Scorer -----------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.  Evaluates reasoning trace quality via
+# step-wise faithfulness, redundancy, and consistency metrics.
+from .chain_of_thought_scorer import (
+    ChainOfThoughtScorer as _ChainOfThoughtScorer,
+    DEFAULT_CHAIN_OF_THOUGHT_SCORER as _DEFAULT_CHAIN_OF_THOUGHT_SCORER,
+    CHAIN_OF_THOUGHT_SCORER_REGISTRY as _CHAIN_OF_THOUGHT_SCORER_REGISTRY,
+)
+
+ChainOfThoughtScorer = _ChainOfThoughtScorer
+DEFAULT_CHAIN_OF_THOUGHT_SCORER = _DEFAULT_CHAIN_OF_THOUGHT_SCORER
+CHAIN_OF_THOUGHT_SCORER_REGISTRY = _CHAIN_OF_THOUGHT_SCORER_REGISTRY
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("chain_of_thought", _ChainOfThoughtScorer)
+BENCHMARK_REGISTRY.setdefault("chain_of_thought", _ChainOfThoughtScorer)
+
+__all__ = list(__all__) + [
+    "ChainOfThoughtScorer",
+    "DEFAULT_CHAIN_OF_THOUGHT_SCORER",
+    "CHAIN_OF_THOUGHT_SCORER_REGISTRY",
+]
+
+# --- Additive registration for Fairness Scorer -------------------------------
+# Additive only; reuses METRIC_REGISTRY / BENCHMARK_REGISTRY above and leaves
+# all prior entries untouched.  Computes demographic-parity and equal-odds
+# gaps from prediction/label slices.
+from .fairness_scorer import (
+    FairnessScorer as _FairnessScorer,
+    DEFAULT_FAIRNESS_SCORER as _DEFAULT_FAIRNESS_SCORER,
+    FAIRNESS_SCORER_REGISTRY as _FAIRNESS_SCORER_REGISTRY,
+)
+
+FairnessScorer = _FairnessScorer
+DEFAULT_FAIRNESS_SCORER = _DEFAULT_FAIRNESS_SCORER
+FAIRNESS_SCORER_REGISTRY = _FAIRNESS_SCORER_REGISTRY
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("fairness", _FairnessScorer)
+BENCHMARK_REGISTRY.setdefault("fairness", _FairnessScorer)
+
+__all__ = list(__all__) + [
+    "FairnessScorer",
+    "DEFAULT_FAIRNESS_SCORER",
+    "FAIRNESS_SCORER_REGISTRY",
+]

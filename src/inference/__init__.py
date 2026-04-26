@@ -413,3 +413,39 @@ __all__ += [
     "ContinuousBatcherV2",
     "RequestPriority",
 ]
+
+# ---------------------------------------------------------------------------
+# Prefix Caching — LRU KV cache keyed by prefix hash (Cycle 204)
+# ---------------------------------------------------------------------------
+from src.inference.prefix_caching import (  # noqa: E402
+    CachedPrefix,
+    PrefixCache,
+    PrefixCacheConfig,
+    compute_prefix_hash,
+)
+
+DECODER_REGISTRY["prefix_caching"] = PrefixCache
+
+__all__ += [
+    "CachedPrefix",
+    "PrefixCache",
+    "PrefixCacheConfig",
+    "compute_prefix_hash",
+]
+
+# ---------------------------------------------------------------------------
+# Request Coalescing — deduplicate concurrent identical requests (Cycle 204)
+# ---------------------------------------------------------------------------
+from src.inference.request_coalescing import (  # noqa: E402
+    CoalescingConfig,
+    CoalescingSlot,
+    RequestCoalescer,
+)
+
+DECODER_REGISTRY["request_coalescing"] = RequestCoalescer
+
+__all__ += [
+    "CoalescingConfig",
+    "CoalescingSlot",
+    "RequestCoalescer",
+]

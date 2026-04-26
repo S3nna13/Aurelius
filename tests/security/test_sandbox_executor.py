@@ -85,11 +85,12 @@ def test_getattr_type_traversal_escape_blocked():
         )
 
 
-def test_default_allowed_builtins_excludes_getattr_type():
+def test_default_allowed_builtins_excludes_traversal_primitives():
     from src.security.sandbox_executor import DEFAULT_ALLOWED_BUILTINS
 
-    for name in ("getattr", "setattr", "type", "hasattr"):
+    for name in ("getattr", "setattr", "type", "hasattr", "object", "vars",
+                 "__build_class__"):
         assert name not in DEFAULT_ALLOWED_BUILTINS, (
             f"{name} must not be in DEFAULT_ALLOWED_BUILTINS "
-            f"(sandbox escape vector — AUR-SEC-2026-0027)"
+            f"(sandbox escape vector — AUR-SEC-2026-0027 / AUR-SEC-2026-0028)"
         )

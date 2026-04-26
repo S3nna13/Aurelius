@@ -25,3 +25,12 @@ from .delivery_tracker import (  # noqa: F401
     DEFAULT_DELIVERY_TRACKER,
 )
 PROTOCOL_REGISTRY["delivery_tracker"] = DEFAULT_DELIVERY_TRACKER
+
+# --- Message retry policy (cycle-201) ----------------------------------------
+from .message_retry_policy import (  # noqa: F401
+    BackoffStrategy,
+    RetryPolicy,
+    RETRY_POLICY_REGISTRY,
+    DEFAULT_RETRY_POLICY,
+)
+PROTOCOL_REGISTRY["retry_policy"] = DEFAULT_RETRY_POLICY

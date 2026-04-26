@@ -6,6 +6,7 @@ import torch
 
 import src.longcontext as lc
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_registry():
@@ -23,7 +24,8 @@ def test_prior_registry_entries():
 
 
 def test_smoke_with_flag_enabled():
-    cfg = AureliusConfig(longcontext_sliding_window_causal_mask_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="longcontext.sliding_window_causal_mask", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.longcontext_sliding_window_causal_mask_enabled is True
     b = lc.SlidingWindowCausalMaskBuilder(window_size=min(8, cfg.longcontext_sliding_window_size))
     m = b.build(32, dtype=torch.float32)

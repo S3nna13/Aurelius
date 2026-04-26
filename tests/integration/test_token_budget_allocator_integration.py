@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import src.chat as chat
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 
 
 def test_allocator_registry():
@@ -19,7 +20,8 @@ def test_chatml_still_registered():
 
 
 def test_smoke_allocate():
-    cfg = AureliusConfig(chat_token_budget_allocator_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="chat.token_budget_allocator", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.chat_token_budget_allocator_enabled is True
     alloc = chat.TokenBudgetAllocator()
     out = alloc.allocate(

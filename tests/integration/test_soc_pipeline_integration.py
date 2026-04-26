@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from src.model.config import AureliusConfig
+from src.runtime.feature_flags import FeatureFlag, FEATURE_FLAG_REGISTRY
 from src.security import DEFENSIVE_PIPELINE_REGISTRY
 from src.security.soc_pipeline import DEFAULT_SOC_PIPELINE, SOCPipeline
 
@@ -18,12 +19,14 @@ def test_config_flag_defaults_off():
 
 
 def test_config_flag_settable():
-    cfg = AureliusConfig(security_soc_pipeline_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="security.soc_pipeline", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.security_soc_pipeline_enabled is True
 
 
 def test_end_to_end_when_feature_enabled():
-    cfg = AureliusConfig(security_soc_pipeline_enabled=True)
+    FEATURE_FLAG_REGISTRY.register(FeatureFlag(name="security.soc_pipeline", enabled=True))
+    cfg = AureliusConfig()
     assert cfg.security_soc_pipeline_enabled
     ev = DEFAULT_SOC_PIPELINE.run_one(
         {
@@ -39,6 +42,7 @@ def test_end_to_end_when_feature_enabled():
 
 
 def test_feature_flag_off_preserves_default_construction():
+    FEATURE_FLAG_REGISTRY._flags.pop("security.soc_pipeline", None)
     cfg = AureliusConfig()
     assert cfg.security_soc_pipeline_enabled is False
     # Confirm no side-effects of disabled flag: registry still usable.

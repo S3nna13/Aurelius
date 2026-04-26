@@ -144,10 +144,28 @@ DEFENSIVE_PIPELINE_REGISTRY: dict = {
     "default": DEFAULT_SOC_PIPELINE,
 }
 
+from src.security.provenance_attestation import (
+    PROVENANCE_ATTESTATION_REGISTRY,
+    ProvenanceAttestation,
+    ProvenanceAttestationBuilder,
+    ProvenanceError,
+    AttestationVerificationError,
+    Material,
+    build_file_attestation,
+)
+
+from src.security.checkpoint_signer import (
+    CHECKPOINT_SIGNER_REGISTRY,
+    CheckpointIntegrityError,
+    CheckpointSigner,
+)
+
 SECURITY_REGISTRY: dict = {
     "rate_abuse_detector": RATE_ABUSE_DETECTOR_REGISTRY,
     "ip_allowlist": IP_ALLOWLIST_REGISTRY,
     "audit_trail": AUDIT_TRAIL_REGISTRY,
+    "provenance_attestation": PROVENANCE_ATTESTATION_REGISTRY,
+    "checkpoint_signer": CHECKPOINT_SIGNER_REGISTRY,
 }
 
 # --- Message content filter (cycle-197) --------------------------------------
@@ -246,6 +264,18 @@ __all__ = [
     "TrailAuditEvent",
     "AUDIT_TRAIL_REGISTRY",
     "AuditTrail",
+    # provenance_attestation
+    "PROVENANCE_ATTESTATION_REGISTRY",
+    "ProvenanceAttestation",
+    "ProvenanceAttestationBuilder",
+    "ProvenanceError",
+    "AttestationVerificationError",
+    "Material",
+    "build_file_attestation",
+    # checkpoint_signer
+    "CHECKPOINT_SIGNER_REGISTRY",
+    "CheckpointSigner",
+    "CheckpointIntegrityError",
     # combined registry
     "SECURITY_REGISTRY",
     # posture_scorer

@@ -269,9 +269,28 @@ def _load_generate_fn(model_path: str, max_tokens: int, temperature: float):
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     model = model.to(device)
 
+    # Attempt to load a real tokenizer; fall back to byte-tokenizer only as
+    # a last resort (byte-tokenizer is wrong for this vocab but preserves
+    # backwards compatibility when no tokenizer file is present).
+    _tokenizer = None
+    for tok_dir in [p, Path("tokenizers/aurelius-128k")]:
+        if tok_dir is not None and (tok_dir / "tokenizer.json").exists():
+            try:
+                from src.data.tokenizer import AureliusTokenizer
+                _tokenizer = AureliusTokenizer.load(str(tok_dir))
+                break
+            except Exception:
+                pass
+
     def _generate(prompt: str) -> str:
-        token_ids = list(prompt.encode("utf-8"))[: config.max_seq_len - max_tokens]
-        input_ids = torch.tensor([token_ids], dtype=torch.long, device=device)
+        if _tokenizer is not None:
+            token_ids = _tokenizer.encode(prompt)[: config.max_seq_len - max_tokens]
+            input_ids = torch.tensor([token_ids], dtype=torch.long, device=device)
+        else:
+            # Fallback: byte-level tokenizer (incorrect for 128k vocab, but
+            # functional when no real tokenizer is available).
+            token_ids = list(prompt.encode("utf-8"))[: config.max_seq_len - max_tokens]
+            input_ids = torch.tensor([token_ids], dtype=torch.long, device=device)
         with torch.no_grad():
             out_ids = model.generate(
                 input_ids,
@@ -280,6 +299,8 @@ def _load_generate_fn(model_path: str, max_tokens: int, temperature: float):
                 top_p=0.9,
             )
         new_ids = out_ids[0, input_ids.shape[1] :].tolist()
+        if _tokenizer is not None:
+            return _tokenizer.decode(new_ids)
         return bytes(new_ids).decode("utf-8", errors="replace")
 
     return _generate
@@ -335,9 +356,13 @@ def _thinking_spinner(generate_fn, prompt: str) -> str:
     """Run generate_fn with a spinner shown while waiting."""
     if _RICH and _console:
         result_box: list[str] = []
+        exc_box: list[BaseException] = []
 
         def _run():
-            result_box.append(generate_fn(prompt))
+            try:
+                result_box.append(generate_fn(prompt))
+            except BaseException as exc:
+                exc_box.append(exc)
 
         import threading
 
@@ -352,6 +377,8 @@ def _thinking_spinner(generate_fn, prompt: str) -> str:
         ):
             t.join()
 
+        if exc_box:
+            raise exc_box[0]
         return result_box[0] if result_box else ""
     else:
         return generate_fn(prompt)

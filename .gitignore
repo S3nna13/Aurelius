@@ -23,13 +23,6 @@ env/
 checkpoints/
 runs/
 
-# Training data / tokenized corpora
-data/pretrain/
-data/reference_corpus/
-*.npy
-*.jsonl
-Aurelius_Training_Data.jsonl
-
 # Jupyter
 .ipynb_checkpoints/
 
@@ -50,26 +43,16 @@ Aurelius_Training_Data.jsonl
 wandb/
 .aurelius-meta-prompt.md
 .aurelius/
-.aurelius-*.log
 
-# Caches
+# Agent / cycle artifacts
+.aurelius-*.log
 .ruff_cache/
 .pytest_cache/
-.mypy_cache/
-.dmypy.json
+aurelius.egg-info/
 
-# Build artifacts
-*.egg-info/
-.eggs/
-dist/
-build/
+# Deployment
+.dockerignore
 
-# Root data / training artefacts (auto-generated during local runs)
-generate_jsonl.py
-train_jsonl.py
-train_reference.py
-generate_updated_report.py
-.current_source
-.data_offsets.json
-training_data/
-/tools/
+# IDE
+*.swo
+*~
