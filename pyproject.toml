@@ -50,7 +50,7 @@ serve = [
     "psutil>=6.0.0",
 ]
 db = [
-    "alembic>=1.14.0",
+    "alembic>=1.18.4",
     "sqlalchemy>=2.0.0",
 ]
 dev = [
