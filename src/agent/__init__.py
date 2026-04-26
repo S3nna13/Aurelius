@@ -830,3 +830,59 @@ __all__ += [
     "ToolSummary",
     "TRACE_ANALYZER_REGISTRY",
 ]
+
+# --- socratic tutor (additive) ----------------------------------------------
+from .socratic_tutor import (  # noqa: E402
+    DEFAULT_SOCRATIC_TUTOR,
+    SOCRATIC_TUTOR_REGISTRY,
+    ConceptMastery,
+    SocraticTutor,
+    SocraticTutorError,
+    TutorSession,
+)
+
+__all__ += [
+    "DEFAULT_SOCRATIC_TUTOR",
+    "SOCRATIC_TUTOR_REGISTRY",
+    "ConceptMastery",
+    "SocraticTutor",
+    "SocraticTutorError",
+    "TutorSession",
+]
+# --- skill evolver (cycle-211) -----------------------------------------------
+from .skill_evolver import (  # noqa: E402
+    CrystallizedSkill,
+    SkillEvolutionError,
+    SkillEvolver,
+    DEFAULT_SKILL_EVOLVER,
+    SKILL_EVOLVER_REGISTRY,
+)
+
+__all__ += [
+    "CrystallizedSkill",
+    "SkillEvolutionError",
+    "SkillEvolver",
+    "DEFAULT_SKILL_EVOLVER",
+    "SKILL_EVOLVER_REGISTRY",
+]
+
+# --- tutorial engine (cycle-211) ---------------------------------------------
+from .tutorial_engine import (  # noqa: E402
+    Tutorial,
+    TutorialEngine,
+    TutorialEngineError,
+    TutorialProgress,
+    TutorialStep,
+    DEFAULT_TUTORIAL_ENGINE,
+    TUTORIAL_ENGINE_REGISTRY,
+)
+
+__all__ += [
+    "Tutorial",
+    "TutorialEngine",
+    "TutorialEngineError",
+    "TutorialProgress",
+    "TutorialStep",
+    "DEFAULT_TUTORIAL_ENGINE",
+    "TUTORIAL_ENGINE_REGISTRY",
+]
