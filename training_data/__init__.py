@@ -5,6 +5,7 @@ from .download_manager import DownloadManager
 from .pretrain_generator import PretrainDataGenerator
 from .sft_generator import SFTDataGenerator
 from .dpo_generator import DPODataGenerator
+from .code_generator import CodeDataGenerator
 from .math_generator import MathDataGenerator
 from .agent_generator import AgentDataGenerator
 from .safety_generator import SafetyDataGenerator
@@ -18,7 +19,7 @@ __all__ = [
     "PretrainDataGenerator",
     "SFTDataGenerator",
     "DPODataGenerator",
-
+    "CodeDataGenerator",
     "MathDataGenerator",
     "AgentDataGenerator",
     "SafetyDataGenerator",
