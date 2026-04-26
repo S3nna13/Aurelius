@@ -743,3 +743,37 @@ __all__ += [
     "DEFAULT_TRIGGER_ENGINE",
     "TRIGGER_ENGINE_REGISTRY",
 ]
+
+# --- natural language command parser (cycle-208) -----------------------------
+from .nl_command_parser import (  # noqa: E402
+    NLCommandParseError,
+    ParsedCommand,
+    NLCommandParser,
+    DEFAULT_NL_PARSER,
+    NL_PARSER_REGISTRY,
+)
+
+__all__ += [
+    "NLCommandParseError",
+    "ParsedCommand",
+    "NLCommandParser",
+    "DEFAULT_NL_PARSER",
+    "NL_PARSER_REGISTRY",
+]
+
+# --- command dispatcher (cycle-208) ------------------------------------------
+from .command_dispatcher import (  # noqa: E402
+    CommandDispatchError,
+    DispatchResult,
+    CommandDispatcher,
+    DEFAULT_COMMAND_DISPATCHER,
+    COMMAND_DISPATCHER_REGISTRY,
+)
+
+__all__ += [
+    "CommandDispatchError",
+    "DispatchResult",
+    "CommandDispatcher",
+    "DEFAULT_COMMAND_DISPATCHER",
+    "COMMAND_DISPATCHER_REGISTRY",
+]

@@ -170,3 +170,12 @@ from .response_dedup import (  # noqa: E402,F401
     ResponseDedup,
     RESPONSE_DEDUP_REGISTRY,
 )
+
+# --- Mission Control dashboard (cycle-208) ---------------------------------
+from .mission_control import (  # noqa: E402,F401
+    ActivityEntry,
+    ActivityLog,
+    MissionControlHandler,
+    MissionControlServer,
+    create_mission_control_server,
+)
