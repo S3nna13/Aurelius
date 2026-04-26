@@ -10,6 +10,7 @@ import {
   RefreshCw,
   RotateCcw,
   Dot,
+  Bell,
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 
@@ -63,14 +64,16 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({});
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [modesRes, configRes] = await Promise.all([
+      const [modesRes, configRes, prefsRes] = await Promise.all([
         fetch('/api/modes'),
         fetch('/api/config'),
+        fetch('/api/notifications/preferences'),
       ]);
       if (!modesRes.ok) throw new Error(`Modes HTTP ${modesRes.status}`);
       if (!configRes.ok) throw new Error(`Config HTTP ${configRes.status}`);
@@ -80,6 +83,11 @@ export default function SettingsPage() {
       setModes(modesData.modes || []);
       setConfig(loadedConfig);
       setOriginalConfig(loadedConfig);
+      if (prefsRes.ok) {
+        const prefsData = await prefsRes.json();
+        setNotifPrefs(prefsData.preferences || {});
+      }
+      void prefsRes;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       toast('Failed to load settings', 'error');
@@ -121,13 +129,21 @@ export default function SettingsPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const [configRes, prefsRes] = await Promise.all([
+        fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ config }),
+        }),
+        fetch('/api/notifications/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ preferences: notifPrefs }),
+        }),
+      ]);
+      void prefsRes;
+      if (!configRes.ok) throw new Error(`Config HTTP ${configRes.status}`);
+      const data = await configRes.json();
       if (data.success) {
         setOriginalConfig({ ...config });
         toast('Settings saved successfully', 'success');
@@ -287,6 +303,29 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Notification Preferences */}
+          <div className="aurelius-card space-y-4">
+            <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
+              <Bell size={16} className="text-[#4fc3f7]" />
+              Notification Preferences
+            </h3>
+            <div className="space-y-3">
+              {['agent', 'system', 'alerts'].map((channel) => (
+                <label key={channel} className="flex items-center justify-between py-2">
+                  <span className="text-sm text-[#e0e0e0] capitalize">{channel} notifications</span>
+                  <input
+                    type="checkbox"
+                    checked={notifPrefs[channel] !== false}
+                    onChange={(e) =>
+                      setNotifPrefs((prev) => ({ ...prev, [channel]: e.target.checked }))
+                    }
+                    className="accent-[#4fc3f7] w-4 h-4"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
           {/* Security */}
           <div className="aurelius-card space-y-4">
             <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
@@ -317,7 +356,10 @@ export default function SettingsPage() {
                 <input
                   type="checkbox"
                   checked={!!config.auto_lock}
-                  onChange={(e) => updateConfig({ auto_lock: e.target.checked })}
+                  onChange={(e) => {
+                    updateConfig({ auto_lock: e.target.checked });
+                    localStorage.setItem('aurelius-auto-lock', String(e.target.checked));
+                  }}
                   className="accent-[#4fc3f7] w-4 h-4"
                 />
               </label>

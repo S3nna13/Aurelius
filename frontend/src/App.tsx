@@ -6,7 +6,9 @@ import Header from './components/Header';
 import ToastProvider from './components/ToastProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 import CommandPalette from './components/CommandPalette';
+import GlobalSearch from './components/GlobalSearch';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
+import SessionLock from './components/SessionLock';
 import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
 import Notifications from './pages/Notifications';
@@ -51,6 +53,7 @@ function AnimatedRoutes() {
 
 function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const navigate = useNavigate();
 
   const togglePalette = useCallback(() => {
@@ -62,6 +65,15 @@ function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         togglePalette();
+        return;
+      }
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          return;
+        }
+        e.preventDefault();
+        setSearchOpen(true);
         return;
       }
       // Navigation shortcuts
@@ -106,7 +118,9 @@ function App() {
         </div>
       </div>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
+      {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
       <KeyboardShortcuts />
+      <SessionLock />
     </ToastProvider>
   );
 }

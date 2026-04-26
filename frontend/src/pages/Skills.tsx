@@ -11,9 +11,11 @@ import {
   Clock,
   ChevronRight,
   Loader2,
+  Star,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ToastProvider';
+import { useFavorites } from '../hooks/useFavorites';
 
 interface Skill {
   id: string;
@@ -46,7 +48,9 @@ export default function Skills() {
   const [executing, setExecuting] = useState(false);
   const [execResult, setExecResult] = useState<ExecutionResult | null>(null);
   const [variables, setVariables] = useState<Record<string, string>>({});
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const { toast } = useToast();
+  const { toggle, isFavorite } = useFavorites();
 
   const {
     data: skillsData,
@@ -107,12 +111,19 @@ export default function Skills() {
     }
   }, [selected, variables, toast]);
 
-  const filtered = skills.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.description.toLowerCase().includes(search.toLowerCase()) ||
-      s.category.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = skills
+    .filter(
+      (s) =>
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.description.toLowerCase().includes(search.toLowerCase()) ||
+        s.category.toLowerCase().includes(search.toLowerCase())
+    )
+    .filter((s) => (showFavoritesOnly ? isFavorite(s.id) : true))
+    .sort((a, b) => {
+      const aFav = isFavorite(a.id) ? 1 : 0;
+      const bFav = isFavorite(b.id) ? 1 : 0;
+      return bFav - aFav;
+    });
 
   const riskColor = (score: number) => {
     if (score < 0.15) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
@@ -133,18 +144,31 @@ export default function Skills() {
           <Wrench size={20} className="text-[#4fc3f7]" />
           Skills & Plugins
         </h2>
-        <div className="relative">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9eb0]"
-          />
-          <input
-            type="text"
-            placeholder="Search skills..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-[#0f0f1a] border border-[#2d2d44] rounded-lg pl-9 pr-4 py-2 text-sm text-[#e0e0e0] placeholder:text-[#9e9eb0] focus:outline-none focus:border-[#4fc3f7] w-full sm:w-64"
-          />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFavoritesOnly((v) => !v)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
+              showFavoritesOnly
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                : 'bg-[#0f0f1a] text-[#9e9eb0] border-[#2d2d44] hover:border-aurelius-accent/30'
+            }`}
+          >
+            <Star size={14} className={showFavoritesOnly ? 'fill-amber-400' : ''} />
+            Favorites
+          </button>
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9eb0]"
+            />
+            <input
+              type="text"
+              placeholder="Search skills..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="bg-[#0f0f1a] border border-[#2d2d44] rounded-lg pl-9 pr-4 py-2 text-sm text-[#e0e0e0] placeholder:text-[#9e9eb0] focus:outline-none focus:border-[#4fc3f7] w-full sm:w-64"
+            />
+          </div>
         </div>
       </div>
 
@@ -192,10 +216,26 @@ export default function Skills() {
                       </p>
                     </div>
                   </div>
-                  <ChevronRight
-                    size={16}
-                    className="text-[#9e9eb0] group-hover:text-[#4fc3f7] transition-colors"
-                  />
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggle(skill.id);
+                      }}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        isFavorite(skill.id)
+                          ? 'text-amber-400 hover:bg-amber-500/10'
+                          : 'text-[#9e9eb0] hover:text-amber-400 hover:bg-aurelius-border/40'
+                      }`}
+                      title={isFavorite(skill.id) ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      <Star size={14} className={isFavorite(skill.id) ? 'fill-amber-400' : ''} />
+                    </button>
+                    <ChevronRight
+                      size={16}
+                      className="text-[#9e9eb0] group-hover:text-[#4fc3f7] transition-colors"
+                    />
+                  </div>
                 </div>
                 <p className="text-sm text-[#9e9eb0] leading-relaxed">
                   {skill.description}

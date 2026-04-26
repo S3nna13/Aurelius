@@ -37,9 +37,7 @@ import argparse
 import json
 import logging
 import mimetypes
-import os
 import time
-import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
@@ -48,7 +46,6 @@ from src.agent.command_dispatcher import CommandDispatcher
 from src.agent.nl_command_parser import NLCommandParseError, NLCommandParser
 from src.agent.skill_executor import ExecutionResult, SkillContext, SkillExecutor
 from src.serving.mission_control import ActivityLog
-from src.workflow.workflow_engine import WorkflowEngine, WorkflowState
 from src.workflow.workflow_monitor import WorkflowMonitor, WorkflowStatus
 
 logger = logging.getLogger(__name__)
@@ -206,6 +203,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         if self.path == "/api/notifications/read-all":
             self._handle_notification_read_all()
             return
+        if self.path == "/api/notifications/preferences":
+            self._handle_notification_preferences_post()
+            return
         if self.path == "/api/skills/execute":
             self._handle_skill_execute()
             return
@@ -232,9 +232,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         supervisor = getattr(server, "supervisor", None)
         if supervisor is not None and hasattr(supervisor, "_agents"):
             for aid, rec in supervisor._agents.items():
-                status["agents"].append(
-                    {"id": aid, "state": str(getattr(rec, "state", "UNKNOWN"))}
-                )
+                status["agents"].append({"id": aid, "state": str(getattr(rec, "state", "UNKNOWN"))})
         else:
             status["agents"].append({"id": "default", "state": "IDLE"})
 
@@ -283,7 +281,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         # Aggregated counts for dashboard
         status["counts"] = {
             "agents_online": sum(
-                1 for a in status["agents"] if a.get("state", "").upper() in ("ACTIVE", "RUNNING", "IDLE")
+                1
+                for a in status["agents"]
+                if a.get("state", "").upper() in ("ACTIVE", "RUNNING", "IDLE")
             ),
             "agents_total": len(status["agents"]),
             "skills_active": sum(1 for s in status["skills"] if s.get("active", False)),
@@ -300,11 +300,14 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         if supervisor is not None and hasattr(supervisor, "_agents"):
             rec = supervisor._agents.get(agent_id)
             if rec is not None:
-                self._send_json(200, {
-                    "id": agent_id,
-                    "state": str(getattr(rec, "state", "UNKNOWN")),
-                    "metrics": getattr(rec, "metrics", {}),
-                })
+                self._send_json(
+                    200,
+                    {
+                        "id": agent_id,
+                        "state": str(getattr(rec, "state", "UNKNOWN")),
+                        "metrics": getattr(rec, "metrics", {}),
+                    },
+                )
                 return
         self._send_json(404, {"error": "Agent not found"})
 
@@ -397,9 +400,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         category = params.get("category") or None
         priority = params.get("priority") or None
         read_str = params.get("read")
-        read = (
-            {"true": True, "false": False}.get(read_str.lower()) if read_str else None
-        )
+        read = {"true": True, "false": False}.get(read_str.lower()) if read_str else None
         limit = int(params.get("limit", "100"))
 
         notifications = hermes.list_notifications(
@@ -615,9 +616,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             instructions = f"# {skill_id}\n\nExecuting with variables: {variables}"
 
         try:
-            ctx = SkillContext(
-                variables=dict(variables) if isinstance(variables, dict) else {}
-            )
+            ctx = SkillContext(variables=dict(variables) if isinstance(variables, dict) else {})
             result: ExecutionResult = executor.execute(skill_id, instructions, ctx)
             self._send_json(
                 200,
@@ -649,7 +648,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         workflows: list[dict[str, Any]] = []
         if monitor is not None:
             try:
-                summary = monitor.summary()
+                monitor.summary()
                 for wf_id, status in monitor._workflows.items():
                     name = monitor._names.get(wf_id, wf_id)
                     events = monitor._events.get(wf_id, [])
@@ -696,7 +695,15 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                     "event_count": 1,
                 },
             ]
-        self._send_json(200, {"workflows": workflows, "summary": monitor.summary() if monitor else {"total": len(workflows), "running": 1, "completed": 1, "failed": 1}})
+        self._send_json(
+            200,
+            {
+                "workflows": workflows,
+                "summary": monitor.summary()
+                if monitor
+                else {"total": len(workflows), "running": 1, "completed": 1, "failed": 1},
+            },
+        )
 
     def _handle_workflow_detail(self) -> None:
         parts = [p for p in self.path.split("/") if p]
@@ -766,6 +773,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                 ctx = registry.get(wf_id)
                 if ctx is None:
                     from src.workflow.workflow_engine import WorkflowContext
+
                     ctx = WorkflowContext(workflow_id=wf_id)
                     registry[wf_id] = ctx
                 if trigger == "start":
@@ -776,8 +784,11 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                     monitor.fail_workflow(wf_id, "Failed via API")
                 elif trigger == "reset":
                     monitor._workflows[wf_id] = WorkflowStatus.PENDING
-                    monitor.log_event(wf_id, monitor._events.get(wf_id, [])
-                        and monitor._events[wf_id][0].event_type, "Reset via API")
+                    monitor.log_event(
+                        wf_id,
+                        monitor._events.get(wf_id, []) and monitor._events[wf_id][0].event_type,
+                        "Reset via API",
+                    )
                 success = engine.trigger(ctx, trigger)
                 self._send_json(
                     200,
@@ -827,6 +838,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         if memory is not None and hasattr(memory, "dump_layer"):
             try:
                 from urllib.parse import parse_qs, urlparse
+
                 query = parse_qs(urlparse(self.path).query)
                 layer_filter = query.get("layer", [None])[0]
                 search_query = query.get("q", [None])[0]
@@ -854,7 +866,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                                 "access_count": getattr(e, "access_count", 0),
                                 "importance_score": getattr(e, "importance_score", 0.5),
                             }
-                            if entry_dict.get("timestamp") is not None and hasattr(entry_dict["timestamp"], "isoformat"):
+                            if entry_dict.get("timestamp") is not None and hasattr(
+                                entry_dict["timestamp"], "isoformat"
+                            ):
                                 entry_dict["timestamp"] = entry_dict["timestamp"].isoformat()
                             all_entries.append(entry_dict)
                     except Exception:
@@ -871,6 +885,20 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             except Exception:
                 pass
         self._send_json(200, {"entries": []})
+
+    def _handle_notification_preferences_get(self) -> None:
+        prefs = getattr(self.server, "notification_preferences", {})
+        self._send_json(200, {"preferences": prefs})
+
+    def _handle_notification_preferences_post(self) -> None:
+        try:
+            payload = self._parse_json_body()
+        except (ValueError, json.JSONDecodeError) as exc:
+            self._send_json(400, {"error": str(exc)})
+            return
+        prefs = payload.get("preferences", {})
+        self.server.notification_preferences = prefs
+        self._send_json(200, {"success": True})
 
     def _handle_modes(self) -> None:
         from src.agent.agent_mode_registry import AGENT_MODE_REGISTRY
@@ -946,9 +974,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                 }
             )
             try:
-                self.wfile.write(
-                    f"event: notification\ndata: {data}\n\n".encode("utf-8")
-                )
+                self.wfile.write(f"event: notification\ndata: {data}\n\n".encode())
                 self.wfile.flush()
             except Exception:
                 pass
@@ -986,9 +1012,7 @@ class AureliusServer(HTTPServer):
         usage_pipeline: Any | None = None,
         bind_and_activate: bool = True,
     ):
-        super().__init__(
-            (host, port), AureliusHandler, bind_and_activate=bind_and_activate
-        )
+        super().__init__((host, port), AureliusHandler, bind_and_activate=bind_and_activate)
         self.nl_parser = nl_parser
         self.command_dispatcher = command_dispatcher
         self.skill_catalog = skill_catalog
@@ -1046,15 +1070,11 @@ def create_aurelius_server(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
     arg_parser = argparse.ArgumentParser(description="Aurelius Unified Server")
     arg_parser.add_argument("--port", type=int, default=7870)
-    arg_parser.add_argument(
-        "--host", default="0.0.0.0"
-    )  # nosec B104 — default for home network LAN access; user can override with --host
+    arg_parser.add_argument("--host", default="0.0.0.0")  # nosec B104 — default for home network LAN access; user can override with --host
     args = arg_parser.parse_args()
 
     server = create_aurelius_server(args.host, args.port)

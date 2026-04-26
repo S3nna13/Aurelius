@@ -12,20 +12,37 @@ import {
   X,
   Shield,
 } from 'lucide-react';
+import { useApi } from '../hooks/useApi';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/chat', icon: MessageSquare, label: 'Agent Chat' },
-  { to: '/notifications', icon: Bell, label: 'Notifications' },
-  { to: '/skills', icon: Wrench, label: 'Skills' },
-  { to: '/workflows', icon: GitBranch, label: 'Workflows' },
-  { to: '/memory', icon: Brain, label: 'Memory' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard', badge: null as string | null },
+  { to: '/chat', icon: MessageSquare, label: 'Agent Chat', badge: null },
+  { to: '/notifications', icon: Bell, label: 'Notifications', badgeKey: 'notifications' as const },
+  { to: '/skills', icon: Wrench, label: 'Skills', badge: null },
+  { to: '/workflows', icon: GitBranch, label: 'Workflows', badgeKey: 'workflows' as const },
+  { to: '/memory', icon: Brain, label: 'Memory', badge: null },
+  { to: '/settings', icon: Settings, label: 'Settings', badge: null },
 ];
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+
+  const { data: notifStats } = useApi<{ unread: number }>('/notifications/stats', {
+    refreshInterval: 15000,
+  });
+
+  const { data: workflowData } = useApi<{ workflows: { status: string }[] }>('/workflows', {
+    refreshInterval: 15000,
+  });
+
+  const runningCount = workflowData?.workflows?.filter((w) => w.status === 'running').length ?? 0;
+  const unreadCount = notifStats?.unread ?? 0;
+
+  const badges: Record<string, number> = {
+    notifications: unreadCount,
+    workflows: runningCount,
+  };
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -70,6 +87,7 @@ export default function Sidebar() {
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const active = isActive(item.to);
+            const badgeCount = item.badgeKey ? badges[item.badgeKey] || 0 : 0;
             return (
               <NavLink
                 key={item.to}
@@ -84,7 +102,18 @@ export default function Sidebar() {
                 `}
               >
                 <item.icon size={18} />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {badgeCount > 0 && (
+                  <span className={`
+                    flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold
+                    ${item.badgeKey === 'notifications'
+                      ? 'bg-red-500 text-white'
+                      : 'bg-aurelius-accent text-aurelius-bg'
+                    }
+                  `}>
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </span>
+                )}
               </NavLink>
             );
           })}
