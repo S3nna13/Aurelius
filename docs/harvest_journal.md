@@ -85,3 +85,18 @@
 **Commits:** b68eb9f
 **Security:** bandit 0 High findings | Foreign imports: clean
 
+## Cycle 215 — 2026-04-25
+**Scope:** Frontend Stability & Resilience — Error boundaries, robust API layer, toast notifications, wire remaining pages
+**Modules:**
+- `frontend/src/components/ErrorBoundary.tsx` — React error boundary with retry UI
+- `frontend/src/components/ToastProvider.tsx` — Global toast notifications (success/error/warning/info)
+- `frontend/src/hooks/useApi.ts` — Enhanced with timeout, exponential backoff retry, AbortController cancellation, auto-refresh intervals
+- `frontend/src/pages/Notifications.tsx` — Live Hermes notifications with polling, stats, mark-read/all
+- `frontend/src/pages/Memory.tsx` — Live memory layer counts from `/api/memory` with polling
+- `frontend/src/pages/Skills.tsx` — Migrated to enhanced useApi with auto-refresh
+- `frontend/src/pages/Workflows.tsx` — Migrated to enhanced useApi with auto-refresh
+- `frontend/src/App.tsx` — Wrapped routes in ErrorBoundary, app in ToastProvider
+**Tests:** 27 aurelius_server tests pass; 829 total serving tests pass
+**Commits:** 25058ef
+**Security:** bandit 0 High findings | Foreign imports: clean
+
