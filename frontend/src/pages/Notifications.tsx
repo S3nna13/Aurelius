@@ -14,6 +14,7 @@ import {
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ToastProvider';
 import BulkActionsBar from '../components/BulkActionsBar';
+import Pagination from '../components/Pagination';
 import { downloadJSON } from '../utils/export';
 
 type Channel = 'all' | 'agent' | 'system' | 'alerts';
@@ -93,6 +94,8 @@ function timeAgo(ts: number): string {
 export default function Notifications() {
   const [activeTab, setActiveTab] = useState<Channel>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { toast } = useToast();
 
   const {
@@ -129,6 +132,9 @@ export default function Notifications() {
       ? notifications
       : notifications.filter((n) => n.channel === activeTab);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const toggleSelection = (id: string) => {
@@ -140,8 +146,12 @@ export default function Notifications() {
     });
   };
 
-  const selectAll = () => setSelectedIds(new Set(filtered.map((n) => n.id)));
+  const selectAll = () => setSelectedIds(new Set(paginated.map((n) => n.id)));
   const deselectAll = () => setSelectedIds(new Set());
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   const exportSelected = () => {
     const selected = filtered.filter((n) => selectedIds.has(n.id));
@@ -287,7 +297,7 @@ export default function Notifications() {
           </div>
         )}
 
-        {filtered.map((n) => {
+        {paginated.map((n) => {
           const p = priorityConfig[(n.priority as Priority) || 'low'] || priorityConfig.low;
           const isSelected = selectedIds.has(n.id);
           return (
@@ -357,6 +367,10 @@ export default function Notifications() {
           );
         })}
       </div>
+
+      {filtered.length > itemsPerPage && (
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+      )}
     </div>
   );
 }

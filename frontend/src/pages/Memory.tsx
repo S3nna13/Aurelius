@@ -8,6 +8,8 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
+  Eye,
+  X,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ToastProvider';
@@ -20,6 +22,15 @@ interface MemoryLayer {
   color: string;
   bg: string;
   border: string;
+}
+
+interface MemoryEntry {
+  id: string;
+  content: string;
+  layer: string;
+  timestamp: string;
+  access_count: number;
+  importance_score: number;
 }
 
 const layerMeta: Record<string, Omit<MemoryLayer, 'entries'>> = {
@@ -72,15 +83,20 @@ const fallbackLayers = [
   { name: 'Episodic', entries: 567, size: '34 MB', description: 'Event-based memories with timestamps.', color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
 ];
 
-const recentEntries = [
-  { id: 1, layer: 'Short-term', content: 'User asked about system status.', time: '2 min ago' },
-  { id: 2, layer: 'Working', content: 'Workflow "Daily Backup" context.', time: '5 min ago' },
-  { id: 3, layer: 'Long-term', content: 'Learned pattern: user prefers dark mode.', time: '1 day ago' },
-  { id: 4, layer: 'Episodic', content: 'Alert: High CPU on node-2.', time: '18 min ago' },
-];
+function timeAgo(ts: string): string {
+  const d = new Date(ts).getTime();
+  const diff = (Date.now() - d) / 1000;
+  if (isNaN(diff) || diff < 0) return 'Just now';
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+  return `${Math.floor(diff / 86400)} days ago`;
+}
 
 export default function Memory() {
   const [search, setSearch] = useState('');
+  const [selectedLayer, setSelectedLayer] = useState<string>('all');
+  const [detailEntry, setDetailEntry] = useState<MemoryEntry | null>(null);
   const { toast } = useToast();
 
   const {
@@ -92,11 +108,20 @@ export default function Memory() {
     refreshInterval: 10000,
   });
 
+  const {
+    data: entriesData,
+    loading: entriesLoading,
+    error: entriesError,
+    refresh: refreshEntries,
+  } = useApi<{ entries: MemoryEntry[] }>(
+    `/memory/entries?limit=50${search ? `&q=${encodeURIComponent(search)}` : ''}${selectedLayer !== 'all' ? `&layer=${encodeURIComponent(selectedLayer)}` : ''}`,
+    { refreshInterval: 10000 }
+  );
+
   useEffect(() => {
-    if (error) {
-      toast('Failed to load memory data', 'error');
-    }
-  }, [error, toast]);
+    if (error) toast('Failed to load memory data', 'error');
+    if (entriesError) toast('Failed to load memory entries', 'error');
+  }, [error, entriesError, toast]);
 
   const memoryLayers: MemoryLayer[] = data?.layers
     ? Object.entries(data.layers).map(([key, count]) => {
@@ -116,11 +141,13 @@ export default function Memory() {
       })
     : fallbackLayers;
 
-  const filteredEntries = recentEntries.filter((e) =>
-    e.content.toLowerCase().includes(search.toLowerCase())
-  );
-
+  const entries = entriesData?.entries || [];
   const totalEntries = memoryLayers.reduce((sum, l) => sum + l.entries, 0);
+
+  const refreshAll = () => {
+    refresh();
+    refreshEntries();
+  };
 
   return (
     <div className="space-y-6">
@@ -134,7 +161,7 @@ export default function Memory() {
             {totalEntries.toLocaleString()} total entries
           </span>
           <button
-            onClick={refresh}
+            onClick={refreshAll}
             disabled={loading}
             className="aurelius-btn-outline flex items-center gap-2 text-sm disabled:opacity-50"
           >
@@ -164,11 +191,28 @@ export default function Memory() {
       </div>
 
       {/* Layers */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <button
+          onClick={() => setSelectedLayer('all')}
+          className={`aurelius-card space-y-3 text-left transition-colors ${selectedLayer === 'all' ? 'border-aurelius-accent/50' : 'hover:border-[#4fc3f7]/30'}`}
+        >
+          <div className="flex items-center gap-2">
+            <Layers size={16} className="text-aurelius-accent" />
+            <h3 className="text-sm font-semibold text-[#e0e0e0]">All Layers</h3>
+          </div>
+          <p className="text-xs text-[#9e9eb0]">View entries across all memory tiers.</p>
+          <div className="flex items-center justify-between pt-2 border-t border-[#2d2d44]">
+            <div className="flex items-center gap-1 text-xs text-[#9e9eb0]">
+              <Database size={12} />
+              {totalEntries.toLocaleString()} entries
+            </div>
+          </div>
+        </button>
         {memoryLayers.map((layer) => (
-          <div
+          <button
             key={layer.name}
-            className="aurelius-card space-y-3 hover:border-[#4fc3f7]/30 transition-colors"
+            onClick={() => setSelectedLayer(Object.keys(layerMeta).find(k => layerMeta[k].name === layer.name) || layer.name)}
+            className={`aurelius-card space-y-3 text-left transition-colors ${selectedLayer === (Object.keys(layerMeta).find(k => layerMeta[k].name === layer.name) || layer.name) ? 'border-aurelius-accent/50' : 'hover:border-[#4fc3f7]/30'}`}
           >
             <div className="flex items-center gap-2">
               <Layers size={16} className={layer.color} />
@@ -184,7 +228,7 @@ export default function Memory() {
                 {layer.size}
               </span>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -194,26 +238,75 @@ export default function Memory() {
           <Clock size={16} className="text-[#4fc3f7]" />
           Recent Entries
         </h3>
+        {entriesLoading && entries.length === 0 && (
+          <div className="text-center py-8 text-[#9e9eb0]">
+            <Loader2 size={24} className="mx-auto mb-2 animate-spin opacity-60" />
+            <p className="text-sm">Loading entries...</p>
+          </div>
+        )}
         <div className="space-y-2">
-          {filteredEntries.map((entry) => (
+          {entries.map((entry) => (
             <div
               key={entry.id}
-              className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-[#0f0f1a]/50 border border-[#2d2d44]/50 hover:border-[#4fc3f7]/10 transition-colors"
+              onClick={() => setDetailEntry(entry)}
+              className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-[#0f0f1a]/50 border border-[#2d2d44]/50 hover:border-[#4fc3f7]/20 transition-colors cursor-pointer"
             >
-              <p className="text-sm text-[#e0e0e0]">{entry.content}</p>
-              <div className="flex items-center gap-3 shrink-0 ml-4">
+              <p className="text-sm text-[#e0e0e0] truncate max-w-[60%]">{entry.content}</p>
+              <div className="flex items-center gap-3 shrink-0">
                 <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#2d2d44]/20 text-[#9e9eb0] border border-[#2d2d44]/40">
                   {entry.layer}
                 </span>
-                <span className="text-xs text-[#9e9eb0]">{entry.time}</span>
+                <span className="text-xs text-[#9e9eb0]">{timeAgo(entry.timestamp)}</span>
+                <Eye size={14} className="text-aurelius-muted opacity-0 group-hover:opacity-100" />
               </div>
             </div>
           ))}
-          {filteredEntries.length === 0 && (
-            <p className="text-sm text-[#9e9eb0] text-center py-6">No entries match your search.</p>
+          {entries.length === 0 && !entriesLoading && (
+            <p className="text-sm text-[#9e9eb0] text-center py-6">No entries found.</p>
           )}
         </div>
       </div>
+
+      {/* Detail Modal */}
+      {detailEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-aurelius-card border border-aurelius-border rounded-xl p-6 max-w-lg w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-aurelius-text">Memory Entry</h3>
+              <button
+                onClick={() => setDetailEntry(null)}
+                className="p-1 rounded-lg text-aurelius-muted hover:text-aurelius-text hover:bg-aurelius-border/40 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-aurelius-muted uppercase tracking-wider mb-1">Content</p>
+                <p className="text-sm text-aurelius-text leading-relaxed">{detailEntry.content}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-aurelius-bg border border-aurelius-border rounded-lg p-3">
+                  <p className="text-xs text-aurelius-muted uppercase tracking-wider">Layer</p>
+                  <p className="text-sm font-medium text-aurelius-text mt-0.5">{detailEntry.layer}</p>
+                </div>
+                <div className="bg-aurelius-bg border border-aurelius-border rounded-lg p-3">
+                  <p className="text-xs text-aurelius-muted uppercase tracking-wider">Access Count</p>
+                  <p className="text-sm font-medium text-aurelius-text mt-0.5">{detailEntry.access_count}</p>
+                </div>
+                <div className="bg-aurelius-bg border border-aurelius-border rounded-lg p-3">
+                  <p className="text-xs text-aurelius-muted uppercase tracking-wider">Importance</p>
+                  <p className="text-sm font-medium text-aurelius-text mt-0.5">{(detailEntry.importance_score * 100).toFixed(0)}%</p>
+                </div>
+                <div className="bg-aurelius-bg border border-aurelius-border rounded-lg p-3">
+                  <p className="text-xs text-aurelius-muted uppercase tracking-wider">Timestamp</p>
+                  <p className="text-sm font-medium text-aurelius-text mt-0.5">{new Date(detailEntry.timestamp).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

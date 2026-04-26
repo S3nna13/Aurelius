@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Settings,
   Sliders,
@@ -8,6 +8,8 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
+  RotateCcw,
+  Dot,
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 
@@ -30,15 +32,39 @@ interface RuntimeConfig {
 
 const logLevels = ['debug', 'info', 'warn', 'error'];
 
+const defaultConfig: RuntimeConfig = {
+  agent_mode: 'default',
+  log_level: 'info',
+  api_endpoint: 'http://localhost:7870',
+  require_auth: false,
+  audit_logging: true,
+  auto_lock: false,
+};
+
+function isValidUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isDirty(original: RuntimeConfig, current: RuntimeConfig): boolean {
+  return JSON.stringify(original) !== JSON.stringify(current);
+}
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const [modes, setModes] = useState<AgentMode[]>([]);
-  const [config, setConfig] = useState<RuntimeConfig>({});
+  const [config, setConfig] = useState<RuntimeConfig>({ ...defaultConfig });
+  const [originalConfig, setOriginalConfig] = useState<RuntimeConfig>({ ...defaultConfig });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -50,25 +76,49 @@ export default function SettingsPage() {
       if (!configRes.ok) throw new Error(`Config HTTP ${configRes.status}`);
       const modesData = await modesRes.json();
       const configData = await configRes.json();
+      const loadedConfig = { ...defaultConfig, ...(configData.config || {}) };
       setModes(modesData.modes || []);
-      setConfig(configData.config || {});
+      setConfig(loadedConfig);
+      setOriginalConfig(loadedConfig);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       toast('Failed to load settings', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
+
+  const validate = (cfg: RuntimeConfig): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (cfg.api_endpoint && !isValidUrl(cfg.api_endpoint)) {
+      errs.api_endpoint = 'Please enter a valid URL (e.g., http://localhost:7870)';
+    }
+    return errs;
+  };
 
   const updateConfig = (updates: Partial<RuntimeConfig>) => {
-    setConfig((prev) => ({ ...prev, ...updates }));
+    const next = { ...config, ...updates };
+    setConfig(next);
+    setValidationErrors(validate(next));
+  };
+
+  const resetToDefaults = () => {
+    setConfig({ ...defaultConfig });
+    setValidationErrors(validate(defaultConfig));
+    toast('Settings reset to defaults', 'info');
   };
 
   const saveChanges = async () => {
+    const errs = validate(config);
+    if (Object.keys(errs).length > 0) {
+      setValidationErrors(errs);
+      toast('Please fix validation errors before saving', 'error');
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch('/api/config', {
@@ -79,6 +129,7 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
+        setOriginalConfig({ ...config });
         toast('Settings saved successfully', 'success');
       }
     } catch (err) {
@@ -89,6 +140,7 @@ export default function SettingsPage() {
   };
 
   const currentMode = modes.find((m) => m.id === config.agent_mode) || null;
+  const dirty = isDirty(originalConfig, config);
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -97,7 +149,21 @@ export default function SettingsPage() {
           <Settings size={20} className="text-[#4fc3f7]" />
           Settings
         </h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {dirty && (
+            <span className="flex items-center gap-1 text-xs text-amber-400">
+              <Dot size={16} className="animate-pulse" />
+              Unsaved changes
+            </span>
+          )}
+          <button
+            onClick={resetToDefaults}
+            disabled={loading}
+            className="aurelius-btn-outline flex items-center gap-2 text-sm disabled:opacity-50"
+          >
+            <RotateCcw size={14} />
+            Reset
+          </button>
           <button
             onClick={fetchData}
             disabled={loading}
@@ -108,7 +174,7 @@ export default function SettingsPage() {
           </button>
           <button
             onClick={saveChanges}
-            disabled={saving || loading}
+            disabled={saving || loading || Object.keys(validationErrors).length > 0}
             className="aurelius-btn flex items-center gap-2 text-sm disabled:opacity-50"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -196,8 +262,13 @@ export default function SettingsPage() {
                   type="text"
                   value={config.api_endpoint || ''}
                   onChange={(e) => updateConfig({ api_endpoint: e.target.value })}
-                  className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-2 text-sm text-[#e0e0e0] focus:outline-none focus:border-[#4fc3f7]"
+                  className={`w-full bg-[#0f0f1a] border rounded-lg px-3 py-2 text-sm text-[#e0e0e0] focus:outline-none focus:border-[#4fc3f7] ${
+                    validationErrors.api_endpoint ? 'border-rose-500' : 'border-[#2d2d44]'
+                  }`}
                 />
+                {validationErrors.api_endpoint && (
+                  <p className="text-xs text-rose-400 mt-1">{validationErrors.api_endpoint}</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs text-[#9e9eb0] mb-1.5">Log Level</label>

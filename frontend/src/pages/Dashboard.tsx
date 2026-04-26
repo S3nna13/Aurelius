@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import {
   Bot,
   CheckCircle2,
@@ -13,6 +14,7 @@ import {
   RefreshCw,
   Clock,
   Download,
+  ChevronRight,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ToastProvider';
@@ -223,9 +225,10 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-2">
               {(statusData?.agents || []).map((agent) => (
-                <div
+                <Link
                   key={agent.id}
-                  className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-[#0f0f1a]/50 border border-[#2d2d44]/50 hover:border-[#4fc3f7]/10 transition-colors"
+                  to={`/agents/${agent.id}`}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-[#0f0f1a]/50 border border-[#2d2d44]/50 hover:border-[#4fc3f7]/20 transition-colors group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-[#4fc3f7]/10 text-[#4fc3f7] flex items-center justify-center border border-[#4fc3f7]/20">
@@ -253,8 +256,9 @@ export default function Dashboard() {
                     >
                       {agent.state}
                     </span>
+                    <ChevronRight size={14} className="text-[#9e9eb0] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                </div>
+                </Link>
               ))}
               {(!statusData?.agents || statusData.agents.length === 0) && (
                 <p className="text-sm text-[#9e9eb0] text-center py-6">No agents reported.</p>

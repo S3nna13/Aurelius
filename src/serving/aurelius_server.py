@@ -147,6 +147,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         if self.path == "/api/status":
             self._handle_status()
             return
+        if self.path.startswith("/api/agents/") and self.path.count("/") == 3:
+            self._handle_agent_detail()
+            return
         if self.path == "/api/activity":
             self._handle_activity()
             return
@@ -173,6 +176,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             return
         if self.path == "/api/memory":
             self._handle_memory()
+            return
+        if self.path == "/api/memory/entries":
+            self._handle_memory_entries()
             return
         if self.path == "/api/modes":
             self._handle_modes()
@@ -286,6 +292,21 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             "notifications_unread": status.get("notifications", {}).get("unread", 0),
         }
         self._send_json(200, status)
+
+    def _handle_agent_detail(self) -> None:
+        parts = self.path.split("/")
+        agent_id = parts[-1] if len(parts) >= 4 else ""
+        supervisor = getattr(self.server, "supervisor", None)
+        if supervisor is not None and hasattr(supervisor, "_agents"):
+            rec = supervisor._agents.get(agent_id)
+            if rec is not None:
+                self._send_json(200, {
+                    "id": agent_id,
+                    "state": str(getattr(rec, "state", "UNKNOWN")),
+                    "metrics": getattr(rec, "metrics", {}),
+                })
+                return
+        self._send_json(404, {"error": "Agent not found"})
 
     def _handle_activity(self) -> None:
         log = getattr(self.server, "activity_log", None)
@@ -800,6 +821,56 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             except Exception:
                 pass
         self._send_json(200, {"layers": {}})
+
+    def _handle_memory_entries(self) -> None:
+        memory = getattr(self.server, "memory", None)
+        if memory is not None and hasattr(memory, "dump_layer"):
+            try:
+                from urllib.parse import parse_qs, urlparse
+                query = parse_qs(urlparse(self.path).query)
+                layer_filter = query.get("layer", [None])[0]
+                search_query = query.get("q", [None])[0]
+                limit = int(query.get("limit", ["50"])[0])
+
+                all_entries = []
+                layer_names = [
+                    "L0 Meta Rules",
+                    "L1 Insight Index",
+                    "L2 Global Facts",
+                    "L3 Task Skills",
+                    "L4 Session Archive",
+                ]
+                for layer_name in layer_names:
+                    if layer_filter and layer_name != layer_filter:
+                        continue
+                    try:
+                        entries = memory.dump_layer(layer_name)
+                        for e in entries:
+                            entry_dict = {
+                                "id": getattr(e, "entry_id", "unknown"),
+                                "content": getattr(e, "content", ""),
+                                "layer": layer_name,
+                                "timestamp": getattr(e, "timestamp", None),
+                                "access_count": getattr(e, "access_count", 0),
+                                "importance_score": getattr(e, "importance_score", 0.5),
+                            }
+                            if entry_dict.get("timestamp") is not None and hasattr(entry_dict["timestamp"], "isoformat"):
+                                entry_dict["timestamp"] = entry_dict["timestamp"].isoformat()
+                            all_entries.append(entry_dict)
+                    except Exception:
+                        pass
+
+                if search_query:
+                    sq = search_query.lower()
+                    all_entries = [e for e in all_entries if sq in e.get("content", "").lower()]
+
+                all_entries.sort(key=lambda e: e.get("timestamp") or "", reverse=True)
+                all_entries = all_entries[:limit]
+                self._send_json(200, {"entries": all_entries})
+                return
+            except Exception:
+                pass
+        self._send_json(200, {"entries": []})
 
     def _handle_modes(self) -> None:
         from src.agent.agent_mode_registry import AGENT_MODE_REGISTRY

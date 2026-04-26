@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from './components/Sidebar';
@@ -6,6 +6,7 @@ import Header from './components/Header';
 import ToastProvider from './components/ToastProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 import CommandPalette from './components/CommandPalette';
+import KeyboardShortcuts from './components/KeyboardShortcuts';
 import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
 import Notifications from './pages/Notifications';
@@ -13,6 +14,7 @@ import Skills from './pages/Skills';
 import Workflows from './pages/Workflows';
 import Memory from './pages/Memory';
 import Settings from './pages/Settings';
+import AgentDetail from './pages/AgentDetail';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -40,6 +42,7 @@ function AnimatedRoutes() {
           <Route path="/workflows" element={<Workflows />} />
           <Route path="/memory" element={<Memory />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/agents/:id" element={<AgentDetail />} />
         </Routes>
       </motion.div>
     </AnimatePresence>
@@ -48,6 +51,7 @@ function AnimatedRoutes() {
 
 function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const navigate = useNavigate();
 
   const togglePalette = useCallback(() => {
     setPaletteOpen((prev) => !prev);
@@ -58,11 +62,35 @@ function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         togglePalette();
+        return;
+      }
+      // Navigation shortcuts
+      if (e.key === 'g' || e.key === 'G') {
+        const nextHandler = (e2: KeyboardEvent) => {
+          switch (e2.key.toLowerCase()) {
+            case 'd': navigate('/'); break;
+            case 'c': navigate('/chat'); break;
+            case 'n': navigate('/notifications'); break;
+            case 's': navigate('/settings'); break;
+            case 'm': navigate('/memory'); break;
+            case 'k': navigate('/skills'); break;
+            case 'w': navigate('/workflows'); break;
+          }
+          window.removeEventListener('keydown', nextHandler);
+        };
+        window.addEventListener('keydown', nextHandler, { once: true });
+        setTimeout(() => window.removeEventListener('keydown', nextHandler), 1000);
+        return;
+      }
+      if (e.key === 'r' || e.key === 'R') {
+        if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+          window.dispatchEvent(new CustomEvent('aurelius:refresh'));
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePalette]);
+  }, [togglePalette, navigate]);
 
   return (
     <ToastProvider>
@@ -78,6 +106,7 @@ function App() {
         </div>
       </div>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
+      <KeyboardShortcuts />
     </ToastProvider>
   );
 }
