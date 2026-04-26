@@ -23,6 +23,13 @@ env/
 checkpoints/
 runs/
 
+# Training data / tokenized corpora
+data/pretrain/
+data/reference_corpus/
+*.npy
+*.jsonl
+Aurelius_Training_Data.jsonl
+
 # Jupyter
 .ipynb_checkpoints/
 
