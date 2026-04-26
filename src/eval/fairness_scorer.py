@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Stereotype lexicon
 # ---------------------------------------------------------------------------
@@ -49,6 +48,7 @@ _WINDOW_SIZE: int = 10
 # ---------------------------------------------------------------------------
 # FairnessScorer dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FairnessScorer:
@@ -119,7 +119,9 @@ class FairnessScorer:
         """
         tokens = text.lower().split()
 
-        has_male = any(token.strip(".,;:!?\"'()[]{{}}") in _MALE_PRONOUNS for token in tokens)
+        has_male = any(
+            token.strip(".,;:!?\"'()[]{{}}") in _MALE_PRONOUNS for token in tokens
+        )
         has_female = any(
             token.strip(".,;:!?\"'()[]{{}}") in _FEMALE_PRONOUNS for token in tokens
         )

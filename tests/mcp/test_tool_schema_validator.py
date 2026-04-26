@@ -28,7 +28,6 @@ from src.mcp.tool_schema_validator import (
     ToolSchemaValidator,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -295,9 +294,7 @@ def test_tool_schema_validator_registry_contains_default():
 
 
 def test_tool_schema_validator_registry_default_is_instance():
-    assert isinstance(
-        TOOL_SCHEMA_VALIDATOR_REGISTRY["default"], ToolSchemaValidator
-    )
+    assert isinstance(TOOL_SCHEMA_VALIDATOR_REGISTRY["default"], ToolSchemaValidator)
 
 
 def test_default_tool_schema_validator_is_instance():

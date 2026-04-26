@@ -126,10 +126,7 @@ def test_score_with_no_numbered_markers(scorer):
 
 
 def test_score_with_mixed_clarity(scorer):
-    reasoning = (
-        "Step 1: This step has many words for clarity.\n"
-        "Step 2: Short."
-    )
+    reasoning = "Step 1: This step has many words for clarity.\n" "Step 2: Short."
     result = scorer.score(reasoning)
     assert result["step_count"] == 2
     assert result["step_clarity"] == pytest.approx(0.75)
@@ -146,4 +143,6 @@ def test_score_case_insensitive_conclusion_match(scorer):
 # ---------------------------------------------------------------------------
 def test_registry_contains_default():
     assert "default" in CHAIN_OF_THOUGHT_SCORER_REGISTRY
-    assert CHAIN_OF_THOUGHT_SCORER_REGISTRY["default"] is DEFAULT_CHAIN_OF_THOUGHT_SCORER
+    assert (
+        CHAIN_OF_THOUGHT_SCORER_REGISTRY["default"] is DEFAULT_CHAIN_OF_THOUGHT_SCORER
+    )

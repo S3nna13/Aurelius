@@ -62,9 +62,7 @@ class ToolSchemaValidator:
         elif not name.strip():
             errors.append("'name' must be a non-empty string")
         elif not _NAME_RE.match(name):
-            errors.append(
-                f"'name' must match '^[a-zA-Z_][a-zA-Z0-9_]*$', got {name!r}"
-            )
+            errors.append(f"'name' must match '^[a-zA-Z_][a-zA-Z0-9_]*$', got {name!r}")
 
         # Description checks
         description = schema.get("description")
