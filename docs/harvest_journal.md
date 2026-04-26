@@ -128,3 +128,14 @@
 **Commits:** 6f49757 37d28c1
 **Security:** bandit 0 High findings | Foreign imports: clean
 
+## Cycle 219 — 2026-04-25
+**Scope:** Frontend Power-User Features — Command Palette, keyboard shortcuts, offline detection
+**Modules:**
+- `frontend/src/components/CommandPalette.tsx` — Fuzzy-search command palette with pages, skills, workflows, quick commands; Cmd+K shortcut; keyboard navigation
+- `frontend/src/components/Header.tsx` — Real online/offline detection via Navigator.onLine; live unread notification count; Cmd+K hint
+- `frontend/src/App.tsx` — Global Cmd+K shortcut handler, CommandPalette integration
+- `frontend/src/pages/Chat.tsx` — Listen for `aurelius:send-command` events from palette
+**Tests:** 30 aurelius_server tests pass; 894 total serving tests pass
+**Commits:** b3da6eb
+**Security:** bandit 0 High findings | Foreign imports: clean
+
