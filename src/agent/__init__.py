@@ -671,3 +671,54 @@ __all__ += [
     "SUPERVISOR_REGISTRY",
     "DEFAULT_SUPERVISOR",
 ]
+
+# --- skill executor (cycle-204) ---------------------------------------------
+from .skill_executor import (  # noqa: E402
+    SkillExecutionError,
+    SkillContext,
+    ExecutionResult as SkillExecutionResult,
+    SkillExecutor,
+    DEFAULT_SKILL_EXECUTOR,
+    SKILL_EXECUTOR_REGISTRY,
+)
+
+__all__ += [
+    "SkillExecutionError",
+    "SkillContext",
+    "SkillExecutionResult",
+    "SkillExecutor",
+    "DEFAULT_SKILL_EXECUTOR",
+    "SKILL_EXECUTOR_REGISTRY",
+]
+
+# --- plugin loader (cycle-204) -----------------------------------------------
+from .plugin_loader import (  # noqa: E402
+    PluginLoadError,
+    LoadedPlugin,
+    PluginLoader,
+    DEFAULT_PLUGIN_LOADER,
+    PLUGIN_LOADER_REGISTRY,
+)
+
+__all__ += [
+    "PluginLoadError",
+    "LoadedPlugin",
+    "PluginLoader",
+    "DEFAULT_PLUGIN_LOADER",
+    "PLUGIN_LOADER_REGISTRY",
+]
+
+# --- plugin dependency resolver (cycle-204) ----------------------------------
+from .plugin_dependency_resolver import (  # noqa: E402
+    DependencyCycleError,
+    DependencyResolver,
+    DEFAULT_DEPENDENCY_RESOLVER,
+    DEPENDENCY_RESOLVER_REGISTRY,
+)
+
+__all__ += [
+    "DependencyCycleError",
+    "DependencyResolver",
+    "DEFAULT_DEPENDENCY_RESOLVER",
+    "DEPENDENCY_RESOLVER_REGISTRY",
+]
