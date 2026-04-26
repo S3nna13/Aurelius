@@ -338,6 +338,45 @@ def test_workflow_trigger_missing_body(base_url):
 
 
 # ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+
+def test_config_get(base_url):
+    status, data = _get(base_url, "/api/config")
+    assert status == 200
+    assert "config" in data
+    assert "agent_mode" in data["config"]
+    assert "log_level" in data["config"]
+
+
+def test_config_post(base_url):
+    status, data = _post(base_url, "/api/config", {
+        "config": {"log_level": "debug", "agent_mode": "autonomous"},
+    })
+    assert status == 200
+    assert data["success"] is True
+    assert data["config"]["log_level"] == "debug"
+    assert data["config"]["agent_mode"] == "autonomous"
+
+    # Verify persistence
+    status, data = _get(base_url, "/api/config")
+    assert status == 200
+    assert data["config"]["log_level"] == "debug"
+    assert data["config"]["agent_mode"] == "autonomous"
+
+
+def test_config_post_invalid(base_url):
+    from urllib.error import HTTPError
+
+    try:
+        _post(base_url, "/api/config", {"config": "not-a-dict"})
+        assert False, "Expected 400"
+    except HTTPError as e:
+        assert e.code == 400
+
+
+# ---------------------------------------------------------------------------
 # Server factory
 # ---------------------------------------------------------------------------
 

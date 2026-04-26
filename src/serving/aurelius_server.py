@@ -177,6 +177,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         if self.path == "/api/modes":
             self._handle_modes()
             return
+        if self.path == "/api/config":
+            self._handle_config_get()
+            return
         if self.path == "/api/events":
             self._handle_sse()
             return
@@ -202,6 +205,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             return
         if self.path.startswith("/api/workflows/") and self.path.endswith("/trigger"):
             self._handle_workflow_trigger()
+            return
+        if self.path == "/api/config":
+            self._handle_config_post()
             return
         self.send_response(404)
         self.end_headers()
@@ -812,6 +818,26 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                 )
         self._send_json(200, {"modes": modes})
 
+    def _handle_config_get(self) -> None:
+        config = getattr(self.server, "runtime_config", {})
+        self._send_json(200, {"config": dict(config)})
+
+    def _handle_config_post(self) -> None:
+        try:
+            payload = self._parse_json_body()
+        except (ValueError, json.JSONDecodeError) as exc:
+            self._send_json(400, {"error": str(exc)})
+            return
+        updates = payload.get("config", {})
+        if not isinstance(updates, dict):
+            self._send_json(400, {"error": "config must be an object"})
+            return
+        config = getattr(self.server, "runtime_config", {})
+        for key, value in updates.items():
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                config[key] = value
+        self._send_json(200, {"success": True, "config": dict(config)})
+
     # ------------------------------------------------------------------
     # SSE (Server-Sent Events)
     # ------------------------------------------------------------------
@@ -903,6 +929,14 @@ class AureliusServer(HTTPServer):
         self.usage_pipeline = usage_pipeline
         self.activity_log = ActivityLog()
         self.workflow_registry: dict[str, Any] = {}
+        self.runtime_config: dict[str, Any] = {
+            "agent_mode": "supervised",
+            "log_level": "info",
+            "api_endpoint": "http://localhost:8080",
+            "require_auth": True,
+            "audit_logging": True,
+            "auto_lock": False,
+        }
 
 
 def create_aurelius_server(
