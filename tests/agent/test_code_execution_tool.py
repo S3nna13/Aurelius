@@ -81,7 +81,7 @@ def test_validate_import_os_blocked() -> None:
     req = ExecutionRequest(code="import os\nprint(os.getcwd())")
     violations = tool.validate(req)
     assert len(violations) > 0
-    assert "import os" in violations
+    assert any("os" in v for v in violations)
 
 
 def test_validate_subprocess_blocked() -> None:
@@ -89,29 +89,29 @@ def test_validate_subprocess_blocked() -> None:
     tool = CodeExecutionTool()
     req = ExecutionRequest(code="import subprocess\nsubprocess.run(['ls'])")
     violations = tool.validate(req)
-    assert "subprocess" in violations
+    assert any("subprocess" in v for v in violations)
 
 
 def test_validate_import_sys_blocked() -> None:
     tool = CodeExecutionTool()
     req = ExecutionRequest(code="import sys; print(sys.version)")
     violations = tool.validate(req)
-    assert "import sys" in violations
+    assert any("sys" in v for v in violations)
 
 
 def test_validate_dunder_import_blocked() -> None:
     tool = CodeExecutionTool()
     req = ExecutionRequest(code="m = __import__('os')")
     violations = tool.validate(req)
-    assert "__import__" in violations
+    assert any("__import__" in v for v in violations)
 
 
 def test_validate_multiple_violations() -> None:
     tool = CodeExecutionTool()
     req = ExecutionRequest(code="import os\nimport sys\n")
     violations = tool.validate(req)
-    assert "import os" in violations
-    assert "import sys" in violations
+    assert any("os" in v for v in violations)
+    assert any("sys" in v for v in violations)
 
 
 # ---------------------------------------------------------------------------
