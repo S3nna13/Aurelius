@@ -16,6 +16,7 @@ from src.serving.api_server import (
 )
 from src.serving.auth_middleware import AuthConfig, AuthMiddleware
 from src.serving.rate_limiter import RateLimitConfig, TokenBucketLimiter
+from src.serving.request_coalescer import RequestCoalescer
 
 
 class _NoCloseBytesIO(io.BytesIO):
@@ -69,6 +70,7 @@ def _invoke(
     generate_fn=None,
     auth_middleware=None,
     rate_limiter=None,
+    coalescer=None,
     extra_headers: dict | None = None,
 ):
     body = b""
@@ -91,6 +93,7 @@ def _invoke(
         generate_fn=generate_fn or make_mock_generate_fn(),
         auth_middleware=auth_middleware,
         rate_limiter=rate_limiter,
+        coalescer=coalescer,
     )
     handler_cls(socket, ("127.0.0.1", 12345), server)
     raw = socket.response_bytes()
@@ -388,4 +391,65 @@ def test_create_server_forwards_auth_and_rate_limiter():
     )
     assert server.auth_middleware is mw
     assert server.rate_limiter is limiter
+    server.server_close()
+
+
+# ---------------------------------------------------------------------------
+# Request coalescer wiring tests
+# ---------------------------------------------------------------------------
+
+
+def test_coalescer_dedups_concurrent_requests():
+    import threading
+    import time
+
+    calls = 0
+    lock = threading.Lock()
+
+    def slow_generate(request: ChatRequest) -> str:
+        nonlocal calls
+        with lock:
+            calls += 1
+        time.sleep(0.3)
+        return f"resp-{calls}"
+
+    coalescer = RequestCoalescer(ttl_s=5.0)
+
+    payload = {"model": "aurelius", "messages": [{"role": "user", "content": "Hi"}]}
+    results: list[tuple[int, bytes]] = []
+
+    def worker():
+        status, _, body = _invoke(
+            AureliusRequestHandler,
+            "POST",
+            "/v1/chat/completions",
+            payload=payload,
+            generate_fn=slow_generate,
+            coalescer=coalescer,
+        )
+        results.append((status, body))
+
+    t1 = threading.Thread(target=worker)
+    t2 = threading.Thread(target=worker)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    assert len(results) == 2
+    assert all(s == 200 for s, _ in results)
+    # Concurrent identical requests should be coalesced to a single compute
+    assert calls == 1
+
+
+def test_create_server_forwards_coalescer():
+    coalescer = RequestCoalescer(ttl_s=5.0)
+    server = create_server(
+        "127.0.0.1",
+        0,
+        make_mock_generate_fn(),
+        coalescer=coalescer,
+        bind_and_activate=False,
+    )
+    assert server.coalescer is coalescer
     server.server_close()
