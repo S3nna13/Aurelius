@@ -213,6 +213,8 @@ class AuthMiddleware:
 #: Global registry mapping logical names to :class:`AuthMiddleware` instances.
 AUTH_MIDDLEWARE_REGISTRY: dict[str, AuthMiddleware] = {}
 
-#: Default middleware in dev mode (``require_auth=False``).  Replace or
-#: configure this before starting the server in production.
-DEFAULT_AUTH_MIDDLEWARE = AuthMiddleware(AuthConfig(keys={}, require_auth=False))
+#: Default middleware — **fail-closed** (``require_auth=True``).
+#: Production deployments MUST call ``add_key()`` before accepting traffic.
+#: The previous default (``require_auth=False``) was changed after security
+#: review AUR-SEC-2026-0028 to prevent accidental open-api deployments.
+DEFAULT_AUTH_MIDDLEWARE = AuthMiddleware(AuthConfig(keys={}, require_auth=True))

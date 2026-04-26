@@ -159,10 +159,15 @@ _SAFE_BUILTINS = {
     name: getattr(_builtins_mod, name)
     for name in dir(_builtins_mod)
     if name not in ("open", "exec", "eval", "__import__", "compile", "input",
-                    "breakpoint", "__loader__", "__spec__")
+                    "breakpoint", "__loader__", "__spec__",
+                    "object", "type", "getattr", "hasattr", "setattr", "vars")
     and not name.startswith("__")
 }
 # Re-add essentials that start with __ so class definitions and name lookups work
+# NOTE: __build_class__ is required for ``class`` statements, but it is also a
+# traversal vector (it carries a reference to ``os`` via its globals).  We keep
+# it because without it the sandbox cannot define classes, but callers must
+# understand that in-process exec() is NOT a security boundary.
 _SAFE_BUILTINS["__build_class__"] = _builtins_mod.__build_class__
 _SAFE_BUILTINS["__name__"] = "__sandbox__"
 

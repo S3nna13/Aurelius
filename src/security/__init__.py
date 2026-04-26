@@ -157,6 +157,44 @@ from .message_content_filter import (  # noqa: F401
 )
 SECURITY_REGISTRY["message_filter"] = MESSAGE_FILTER_REGISTRY
 
+# --- Prompt injection corpus (cycle-202) -------------------------------------
+from .prompt_injection_corpus import (  # noqa: F401
+    InjectionPattern,
+    PromptInjectionCorpus,
+    CORPUS_REGISTRY,
+    DEFAULT_PROMPT_INJECTION_CORPUS,
+)
+SECURITY_REGISTRY["prompt_injection_corpus"] = CORPUS_REGISTRY
+
+# --- Tool call attestation (cycle-202) ---------------------------------------
+from .tool_call_attestation import (  # noqa: F401
+    AttestedToolCall,
+    ToolCallAttestation,
+    ATTESTATION_REGISTRY,
+    DEFAULT_TOOL_CALL_ATTESTATION,
+)
+SECURITY_REGISTRY["tool_call_attestation"] = ATTESTATION_REGISTRY
+
+# --- Input normalizer (cycle-202) --------------------------------------------
+from .input_normalizer import (  # noqa: F401
+    InputNormalizer,
+    NormalizationResult,
+    NORMALIZER_REGISTRY,
+    DEFAULT_INPUT_NORMALIZER,
+)
+SECURITY_REGISTRY["input_normalizer"] = NORMALIZER_REGISTRY
+
+# --- Agent budget enforcer (cycle-202) ---------------------------------------
+from .agent_budget_enforcer import (  # noqa: F401
+    AgentBudget,
+    AgentBudgetEnforcer,
+    BudgetExhausted,
+    BudgetSnapshot,
+    BUDGET_ENFORCER_REGISTRY,
+    DEFAULT_BUDGET_ENFORCER,
+)
+SECURITY_REGISTRY["agent_budget_enforcer"] = BUDGET_ENFORCER_REGISTRY
+
 __all__ = [
     "ModelStealingDefense",
     "QueryAuditEntry",
@@ -240,6 +278,36 @@ __all__ = [
     "TrailAuditEvent",
     "AUDIT_TRAIL_REGISTRY",
     "AuditTrail",
+    # message_content_filter
+    "FilterConfig",
+    "FilterMatch",
+    "FilterResult",
+    "FilterVerdict",
+    "MessageContentFilter",
+    "MESSAGE_FILTER_REGISTRY",
+    "DEFAULT_MESSAGE_FILTER",
+    # prompt_injection_corpus
+    "InjectionPattern",
+    "PromptInjectionCorpus",
+    "CORPUS_REGISTRY",
+    "DEFAULT_PROMPT_INJECTION_CORPUS",
+    # tool_call_attestation
+    "AttestedToolCall",
+    "ToolCallAttestation",
+    "ATTESTATION_REGISTRY",
+    "DEFAULT_TOOL_CALL_ATTESTATION",
+    # input_normalizer
+    "InputNormalizer",
+    "NormalizationResult",
+    "NORMALIZER_REGISTRY",
+    "DEFAULT_INPUT_NORMALIZER",
+    # agent_budget_enforcer
+    "AgentBudget",
+    "AgentBudgetEnforcer",
+    "BudgetExhausted",
+    "BudgetSnapshot",
+    "BUDGET_ENFORCER_REGISTRY",
+    "DEFAULT_BUDGET_ENFORCER",
     # combined registry
     "SECURITY_REGISTRY",
 ]

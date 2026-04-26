@@ -39,7 +39,7 @@ from typing import Any, Dict, FrozenSet, Optional
 DEFAULT_ALLOWED_BUILTINS: FrozenSet[str] = frozenset({
     "abs", "bool", "bytes", "chr", "dict", "divmod", "enumerate", "filter",
     "float", "format", "frozenset", "int", "isinstance",
-    "issubclass", "iter", "len", "list", "map", "max", "min", "next", "object",
+    "issubclass", "iter", "len", "list", "map", "max", "min", "next",
     "ord", "pow", "print", "range", "repr", "reversed", "round", "set",
     "slice", "sorted", "str", "sum", "tuple", "zip",
 })
@@ -109,7 +109,8 @@ class SandboxExecutor:
         for blocked in (
             "eval", "exec", "compile", "open", "__import__",
             "input", "breakpoint", "exit", "quit",
-            "getattr", "setattr", "type", "hasattr",
+            "getattr", "setattr", "type", "hasattr", "object",
+            "vars", "__build_class__",
         ):
             safe_builtins.pop(blocked, None)
         return {"__builtins__": safe_builtins}

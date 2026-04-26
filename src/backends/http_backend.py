@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import json
 import urllib.error
 import urllib.request
@@ -8,13 +9,25 @@ from urllib.parse import urlparse
 
 _ALLOWED_SCHEMES = frozenset(["http", "https"])
 
+# SSRF: private/reserved IP ranges that should not be reachable via backend.
+_BLOCKED_IP_NETWORKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),   # Link-local
+    ipaddress.ip_network("0.0.0.0/8"),
+    ipaddress.ip_network("::1/128"),          # IPv6 loopback
+    ipaddress.ip_network("fc00::/7"),         # IPv6 unique local
+    ipaddress.ip_network("fe80::/10"),        # IPv6 link-local
+]
+
 
 def _validate_backend_url(url: str) -> None:
-    """Validate backend URL: only http/https schemes allowed.
+    """Validate backend URL: scheme allowlist + SSRF IP blocklist.
 
-    SSRF mitigation for bandit B310 / CWE-22. The base URL is config-supplied
-    and typically points at a loopback inference server, but we still enforce
-    the scheme allowlist to prevent file://, gopher://, ftp:// etc.
+    Mitigates bandit B310 / CWE-918. Blocks private/reserved IPs and
+    non-HTTP schemes.
     """
     try:
         parsed = urlparse(url)
@@ -26,6 +39,22 @@ def _validate_backend_url(url: str) -> None:
         )
     if not parsed.hostname:
         raise ValueError(f"backend URL missing host: {url!r}")
+
+    # SSRF: block private/reserved IPs
+    hostname = parsed.hostname
+    try:
+        addr = ipaddress.ip_address(hostname)
+    except ValueError:
+        # Not an IP literal — allow (DNS resolution happens later at the
+        # transport layer, which is acceptable for backend URLs that are
+        # config-supplied rather than user-supplied).
+        return
+    for network in _BLOCKED_IP_NETWORKS:
+        if addr in network:
+            raise ValueError(
+                f"backend URL resolves to a private/reserved IP ({hostname}); "
+                "this is blocked to prevent SSRF."
+            )
 
 __all__ = [
     "HTTPBackendConfig",
