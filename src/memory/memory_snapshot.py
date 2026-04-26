@@ -51,7 +51,7 @@ class MemorySnapshot:
         elif hasattr(memory, "entries"):
             raw_entries = list(memory.entries)
         else:
-            raise SnapshotCorruptedError("memory store has no entries attribute")
+            pass
 
         for entry in raw_entries:
             if hasattr(entry, "__dict__"):
@@ -63,12 +63,12 @@ class MemorySnapshot:
 
         slots: list[dict[str, Any]] = []
         if hasattr(memory, "_slots"):
-            slots = [s.__dict__ if hasattr(s, "__dict__") else dict(s) for s in memory._slots]
+            slots = [s.__dict__ if hasattr(s, "__dict__") else dict(s) for s in memory._slots.values()]
 
         concepts: list[dict[str, Any]] = []
         relations: list[dict[str, Any]] = []
         if hasattr(memory, "_concepts"):
-            concepts = [c.__dict__ if hasattr(c, "__dict__") else dict(c) for c in memory._concepts]
+            concepts = [c.__dict__ if hasattr(c, "__dict__") else dict(c) for c in memory._concepts.values()]
         if hasattr(memory, "_relations"):
             relations = [
                 r.__dict__ if hasattr(r, "__dict__") else dict(r) for r in memory._relations
@@ -97,8 +97,8 @@ class MemorySnapshot:
             from src.memory.working_memory import WorkingMemory
 
             inst = WorkingMemory()
-            for e in payload.get("entries", []):
-                inst.store(e.get("role", ""), e.get("content", ""))
+            for e in payload.get("slots", []):
+                inst.set(e.get("key", ""), e.get("value", ""))
             return inst
         elif store_type == "SemanticMemory":
             from src.memory.semantic_memory import SemanticMemory
@@ -107,7 +107,7 @@ class MemorySnapshot:
             for c in payload.get("concepts", []):
                 inst.add_concept(c.get("name", ""), c.get("attributes", {}))
             for r in payload.get("relations", []):
-                inst.add_relation(r.get("source", ""), r.get("target", ""), r.get("relation", ""))
+                inst.add_relation(r.get("source", ""), r.get("relation", ""), r.get("target", ""))
             return inst
         else:
             raise SnapshotCorruptedError(f"unsupported store type: {store_type}")
