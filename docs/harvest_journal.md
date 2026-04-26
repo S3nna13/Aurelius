@@ -118,3 +118,13 @@
 **Commits:** 0efeaed a11c375
 **Security:** bandit 0 High findings | Foreign imports: clean
 
+## Cycle 218 — 2026-04-25
+**Scope:** Settings Deepening — Wire runtime config persistence into Settings page
+**Modules:**
+- `src/serving/aurelius_server.py` — Added `GET /api/config` and `POST /api/config` endpoints with scalar type validation; default runtime_config with agent_mode, log_level, api_endpoint, security toggles
+- `frontend/src/pages/Settings.tsx` — Live settings fetching modes from `/api/modes` and config from `/api/config`, editable log level/API endpoint/security toggles, save with toast feedback
+- `tests/serving/test_aurelius_server.py` — 3 new tests for config get, post, and invalid post
+**Tests:** 30 aurelius_server tests pass; 832 total serving tests pass
+**Commits:** 6f49757 37d28c1
+**Security:** bandit 0 High findings | Foreign imports: clean
+
