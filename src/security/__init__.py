@@ -132,11 +132,6 @@ from src.security.audit_trail import (
     AuditTrail,
 )
 
-from src.security.posture_scorer import (
-    PostureScore,
-    SecurityPostureScorer,
-    POSTURE_SCORER_REGISTRY,
-)
 
 # Additive registry keyed by name; test suites and integrators can register
 # new defensive pipelines without touching downstream call sites.
@@ -160,22 +155,6 @@ from src.security.checkpoint_signer import (
     CheckpointSigner,
 )
 
-from src.security.safe_subprocess import (
-    SAFE_SUBPROCESS,
-    SafeRunResult,
-    UnsafeSubprocessError,
-    run_safe,
-)
-
-from src.security.sbom_generator import (
-    SBOM_BOM_FORMAT,
-    SBOM_SPEC_VERSION,
-    SBOM_REGISTRY,
-    SBOMResult,
-    generate_sbom,
-)
-
-
 SECURITY_REGISTRY: dict = {
     "rate_abuse_detector": RATE_ABUSE_DETECTOR_REGISTRY,
     "ip_allowlist": IP_ALLOWLIST_REGISTRY,
@@ -194,7 +173,6 @@ from .message_content_filter import (  # noqa: F401
     MESSAGE_FILTER_REGISTRY,
     DEFAULT_MESSAGE_FILTER,
 )
-
 SECURITY_REGISTRY["message_filter"] = MESSAGE_FILTER_REGISTRY
 
 __all__ = [
@@ -294,19 +272,4 @@ __all__ = [
     "CheckpointIntegrityError",
     # combined registry
     "SECURITY_REGISTRY",
-    # posture_scorer
-    "PostureScore",
-    "SecurityPostureScorer",
-    "POSTURE_SCORER_REGISTRY",
-    # safe_subprocess
-    "SAFE_SUBPROCESS",
-    "SafeRunResult",
-    "UnsafeSubprocessError",
-    "run_safe",
-    # sbom_generator
-    "SBOM_BOM_FORMAT",
-    "SBOM_SPEC_VERSION",
-    "SBOM_REGISTRY",
-    "SBOMResult",
-    "generate_sbom",
 ]
