@@ -20,6 +20,7 @@ _MCP_SUBMODULES = (
     "mcp_server",
     "mcp_client",
     "tool_schema_registry",
+    "tool_schema_validator",
     "sse_mcp_server",
     "plugin_host",
     "skill_catalog",
@@ -54,6 +55,9 @@ __all__ = [
     "ExtensionManifestValidator",
     "ExtensionManifest",
     "ManifestValidationResult",
+    "ToolSchemaValidator",
+    "DEFAULT_TOOL_SCHEMA_VALIDATOR",
+    "TOOL_SCHEMA_VALIDATOR_REGISTRY",
     *_MCP_SUBMODULES,
 ]
 
@@ -152,6 +156,18 @@ def __getattr__(name: str):
         from .session_manager import SessionState  # noqa: PLC0415
         globals()["SessionState"] = SessionState
         return SessionState
+    if name == "ToolSchemaValidator":
+        from .tool_schema_validator import ToolSchemaValidator  # noqa: PLC0415
+        globals()["ToolSchemaValidator"] = ToolSchemaValidator
+        return ToolSchemaValidator
+    if name == "DEFAULT_TOOL_SCHEMA_VALIDATOR":
+        from .tool_schema_validator import DEFAULT_TOOL_SCHEMA_VALIDATOR  # noqa: PLC0415
+        globals()["DEFAULT_TOOL_SCHEMA_VALIDATOR"] = DEFAULT_TOOL_SCHEMA_VALIDATOR
+        return DEFAULT_TOOL_SCHEMA_VALIDATOR
+    if name == "TOOL_SCHEMA_VALIDATOR_REGISTRY":
+        from .tool_schema_validator import TOOL_SCHEMA_VALIDATOR_REGISTRY  # noqa: PLC0415
+        globals()["TOOL_SCHEMA_VALIDATOR_REGISTRY"] = TOOL_SCHEMA_VALIDATOR_REGISTRY
+        return TOOL_SCHEMA_VALIDATOR_REGISTRY
     if name in _MCP_SUBMODULES:
         module = import_module(f"src.mcp.{name}")
         globals()[name] = module

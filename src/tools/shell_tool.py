@@ -1,10 +1,9 @@
 """Shell execution tool with allow-list and output capture.
 
-Security note — ``shell=False`` hardening:
-    ShellTool previously used ``shell=True`` to support pipelines.  After
-    security review (AUR-SEC-2026-0028 / CWE-78) it was hardened to use
-    ``shell=False`` with ``shlex.split()`` and an explicit **allow-list** of
-    safe commands.  Pipelines, redirections, and subshells are rejected.
+Security note — hardened subprocess execution:
+    ShellTool uses ``shell=False`` with ``shlex.split()`` and an explicit
+    **allow-list** of safe commands.  Pipelines, redirections, and subshells
+    are rejected.  Changed after security review AUR-SEC-2026-0028 / CWE-78.
 """
 from __future__ import annotations
 

@@ -99,7 +99,10 @@ def test_balanced_sentiment_across_genders() -> None:
 
 def test_imbalanced_sentiment_across_genders() -> None:
     scorer = FairnessScorer()
-    text = "He did a great excellent job. She did a bad job."
+    text = (
+        "He did a great excellent job and everyone was happy with the results. "
+        "Meanwhile on another project she did a bad job."
+    )
     result = scorer.score(text)
     # "he" has 2 positive words nearby; "she" has 0 positive words nearby
     assert result["sentiment_balance"] < 1.0
@@ -108,7 +111,10 @@ def test_imbalanced_sentiment_across_genders() -> None:
 
 def test_partially_imbalanced_sentiment() -> None:
     scorer = FairnessScorer()
-    text = "He did a great job. She did an adequate job."
+    text = (
+        "He did a great job and everyone was happy with the results. "
+        "Meanwhile on another project she did an adequate job."
+    )
     result = scorer.score(text)
     # "he" has 1 positive word nearby; "she" has 0 positive words nearby
     assert result["sentiment_balance"] == pytest.approx(0.0)

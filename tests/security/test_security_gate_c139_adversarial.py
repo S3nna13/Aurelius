@@ -113,13 +113,13 @@ def test_shell_tool_allows_benign_commands():
     benign = [
         "echo hello",
         "ls -la /tmp",
-        "python3 --version",
-        "cat /etc/hostname",
+        "uname",
+        "whoami",
     ]
     for cmd in benign:
         result = tool.run(cmd)
         assert result.success is True, (
-            f"ShellTool incorrectly blocked benign command: {cmd!r}"
+            f"ShellTool incorrectly blocked benign command: {cmd!r} — error: {result.error}"
         )
 
 

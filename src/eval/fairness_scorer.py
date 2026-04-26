@@ -10,7 +10,6 @@ Pure standard library. No silent fallbacks.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import ClassVar
 
 
 # ---------------------------------------------------------------------------

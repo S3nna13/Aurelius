@@ -77,6 +77,11 @@ class ToolSchemaValidator:
         elif not description.strip():
             errors.append("'description' must be a non-empty string")
 
+        # Circular $ref check (run before size check to avoid recursion)
+        ref_error = _detect_circular_ref(schema)
+        if ref_error:
+            errors.append(ref_error)
+
         # Size check
         key_count = _count_keys(schema)
         if key_count > _MAX_SCHEMA_KEYS:
@@ -84,11 +89,6 @@ class ToolSchemaValidator:
                 f"Schema size ({key_count} keys) exceeds maximum allowed "
                 f"({_MAX_SCHEMA_KEYS} keys)"
             )
-
-        # Circular $ref check
-        ref_error = _detect_circular_ref(schema)
-        if ref_error:
-            errors.append(ref_error)
 
         # Parameters checks
         parameters = schema.get("parameters")
@@ -148,16 +148,25 @@ class ToolSchemaValidator:
 
 def _count_keys(obj: Any) -> int:
     """Recursively count the total number of dict keys in *obj*."""
-    if not isinstance(obj, dict):
-        return 0
-    count = len(obj)
-    for value in obj.values():
-        if isinstance(value, dict):
-            count += _count_keys(value)
-        elif isinstance(value, list):
-            for item in value:
-                count += _count_keys(item)
-    return count
+    seen: set[int] = set()
+
+    def _walk(node: Any) -> int:
+        if not isinstance(node, dict):
+            return 0
+        node_id = id(node)
+        if node_id in seen:
+            return 0
+        seen.add(node_id)
+        count = len(node)
+        for value in node.values():
+            if isinstance(value, dict):
+                count += _walk(value)
+            elif isinstance(value, list):
+                for item in value:
+                    count += _walk(item)
+        return count
+
+    return _walk(obj)
 
 
 def _detect_circular_ref(obj: Any) -> str | None:

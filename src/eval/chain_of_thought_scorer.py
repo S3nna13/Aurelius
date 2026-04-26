@@ -73,7 +73,7 @@ class ChainOfThoughtScorer:
             overall = 0.4 * step_clarity + 0.6 * logical_flow
 
         return {
-            "step_count": float(step_count),
+            "step_count": step_count,
             "step_clarity": step_clarity,
             "logical_flow": logical_flow,
             "conclusion_match": conclusion_match,
