@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import {
   GitBranch,
   Play,
@@ -68,52 +68,40 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+import { useApi } from '../hooks/useApi';
+import { useToast } from '../components/ToastProvider';
+
 export default function Workflows() {
-  const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [summary, setSummary] = useState({ total: 0, running: 0, completed: 0, failed: 0 });
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<WorkflowDetail | null>(null);
   const [triggering, setTriggering] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const fetchWorkflows = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/workflows');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setWorkflows(data.workflows || []);
-      setSummary(data.summary || { total: 0, running: 0, completed: 0, failed: 0 });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const {
+    data: wfData,
+    loading,
+    error,
+    refresh: fetchWorkflows,
+  } = useApi<{ workflows: Workflow[]; summary: { total: number; running: number; completed: number; failed: number } }>('/workflows', {
+    refreshInterval: 5000,
+  });
 
-  useEffect(() => {
-    fetchWorkflows();
-    const interval = setInterval(fetchWorkflows, 5000);
-    return () => clearInterval(interval);
-  }, [fetchWorkflows]);
+  const workflows = wfData?.workflows || [];
+  const summary = wfData?.summary || { total: 0, running: 0, completed: 0, failed: 0 };
 
   const openDetail = async (wfId: string) => {
-    setError(null);
     try {
       const res = await fetch(`/api/workflows/${wfId}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setSelected(data as WorkflowDetail);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      toast(err instanceof Error ? err.message : String(err), 'error');
     }
   };
 
   const triggerWorkflow = async (wfId: string, trigger: string) => {
     setTriggering(wfId);
-    setError(null);
     try {
       const res = await fetch(`/api/workflows/${wfId}/trigger`, {
         method: 'POST',
@@ -125,8 +113,9 @@ export default function Workflows() {
       if (selected && selected.id === wfId) {
         await openDetail(wfId);
       }
+      toast(`Workflow ${trigger} triggered`, 'success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      toast(err instanceof Error ? err.message : 'Trigger failed', 'error');
     } finally {
       setTriggering(null);
     }
@@ -182,7 +171,7 @@ export default function Workflows() {
       {error && (
         <div className="aurelius-card border-rose-500/30 bg-rose-500/5 text-rose-300">
           <AlertTriangle size={18} className="inline mr-2" />
-          {error}
+          {error.message}
         </div>
       )}
 

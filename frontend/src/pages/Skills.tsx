@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Wrench,
   Search,
@@ -12,6 +12,8 @@ import {
   ChevronRight,
   Loader2,
 } from 'lucide-react';
+import { useApi } from '../hooks/useApi';
+import { useToast } from '../components/ToastProvider';
 
 interface Skill {
   id: string;
@@ -39,44 +41,37 @@ interface ExecutionResult {
 }
 
 export default function Skills() {
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<SkillDetail | null>(null);
   const [executing, setExecuting] = useState(false);
   const [execResult, setExecResult] = useState<ExecutionResult | null>(null);
   const [variables, setVariables] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const fetchSkills = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/skills');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setSkills(data.skills || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const {
+    data: skillsData,
+    loading,
+    error,
+    refresh: refreshSkills,
+  } = useApi<{ skills: Skill[] }>('/skills', {
+    refreshInterval: 10000,
+    retries: 2,
+    timeout: 8000,
+  });
 
-  useEffect(() => {
-    fetchSkills();
-  }, [fetchSkills]);
+  const { execute: fetchDetail } = useApi<SkillDetail>('/skills');
+  const { execute: execSkill } = useApi<ExecutionResult>('/skills/execute');
+
+  const skills = skillsData?.skills || [];
 
   const openDetail = async (skillId: string) => {
     setExecResult(null);
     setVariables({});
-    try {
-      const res = await fetch(`/api/skills/${skillId}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+    const data = await fetchDetail({ method: 'GET' });
+    if (data) {
       setSelected(data as SkillDetail);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+    } else {
+      toast('Failed to load skill details', 'error');
     }
   };
 
@@ -84,27 +79,29 @@ export default function Skills() {
     if (!selected) return;
     setExecuting(true);
     setExecResult(null);
-    try {
-      const res = await fetch('/api/skills/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          skill_id: selected.id,
-          variables,
-        }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setExecResult(data as ExecutionResult);
-    } catch (err) {
+    const data = await execSkill({
+      method: 'POST',
+      body: {
+        skill_id: selected.id,
+        variables,
+      },
+    });
+    if (data) {
+      setExecResult(data);
+      if (data.success) {
+        toast('Skill executed successfully', 'success');
+      } else {
+        toast(data.output || 'Skill execution failed', 'error');
+      }
+    } else {
       setExecResult({
         success: false,
-        output: err instanceof Error ? err.message : String(err),
+        output: 'Request failed — check connection',
         duration_ms: 0,
       });
-    } finally {
-      setExecuting(false);
+      toast('Skill execution request failed', 'error');
     }
+    setExecuting(false);
   };
 
   const filtered = skills.filter(
@@ -158,7 +155,13 @@ export default function Skills() {
       {error && !loading && (
         <div className="aurelius-card border-rose-500/30 bg-rose-500/5 text-rose-300">
           <AlertTriangle size={18} className="inline mr-2" />
-          {error}
+          {error.message}
+          <button
+            onClick={refreshSkills}
+            className="ml-4 text-xs underline hover:text-rose-200"
+          >
+            Retry
+          </button>
         </div>
       )}
 
