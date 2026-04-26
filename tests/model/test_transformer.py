@@ -44,6 +44,7 @@ def test_sequence_length_limit(small_model, small_cfg):
         small_model(tokens)  # forward now returns tuple but assert fires before return
 
 
+@pytest.mark.slow
 def test_full_model_parameter_count():
     """Full 1.3B model — verify parameter count is in expected range."""
     cfg = AureliusConfig()

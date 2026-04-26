@@ -33,7 +33,7 @@ jobs:
 
       - name: Run pytest (core modules)
         run: |
-          python -m pytest --tb=short -q \
+          python -m pytest --tb=short -q -m "not slow" \
             tests/model/ \
             tests/training/ \
             tests/inference/ \
@@ -42,7 +42,7 @@ jobs:
 
       - name: Run pytest (security & safety)
         run: |
-          python -m pytest --tb=short -q \
+          python -m pytest --tb=short -q -m "not slow" \
             tests/security/ \
             tests/safety/ \
             -x || true
@@ -71,6 +71,33 @@ jobs:
       - name: Syntax check (tests)
         run: |
           find tests -name "*.py" -exec python -m py_compile {} + || true
+
+  slow-tests:
+    name: Slow tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12']
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run pytest (slow tests only)
+        run: |
+          python -m pytest --tb=short -q -m "slow" \
+            tests/model/ \
+            tests/security/ \
+            -x || true
 
   typecheck:
     name: Type check
