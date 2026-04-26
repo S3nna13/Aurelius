@@ -11,6 +11,9 @@ import {
   Menu,
   X,
   Shield,
+  ScrollText,
+  CalendarClock,
+  BarChart3,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 
@@ -21,7 +24,10 @@ const navItems = [
   { to: '/skills', icon: Wrench, label: 'Skills', badge: null },
   { to: '/workflows', icon: GitBranch, label: 'Workflows', badgeKey: 'workflows' as const },
   { to: '/memory', icon: Brain, label: 'Memory', badge: null },
+  { to: '/tasks', icon: CalendarClock, label: 'Tasks', badge: null },
+  { to: '/agents', icon: BarChart3, label: 'Agents', badge: null },
   { to: '/settings', icon: Settings, label: 'Settings', badge: null },
+  { to: '/logs', icon: ScrollText, label: 'Logs', badge: null },
 ];
 
 export default function Sidebar() {

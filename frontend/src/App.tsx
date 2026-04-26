@@ -9,6 +9,7 @@ import CommandPalette from './components/CommandPalette';
 import GlobalSearch from './components/GlobalSearch';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import SessionLock from './components/SessionLock';
+import OnboardingTour from './components/OnboardingTour';
 import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
 import Notifications from './pages/Notifications';
@@ -17,6 +18,9 @@ import Workflows from './pages/Workflows';
 import Memory from './pages/Memory';
 import Settings from './pages/Settings';
 import AgentDetail from './pages/AgentDetail';
+import Logs from './pages/Logs';
+import ScheduledTasks from './pages/ScheduledTasks';
+import AgentComparison from './pages/AgentComparison';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -45,6 +49,9 @@ function AnimatedRoutes() {
           <Route path="/memory" element={<Memory />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/agents/:id" element={<AgentDetail />} />
+          <Route path="/agents" element={<AgentComparison />} />
+          <Route path="/logs" element={<Logs />} />
+          <Route path="/tasks" element={<ScheduledTasks />} />
         </Routes>
       </motion.div>
     </AnimatePresence>
@@ -121,6 +128,7 @@ function App() {
       {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
       <KeyboardShortcuts />
       <SessionLock />
+      <OnboardingTour />
     </ToastProvider>
   );
 }

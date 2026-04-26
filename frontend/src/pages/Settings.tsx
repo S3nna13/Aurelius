@@ -11,8 +11,10 @@ import {
   RotateCcw,
   Dot,
   Bell,
+  Upload,
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
+import ImportData from '../components/ImportData';
 
 interface AgentMode {
   id: string;
@@ -65,6 +67,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({});
+  const [importOpen, setImportOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -172,6 +175,13 @@ export default function SettingsPage() {
               Unsaved changes
             </span>
           )}
+          <button
+            onClick={() => setImportOpen(true)}
+            className="aurelius-btn-outline flex items-center gap-2 text-sm"
+          >
+            <Upload size={14} />
+            Import
+          </button>
           <button
             onClick={resetToDefaults}
             disabled={loading}
@@ -366,6 +376,17 @@ export default function SettingsPage() {
             </div>
           </div>
         </>
+      )}
+      {importOpen && (
+        <ImportData
+          onClose={() => setImportOpen(false)}
+          onImport={(data) => {
+            if (typeof data === 'object' && data !== null && 'config' in data) {
+              setConfig({ ...defaultConfig, ...(data as any).config });
+            }
+          }}
+          title="Import Settings"
+        />
       )}
     </div>
   );

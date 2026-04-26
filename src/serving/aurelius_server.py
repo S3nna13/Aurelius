@@ -48,7 +48,31 @@ from src.agent.skill_executor import ExecutionResult, SkillContext, SkillExecuto
 from src.serving.mission_control import ActivityLog
 from src.workflow.workflow_monitor import WorkflowMonitor, WorkflowStatus
 
+
+class _LogRingBuffer(logging.Handler):
+    """In-memory ring buffer for recent log records."""
+
+    def __init__(self, capacity: int = 500) -> None:
+        super().__init__()
+        self.capacity = capacity
+        self.records: list[dict[str, Any]] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append({
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(record.created)),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": self.format(record),
+        })
+        if len(self.records) > self.capacity:
+            self.records = self.records[-self.capacity :]
+
+
 logger = logging.getLogger(__name__)
+
+_log_buffer = _LogRingBuffer(capacity=500)
+_log_buffer.setFormatter(logging.Formatter("%(message)s"))
+logger.addHandler(_log_buffer)
 
 #: Maximum request body size (1 MiB).
 _MAX_CONTENT_LENGTH = 1_048_576
@@ -186,6 +210,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         if self.path == "/api/events":
             self._handle_sse()
             return
+        if self.path == "/api/logs":
+            self._handle_logs()
+            return
 
         # Static files
         path = self.path
@@ -266,7 +293,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         if memory is not None and hasattr(memory, "stats"):
             try:
                 status["memory"] = memory.stats()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
         else:
             status["memory"] = {"total_entries": 0}
@@ -609,7 +636,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                 entry = catalog.get(skill_id)
                 if entry is not None:
                     instructions = getattr(entry, "instructions", "")
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         if not instructions:
@@ -829,7 +856,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                         layers[layer_name] = 0
                 self._send_json(200, {"layers": layers})
                 return
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
         self._send_json(200, {"layers": {}})
 
@@ -871,7 +898,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                             ):
                                 entry_dict["timestamp"] = entry_dict["timestamp"].isoformat()
                             all_entries.append(entry_dict)
-                    except Exception:
+                    except Exception:  # noqa: S110
                         pass
 
                 if search_query:
@@ -882,7 +909,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                 all_entries = all_entries[:limit]
                 self._send_json(200, {"entries": all_entries})
                 return
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
         self._send_json(200, {"entries": []})
 
@@ -899,6 +926,22 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         prefs = payload.get("preferences", {})
         self.server.notification_preferences = prefs
         self._send_json(200, {"success": True})
+
+    def _handle_logs(self) -> None:
+        from urllib.parse import parse_qs, urlparse
+        query = parse_qs(urlparse(self.path).query)
+        level_filter = query.get("level", [None])[0]
+        search = query.get("q", [None])[0]
+        limit = int(query.get("limit", ["100"])[0])
+
+        records = list(_log_buffer.records)
+        if level_filter:
+            records = [r for r in records if r.get("level", "").lower() == level_filter.lower()]
+        if search:
+            sq = search.lower()
+            records = [r for r in records if sq in r.get("message", "").lower() or sq in r.get("logger", "").lower()]  # noqa: E501
+        records = records[-limit:]
+        self._send_json(200, {"entries": records})
 
     def _handle_modes(self) -> None:
         from src.agent.agent_mode_registry import AGENT_MODE_REGISTRY
@@ -976,7 +1019,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             try:
                 self.wfile.write(f"event: notification\ndata: {data}\n\n".encode())
                 self.wfile.flush()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         unsub = hermes.subscribe(_on_notification)
@@ -1074,7 +1117,7 @@ if __name__ == "__main__":
 
     arg_parser = argparse.ArgumentParser(description="Aurelius Unified Server")
     arg_parser.add_argument("--port", type=int, default=7870)
-    arg_parser.add_argument("--host", default="0.0.0.0")  # nosec B104 — default for home network LAN access; user can override with --host
+    arg_parser.add_argument("--host", default="0.0.0.0")  # nosec B104 — default for home network LAN access; user can override with --host  # noqa: S104
     args = arg_parser.parse_args()
 
     server = create_aurelius_server(args.host, args.port)

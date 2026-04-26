@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Brain,
   Search,
@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Eye,
   X,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ToastProvider';
@@ -97,6 +98,10 @@ export default function Memory() {
   const [search, setSearch] = useState('');
   const [selectedLayer, setSelectedLayer] = useState<string>('all');
   const [detailEntry, setDetailEntry] = useState<MemoryEntry | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [minImportance, setMinImportance] = useState(0);
+  const [dateRange, setDateRange] = useState<'all' | '24h' | '7d' | '30d'>('all');
+  const [minAccessCount, setMinAccessCount] = useState(0);
   const { toast } = useToast();
 
   const {
@@ -141,7 +146,26 @@ export default function Memory() {
       })
     : fallbackLayers;
 
-  const entries = entriesData?.entries || [];
+  const rawEntries = entriesData?.entries || [];
+
+  const filteredEntries = useMemo(() => {
+    let result = [...rawEntries];
+    if (minImportance > 0) {
+      result = result.filter((e) => (e.importance_score * 100) >= minImportance);
+    }
+    if (dateRange !== 'all') {
+      const now = Date.now();
+      const ranges: Record<string, number> = { '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
+      const cutoff = now - ranges[dateRange];
+      result = result.filter((e) => new Date(e.timestamp).getTime() >= cutoff);
+    }
+    if (minAccessCount > 0) {
+      result = result.filter((e) => e.access_count >= minAccessCount);
+    }
+    return result;
+  }, [rawEntries, minImportance, dateRange, minAccessCount]);
+
+  const entries = filteredEntries;
   const totalEntries = memoryLayers.reduce((sum, l) => sum + l.entries, 0);
 
   const refreshAll = () => {
@@ -178,17 +202,87 @@ export default function Memory() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9eb0]" />
-        <input
-          type="text"
-          placeholder="Search memory entries..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg pl-9 pr-4 py-2.5 text-sm text-[#e0e0e0] placeholder:text-[#9e9eb0] focus:outline-none focus:border-[#4fc3f7]"
-        />
+      {/* Search + Filter Toggle */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9eb0]" />
+          <input
+            type="text"
+            placeholder="Search memory entries..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg pl-9 pr-4 py-2.5 text-sm text-[#e0e0e0] placeholder:text-[#9e9eb0] focus:outline-none focus:border-[#4fc3f7]"
+          />
+        </div>
+        <button
+          onClick={() => setShowFilters((v) => !v)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
+            showFilters
+              ? 'bg-aurelius-accent/10 text-aurelius-accent border-aurelius-accent/30'
+              : 'bg-[#0f0f1a] text-[#9e9eb0] border-[#2d2d44] hover:border-aurelius-accent/30'
+          }`}
+        >
+          <SlidersHorizontal size={14} />
+          Filters
+        </button>
       </div>
+
+      {/* Advanced Filters */}
+      {showFilters && (
+        <div className="aurelius-card space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs text-[#9e9eb0] mb-1.5">Min Importance: {minImportance}%</label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={minImportance}
+                onChange={(e) => setMinImportance(Number(e.target.value))}
+                className="w-full accent-[#4fc3f7]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-[#9e9eb0] mb-1.5">Date Range</label>
+              <select
+                value={dateRange}
+                onChange={(e) => setDateRange(e.target.value as any)}
+                className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-2 text-sm text-[#e0e0e0] focus:outline-none focus:border-[#4fc3f7]"
+              >
+                <option value="all">All time</option>
+                <option value="24h">Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-[#9e9eb0] mb-1.5">Min Access Count</label>
+              <input
+                type="number"
+                min={0}
+                value={minAccessCount}
+                onChange={(e) => setMinAccessCount(Number(e.target.value))}
+                className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-2 text-sm text-[#e0e0e0] focus:outline-none focus:border-[#4fc3f7]"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setMinImportance(0);
+                setDateRange('all');
+                setMinAccessCount(0);
+              }}
+              className="text-xs text-aurelius-muted hover:text-aurelius-text transition-colors"
+            >
+              Reset filters
+            </button>
+            <span className="text-xs text-aurelius-muted ml-auto">
+              {entries.length} entries match
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Layers */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
