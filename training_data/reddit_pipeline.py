@@ -64,8 +64,8 @@ _DEFAULT_CONFIG = {
 def _clean_text(text: str) -> str:
     if not text:
         return ""
-    text = re.sub(r"\[([^]]+)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"!\[([^]]*)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"\[([^]]+)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"`{1,3}[^`]*`{1,3}", "", text)
     text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", text)

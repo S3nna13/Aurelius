@@ -213,7 +213,7 @@ def test_filter_by_quality_removes_low_score() -> None:
 def test_filter_by_quality_removes_deleted() -> None:
     p = RedditPipeline({})
     items = [
-        {"id": "1", "text": "This is long enough text here for testing.", "score": 10, "type": "comment"},
+        {"id": "1", "text": "This is a long enough text that exceeds the minimum threshold for testing purposes.", "score": 10, "type": "comment"},
         {"id": "2", "text": "[deleted]", "score": 10, "type": "comment"},
     ]
     filtered = p.filter_by_quality(items)
@@ -371,7 +371,7 @@ def test_skips_already_processed_files() -> None:
 def test_filter_by_quality_removes_bot() -> None:
     p = RedditPipeline({})
     items = [
-        {"id": "1", "text": "This is a real question about Python.", "score": 10, "type": "comment"},
+        {"id": "1", "text": "This is a real question about Python programming language and its frameworks.", "score": 10, "type": "comment"},
         {"id": "2", "text": "I am a bot, beep boop.", "score": 10, "type": "comment"},
     ]
     filtered = p.filter_by_quality(items)

@@ -113,18 +113,18 @@ def test_unknown_point_fire_raises():
 
 
 # ---------------------------------------------------------------------------
-# 8. test_hook_exception_propagates
+# 8. test_hook_exception_is_logged_not_propagated
 # ---------------------------------------------------------------------------
 
-def test_hook_exception_propagates():
+def test_hook_exception_is_logged_not_propagated():
     reg = _fresh()
 
     def boom(**kw):
         raise RuntimeError("hook failure")
 
     reg.register("post_generation", boom)
-    with pytest.raises(RuntimeError, match="hook failure"):
-        reg.fire("post_generation", response="hello")
+    # Hooks must not break the caller; exception is logged and swallowed.
+    reg.fire("post_generation", response="hello")
 
 
 # ---------------------------------------------------------------------------
@@ -188,10 +188,10 @@ def test_empty_hook_list_no_crash():
 
 
 # ---------------------------------------------------------------------------
-# 14. test_second_hook_not_called_if_first_raises
+# 14. test_second_hook_called_even_if_first_raises
 # ---------------------------------------------------------------------------
 
-def test_second_hook_not_called_if_first_raises():
+def test_second_hook_called_even_if_first_raises():
     reg = _fresh()
     second_called = []
 
@@ -204,10 +204,10 @@ def test_second_hook_not_called_if_first_raises():
     reg.register("on_error", first_hook)
     reg.register("on_error", second_hook)
 
-    with pytest.raises(RuntimeError):
-        reg.fire("on_error", exception=Exception("original"))
+    # Exceptions are logged and swallowed so the caller is not broken.
+    reg.fire("on_error", exception=Exception("original"))
 
-    assert second_called == [], "second hook must not be called when first raises"
+    assert second_called == [True], "second hook must be called even when first raises"
 
 
 # ---------------------------------------------------------------------------
