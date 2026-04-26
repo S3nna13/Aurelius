@@ -43,3 +43,16 @@ runs/
 wandb/
 .aurelius-meta-prompt.md
 .aurelius/
+.aurelius-*.log
+
+# Caches
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+
+# Build artifacts
+*.egg-info/
+.eggs/
+dist/
+build/
