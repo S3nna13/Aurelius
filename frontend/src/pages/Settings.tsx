@@ -14,6 +14,7 @@ import {
   Upload,
   Puzzle,
   BellRing,
+  KeyRound,
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import ImportData from '../components/ImportData';
@@ -73,6 +74,8 @@ export default function SettingsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [plugins, setPlugins] = useState<{ id: string; name?: string; active?: boolean }[]>([]);
   const { permission, requestPermission } = usePushNotifications();
+  const [licenseTier] = useState(() => localStorage.getItem('aurelius-license-tier') || 'trial');
+  const [licenseKey] = useState(() => localStorage.getItem('aurelius-api-key') || '');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -326,6 +329,34 @@ export default function SettingsPage() {
                 </select>
               </div>
             </div>
+          </div>
+
+          {/* License */}
+          <div className="aurelius-card space-y-4">
+            <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
+              <Shield size={16} className="text-[#4fc3f7]" />
+              License
+            </h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-[#e0e0e0]">Tier: <span className="text-aurelius-accent capitalize">{licenseTier}</span></p>
+                <p className="text-xs text-[#9e9eb0] font-mono mt-0.5">{licenseKey ? `Key: ...${licenseKey.slice(-8)}` : 'No key set'}</p>
+              </div>
+              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                Active
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('aurelius-api-key');
+                localStorage.removeItem('aurelius-license-tier');
+                window.location.reload();
+              }}
+              className="aurelius-btn-outline text-xs flex items-center gap-1.5"
+            >
+              <KeyRound size={12} />
+              Deactivate & Reset
+            </button>
           </div>
 
           {/* Plugin Manager */}

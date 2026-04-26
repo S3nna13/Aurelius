@@ -1,3 +1,7 @@
+# Copyright (c) 2025 Aurelius Systems, Inc. All rights reserved.
+# This file is proprietary and confidential. Unauthorized use is strictly prohibited.
+# See LICENSE for full terms.
+
 """Aurelius unified frontend server.
 
 Serves the built React SPA from ``frontend/dist/`` and exposes a
@@ -129,6 +133,13 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             self.end_headers()
             return
 
+        # Security: block source code and sensitive file access
+        blocked_exts = {".py", ".ts", ".tsx", ".jsx", ".map", ".env", ".git", ".lock", ".toml", ".cfg", ".ini"}
+        if any(safe_path.lower().endswith(ext) for ext in blocked_exts):
+            self.send_response(403)
+            self.end_headers()
+            return
+
         file_path = _FRONTEND_DIST / safe_path
         if not file_path.exists() or file_path.is_dir():
             # Fallback to index.html for SPA routing
@@ -159,6 +170,28 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             self.send_header("Cache-Control", "public, max-age=31536000, immutable")
         self.end_headers()
         self.wfile.write(data)
+
+    def _check_auth(self) -> bool:
+        server = self.server
+        if not getattr(server, "runtime_config", {}).get("require_auth", False):
+            return True
+        if self.path == "/api/health" or self.path == "/api/license/validate":
+            return True
+        api_key = self.headers.get("X-API-Key", "")
+        expected = getattr(server, "runtime_config", {}).get("api_key", "")
+        if expected and api_key == expected:
+            return True
+        session = self.headers.get("X-Session-Token", "")
+        valid_sessions = getattr(server, "_valid_sessions", set())
+        if session in valid_sessions:
+            return True
+        return False
+
+    def _require_auth(self) -> bool:
+        if not self._check_auth():
+            self._send_json(401, {"error": "Unauthorized", "message": "Valid API key or session required"})
+            return False
+        return True
 
     def do_GET(self):
         # API routes
@@ -208,10 +241,20 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             self._handle_config_get()
             return
         if self.path == "/api/events":
+            if not self._require_auth():
+                return
             self._handle_sse()
             return
         if self.path == "/api/logs":
+            if not self._require_auth():
+                return
             self._handle_logs()
+            return
+        if self.path == "/api/license/validate":
+            self._handle_license_validate()
+            return
+
+        if self.path.startswith("/api/") and not self._require_auth():
             return
 
         # Static files
@@ -221,6 +264,11 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         self._serve_static(path)
 
     def do_POST(self):
+        if self.path == "/api/license/activate":
+            self._handle_license_activate()
+            return
+        if self.path.startswith("/api/") and not self._require_auth():
+            return
         if self.path == "/api/command":
             self._handle_command()
             return
@@ -943,6 +991,37 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         records = records[-limit:]
         self._send_json(200, {"entries": records})
 
+    def _handle_license_validate(self) -> None:
+        server = self.server
+        license_key = getattr(server, "_license_key", "")
+        activated = getattr(server, "_license_activated", False)
+        self._send_json(200, {
+            "valid": activated and bool(license_key),
+            "activated": activated,
+            "tier": getattr(server, "_license_tier", "trial"),
+        })
+
+    def _handle_license_activate(self) -> None:
+        try:
+            payload = self._parse_json_body()
+        except (ValueError, json.JSONDecodeError) as exc:
+            self._send_json(400, {"error": str(exc)})
+            return
+        key = payload.get("license_key", "")
+        if not key:
+            self._send_json(400, {"error": "license_key required"})
+            return
+        # Simple validation: keys start with AURELIUS- and are 32+ chars
+        if key.startswith("AURELIUS-") and len(key) >= 32:
+            self.server._license_key = key
+            self.server._license_activated = True
+            self.server._license_tier = payload.get("tier", "pro")
+            self.server.runtime_config["require_auth"] = True
+            self.server.runtime_config["api_key"] = key[-16:]
+            self._send_json(200, {"success": True, "tier": self.server._license_tier})
+        else:
+            self._send_json(403, {"error": "Invalid license key"})
+
     def _handle_modes(self) -> None:
         from src.agent.agent_mode_registry import AGENT_MODE_REGISTRY
 
@@ -1071,10 +1150,15 @@ class AureliusServer(HTTPServer):
             "agent_mode": "supervised",
             "log_level": "info",
             "api_endpoint": "http://localhost:8080",
-            "require_auth": True,
+            "require_auth": False,
             "audit_logging": True,
             "auto_lock": False,
+            "api_key": "",
         }
+        self._license_key: str = ""
+        self._license_activated: bool = False
+        self._license_tier: str = "trial"
+        self._valid_sessions: set[str] = set()
 
 
 def create_aurelius_server(

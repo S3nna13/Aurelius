@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Aurelius Systems, Inc. All rights reserved.
+// This file is proprietary and confidential. Unauthorized use is strictly prohibited.
+// See LICENSE for full terms.
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface UseApiOptions {
@@ -81,12 +85,14 @@ export function useApi<T = unknown>(
       setError(null);
       try {
         const url = path.startsWith('/api/') ? path : `/api${path}`;
+        const apiKey = localStorage.getItem('aurelius-api-key') || '';
         const response = await fetchWithRetry(
           url,
           {
             method: opts?.method || 'GET',
             headers: {
               'Content-Type': 'application/json',
+              ...(apiKey ? { 'X-API-Key': apiKey } : {}),
               ...opts?.headers,
             },
             body: opts?.body ? JSON.stringify(opts.body) : undefined,

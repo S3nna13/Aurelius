@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Aurelius Systems, Inc. All rights reserved.
+// This file is proprietary and confidential. Unauthorized use is strictly prohibited.
+// See LICENSE for full terms.
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'

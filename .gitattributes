@@ -1,0 +1,12 @@
+# Aurelius Proprietary Source Code
+# Copyright (c) 2025 Aurelius Systems, Inc.
+# All rights reserved. Unauthorized access, use, or distribution is prohibited.
+
+*.py linguist-language=Python
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
+*.css linguist-language=CSS
+*.html linguist-language=HTML
+
+# Mark as proprietary
+* text=auto eol=lf
