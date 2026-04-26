@@ -227,3 +227,16 @@ __all__ += [
     "ConversationSummarizer",
     "SummaryMode",
 ]
+
+from .conversation_logger import (  # noqa: E402
+    CONVERSATION_LOGGER_REGISTRY,
+    ConversationLogger,
+)
+
+CHAT_TEMPLATE_REGISTRY["conversation_logger"] = ConversationLogger
+MESSAGE_FORMAT_REGISTRY["conversation_logger"] = ConversationLogger
+
+__all__ += [
+    "CONVERSATION_LOGGER_REGISTRY",
+    "ConversationLogger",
+]
