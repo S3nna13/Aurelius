@@ -13,7 +13,7 @@ import json
 import logging
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Optional, Union
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -70,6 +70,9 @@ def _validate_upstream_url(url: str) -> None:
         )
 
 logger = logging.getLogger(__name__)
+
+from .auth_middleware import AuthMiddleware
+from .rate_limiter import RateLimiterChain, TokenBucketLimiter
 
 HTML_TEMPLATE: str = """<!DOCTYPE html>
 <html lang="en">
@@ -354,7 +357,65 @@ def _build_upstream_reply(api_url: str, message: str, history: Any) -> str:
 
 
 class WebUIHandler(BaseHTTPRequestHandler):
+    def _send_json(self, status: int, data: dict) -> None:
+        body = json.dumps(data).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _check_auth_and_rate_limit(self) -> bool:
+        """Return True if the request may proceed.
+
+        Sends 401 or 429 response and returns *False* when blocked.
+        """
+        auth_mw = getattr(self.server, "auth_middleware", None)
+        rate_limiter = getattr(self.server, "rate_limiter", None)
+
+        auth_result = None
+        if auth_mw is not None:
+            auth_result = auth_mw.authenticate(dict(self.headers))
+            if not auth_result.authenticated:
+                self._send_json(
+                    401,
+                    {"error": "Unauthorized", "message": auth_result.error or "Unauthorized"},
+                )
+                return False
+
+        if rate_limiter is not None:
+            identifier = (
+                auth_result.key_id
+                if auth_result is not None and auth_result.key_id
+                else self.client_address[0]
+            )
+            if isinstance(rate_limiter, RateLimiterChain):
+                result = rate_limiter.check_all(
+                    key=identifier,
+                    ip=self.client_address[0],
+                    route=self.path,
+                )
+            else:
+                result = rate_limiter.check(identifier)
+
+            if not result.allowed:
+                self.send_response(429)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Retry-After", str(int(result.retry_after_s) + 1))
+                self.end_headers()
+                self.wfile.write(
+                    json.dumps(
+                        {"error": "Rate limit exceeded", "retry_after": result.retry_after_s}
+                    ).encode("utf-8")
+                )
+                return False
+
+        return True
+
     def do_GET(self):
+        if self.path == "/health":
+            self._send_json(200, {"status": "ok"})
+            return
         if self.path == "/":
             body = HTML_TEMPLATE.encode("utf-8")
             self.send_response(200)
@@ -362,16 +423,11 @@ class WebUIHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-        elif self.path == "/health":
-            body = json.dumps({"status": "ok"}).encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-        else:
-            self.send_response(404)
-            self.end_headers()
+            return
+        if not self._check_auth_and_rate_limit():
+            return
+        self.send_response(404)
+        self.end_headers()
 
     def _read_body(self) -> bytes:
         """Read the request body enforcing :data:`_MAX_CONTENT_LENGTH`."""
@@ -389,6 +445,8 @@ class WebUIHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path == "/api/chat":
+            if not self._check_auth_and_rate_limit():
+                return
             try:
                 raw = self._read_body()
             except ValueError as exc:
@@ -440,6 +498,8 @@ class WebUIServer(HTTPServer):
         generate_fn: Callable[[str, List], str],
         *,
         api_url: str | None = None,
+        auth_middleware: Optional[AuthMiddleware] = None,
+        rate_limiter: Optional[Union[TokenBucketLimiter, RateLimiterChain]] = None,
         bind_and_activate: bool = True,
     ):
         super().__init__(
@@ -449,6 +509,8 @@ class WebUIServer(HTTPServer):
         )
         self.generate_fn = generate_fn
         self.api_url = api_url
+        self.auth_middleware = auth_middleware
+        self.rate_limiter = rate_limiter
 
 
 def make_mock_generate_fn() -> Callable[[str, List], str]:
@@ -463,6 +525,8 @@ def create_ui_server(
     generate_fn: Callable[[str, List], str],
     *,
     api_url: str | None = None,
+    auth_middleware: Optional[AuthMiddleware] = None,
+    rate_limiter: Optional[Union[TokenBucketLimiter, RateLimiterChain]] = None,
     bind_and_activate: bool = True,
 ) -> WebUIServer:
     return WebUIServer(
@@ -470,6 +534,8 @@ def create_ui_server(
         port,
         generate_fn,
         api_url=api_url,
+        auth_middleware=auth_middleware,
+        rate_limiter=rate_limiter,
         bind_and_activate=bind_and_activate,
     )
 
