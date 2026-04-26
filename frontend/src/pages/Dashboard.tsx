@@ -5,217 +5,310 @@ import {
   HeartPulse,
   Activity,
   Zap,
-  RotateCcw,
   Pause,
   Play,
   Terminal,
+  Loader2,
+  AlertTriangle,
+  RefreshCw,
+  Clock,
 } from 'lucide-react';
+import { useApi } from '../hooks/useApi';
+import { useToast } from '../components/ToastProvider';
 
-const statusCards = [
-  {
-    label: 'Agents Online',
-    value: '4',
-    icon: Bot,
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/20',
-  },
-  {
-    label: 'Tasks Completed Today',
-    value: '127',
-    icon: CheckCircle2,
-    color: 'text-aurelius-accent',
-    bg: 'bg-aurelius-accent/10',
-    border: 'border-aurelius-accent/20',
-  },
-  {
-    label: 'Skills Active',
-    value: '18',
-    icon: Wrench,
-    color: 'text-amber-400',
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/20',
-  },
-  {
-    label: 'System Health',
-    value: '98%',
-    icon: HeartPulse,
-    color: 'text-rose-400',
-    bg: 'bg-rose-500/10',
-    border: 'border-rose-500/20',
-  },
-];
+interface AgentStatus {
+  id: string;
+  state: string;
+}
 
-const agents = [
-  { name: 'Hermes', role: 'Notification Router', status: 'active' as const },
-  { name: 'OpenClaw', role: 'Task Orchestrator', status: 'active' as const },
-  { name: 'Cerebrum', role: 'Memory Manager', status: 'idle' as const },
-  { name: 'Vigil', role: 'Security Warden', status: 'active' as const },
-];
+interface StatusData {
+  agents: AgentStatus[];
+  skills: { id: string; active: boolean }[];
+  plugins: { id: string }[];
+  memory?: { total_entries?: number };
+  notifications?: { unread: number };
+  counts?: {
+    agents_online: number;
+    agents_total: number;
+    skills_active: number;
+    skills_total: number;
+    plugins_total: number;
+    notifications_unread: number;
+  };
+}
 
-const activities = [
-  { time: '2 min ago', message: 'OpenClaw completed workflow "Daily Backup"', type: 'success' as const },
-  { time: '5 min ago', message: 'Hermes dispatched alert: High CPU usage on node-2', type: 'warning' as const },
-  { time: '12 min ago', message: 'Cerebrum pruned 42 stale memory entries', type: 'info' as const },
-  { time: '18 min ago', message: 'Vigil blocked unauthorized access attempt', type: 'error' as const },
-  { time: '25 min ago', message: 'New skill "Web Scraping" registered', type: 'success' as const },
-  { time: '31 min ago', message: 'Agent OpenClaw restarted after update', type: 'info' as const },
-  { time: '45 min ago', message: 'Memory layer "short-term" compacted', type: 'info' as const },
-  { time: '1 hr ago', message: 'Workflow "Data Ingest" failed — retrying', type: 'warning' as const },
-];
+interface ActivityEntry {
+  id: string;
+  timestamp: number;
+  command: string;
+  success: boolean;
+  output: string;
+}
 
-const statusBadge = (status: string) => {
-  switch (status) {
-    case 'active':
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          Active
-        </span>
-      );
-    case 'idle':
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-          Idle
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-          Error
-        </span>
-      );
-  }
+const agentRoles: Record<string, string> = {
+  hermes: 'Notification Router',
+  openclaw: 'Task Orchestrator',
+  cerebrum: 'Memory Manager',
+  vigil: 'Security Warden',
+  default: 'System Agent',
 };
 
-const activityIcon = (type: string) => {
-  switch (type) {
-    case 'success':
-      return <CheckCircle2 size={14} className="text-emerald-400 shrink-0 mt-0.5" />;
-    case 'warning':
-      return <Zap size={14} className="text-amber-400 shrink-0 mt-0.5" />;
-    case 'error':
-      return <HeartPulse size={14} className="text-red-400 shrink-0 mt-0.5" />;
-    default:
-      return <Activity size={14} className="text-aurelius-accent shrink-0 mt-0.5" />;
-  }
+const agentIcon = (state: string) => {
+  const s = state.toUpperCase();
+  if (s === 'ACTIVE' || s === 'RUNNING') return <Play size={14} className="text-emerald-400" />;
+  if (s === 'IDLE') return <Pause size={14} className="text-amber-400" />;
+  return <Zap size={14} className="text-rose-400" />;
 };
+
+function timeAgo(ts: number): string {
+  const diff = Date.now() / 1000 - ts;
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+  return `${Math.floor(diff / 86400)} days ago`;
+}
 
 export default function Dashboard() {
+  const { toast } = useToast();
+  const {
+    data: statusData,
+    loading: statusLoading,
+    error: statusError,
+    refresh: refreshStatus,
+  } = useApi<StatusData>('/status', { refreshInterval: 10000 });
+
+  const {
+    data: activityData,
+    loading: activityLoading,
+    error: activityError,
+    refresh: refreshActivity,
+  } = useApi<{ entries: ActivityEntry[] }>('/activity', { refreshInterval: 10000 });
+
+  const counts = statusData?.counts || {
+    agents_online: 0,
+    agents_total: 0,
+    skills_active: 0,
+    skills_total: 0,
+    plugins_total: 0,
+    notifications_unread: 0,
+  };
+
+  const healthPercent =
+    counts.agents_total > 0
+      ? Math.round((counts.agents_online / counts.agents_total) * 100)
+      : 100;
+
+  const statusCards = [
+    {
+      label: 'Agents Online',
+      value: `${counts.agents_online}/${counts.agents_total}`,
+      icon: Bot,
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-500/10',
+      border: 'border-emerald-500/20',
+    },
+    {
+      label: 'Skills Active',
+      value: `${counts.skills_active}/${counts.skills_total}`,
+      icon: Wrench,
+      color: 'text-[#4fc3f7]',
+      bg: 'bg-[#4fc3f7]/10',
+      border: 'border-[#4fc3f7]/20',
+    },
+    {
+      label: 'Plugins Loaded',
+      value: `${counts.plugins_total}`,
+      icon: Terminal,
+      color: 'text-amber-400',
+      bg: 'bg-amber-500/10',
+      border: 'border-amber-500/20',
+    },
+    {
+      label: 'System Health',
+      value: `${healthPercent}%`,
+      icon: HeartPulse,
+      color: healthPercent >= 80 ? 'text-emerald-400' : healthPercent >= 50 ? 'text-amber-400' : 'text-rose-400',
+      bg: healthPercent >= 80 ? 'bg-emerald-500/10' : healthPercent >= 50 ? 'bg-amber-500/10' : 'bg-rose-500/10',
+      border: healthPercent >= 80 ? 'border-emerald-500/20' : healthPercent >= 50 ? 'border-amber-500/20' : 'border-rose-500/20',
+    },
+  ];
+
+  const refreshAll = () => {
+    refreshStatus();
+    refreshActivity();
+    toast('Dashboard refreshed', 'success');
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
+          <Activity size={20} className="text-[#4fc3f7]" />
+          Mission Control
+        </h2>
+        <button
+          onClick={refreshAll}
+          disabled={statusLoading && activityLoading}
+          className="aurelius-btn-outline flex items-center gap-2 text-sm disabled:opacity-50 self-start sm:self-auto"
+        >
+          {statusLoading ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <RefreshCw size={14} />
+          )}
+          Refresh
+        </button>
+      </div>
+
       {/* Status Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statusCards.map((card) => (
-          <div
-            key={card.label}
-            className="aurelius-card flex items-center gap-4 hover:border-aurelius-accent/30 transition-colors"
-          >
-            <div
-              className={`flex items-center justify-center w-10 h-10 rounded-lg ${card.bg} ${card.color} border ${card.border}`}
-            >
-              <card.icon size={20} />
+          <div key={card.label} className="aurelius-card space-y-2">
+            <div className="flex items-center justify-between">
+              <span className={`${card.color}`}>
+                <card.icon size={20} />
+              </span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded border ${card.bg} ${card.color} ${card.border}`}>
+                Live
+              </span>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-aurelius-text">{card.value}</p>
-              <p className="text-xs text-aurelius-muted">{card.label}</p>
-            </div>
+            <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
+            <p className="text-xs text-[#9e9eb0] uppercase tracking-wider">{card.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Middle Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Agent Status List */}
-        <div className="lg:col-span-2 aurelius-card space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-aurelius-text uppercase tracking-wider flex items-center gap-2">
-              <Bot size={16} className="text-aurelius-accent" />
-              Agent Status
-            </h3>
-            <span className="text-xs text-aurelius-muted">4 agents registered</span>
-          </div>
+      {statusError && (
+        <div className="aurelius-card border-rose-500/30 bg-rose-500/5 text-rose-300">
+          <AlertTriangle size={18} className="inline mr-2" />
+          {statusError.message}
+        </div>
+      )}
 
-          <div className="space-y-2">
-            {agents.map((agent) => (
-              <div
-                key={agent.name}
-                className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-aurelius-bg/50 border border-aurelius-border/50 hover:border-aurelius-accent/20 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-aurelius-border/40 flex items-center justify-center text-aurelius-accent">
-                    <Bot size={16} />
+      {/* Agents + Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Agents */}
+        <div className="aurelius-card space-y-4">
+          <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
+            <Bot size={16} className="text-[#4fc3f7]" />
+            Active Agents
+          </h3>
+          {statusLoading && !statusData?.agents?.length ? (
+            <div className="text-center py-8 text-[#9e9eb0]">
+              <Loader2 size={24} className="mx-auto mb-2 animate-spin opacity-60" />
+              <p className="text-sm">Loading agents...</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(statusData?.agents || []).map((agent) => (
+                <div
+                  key={agent.id}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-[#0f0f1a]/50 border border-[#2d2d44]/50 hover:border-[#4fc3f7]/10 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#4fc3f7]/10 text-[#4fc3f7] flex items-center justify-center border border-[#4fc3f7]/20">
+                      <Bot size={14} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-[#e0e0e0]">
+                        {agent.id.replace(/^\w/, (c) => c.toUpperCase())}
+                      </p>
+                      <p className="text-xs text-[#9e9eb0]">
+                        {agentRoles[agent.id.toLowerCase()] || agentRoles.default}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-aurelius-text">{agent.name}</p>
-                    <p className="text-xs text-aurelius-muted">{agent.role}</p>
+                  <div className="flex items-center gap-2">
+                    {agentIcon(agent.state)}
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                        agent.state.toUpperCase() === 'ACTIVE' || agent.state.toUpperCase() === 'RUNNING'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : agent.state.toUpperCase() === 'IDLE'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                          : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                      }`}
+                    >
+                      {agent.state}
+                    </span>
                   </div>
                 </div>
-                {statusBadge(agent.status)}
-              </div>
+              ))}
+              {(!statusData?.agents || statusData.agents.length === 0) && (
+                <p className="text-sm text-[#9e9eb0] text-center py-6">No agents reported.</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Activity Feed */}
+        <div className="aurelius-card space-y-4">
+          <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-[#4fc3f7]" />
+            Activity Feed
+          </h3>
+          {activityLoading && !activityData?.entries?.length ? (
+            <div className="text-center py-8 text-[#9e9eb0]">
+              <Loader2 size={24} className="mx-auto mb-2 animate-spin opacity-60" />
+              <p className="text-sm">Loading activity...</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {(activityData?.entries || []).slice().reverse().map((entry) => (
+                <div
+                  key={entry.id}
+                  className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-[#0f0f1a]/50 border border-[#2d2d44]/50 hover:border-[#4fc3f7]/10 transition-colors"
+                >
+                  <div
+                    className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
+                      entry.success ? 'bg-emerald-400' : 'bg-rose-400'
+                    }`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[#e0e0e0] truncate">{entry.command}</p>
+                    <p className="text-xs text-[#9e9eb0] truncate mt-0.5">{entry.output}</p>
+                    <p className="text-[10px] text-[#9e9eb0]/60 mt-1 flex items-center gap-1">
+                      <Clock size={10} />
+                      {timeAgo(entry.timestamp)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {(!activityData?.entries || activityData.entries.length === 0) && (
+                <p className="text-sm text-[#9e9eb0] text-center py-6">No recent activity.</p>
+              )}
+            </div>
+          )}
+          {activityError && (
+            <p className="text-xs text-rose-400 text-center">{activityError.message}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Skills Overview */}
+      {statusData && statusData.skills && statusData.skills.length > 0 && (
+        <div className="aurelius-card space-y-4">
+          <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
+            <Wrench size={16} className="text-[#4fc3f7]" />
+            Skills Overview
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {statusData.skills.map((skill) => (
+              <span
+                key={skill.id}
+                className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
+                  skill.active
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    : 'bg-[#2d2d44]/20 text-[#9e9eb0] border-[#2d2d44]/40'
+                }`}
+              >
+                {skill.id}
+              </span>
             ))}
           </div>
         </div>
-
-        {/* Quick Actions */}
-        <div className="aurelius-card space-y-4">
-          <h3 className="text-sm font-semibold text-aurelius-text uppercase tracking-wider flex items-center gap-2">
-            <Terminal size={16} className="text-aurelius-accent" />
-            Quick Actions
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <button className="aurelius-btn flex items-center justify-center gap-2 text-sm">
-              <Play size={14} />
-              Start All
-            </button>
-            <button className="aurelius-btn-outline flex items-center justify-center gap-2 text-sm">
-              <Pause size={14} />
-              Pause All
-            </button>
-            <button className="aurelius-btn-outline flex items-center justify-center gap-2 text-sm">
-              <RotateCcw size={14} />
-              Restart
-            </button>
-            <button className="aurelius-btn-outline flex items-center justify-center gap-2 text-sm">
-              <Zap size={14} />
-              Run Task
-            </button>
-          </div>
-
-          <div className="pt-2 border-t border-aurelius-border">
-            <p className="text-xs text-aurelius-muted mb-2">System Uptime</p>
-            <p className="text-lg font-mono font-bold text-aurelius-accent">3d 14h 22m</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity Feed */}
-      <div className="aurelius-card space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-aurelius-text uppercase tracking-wider flex items-center gap-2">
-            <Activity size={16} className="text-aurelius-accent" />
-            Recent Activity
-          </h3>
-          <button className="text-xs text-aurelius-accent hover:underline">View all</button>
-        </div>
-
-        <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-          {activities.map((act, idx) => (
-            <div
-              key={idx}
-              className="flex items-start gap-3 px-3 py-2 rounded-lg bg-aurelius-bg/50 border border-aurelius-border/50 hover:border-aurelius-accent/10 transition-colors"
-            >
-              {activityIcon(act.type)}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-aurelius-text leading-snug">{act.message}</p>
-                <p className="text-xs text-aurelius-muted mt-0.5">{act.time}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 }

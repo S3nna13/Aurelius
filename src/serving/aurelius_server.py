@@ -268,6 +268,17 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         else:
             status["notifications"] = {"unread": 0}
 
+        # Aggregated counts for dashboard
+        status["counts"] = {
+            "agents_online": sum(
+                1 for a in status["agents"] if a.get("state", "").upper() in ("ACTIVE", "RUNNING", "IDLE")
+            ),
+            "agents_total": len(status["agents"]),
+            "skills_active": sum(1 for s in status["skills"] if s.get("active", False)),
+            "skills_total": len(status["skills"]),
+            "plugins_total": len(status["plugins"]),
+            "notifications_unread": status.get("notifications", {}).get("unread", 0),
+        }
         self._send_json(200, status)
 
     def _handle_activity(self) -> None:
@@ -319,6 +330,18 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
 
         if log is not None:
             log.append(text, result.success, result.output)
+
+        usage = getattr(server, "usage_pipeline", None)
+        if usage is not None:
+            try:
+                usage.log_chat(
+                    user_id="anonymous",
+                    model="aurelius-v1",
+                    tokens_in=len(text.split()),
+                    tokens_out=len(result.output.split()),
+                )
+            except Exception:
+                logger.exception("Usage logging failed")
 
         self._send_json(
             200,
@@ -863,6 +886,7 @@ class AureliusServer(HTTPServer):
         memory: Any | None = None,
         hermes: Any | None = None,
         workflow_monitor: WorkflowMonitor | None = None,
+        usage_pipeline: Any | None = None,
         bind_and_activate: bool = True,
     ):
         super().__init__(
@@ -876,6 +900,7 @@ class AureliusServer(HTTPServer):
         self.memory = memory
         self.hermes = hermes
         self.workflow_monitor = workflow_monitor
+        self.usage_pipeline = usage_pipeline
         self.activity_log = ActivityLog()
         self.workflow_registry: dict[str, Any] = {}
 
@@ -892,6 +917,7 @@ def create_aurelius_server(
     memory: Any | None = None,
     hermes: Any | None = None,
     workflow_monitor: WorkflowMonitor | None = None,
+    usage_pipeline: Any | None = None,
     bind_and_activate: bool = True,
 ) -> AureliusServer:
     return AureliusServer(
@@ -905,6 +931,7 @@ def create_aurelius_server(
         memory=memory,
         hermes=hermes,
         workflow_monitor=workflow_monitor,
+        usage_pipeline=usage_pipeline,
         bind_and_activate=bind_and_activate,
     )
 
