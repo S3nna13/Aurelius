@@ -1,5 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ToastProvider from './components/ToastProvider';
@@ -12,6 +13,38 @@ import Skills from './pages/Skills';
 import Workflows from './pages/Workflows';
 import Memory from './pages/Memory';
 import Settings from './pages/Settings';
+
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+};
+
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        variants={pageVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={{ duration: 0.18 }}
+      >
+        <Routes location={location}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/skills" element={<Skills />} />
+          <Route path="/workflows" element={<Workflows />} />
+          <Route path="/memory" element={<Memory />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -39,15 +72,7 @@ function App() {
           <Header onOpenPalette={togglePalette} />
           <main className="flex-1 overflow-y-auto p-6">
             <ErrorBoundary>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/notifications" element={<Notifications />} />
-                <Route path="/skills" element={<Skills />} />
-                <Route path="/workflows" element={<Workflows />} />
-                <Route path="/memory" element={<Memory />} />
-                <Route path="/settings" element={<Settings />} />
-              </Routes>
+              <AnimatedRoutes />
             </ErrorBoundary>
           </main>
         </div>

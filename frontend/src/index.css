@@ -9,9 +9,33 @@
     padding: 0;
   }
 
+  :root {
+    --aurelius-bg: #0f0f1a;
+    --aurelius-card: #1a1a2e;
+    --aurelius-border: #2d2d44;
+    --aurelius-text: #e0e0e0;
+    --aurelius-muted: #a0a0b8;
+    --aurelius-accent: #4fc3f7;
+    --aurelius-accent-hover: #3aa8d8;
+    --aurelius-surface: #0f0f1a;
+    --aurelius-surface-hover: #1a1a2e;
+  }
+
+  html.light {
+    --aurelius-bg: #f8fafc;
+    --aurelius-card: #ffffff;
+    --aurelius-border: #e2e8f0;
+    --aurelius-text: #1e293b;
+    --aurelius-muted: #64748b;
+    --aurelius-accent: #0284c7;
+    --aurelius-accent-hover: #0369a1;
+    --aurelius-surface: #f1f5f9;
+    --aurelius-surface-hover: #e2e8f0;
+  }
+
   body {
-    background-color: #0f0f1a;
-    color: #e0e0e0;
+    background-color: var(--aurelius-bg);
+    color: var(--aurelius-text);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -23,30 +47,30 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #0f0f1a;
+    background: var(--aurelius-bg);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #2d2d44;
+    background: var(--aurelius-border);
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #4fc3f7;
+    background: var(--aurelius-accent);
   }
 }
 
 @layer components {
   .aurelius-card {
-    background-color: #1a1a2e;
-    border: 1px solid #2d2d44;
+    background-color: var(--aurelius-card);
+    border: 1px solid var(--aurelius-border);
     border-radius: 0.75rem;
     padding: 1rem;
   }
 
   .aurelius-btn {
-    background-color: #4fc3f7;
-    color: #0f0f1a;
+    background-color: var(--aurelius-accent);
+    color: var(--aurelius-bg);
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     font-weight: 600;
@@ -54,13 +78,13 @@
   }
 
   .aurelius-btn:hover {
-    background-color: #3aa8d8;
+    background-color: var(--aurelius-accent-hover);
   }
 
   .aurelius-btn-outline {
     background-color: transparent;
-    color: #4fc3f7;
-    border: 1px solid #2d2d44;
+    color: var(--aurelius-accent);
+    border: 1px solid var(--aurelius-border);
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     font-weight: 600;
@@ -68,7 +92,7 @@
   }
 
   .aurelius-btn-outline:hover {
-    border-color: #4fc3f7;
-    color: #e0e0e0;
+    border-color: var(--aurelius-accent);
+    color: var(--aurelius-text);
   }
 }

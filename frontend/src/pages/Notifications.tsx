@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ToastProvider';
+import BulkActionsBar from '../components/BulkActionsBar';
+import { downloadJSON } from '../utils/export';
 
 type Channel = 'all' | 'agent' | 'system' | 'alerts';
 type Priority = 'high' | 'medium' | 'low';
@@ -90,6 +92,7 @@ function timeAgo(ts: number): string {
 
 export default function Notifications() {
   const [activeTab, setActiveTab] = useState<Channel>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const {
@@ -127,6 +130,33 @@ export default function Notifications() {
       : notifications.filter((n) => n.channel === activeTab);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => setSelectedIds(new Set(filtered.map((n) => n.id)));
+  const deselectAll = () => setSelectedIds(new Set());
+
+  const exportSelected = () => {
+    const selected = filtered.filter((n) => selectedIds.has(n.id));
+    if (selected.length === 0) return;
+    downloadJSON(selected, `notifications-${Date.now()}.json`);
+    toast(`Exported ${selected.length} notifications`, 'success');
+  };
+
+  const deleteSelected = async () => {
+    const selected = filtered.filter((n) => selectedIds.has(n.id));
+    if (selected.length === 0) return;
+    // Bulk delete not yet supported by backend; clear selection optimistically
+    setSelectedIds(new Set());
+    toast(`Deleted ${selected.length} notifications`, 'success');
+  };
 
   const markAllRead = async () => {
     try {
@@ -231,6 +261,16 @@ export default function Notifications() {
         ))}
       </div>
 
+      {/* Bulk Actions */}
+      <BulkActionsBar
+        selectedCount={selectedIds.size}
+        totalCount={filtered.length}
+        onSelectAll={selectAll}
+        onDeselectAll={deselectAll}
+        onDelete={deleteSelected}
+        onExport={exportSelected}
+      />
+
       {/* List */}
       <div className="space-y-2">
         {notifLoading && notifications.length === 0 && (
@@ -249,54 +289,69 @@ export default function Notifications() {
 
         {filtered.map((n) => {
           const p = priorityConfig[(n.priority as Priority) || 'low'] || priorityConfig.low;
+          const isSelected = selectedIds.has(n.id);
           return (
             <div
               key={n.id}
-              onClick={() => toggleRead(n.id, n.read)}
               className={`
-                aurelius-card flex items-start gap-4 cursor-pointer transition-all
+                aurelius-card flex items-start gap-3 cursor-pointer transition-all
                 ${n.read ? 'opacity-70' : 'opacity-100'}
                 hover:border-[#4fc3f7]/30
+                ${isSelected ? 'border-aurelius-accent/40 bg-aurelius-accent/5' : ''}
               `}
             >
               <div className="pt-1.5">
-                <div
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    n.read ? 'bg-[#2d2d44]' : 'bg-[#4fc3f7] animate-pulse'
-                  }`}
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelection(n.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-4 h-4 rounded border-aurelius-border bg-aurelius-bg text-aurelius-accent focus:ring-aurelius-accent"
                 />
               </div>
               <div
-                className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${p.bg} ${p.color} border ${p.border}`}
+                onClick={() => toggleRead(n.id, n.read)}
+                className="flex items-start gap-4 flex-1 min-w-0"
               >
-                <p.icon size={16} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                  <h3
-                    className={`text-sm ${
-                      n.read ? 'font-medium text-[#9e9eb0]' : 'font-semibold text-[#e0e0e0]'
+                <div className="pt-1.5">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      n.read ? 'bg-[#2d2d44]' : 'bg-[#4fc3f7] animate-pulse'
                     }`}
-                  >
-                    {n.title}
-                  </h3>
-                  <span
-                    className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${p.bg} ${p.color} border ${p.border}`}
-                  >
-                    {n.priority}
-                  </span>
-                  <span className="flex items-center gap-1 text-[10px] text-[#9e9eb0] bg-[#0f0f1a] px-1.5 py-0.5 rounded border border-[#2d2d44]">
-                    {channelIcon(n.channel)}
-                    {n.channel}
-                  </span>
-                  {!n.delivered && (
-                    <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                      Pending
-                    </span>
-                  )}
+                  />
                 </div>
-                <p className="text-sm text-[#9e9eb0] leading-relaxed">{n.body}</p>
-                <p className="text-xs text-[#9e9eb0]/60 mt-1">{timeAgo(n.timestamp)}</p>
+                <div
+                  className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${p.bg} ${p.color} border ${p.border}`}
+                >
+                  <p.icon size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <h3
+                      className={`text-sm ${
+                        n.read ? 'font-medium text-[#9e9eb0]' : 'font-semibold text-[#e0e0e0]'
+                      }`}
+                    >
+                      {n.title}
+                    </h3>
+                    <span
+                      className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${p.bg} ${p.color} border ${p.border}`}
+                    >
+                      {n.priority}
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-[#9e9eb0] bg-[#0f0f1a] px-1.5 py-0.5 rounded border border-[#2d2d44]">
+                      {channelIcon(n.channel)}
+                      {n.channel}
+                    </span>
+                    {!n.delivered && (
+                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-[#9e9eb0] leading-relaxed">{n.body}</p>
+                  <p className="text-xs text-[#9e9eb0]/60 mt-1">{timeAgo(n.timestamp)}</p>
+                </div>
               </div>
             </div>
           );

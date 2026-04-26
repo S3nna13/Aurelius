@@ -12,10 +12,12 @@ import {
   AlertTriangle,
   RefreshCw,
   Clock,
+  Download,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ToastProvider';
 import { LineChart, BarChart, DonutChart } from '../components/charts';
+import { downloadJSON } from '../utils/export';
 
 interface AgentStatus {
   id: string;
@@ -148,18 +150,36 @@ export default function Dashboard() {
           <Activity size={20} className="text-[#4fc3f7]" />
           Mission Control
         </h2>
-        <button
-          onClick={refreshAll}
-          disabled={statusLoading && activityLoading}
-          className="aurelius-btn-outline flex items-center gap-2 text-sm disabled:opacity-50 self-start sm:self-auto"
-        >
-          {statusLoading ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <RefreshCw size={14} />
-          )}
-          Refresh
-        </button>
+        <div className="flex gap-2 self-start sm:self-auto">
+          <button
+            onClick={() =>
+              downloadJSON(
+                {
+                  status: statusData,
+                  activity: activityData?.entries || [],
+                  exportedAt: new Date().toISOString(),
+                },
+                `aurelius-dashboard-${Date.now()}.json`
+              )
+            }
+            className="aurelius-btn-outline flex items-center gap-2 text-sm"
+          >
+            <Download size={14} />
+            Export
+          </button>
+          <button
+            onClick={refreshAll}
+            disabled={statusLoading && activityLoading}
+            className="aurelius-btn-outline flex items-center gap-2 text-sm disabled:opacity-50"
+          >
+            {statusLoading ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <RefreshCw size={14} />
+            )}
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Status Cards */}
