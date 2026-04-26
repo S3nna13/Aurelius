@@ -72,6 +72,7 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "S"]
 ignore = ["S105"]
+per-file-ignores = {"tests/**" = ["S101"]}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
