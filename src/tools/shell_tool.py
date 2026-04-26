@@ -39,8 +39,9 @@ SHELL_ALLOWLIST: frozenset[str] = frozenset([
 ])
 
 # Characters that indicate shell metacharacters (pipelines, redirections,
-# subshells, variable expansion, etc.).
-_SHELL_META_CHARS: frozenset[str] = frozenset("|&;<>$`\\\"\n\r")
+# subshells, variable expansion, etc.).  Backslash is intentionally omitted
+# because ``shlex.split()`` handles escapes safely under ``shell=False``.
+_SHELL_META_CHARS: frozenset[str] = frozenset("|&;<>$`\"\n\r")
 
 
 class ShellTool:

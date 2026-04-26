@@ -189,14 +189,11 @@ class AureliusTransformer(nn.Module):
         Returns:
             (batch, prompt_len + generated_len) token ids.
         """
-        B, prompt_len = input_ids.shape
+        B, _ = input_ids.shape
         past_key_values = None
         cur_ids = input_ids
-        generated_len = 0
 
         for _ in range(max_new_tokens):
-            if prompt_len + generated_len >= self.config.max_seq_len:
-                break
             _, logits, past_key_values = self(cur_ids, past_key_values=past_key_values)
             next_logits = logits[:, -1, :]  # (B, vocab)
 
@@ -220,7 +217,6 @@ class AureliusTransformer(nn.Module):
 
             cur_ids = next_token  # next step: only the new token (cache handles context)
             input_ids = torch.cat([input_ids, next_token], dim=1)
-            generated_len += 1
 
             if eos_token_id is not None and (next_token == eos_token_id).all():
                 break
@@ -254,14 +250,11 @@ class AureliusTransformer(nn.Module):
         from typing import Iterator
         import torch.nn.functional as F
 
-        B, prompt_len = input_ids.shape
+        B, _ = input_ids.shape
         past_key_values = None
         cur_ids = input_ids
-        generated_len = 0
 
         for _ in range(max_new_tokens):
-            if prompt_len + generated_len >= self.config.max_seq_len:
-                return
             _, logits, past_key_values = self(cur_ids, past_key_values=past_key_values)
             next_logits = logits[:, -1, :]
 
@@ -281,7 +274,6 @@ class AureliusTransformer(nn.Module):
             yield next_token
 
             cur_ids = next_token
-            generated_len += 1
 
             if eos_token_id is not None and (next_token == eos_token_id).all():
                 return
