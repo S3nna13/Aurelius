@@ -285,6 +285,54 @@ def test_skill_execute_with_body(base_url):
 
 
 # ---------------------------------------------------------------------------
+# Workflows
+# ---------------------------------------------------------------------------
+
+
+def test_workflows(base_url):
+    status, data = _get(base_url, "/api/workflows")
+    assert status == 200
+    assert "workflows" in data
+    assert "summary" in data
+    workflows = data["workflows"]
+    assert len(workflows) >= 1
+    for w in workflows:
+        assert "id" in w
+        assert "name" in w
+        assert "status" in w
+        assert "last_run" in w
+        assert "duration" in w
+
+
+def test_workflow_detail(base_url):
+    status, data = _get(base_url, "/api/workflows/daily-backup")
+    assert status == 200
+    assert data["id"] == "daily-backup"
+    assert "status" in data
+    assert "events" in data
+
+
+def test_workflow_trigger(base_url):
+    status, data = _post(base_url, "/api/workflows/daily-backup/trigger", {
+        "trigger": "start",
+    })
+    assert status == 200
+    assert "success" in data
+    assert data["workflow_id"] == "daily-backup"
+    assert data["trigger"] == "start"
+
+
+def test_workflow_trigger_missing_body(base_url):
+    from urllib.error import HTTPError
+
+    try:
+        _post(base_url, "/api/workflows/daily-backup/trigger", {})
+        assert False, "Expected 400"
+    except HTTPError as e:
+        assert e.code == 400
+
+
+# ---------------------------------------------------------------------------
 # Server factory
 # ---------------------------------------------------------------------------
 

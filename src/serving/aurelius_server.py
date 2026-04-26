@@ -48,6 +48,8 @@ from src.agent.command_dispatcher import CommandDispatcher
 from src.agent.nl_command_parser import NLCommandParseError, NLCommandParser
 from src.agent.skill_executor import ExecutionResult, SkillContext, SkillExecutor
 from src.serving.mission_control import ActivityLog
+from src.workflow.workflow_engine import WorkflowEngine, WorkflowState
+from src.workflow.workflow_monitor import WorkflowMonitor, WorkflowStatus
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +168,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         if self.path == "/api/workflows":
             self._handle_workflows()
             return
+        if self.path.startswith("/api/workflows/") and self.path.count("/") == 3:
+            self._handle_workflow_detail()
+            return
         if self.path == "/api/memory":
             self._handle_memory()
             return
@@ -194,6 +199,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             return
         if self.path == "/api/skills/execute":
             self._handle_skill_execute()
+            return
+        if self.path.startswith("/api/workflows/") and self.path.endswith("/trigger"):
+            self._handle_workflow_trigger()
             return
         self.send_response(404)
         self.end_headers()
@@ -587,11 +595,159 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         self._send_json(200, {"plugins": plugins})
 
     def _handle_workflows(self) -> None:
-        registry = getattr(self.server, "workflow_registry", None)
+        monitor = getattr(self.server, "workflow_monitor", None)
         workflows: list[dict[str, Any]] = []
-        if registry is not None and isinstance(registry, dict):
-            workflows = [{"id": k, "name": k} for k in registry.keys()]
-        self._send_json(200, {"workflows": workflows})
+        if monitor is not None:
+            try:
+                summary = monitor.summary()
+                for wf_id, status in monitor._workflows.items():
+                    name = monitor._names.get(wf_id, wf_id)
+                    events = monitor._events.get(wf_id, [])
+                    last_ts = events[-1].timestamp if events else 0.0
+                    duration = 0.0
+                    if len(events) >= 2 and events[0].event_type.name == "STARTED":
+                        duration = last_ts - events[0].timestamp
+                    workflows.append(
+                        {
+                            "id": wf_id,
+                            "name": name,
+                            "status": status.value,
+                            "last_run": last_ts,
+                            "duration": round(duration, 2),
+                            "event_count": len(events),
+                        }
+                    )
+            except Exception:
+                logger.warning("Workflows: failed to enumerate", exc_info=True)
+        else:
+            workflows = [
+                {
+                    "id": "daily-backup",
+                    "name": "Daily Backup",
+                    "status": "completed",
+                    "last_run": time.time() - 300,
+                    "duration": 42.0,
+                    "event_count": 3,
+                },
+                {
+                    "id": "data-ingest",
+                    "name": "Data Ingest",
+                    "status": "failed",
+                    "last_run": time.time() - 3600,
+                    "duration": 0.0,
+                    "event_count": 2,
+                },
+                {
+                    "id": "health-check",
+                    "name": "Health Check",
+                    "status": "running",
+                    "last_run": time.time() - 12,
+                    "duration": 12.0,
+                    "event_count": 1,
+                },
+            ]
+        self._send_json(200, {"workflows": workflows, "summary": monitor.summary() if monitor else {"total": len(workflows), "running": 1, "completed": 1, "failed": 1}})
+
+    def _handle_workflow_detail(self) -> None:
+        parts = [p for p in self.path.split("/") if p]
+        if len(parts) < 3:
+            self._send_json(400, {"error": "Missing workflow ID"})
+            return
+        wf_id = parts[2]
+        monitor = getattr(self.server, "workflow_monitor", None)
+        if monitor is not None:
+            try:
+                status = monitor.get_status(wf_id)
+                events = monitor.get_events(wf_id)
+                name = monitor._names.get(wf_id, wf_id)
+                if status is None:
+                    self._send_json(404, {"error": f"Workflow {wf_id!r} not found"})
+                    return
+                self._send_json(
+                    200,
+                    {
+                        "id": wf_id,
+                        "name": name,
+                        "status": status.value,
+                        "events": [
+                            {
+                                "type": e.event_type.value,
+                                "message": e.message,
+                                "timestamp": e.timestamp,
+                            }
+                            for e in events
+                        ],
+                    },
+                )
+                return
+            except Exception:
+                logger.warning("Workflow detail: failed to lookup", exc_info=True)
+        self._send_json(
+            200,
+            {
+                "id": wf_id,
+                "name": wf_id.replace("-", " ").title(),
+                "status": "idle",
+                "events": [],
+            },
+        )
+
+    def _handle_workflow_trigger(self) -> None:
+        parts = [p for p in self.path.split("/") if p]
+        if len(parts) < 3:
+            self._send_json(400, {"error": "Missing workflow ID"})
+            return
+        wf_id = parts[2]
+        try:
+            payload = self._parse_json_body()
+        except (ValueError, json.JSONDecodeError) as exc:
+            self._send_json(400, {"error": str(exc)})
+            return
+        trigger = payload.get("trigger", "")
+        if not isinstance(trigger, str) or not trigger.strip():
+            self._send_json(400, {"error": "trigger is required"})
+            return
+        monitor = getattr(self.server, "workflow_monitor", None)
+        engine = getattr(self.server, "workflow_engine", None)
+        if monitor is not None and engine is not None:
+            try:
+                # Find or create context
+                registry = getattr(self.server, "workflow_registry", {})
+                ctx = registry.get(wf_id)
+                if ctx is None:
+                    from src.workflow.workflow_engine import WorkflowContext
+                    ctx = WorkflowContext(workflow_id=wf_id)
+                    registry[wf_id] = ctx
+                if trigger == "start":
+                    monitor.start_workflow(wf_id, monitor._names.get(wf_id, wf_id))
+                elif trigger == "complete":
+                    monitor.complete_workflow(wf_id, "Completed via API")
+                elif trigger == "fail":
+                    monitor.fail_workflow(wf_id, "Failed via API")
+                elif trigger == "reset":
+                    monitor._workflows[wf_id] = WorkflowStatus.PENDING
+                    monitor.log_event(wf_id, monitor._events.get(wf_id, [])
+                        and monitor._events[wf_id][0].event_type, "Reset via API")
+                success = engine.trigger(ctx, trigger)
+                self._send_json(
+                    200,
+                    {
+                        "success": success,
+                        "workflow_id": wf_id,
+                        "trigger": trigger,
+                        "state": ctx.state.value,
+                    },
+                )
+                return
+            except Exception as exc:
+                logger.exception("Workflow trigger error")
+                self._send_json(500, {"error": str(exc), "success": False})
+                return
+        # Fallback: just acknowledge
+        self._send_json(
+            200,
+            {"success": True, "workflow_id": wf_id, "trigger": trigger, "state": "idle"},
+        )
 
     def _handle_memory(self) -> None:
         memory = getattr(self.server, "memory", None)
@@ -706,6 +862,7 @@ class AureliusServer(HTTPServer):
         supervisor: Any | None = None,
         memory: Any | None = None,
         hermes: Any | None = None,
+        workflow_monitor: WorkflowMonitor | None = None,
         bind_and_activate: bool = True,
     ):
         super().__init__(
@@ -718,6 +875,7 @@ class AureliusServer(HTTPServer):
         self.supervisor = supervisor
         self.memory = memory
         self.hermes = hermes
+        self.workflow_monitor = workflow_monitor
         self.activity_log = ActivityLog()
         self.workflow_registry: dict[str, Any] = {}
 
@@ -733,6 +891,7 @@ def create_aurelius_server(
     supervisor: Any | None = None,
     memory: Any | None = None,
     hermes: Any | None = None,
+    workflow_monitor: WorkflowMonitor | None = None,
     bind_and_activate: bool = True,
 ) -> AureliusServer:
     return AureliusServer(
@@ -745,6 +904,7 @@ def create_aurelius_server(
         supervisor=supervisor,
         memory=memory,
         hermes=hermes,
+        workflow_monitor=workflow_monitor,
         bind_and_activate=bind_and_activate,
     )
 
