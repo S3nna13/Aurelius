@@ -75,6 +75,11 @@ def test_status(base_url):
     assert "skills" in data
     assert "plugins" in data
     assert "notifications" in data
+    assert "counts" in data
+    counts = data["counts"]
+    assert "agents_online" in counts
+    assert "skills_active" in counts
+    assert "plugins_total" in counts
 
 
 # ---------------------------------------------------------------------------
