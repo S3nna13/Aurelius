@@ -13,6 +13,8 @@ from .muonclip import MuonClip
 from .prodigy import Prodigy
 from .radam import RAdam, radam_rectification, radam_rho_inf, radam_rho_t
 from .schedule_free_adamw import ScheduleFreeAdamW
+from .ranger_optimizer import Ranger
+from .adabelief_optimizer import AdaBelief
 
 __all__ = [
     "MuPConfig",
@@ -31,6 +33,8 @@ __all__ = [
     "radam_rho_inf",
     "radam_rho_t",
     "ScheduleFreeAdamW",
+    "Ranger",
+    "AdaBelief",
 ]
 
 # ---------------------------------------------------------------------------
@@ -46,3 +50,5 @@ except NameError:
 OPTIMIZER_REGISTRY["schedule_free_adamw"] = ScheduleFreeAdamW  # type: ignore[name-defined]
 OPTIMIZER_REGISTRY["mars"] = Mars  # type: ignore[name-defined]
 OPTIMIZER_REGISTRY["muonclip"] = MuonClip  # type: ignore[name-defined]
+OPTIMIZER_REGISTRY["ranger"] = Ranger  # type: ignore[name-defined]
+OPTIMIZER_REGISTRY["adabelief"] = AdaBelief  # type: ignore[name-defined]
