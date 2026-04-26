@@ -1,12 +1,30 @@
-import { Bell, Wifi, WifiOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, Wifi, WifiOff, Command } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useApi } from '../hooks/useApi';
 
 interface HeaderProps {
-  connected?: boolean;
-  unreadCount?: number;
+  onOpenPalette?: () => void;
 }
 
-export default function Header({ connected = true, unreadCount = 3 }: HeaderProps) {
+export default function Header({ onOpenPalette }: HeaderProps) {
+  const [online, setOnline] = useState(navigator.onLine);
+  const { data: statsData } = useApi<{ unread: number }>('/notifications/stats', {
+    refreshInterval: 10000,
+  });
+  const unreadCount = statsData?.unread ?? 0;
+
+  useEffect(() => {
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   return (
     <header className="h-16 bg-aurelius-card border-b border-aurelius-border flex items-center justify-between px-6 md:pl-72">
       <div className="flex items-center gap-2">
@@ -16,18 +34,27 @@ export default function Header({ connected = true, unreadCount = 3 }: HeaderProp
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Cmd+K hint */}
+        <button
+          onClick={onOpenPalette}
+          className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs text-aurelius-muted bg-aurelius-bg border border-aurelius-border hover:border-aurelius-accent/30 transition-colors"
+        >
+          <Command size={12} />
+          <span>Cmd+K</span>
+        </button>
+
         {/* Connection Status */}
         <div
           className={`
             flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
-            ${connected
+            ${online
               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
               : 'bg-red-500/10 text-red-400 border-red-500/20'
             }
           `}
         >
-          {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
-          <span>{connected ? 'Online' : 'Offline'}</span>
+          {online ? <Wifi size={14} /> : <WifiOff size={14} />}
+          <span>{online ? 'Online' : 'Offline'}</span>
         </div>
 
         {/* Notification Bell */}

@@ -172,6 +172,15 @@ export default function Chat() {
     [sending, toast]
   );
 
+  // Listen for command palette dispatch
+  useEffect(() => {
+    const handler = (e: CustomEvent<string>) => {
+      sendMessage(e.detail);
+    };
+    window.addEventListener('aurelius:send-command', handler as EventListener);
+    return () => window.removeEventListener('aurelius:send-command', handler as EventListener);
+  }, [sendMessage]);
+
   const clearHistory = () => {
     setMessages([
       {
