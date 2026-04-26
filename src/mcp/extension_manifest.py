@@ -123,7 +123,7 @@ class ExtensionManifestValidator:
         # --- permissions ---
         for perm in manifest.permissions:
             if perm not in self.ALLOWED_PERMISSIONS:
-                warnings.append(
+                errors.append(
                     f"permission {perm!r} is not in the list of "
                     f"allowed permissions {sorted(self.ALLOWED_PERMISSIONS)!r}"
                 )

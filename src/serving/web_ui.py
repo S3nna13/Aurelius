@@ -8,6 +8,7 @@ Chat messages are proxied to the configured API server.
 """
 
 import argparse
+import ipaddress
 import json
 import logging
 import webbrowser
@@ -19,13 +20,39 @@ from urllib.request import Request, urlopen
 
 _ALLOWED_UPSTREAM_SCHEMES = frozenset(["http", "https"])
 
+#: Maximum allowed request body size (1 MiB) to prevent memory-exhaustion DoS.
+_MAX_CONTENT_LENGTH = 1_048_576
+#: Maximum history entries per request.
+_MAX_HISTORY = 1_024
+#: Maximum characters per history message content.
+_MAX_MESSAGE_CHARS = 65_536
+
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+]
+
+
+def _is_private_or_reserved_ip(hostname: str) -> bool:
+    try:
+        addr = ipaddress.ip_address(hostname)
+        return any(addr in net for net in _BLOCKED_NETWORKS)
+    except ValueError:
+        return False
+
 
 def _validate_upstream_url(url: str) -> None:
-    """Validate upstream API URL scheme.
+    """Validate upstream API URL scheme and host.
 
-    SSRF mitigation for bandit B310 / CWE-22. The api_url is CLI-supplied
-    and proxied from user chat messages; enforce http/https scheme allowlist
-    to prevent file://, gopher://, etc. being used as upstream.
+    SSRF mitigation for bandit B310 / CWE-22. The api_url is CLI-supplied;
+    enforce http/https scheme allowlist and block private / loopback / link-
+    local IP addresses to prevent access to internal services.
     """
     try:
         parsed = urlparse(url)
@@ -37,6 +64,10 @@ def _validate_upstream_url(url: str) -> None:
         )
     if not parsed.hostname:
         raise ValueError(f"upstream URL missing host: {url!r}")
+    if _is_private_or_reserved_ip(parsed.hostname):
+        raise ValueError(
+            f"upstream URL points to a private or reserved IP: {parsed.hostname}"
+        )
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +281,8 @@ def _normalize_history(history: Any) -> list[dict[str, str]]:
         return []
     if not isinstance(history, list):
         raise ValueError("history must be a list of message objects")
+    if len(history) > _MAX_HISTORY:
+        raise ValueError(f"history exceeds maximum length ({_MAX_HISTORY})")
 
     normalized: list[dict[str, str]] = []
     for index, item in enumerate(history):
@@ -261,6 +294,10 @@ def _normalize_history(history: Any) -> list[dict[str, str]]:
             raise ValueError(f"history[{index}].role must be a non-empty string")
         if not isinstance(content, str):
             raise ValueError(f"history[{index}].content must be a string")
+        if len(content) > _MAX_MESSAGE_CHARS:
+            raise ValueError(
+                f"history[{index}].content exceeds {_MAX_MESSAGE_CHARS} characters"
+            )
         normalized.append({"role": role, "content": content})
     return normalized
 
@@ -336,13 +373,37 @@ class WebUIHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
+    def _read_body(self) -> bytes:
+        """Read the request body enforcing :data:`_MAX_CONTENT_LENGTH`."""
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+        except ValueError as exc:
+            raise ValueError("Invalid Content-Length header") from exc
+        if content_length < 0:
+            raise ValueError("Negative Content-Length")
+        if content_length > _MAX_CONTENT_LENGTH:
+            raise ValueError(
+                f"Content-Length {content_length} exceeds maximum {_MAX_CONTENT_LENGTH}"
+            )
+        return self.rfile.read(content_length)
+
     def do_POST(self):
         if self.path == "/api/chat":
-            length = int(self.headers.get("Content-Length", 0))
-            raw = self.rfile.read(length)
+            try:
+                raw = self._read_body()
+            except ValueError as exc:
+                body = json.dumps({"error": str(exc)}).encode("utf-8")
+                self.send_response(413)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
             try:
                 payload = json.loads(raw)
                 message = payload.get("message", "")
+                if not isinstance(message, str):
+                    raise ValueError("message must be a string")
                 history = payload.get("history", [])
                 api_url = getattr(self.server, "api_url", None)
                 if api_url:
@@ -355,9 +416,9 @@ class WebUIHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
-            except Exception as exc:
-                logger.debug("Error in /api/chat: %s", exc)
-                body = json.dumps({"error": str(exc)}).encode("utf-8")
+            except Exception:
+                logger.exception("Error in /api/chat")
+                body = json.dumps({"error": "Internal server error"}).encode("utf-8")
                 self.send_response(502 if getattr(self.server, "api_url", None) else 500)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
