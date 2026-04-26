@@ -46,6 +46,7 @@ from typing import Any
 
 from src.agent.command_dispatcher import CommandDispatcher
 from src.agent.nl_command_parser import NLCommandParseError, NLCommandParser
+from src.agent.skill_executor import ExecutionResult, SkillContext, SkillExecutor
 from src.serving.mission_control import ActivityLog
 
 logger = logging.getLogger(__name__)
@@ -156,6 +157,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         if self.path == "/api/skills":
             self._handle_skills()
             return
+        if self.path.startswith("/api/skills/"):
+            self._handle_skill_detail()
+            return
         if self.path == "/api/plugins":
             self._handle_plugins()
             return
@@ -187,6 +191,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             return
         if self.path == "/api/notifications/read-all":
             self._handle_notification_read_all()
+            return
+        if self.path == "/api/skills/execute":
+            self._handle_skill_execute()
             return
         self.send_response(404)
         self.end_headers()
@@ -419,14 +426,152 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
                         {
                             "id": getattr(entry, "skill_id", str(entry)),
                             "name": getattr(entry, "name", "unknown"),
+                            "description": getattr(entry, "description", ""),
+                            "scope": getattr(entry, "scope", "repo"),
                             "active": getattr(entry, "active", False),
+                            "version": getattr(entry, "version", None),
+                            "risk_score": getattr(entry, "risk_score", 0.0),
+                            "allow_level": getattr(entry, "allow_level", "review"),
+                            "category": getattr(entry, "source_kind", "local"),
                         }
                     )
             except Exception:
                 logger.warning("Skills: failed to enumerate", exc_info=True)
         else:
-            skills = [{"id": "code-review", "name": "Code Review", "active": True}]
+            skills = [
+                {
+                    "id": "code-review",
+                    "name": "Code Review",
+                    "description": "Automated code review and suggestions.",
+                    "scope": "repo",
+                    "active": True,
+                    "version": "1.0.0",
+                    "risk_score": 0.1,
+                    "allow_level": "auto",
+                    "category": "builtin",
+                },
+                {
+                    "id": "refactor",
+                    "name": "Refactor Assistant",
+                    "description": "Suggest and apply safe refactors.",
+                    "scope": "repo",
+                    "active": True,
+                    "version": "1.0.0",
+                    "risk_score": 0.2,
+                    "allow_level": "review",
+                    "category": "builtin",
+                },
+                {
+                    "id": "test-gen",
+                    "name": "Test Generator",
+                    "description": "Generate unit tests from code.",
+                    "scope": "repo",
+                    "active": False,
+                    "version": "0.9.0",
+                    "risk_score": 0.3,
+                    "allow_level": "review",
+                    "category": "builtin",
+                },
+            ]
         self._send_json(200, {"skills": skills})
+
+    def _handle_skill_detail(self) -> None:
+        parts = [p for p in self.path.split("/") if p]
+        if len(parts) < 3:
+            self._send_json(400, {"error": "Missing skill ID"})
+            return
+        skill_id = parts[2]
+
+        catalog = getattr(self.server, "skill_catalog", None)
+        if catalog is not None and hasattr(catalog, "get"):
+            try:
+                entry = catalog.get(skill_id)
+                if entry is None:
+                    self._send_json(404, {"error": f"Skill {skill_id!r} not found"})
+                    return
+                self._send_json(
+                    200,
+                    {
+                        "id": getattr(entry, "skill_id", skill_id),
+                        "name": getattr(entry, "name", skill_id),
+                        "description": getattr(entry, "description", ""),
+                        "instructions": getattr(entry, "instructions", ""),
+                        "scope": getattr(entry, "scope", "repo"),
+                        "scripts": list(getattr(entry, "scripts", [])),
+                        "resources": list(getattr(entry, "resources", [])),
+                        "version": getattr(entry, "version", None),
+                        "active": getattr(entry, "active", False),
+                        "risk_score": getattr(entry, "risk_score", 0.0),
+                        "allow_level": getattr(entry, "allow_level", "review"),
+                        "metadata": getattr(entry, "metadata", {}),
+                    },
+                )
+                return
+            except Exception:
+                logger.warning("Skill detail: failed to lookup", exc_info=True)
+
+        self._send_json(
+            200,
+            {
+                "id": skill_id,
+                "name": skill_id.replace("-", " ").title(),
+                "description": f"Skill {skill_id} description.",
+                "instructions": f"# {skill_id}\n\nRun this skill with {{variable}} placeholders.",
+                "scope": "repo",
+                "scripts": [],
+                "resources": [],
+                "version": "1.0.0",
+                "active": True,
+                "risk_score": 0.1,
+                "allow_level": "auto",
+                "metadata": {},
+            },
+        )
+
+    def _handle_skill_execute(self) -> None:
+        try:
+            payload = self._parse_json_body()
+        except (ValueError, json.JSONDecodeError) as exc:
+            self._send_json(400, {"error": str(exc)})
+            return
+
+        skill_id = payload.get("skill_id", "")
+        variables = payload.get("variables", {})
+        if not isinstance(skill_id, str) or not skill_id.strip():
+            self._send_json(400, {"error": "skill_id is required"})
+            return
+
+        executor = getattr(self.server, "skill_executor", None) or SkillExecutor()
+        catalog = getattr(self.server, "skill_catalog", None)
+
+        instructions = ""
+        if catalog is not None and hasattr(catalog, "get"):
+            try:
+                entry = catalog.get(skill_id)
+                if entry is not None:
+                    instructions = getattr(entry, "instructions", "")
+            except Exception:
+                pass
+
+        if not instructions:
+            instructions = f"# {skill_id}\n\nExecuting with variables: {variables}"
+
+        try:
+            ctx = SkillContext(
+                variables=dict(variables) if isinstance(variables, dict) else {}
+            )
+            result: ExecutionResult = executor.execute(skill_id, instructions, ctx)
+            self._send_json(
+                200,
+                {
+                    "success": result.success,
+                    "output": result.output,
+                    "duration_ms": result.duration_ms,
+                },
+            )
+        except Exception as exc:
+            logger.exception("Skill execution error")
+            self._send_json(500, {"error": str(exc), "success": False})
 
     def _handle_plugins(self) -> None:
         loader = getattr(self.server, "plugin_loader", None)

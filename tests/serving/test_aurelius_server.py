@@ -227,6 +227,64 @@ def test_unknown_api_route_fallback_to_spa(base_url):
 
 
 # ---------------------------------------------------------------------------
+# Skills detail & execution
+# ---------------------------------------------------------------------------
+
+
+def test_skills_fields(base_url):
+    status, data = _get(base_url, "/api/skills")
+    assert status == 200
+    assert "skills" in data
+    skills = data["skills"]
+    assert len(skills) >= 1
+    for s in skills:
+        assert "id" in s
+        assert "name" in s
+        assert "description" in s
+        assert "category" in s
+        assert "active" in s
+        assert "risk_score" in s
+        assert "allow_level" in s
+
+
+def test_skill_detail(base_url):
+    status, data = _get(base_url, "/api/skills/code-review")
+    assert status == 200
+    assert data["id"] == "code-review"
+    assert "instructions" in data
+    assert "scripts" in data
+    assert "resources" in data
+
+
+def test_skill_detail_fallback(base_url):
+    status, data = _get(base_url, "/api/skills/nonexistent-skill")
+    assert status == 200
+    assert data["id"] == "nonexistent-skill"
+    assert "instructions" in data
+
+
+def test_skill_execute_missing_body(base_url):
+    from urllib.error import HTTPError
+
+    try:
+        _post(base_url, "/api/skills/execute", {})
+        assert False, "Expected 400"
+    except HTTPError as e:
+        assert e.code == 400
+
+
+def test_skill_execute_with_body(base_url):
+    status, data = _post(base_url, "/api/skills/execute", {
+        "skill_id": "code-review",
+        "variables": {"foo": "bar"},
+    })
+    assert status == 200
+    assert "success" in data
+    assert "output" in data
+    assert "duration_ms" in data
+
+
+# ---------------------------------------------------------------------------
 # Server factory
 # ---------------------------------------------------------------------------
 
