@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Bell,
   CheckCheck,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ToastProvider';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import BulkActionsBar from '../components/BulkActionsBar';
 import Pagination from '../components/Pagination';
 import { downloadJSON } from '../utils/export';
@@ -97,6 +98,7 @@ export default function Notifications() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const { toast } = useToast();
+  const { notify } = usePushNotifications();
 
   const {
     data: notifData,
@@ -119,13 +121,26 @@ export default function Notifications() {
     refreshStats();
   }, [refreshNotifs, refreshStats]);
 
+  const notifications = notifData?.notifications || [];
+
   useEffect(() => {
     if (notifError) {
       toast('Failed to load notifications', 'error');
     }
   }, [notifError, toast]);
 
-  const notifications = notifData?.notifications || [];
+  // Push notifications for new items
+  const prevCountRef = useRef(0);
+  useEffect(() => {
+    const unread = notifications.filter((n) => !n.read).length;
+    if (unread > prevCountRef.current && prevCountRef.current > 0) {
+      const newNotifs = notifications.filter((n) => !n.read).slice(0, unread - prevCountRef.current);
+      newNotifs.forEach((n) => {
+        notify(n.title, { body: n.body, tag: n.id });
+      });
+    }
+    prevCountRef.current = unread;
+  }, [notifications, notify]);
 
   const filtered =
     activeTab === 'all'

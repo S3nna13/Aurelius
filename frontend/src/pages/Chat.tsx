@@ -13,6 +13,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
+import ChatSuggestions from '../components/ChatSuggestions';
 
 interface ChatMessage {
   id: string;
@@ -291,7 +292,15 @@ export default function Chat() {
       </div>
 
       {/* Input */}
-      <div className="pt-3 border-t border-[#2d2d44]">
+      <div className="pt-3 border-t border-[#2d2d44] relative">
+        <ChatSuggestions
+          input={input}
+          onSelect={(text) => {
+            setInput(text);
+            inputRef.current?.focus();
+          }}
+          visible={!sending && input.length > 0}
+        />
         <div className="flex gap-2">
           <input
             ref={inputRef}

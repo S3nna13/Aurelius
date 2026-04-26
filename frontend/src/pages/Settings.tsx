@@ -12,9 +12,12 @@ import {
   Dot,
   Bell,
   Upload,
+  Puzzle,
+  BellRing,
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import ImportData from '../components/ImportData';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 interface AgentMode {
   id: string;
@@ -68,6 +71,8 @@ export default function SettingsPage() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({});
   const [importOpen, setImportOpen] = useState(false);
+  const [plugins, setPlugins] = useState<{ id: string; name?: string; active?: boolean }[]>([]);
+  const { permission, requestPermission } = usePushNotifications();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -91,6 +96,16 @@ export default function SettingsPage() {
         setNotifPrefs(prefsData.preferences || {});
       }
       void prefsRes;
+      // Fetch plugins
+      try {
+        const pluginsRes = await fetch('/api/plugins');
+        if (pluginsRes.ok) {
+          const pluginsData = await pluginsRes.json();
+          setPlugins(pluginsData.plugins || []);
+        }
+      } catch {
+        // ignore
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       toast('Failed to load settings', 'error');
@@ -313,6 +328,40 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Plugin Manager */}
+          <div className="aurelius-card space-y-4">
+            <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
+              <Puzzle size={16} className="text-[#4fc3f7]" />
+              Plugins
+            </h3>
+            {plugins.length === 0 ? (
+              <p className="text-sm text-[#9e9eb0]">No plugins loaded.</p>
+            ) : (
+              <div className="space-y-2">
+                {plugins.map((plugin) => (
+                  <div
+                    key={plugin.id}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#0f0f1a]/50 border border-[#2d2d44]/50"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-[#e0e0e0]">{plugin.id}</p>
+                      {plugin.name && <p className="text-xs text-[#9e9eb0]">{plugin.name}</p>}
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        plugin.active
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : 'bg-[#2d2d44]/20 text-[#9e9eb0] border-[#2d2d44]/40'
+                      }`}
+                    >
+                      {plugin.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Notification Preferences */}
           <div className="aurelius-card space-y-4">
             <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
@@ -333,6 +382,36 @@ export default function SettingsPage() {
                   />
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* Push Notifications */}
+          <div className="aurelius-card space-y-4">
+            <h3 className="text-sm font-semibold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-2">
+              <BellRing size={16} className="text-[#4fc3f7]" />
+              Push Notifications
+            </h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-[#e0e0e0]">Browser notifications</p>
+                <p className="text-xs text-[#9e9eb0]">Receive notifications when tab is hidden</p>
+              </div>
+              {permission === 'granted' ? (
+                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  Enabled
+                </span>
+              ) : permission === 'denied' ? (
+                <span className="text-xs font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                  Blocked
+                </span>
+              ) : (
+                <button
+                  onClick={requestPermission}
+                  className="aurelius-btn-outline text-xs"
+                >
+                  Enable
+                </button>
+              )}
             </div>
           </div>
 

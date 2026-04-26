@@ -3,6 +3,7 @@ import { Bell, Wifi, WifiOff, Command, Sun, Moon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useTheme } from '../context/ThemeContext';
+import AutoRefreshControl from './AutoRefreshControl';
 
 interface HeaderProps {
   onOpenPalette?: () => void;
@@ -36,6 +37,8 @@ export default function Header({ onOpenPalette }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
+        <AutoRefreshControl />
+
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}

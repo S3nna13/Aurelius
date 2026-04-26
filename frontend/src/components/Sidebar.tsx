@@ -14,6 +14,8 @@ import {
   ScrollText,
   CalendarClock,
   BarChart3,
+  HeartPulse,
+  BookOpen,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 
@@ -27,6 +29,8 @@ const navItems = [
   { to: '/tasks', icon: CalendarClock, label: 'Tasks', badge: null },
   { to: '/agents', icon: BarChart3, label: 'Agents', badge: null },
   { to: '/settings', icon: Settings, label: 'Settings', badge: null },
+  { to: '/health', icon: HeartPulse, label: 'Health', badge: null },
+  { to: '/api-docs', icon: BookOpen, label: 'API Docs', badge: null },
   { to: '/logs', icon: ScrollText, label: 'Logs', badge: null },
 ];
 

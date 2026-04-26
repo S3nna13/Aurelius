@@ -120,10 +120,26 @@ export function useApi<T = unknown>(
   const refresh = useCallback(() => execute(), [execute]);
 
   useEffect(() => {
-    if (refreshInterval && refreshInterval > 0) {
-      const id = setInterval(refresh, refreshInterval);
-      return () => clearInterval(id);
-    }
+    if (!refreshInterval || refreshInterval <= 0) return;
+    const checkEnabled = () => {
+      try {
+        return localStorage.getItem('aurelius-auto-refresh') !== 'false';
+      } catch {
+        return true;
+      }
+    };
+    const id = setInterval(() => {
+      if (checkEnabled()) refresh();
+    }, refreshInterval);
+    const handleToggle = (e: Event) => {
+      const enabled = (e as CustomEvent).detail;
+      if (enabled) refresh();
+    };
+    window.addEventListener('aurelius:auto-refresh', handleToggle);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('aurelius:auto-refresh', handleToggle);
+    };
   }, [refreshInterval, refresh]);
 
   useEffect(() => {
