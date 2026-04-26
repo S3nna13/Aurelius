@@ -132,6 +132,11 @@ from src.security.audit_trail import (
     AuditTrail,
 )
 
+from src.security.posture_scorer import (
+    PostureScore,
+    SecurityPostureScorer,
+    POSTURE_SCORER_REGISTRY,
+)
 
 # Additive registry keyed by name; test suites and integrators can register
 # new defensive pipelines without touching downstream call sites.
@@ -155,6 +160,7 @@ from .message_content_filter import (  # noqa: F401
     MESSAGE_FILTER_REGISTRY,
     DEFAULT_MESSAGE_FILTER,
 )
+
 SECURITY_REGISTRY["message_filter"] = MESSAGE_FILTER_REGISTRY
 
 __all__ = [
@@ -242,4 +248,8 @@ __all__ = [
     "AuditTrail",
     # combined registry
     "SECURITY_REGISTRY",
+    # posture_scorer
+    "PostureScore",
+    "SecurityPostureScorer",
+    "POSTURE_SCORER_REGISTRY",
 ]

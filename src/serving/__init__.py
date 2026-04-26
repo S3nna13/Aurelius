@@ -181,3 +181,9 @@ from .mission_control import (  # noqa: E402,F401
     MissionControlServer,
     create_mission_control_server,
 )
+
+# --- request coalescer (cycle-209 subagent) ----------------------------------
+from .request_coalescer import (  # noqa: E402,F401
+    RequestCoalescer,
+    REQUEST_COALESCER_REGISTRY,
+)

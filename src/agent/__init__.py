@@ -815,3 +815,18 @@ __all__ += [
     "DEFAULT_WORKFLOW_EXECUTOR",
     "WORKFLOW_EXECUTOR_REGISTRY",
 ]
+
+# --- trace analyzer (cycle-209 subagent) --------------------------------------
+from .trace_analyzer import (  # noqa: E402
+    TraceAnalysis,
+    TraceAnalyzer,
+    ToolSummary,
+    TRACE_ANALYZER_REGISTRY,
+)
+
+__all__ += [
+    "TraceAnalysis",
+    "TraceAnalyzer",
+    "ToolSummary",
+    "TRACE_ANALYZER_REGISTRY",
+]
