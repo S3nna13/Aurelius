@@ -147,7 +147,8 @@ DEFAULT_MODE_REGISTRY.register(
         name="Architect",
         description="Design systems, plan migrations, evaluate trade-offs.",
         system_prompt_prefix=(
-            "You are in architect mode. Design systems, plan migrations, evaluate trade-offs. Think step by step."
+            "You are in architect mode. Design systems, plan migrations, "
+            "evaluate trade-offs. Think step by step."
         ),
         allowed_tools=["read", "write", "search", "analyze"],
         response_style="structured",
@@ -160,7 +161,8 @@ DEFAULT_MODE_REGISTRY.register(
         name="Ask",
         description="Answer questions, explain concepts, and provide documentation.",
         system_prompt_prefix=(
-            "You are in ask mode. Answer questions, explain concepts, and provide documentation. Be thorough."
+            "You are in ask mode. Answer questions, explain concepts, "
+            "and provide documentation. Be thorough."
         ),
         allowed_tools=["read", "search"],
         response_style="verbose",
