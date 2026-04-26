@@ -1,6 +1,23 @@
 # Aurelius
 
-Aurelius is a **model family** — currently a 1.395B-parameter agentic coding LLM platform built entirely in pure PyTorch — no HuggingFace Transformers, no einops, no framework wrappers at runtime. Every algorithm is written from scratch. Talk to it like ChatGPT or Claude, extend it like a research codebase. The family architecture (FamilyManifest + ModelVariant + factory + version compatibility gate) lets specialized variants (base / chat / coding / long-context / retrieval / agent / safety / deployment-footprint) coexist under a stable contract.
+Aurelius is a **model family** — from 69M-parameter experiments to 1.395B-parameter agentic coding LLMs — built entirely in pure PyTorch. No HuggingFace Transformers, no einops, no framework wrappers at runtime. Every algorithm is written from scratch. Talk to it like ChatGPT or Claude, extend it like a research codebase. The family architecture (FamilyManifest + ModelVariant + factory + version compatibility gate) lets specialized variants (base / chat / coding / long-context / retrieval / agent / safety / deployment-footprint) coexist under a stable contract.
+
+---
+
+## 🧪 Training Experiments (Latest)
+
+| Model | Params | Dataset | Tokens | Steps | Final Loss | Time | Checkpoint |
+|-------|--------|---------|--------|-------|------------|------|------------|
+| **Aurelius-JSONL** | 69.2M | 52K conversations (arXiv + Reddit) | 2.0M | 1,000 | 5.86 | 23 min | `checkpoints/aurelius-jsonl/final.pt` |
+| **Aurelius-Reference** | 69.2M | 2,379 code/docs files | 1.0M | 100 | 5.43 | 4 min | `checkpoints/aurelius-reference/` |
+| **Aurelius-GLM5** | 66.3M | GLM-5 paper (memorization test) | 29K | 500 | 0.40 | 4.5 min | `checkpoints/glm5/` |
+| **Aurelius-Small** | 87.5M | Synthetic phrases | 256K | 500 | 3.78 | 5.5 min | `checkpoints/small/` |
+
+**Key finding:** The 69M model learns conversation structure (### User/Assistant/System) within 1,000 steps on diverse web corpus. Semantic content improves with extended training (5K–10K steps recommended).
+
+**Hardware:** All experiments run on Apple Silicon (M1 Pro, MPS backend) and CPU. No CUDA required.
+
+---
 
 ---
 
@@ -109,7 +126,9 @@ Model forward signature: `(loss, logits, present_key_values)` — plain tuple.
 | `src/serving/` | `aurelius` CLI REPL, OpenAI-compatible HTTP API server, browser web UI, token-by-token SSE streaming, tool calling + multi-step tool chaining, 6 curated system prompt personas, conversation history (JSON persistence), semantic cross-session memory, session router (consistent hash ring + LRU), response formatter, runtime safety guardrails, ChatML session manager |
 | `src/eval/` additions | Needle-in-a-Haystack benchmark (Kamradt protocol, model-agnostic generate_fn), RULER (Hsieh 2024) with multi-key NIAH, multi-value NIAH, variable tracking, common-words extraction, aggregation tasks |
 | `configs/` | Training, tokenizer, merge (SLERP/TIES), curriculum, and Ollama configs |
-| `scripts/` | Data prep, training, SFT, DPO, model merging, GGUF conversion, local serving |
+| `scripts/` | Data prep, training, SFT, DPO, model merging, GGUF conversion, local serving, corpus extraction, tokenizer training |
+| `train_*.py` | Standalone training scripts (reference corpus, JSONL conversations, GLM-5 paper, synthetic data) |
+| `generate_*.py` | Inference scripts for trained checkpoints |
 
 ---
 
@@ -155,12 +174,18 @@ pytest -q tests/serving/test_api_server.py
 
 ```bash
 bash scripts/train_tokenizer.sh
+# Or train on your own corpus:
+python scripts/tokenize_jsonl_corpus.py
 ```
 
 ### 2. Prepare data
 
 ```bash
 bash scripts/prepare_data.sh
+# Or extract from local reference material:
+python scripts/extract_reference_corpus.py
+python scripts/convert_jsonl_corpus.py
+python scripts/encode_jsonl_corpus.py
 ```
 
 ### 3. Pretrain
@@ -169,6 +194,12 @@ bash scripts/prepare_data.sh
 aurelius train --config configs/train_1b.yaml
 # Resume:
 aurelius train --config configs/train_1b.yaml --resume checkpoints/<dir>
+
+# Quick experiments (no config needed):
+python train_jsonl.py        # 69M on conversations
+python train_reference.py    # 69M on code/docs
+python train_glm5.py         # 66M on GLM-5 paper
+python train_small_checkpoint.py  # 87M synthetic validation
 ```
 
 ### 4. Alignment (SFT → DPO → RLHF)
@@ -268,6 +299,8 @@ from aurelius.model.transformer import AureliusTransformer
 - **157+ implementation cycles** completed (security hardening cycle-139-sec complete)
 - **32 421+ tests** passing (full suite ~30 min on CPU)
 - **1 720+ Python source files** across model, training, alignment, inference, eval, data, interpretability, optimizer, security, serving, CLI, agent, chat, longcontext, retrieval, safety, mcp, computer_use, multimodal, deployment, memory, tools, reasoning, search, protocol, monitoring, quantization, simulation, compression, federation, multiagent, runtime, and **backends** surface dirs
+- **Trained checkpoints available:** 69M (conversation), 87M (synthetic), 66M (paper) — see Training Experiments table above
+- **Data pipeline:** BPE tokenizer training, JSONL corpus ingestion, reference corpus extraction, train/val sharding — all pure PyTorch + `tokenizers`
 - Open security findings: 0 High, 0 Critical (CVE ledger: AUR-SEC-2026-0001..0019 all closed)
 - Recent cycles:
   - **cycle-157** — surface deepening ×18: evaluation: Leaderboard (rankings/best/rank_of/history_of, tie-break by timestamp) + CrossValidator (k-fold split, stratified_split round-robin, CVResult mean/std) + CalibrationScorer (ECE/MCE, confidence==1.0 clamped into last bin, reliability_diagram_data); computer_use: ElementLocator (case-insensitive selector substring, spatial region filter, find_at point containment) + FormFiller (EMAIL/NUMBER/CHECKBOX/SELECT validation, required-field guard, fill_form) + ClipboardManager (deque LRU history, copy/paste/paste_nth/search, stats by_type); mcp: MCPRouter (regex {param} path extraction, exact-path priority over parameterized, dispatch injects params into payload) + SessionStore (TTL expiry via time.monotonic, max_sessions capacity, expire_all) + MCPEventLogger (DEBUG/INFO/WARNING/ERROR/CRITICAL levels, oldest-first eviction, query with level+substring+limit filter); deployment: FeatureToggleManager (ENABLED/DISABLED/PERCENTAGE/ALLOWLIST, MD5 deterministic bucket) + DeploymentManifest (ResourceSpec/ContainerSpec, validate cpu/memory/replicas/image, to_yaml_stub) + RollbackManager (deque-eviction snapshots, rollback_to, history); agent: MemoryWriter (OBSERVATION/DECISION/REFLECTION/FACT/PLAN, recall AND-combined filter, stats by_type) + ToolUseTracker (ToolBudget, most_used Counter, success_rate per-tool/overall) + ReflectionEngine (5 ReflectionType rule-based, confidence=min(n/10,1.0), latest with type filter); search: SnippetExtractor (window-based hit centring, overlap merging, score=terms covered, highlight regex) + SpellCorrector (Levenshtein DP, 100-word dict, suggestions ordered by distance) + SearchAnalytics (FIFO max_log, top_queries, zero_result_queries, CTR, query_volume_by_hour); sandbox_executor timeout path improved to shutdown(wait=False); bandit HIGH=0; +616 tests

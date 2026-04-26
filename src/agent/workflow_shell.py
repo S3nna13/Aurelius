@@ -79,13 +79,8 @@ def _normalize_decision(value: Any) -> str:
         return "allow" if value else "deny"
     if isinstance(value, str):
         normalized = value.strip().lower()
-        if normalized in {
-            "allow",
-            "allow_once",
-            "allow_for_thread",
-            "allow_for_scope",
-        }:
-            return "allow"
+        if normalized in _ALLOW_DECISIONS:
+            return normalized
         if normalized in {"deny", "block", "blocked"}:
             return "deny"
         if normalized in {"pending", "wait"}:
@@ -355,6 +350,8 @@ class WorkflowShell:
         steps: list[WorkflowStep] = []
         next_step_index = 1
 
+        _macro_stack: set[str] = set()
+
         def _consume(collection: Any) -> None:
             nonlocal next_step_index
             if isinstance(collection, str) or not isinstance(collection, Iterable):
@@ -370,7 +367,13 @@ class WorkflowShell:
                     expanded = macros.get(macro_name)
                     if expanded is None:
                         raise InterfaceFrameworkError(f"unknown workflow macro: {macro_name!r}")
+                    if macro_name in _macro_stack:
+                        raise InterfaceFrameworkError(
+                            f"circular macro reference detected: {macro_name!r}"
+                        )
+                    _macro_stack.add(macro_name)
                     _consume(expanded)
+                    _macro_stack.discard(macro_name)
                     continue
                 summary = str(
                     raw_step.get("summary")

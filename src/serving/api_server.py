@@ -9,14 +9,19 @@ Endpoints:
   GET  /health                — health check
 """
 
+import hashlib
 import json
 import logging
 import math
 import time
 import uuid
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Callable, Dict, List, Optional
+
+from .auth_middleware import AuthMiddleware
+from .rate_limiter import RateLimiterChain, TokenBucketLimiter
+from .request_coalescer import RequestCoalescer
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +36,11 @@ _MAX_MESSAGE_CHARS = 65_536
 @dataclass
 class ChatRequest:
     model: str
-    messages: List[Dict]
+    messages: list[dict]
     temperature: float = 0.7
     max_tokens: int = 512
     stream: bool = False
-    system: Optional[str] = None
+    system: str | None = None
 
 
 @dataclass
@@ -44,10 +49,10 @@ class ChatResponse:
     object: str
     created: int
     model: str
-    choices: List[Dict]
-    usage: Dict
+    choices: list[dict]
+    usage: dict
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
             "id": self.id,
             "object": self.object,
@@ -56,6 +61,52 @@ class ChatResponse:
             "choices": self.choices,
             "usage": self.usage,
         }
+
+
+def _check_auth_and_rate_limit(handler: BaseHTTPRequestHandler) -> bool:
+    """Return True if the request may proceed.
+
+    Sends 401 or 429 response and returns *False* when blocked.
+    """
+    server = handler.server
+    auth_mw = getattr(server, "auth_middleware", None)
+    rate_limiter = getattr(server, "rate_limiter", None)
+
+    auth_result = None
+    if auth_mw is not None:
+        auth_result = auth_mw.authenticate(dict(handler.headers))
+        if not auth_result.authenticated:
+            handler._send_error(401, auth_result.error or "Unauthorized")
+            return False
+
+    if rate_limiter is not None:
+        identifier = (
+            auth_result.key_id
+            if auth_result is not None and auth_result.key_id
+            else handler.client_address[0]
+        )
+        if isinstance(rate_limiter, RateLimiterChain):
+            result = rate_limiter.check_all(
+                key=identifier,
+                ip=handler.client_address[0],
+                route=handler.path,
+            )
+        else:
+            result = rate_limiter.check(identifier)
+
+        if not result.allowed:
+            handler.send_response(429)
+            handler.send_header("Content-Type", "application/json")
+            handler.send_header("Retry-After", str(int(result.retry_after_s) + 1))
+            handler.end_headers()
+            handler.wfile.write(
+                json.dumps(
+                    {"error": "Rate limit exceeded", "retry_after": result.retry_after_s}
+                ).encode("utf-8")
+            )
+            return False
+
+    return True
 
 
 def _validate_chat_request(body: dict) -> ChatRequest:
@@ -110,7 +161,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         logger.debug("%s - %s", self.address_string(), format % args)
 
-    def _send_json(self, status: int, data: Dict) -> None:
+    def _send_json(self, status: int, data: dict) -> None:
         body = json.dumps(data).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -138,7 +189,10 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
             self._send_json(200, {"status": "ok"})
-        elif self.path == "/v1/models":
+            return
+        if not _check_auth_and_rate_limit(self):
+            return
+        if self.path == "/v1/models":
             self._send_json(
                 200,
                 {
@@ -159,6 +213,8 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path != "/v1/chat/completions":
             self._send_error(404, "Not found")
+            return
+        if not _check_auth_and_rate_limit(self):
             return
 
         try:
@@ -183,12 +239,43 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             self._send_error(400, f"Invalid request parameters: {exc}")
             return
 
-        try:
-            content = self.server.generate_fn(request)
-        except Exception:
-            logger.exception("generate_fn raised an exception")
-            self._send_error(500, "Internal server error")
-            return
+        def _generate() -> str:
+            return self.server.generate_fn(request)
+
+        coalescer = getattr(self.server, "coalescer", None)
+        if coalescer is not None:
+            # Only coalesce reasonably-sized bodies to avoid CPU-DoS from
+            # sorting huge JSON objects for the hash key.
+            try:
+                if len(raw_body) <= 10_240:
+                    coalesce_key = hashlib.sha256(
+                        json.dumps(body, sort_keys=True).encode("utf-8")
+                    ).hexdigest()
+                else:
+                    coalesce_key = None
+            except Exception:
+                coalesce_key = None
+            if coalesce_key is not None:
+                try:
+                    content = coalescer.coalesce(coalesce_key, _generate)
+                except Exception:
+                    logger.exception("generate_fn raised an exception")
+                    self._send_error(500, "Internal server error")
+                    return
+            else:
+                try:
+                    content = _generate()
+                except Exception:
+                    logger.exception("generate_fn raised an exception")
+                    self._send_error(500, "Internal server error")
+                    return
+        else:
+            try:
+                content = _generate()
+            except Exception:
+                logger.exception("generate_fn raised an exception")
+                self._send_error(500, "Internal server error")
+                return
 
         prompt_tokens = sum(len(m.get("content", "").split()) for m in request.messages)
         completion_tokens = len(content.split())
@@ -223,6 +310,9 @@ class AureliusServer(HTTPServer):
         port: int,
         generate_fn: Callable[["ChatRequest"], str],
         *,
+        auth_middleware: AuthMiddleware | None = None,
+        rate_limiter: TokenBucketLimiter | RateLimiterChain | None = None,
+        coalescer: RequestCoalescer | None = None,
         bind_and_activate: bool = True,
     ):
         super().__init__(
@@ -231,6 +321,9 @@ class AureliusServer(HTTPServer):
             bind_and_activate=bind_and_activate,
         )
         self.generate_fn = generate_fn
+        self.auth_middleware = auth_middleware
+        self.rate_limiter = rate_limiter
+        self.coalescer = coalescer
 
 
 def create_server(
@@ -238,12 +331,18 @@ def create_server(
     port: int,
     generate_fn: Callable[["ChatRequest"], str],
     *,
+    auth_middleware: AuthMiddleware | None = None,
+    rate_limiter: TokenBucketLimiter | RateLimiterChain | None = None,
+    coalescer: RequestCoalescer | None = None,
     bind_and_activate: bool = True,
 ) -> AureliusServer:
     return AureliusServer(
         host,
         port,
         generate_fn,
+        auth_middleware=auth_middleware,
+        rate_limiter=rate_limiter,
+        coalescer=coalescer,
         bind_and_activate=bind_and_activate,
     )
 

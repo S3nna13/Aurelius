@@ -23,6 +23,13 @@ env/
 checkpoints/
 runs/
 
+# Training data / tokenized corpora
+data/pretrain/
+data/reference_corpus/
+*.npy
+*.jsonl
+Aurelius_Training_Data.jsonl
+
 # Jupyter
 .ipynb_checkpoints/
 
@@ -43,3 +50,16 @@ runs/
 wandb/
 .aurelius-meta-prompt.md
 .aurelius/
+.aurelius-*.log
+
+# Caches
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+
+# Build artifacts
+*.egg-info/
+.eggs/
+dist/
+build/

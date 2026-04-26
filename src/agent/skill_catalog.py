@@ -9,10 +9,13 @@ talks to a network service.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping
+
+_SAFE_SKILL_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 from src.model.interface_framework import InterfaceFrameworkError, SkillBundle
 from src.safety.skill_scanner import SkillScanner, _parse_yaml_frontmatter
@@ -37,6 +40,29 @@ def _require_non_empty(value: str, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise InterfaceFrameworkError(f"{field_name} must be a non-empty string")
     return value
+
+
+def _validate_skill_id(skill_id: str) -> str:
+    """Validate *skill_id* is a safe filesystem identifier.
+
+    Rejects path separators, parent-directory references, and shell
+    metacharacters to prevent directory-traversal and command-injection
+    attacks.
+    """
+    if not isinstance(skill_id, str) or not skill_id.strip():
+        raise InterfaceFrameworkError("skill_id must be a non-empty string")
+    if not _SAFE_SKILL_ID_RE.match(skill_id):
+        raise InterfaceFrameworkError(
+            f"skill_id {skill_id!r} contains invalid characters; "
+            "only alphanumeric characters, hyphens, and underscores are allowed"
+        )
+    # Defence-in-depth: explicit rejection of traversal segments
+    lower = skill_id.lower()
+    if ".." in lower or "//" in skill_id or "\\" in skill_id:
+        raise InterfaceFrameworkError(
+            f"skill_id {skill_id!r} contains path-traversal patterns"
+        )
+    return skill_id
 
 
 def _as_tuple(value: Any) -> tuple[str, ...]:
@@ -127,7 +153,8 @@ class SkillCatalogEntry:
     findings: tuple[dict[str, Any], ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
-        for field_name in ("skill_id", "name", "description", "scope", "instructions", "source_path", "source_kind", "allow_level"):
+        _validate_skill_id(self.skill_id)
+        for field_name in ("name", "description", "scope", "instructions", "source_path", "source_kind", "allow_level"):
             _require_non_empty(getattr(self, field_name), field_name)
         if self.scope not in {"global", "org", "repo", "thread"}:
             raise InterfaceFrameworkError(
@@ -341,7 +368,15 @@ class SkillCatalog:
             raise InterfaceFrameworkError(f"skill source does not exist: {source_root}")
         archive_root = self._archive_install_root()
         archive_root.mkdir(parents=True, exist_ok=True)
-        destination = archive_root / entry.skill_id
+        destination = archive_root / Path(entry.skill_id).name
+        destination = destination.resolve()
+        archive_root_resolved = archive_root.resolve()
+        try:
+            destination.relative_to(archive_root_resolved)
+        except ValueError as exc:
+            raise InterfaceFrameworkError(
+                f"skill_id {entry.skill_id!r} resolves outside archive root"
+            ) from exc
         if destination.exists():
             shutil.rmtree(destination)
         shutil.move(str(source_root), str(destination))
@@ -374,10 +409,33 @@ class SkillCatalog:
         entry = self._build_entry(source, source_kind=scope, archived=False)
         destination_root = self._install_root(scope)
         destination_root.mkdir(parents=True, exist_ok=True)
-        destination = destination_root / entry.skill_id
+        destination = destination_root / Path(entry.skill_id).name
+        destination = destination.resolve()
+        root_resolved = destination_root.resolve()
+        try:
+            destination.relative_to(root_resolved)
+        except ValueError as exc:
+            raise InterfaceFrameworkError(
+                f"skill_id {entry.skill_id!r} resolves outside install root"
+            ) from exc
         if destination.exists():
             shutil.rmtree(destination)
-        shutil.copytree(source, destination)
+        # Preserve symlinks as links instead of following them; if a symlink
+        # points outside the source tree it is a potential info-disclosure
+        # vector, so we validate below.
+        shutil.copytree(source, destination, symlinks=True)
+        # Validate no symlink escapes the skill root
+        for item in destination.rglob("*"):
+            if item.is_symlink():
+                try:
+                    target = item.resolve()
+                    target.relative_to(destination)
+                except ValueError as exc:
+                    # Symlink escapes the skill root — remove the tree and reject
+                    shutil.rmtree(destination)
+                    raise InterfaceFrameworkError(
+                        f"skill contains symlink escaping root: {item.name} -> {item.readlink()}"
+                    ) from exc
         refreshed = self._build_entry(destination, source_kind=scope, archived=False)
         self._entries[refreshed.skill_id] = refreshed
         return refreshed.to_bundle()
@@ -470,7 +528,7 @@ class SkillCatalog:
             if not isinstance(metadata, dict):
                 raise InterfaceFrameworkError(f"metadata.json must decode to an object: {metadata_path}")
         merged = {**metadata, **frontmatter}
-        skill_id = str(merged.get("skill_id") or root.name)
+        skill_id = _validate_skill_id(str(merged.get("skill_id") or root.name))
         name = str(merged.get("name") or root.name)
         description = str(merged.get("description") or _derive_description(body, name))
         scope = _normalize_skill_scope(merged.get("scope"))
