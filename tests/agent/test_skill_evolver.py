@@ -184,7 +184,7 @@ def test_refine_unknown_skill(evolver):
 
 def test_get_skill_tree_single_root(evolver):
     root = evolver.crystallize({"task_name": "root", "steps": []})
-    child = evolver.crystallize(
+    _child = evolver.crystallize(
         {"task_name": "child", "steps": [], "parent_task": "root"}
     )
     tree = evolver.get_skill_tree(root.skill_id)
@@ -208,8 +208,8 @@ def test_get_skill_tree_unknown_root(evolver):
 
 def test_get_skill_tree_deep_hierarchy(evolver):
     r = evolver.crystallize({"task_name": "r", "steps": []})
-    c1 = evolver.crystallize({"task_name": "c1", "steps": [], "parent_task": "r"})
-    c2 = evolver.crystallize({"task_name": "c2", "steps": [], "parent_task": "c1"})
+    _c1 = evolver.crystallize({"task_name": "c1", "steps": [], "parent_task": "r"})
+    _c2 = evolver.crystallize({"task_name": "c2", "steps": [], "parent_task": "c1"})
     tree = evolver.get_skill_tree(r.skill_id)
     assert tree["children"][0]["children"][0]["name"] == "c2"
 
@@ -237,9 +237,9 @@ def test_stats_with_skills(evolver):
 
 
 def test_stats_deep_tree(evolver):
-    r = evolver.crystallize({"task_name": "r", "steps": []})
-    c = evolver.crystallize({"task_name": "c", "steps": [], "parent_task": "r"})
-    gc = evolver.crystallize({"task_name": "gc", "steps": [], "parent_task": "c"})
+    _r = evolver.crystallize({"task_name": "r", "steps": []})
+    _c = evolver.crystallize({"task_name": "c", "steps": [], "parent_task": "r"})
+    _gc = evolver.crystallize({"task_name": "gc", "steps": [], "parent_task": "c"})
     stats = evolver.stats()
     assert stats["deepest_tree_depth"] == 3
 

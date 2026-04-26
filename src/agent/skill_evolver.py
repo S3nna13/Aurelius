@@ -31,7 +31,7 @@ class CrystallizedSkill:
     success_count: int = 0
     failure_count: int = 0
     created_at: datetime.datetime = field(
-        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+        default_factory=lambda: datetime.datetime.now(datetime.UTC)
     )
     last_used: datetime.datetime | None = None
     parent_skill_id: str | None = None
@@ -153,7 +153,7 @@ class SkillEvolver:
         if "increment_failure" in feedback:
             skill.failure_count += int(feedback["increment_failure"])
 
-        skill.last_used = datetime.datetime.now(datetime.timezone.utc)
+        skill.last_used = datetime.datetime.now(datetime.UTC)
         return skill
 
     def get_skill_tree(self, root_id: str | None = None) -> dict[str, Any]:
