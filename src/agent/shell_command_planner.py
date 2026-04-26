@@ -52,31 +52,27 @@ ALLOWLIST: tuple[str, ...] = (
     "rg",
     "find",
     "fd",
-    "pytest",
-    "python",
-    "python3",
-    "pip",
-    "pip3",
     "uv",
     "ruff",
     "mypy",
     "black",
     "isort",
-    "make",
-    "node",
-    "npm",
-    "npx",
-    "yarn",
-    "pnpm",
     "which",
     "whoami",
     "date",
-    "env",
     "true",
     "false",
     "stat",
     "file",
     "tree",
+)
+
+#: Commands that are frequently abused for arbitrary code execution.
+#: They are NOT on the allowlist; any command whose base name matches
+#: one of these is classified as *caution* (requires confirmation).
+_CAUTION_COMMANDS: tuple[str, ...] = (
+    "python", "python3", "pip", "pip3", "node", "npm", "npx", "yarn", "pnpm",
+    "make", "cmake", "ninja", "env",
 )
 
 #: Base commands whose invocation is always at least "dangerous".
@@ -99,14 +95,23 @@ DENYLIST: tuple[str, ...] = (
 
 #: Regex patterns matched against the *full* command string. Any hit
 #: marks the command as ``forbidden``.
+#: Regex patterns matched against the *full* command string. Any hit
+#: marks the command as ``forbidden``.
 DENY_PATTERNS: tuple[tuple[str, str], ...] = (
+    # rm with recursive + force against root/home — catch clustered and
+    # separated flags (e.g. ``rm -r -f /``).
     (r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r|-rf|-fr|--recursive\s+--force|--force\s+--recursive)\s+(/|~|\$HOME|/\*)",
      "rm -rf against root or home"),
+    (r"\brm\s+(-[a-zA-Z]*\s+)*-r\b.*\b-f\b\s+(/|~|\$HOME|/\*)",
+     "rm -r -f against root or home"),
+    (r"\brm\s+(-[a-zA-Z]*\s+)*-f\b.*\b-r\b\s+(/|~|\$HOME|/\*)",
+     "rm -f -r against root or home"),
     (r"\bsudo\s+rm\b", "sudo rm"),
     (r"\bchmod\s+-?R?\s*777\b", "chmod 777 (world-writable)"),
     (r"\bchmod\s+-?R?\s*666\b", "chmod 666 (world-writable)"),
-    (r"\bcurl\b[^|;&]*\|\s*(sh|bash|zsh|sudo)\b", "curl | sh remote execution"),
-    (r"\bwget\b[^|;&]*\|\s*(sh|bash|zsh|sudo)\b", "wget | sh remote execution"),
+    # Pipe to shell — allow sudo in between (curl | sudo bash)
+    (r"\bcurl\b[^|;&]*\|\s*(?:sudo\s+)?(sh|bash|zsh)\b", "curl | sh remote execution"),
+    (r"\bwget\b[^|;&]*\|\s*(?:sudo\s+)?(sh|bash|zsh)\b", "wget | sh remote execution"),
     (r"\bdd\s+if=", "dd if= raw disk write"),
     (r"\bmkfs\.", "mkfs filesystem create"),
     (r">\s*/dev/(sd[a-z]|nvme|hd[a-z]|disk)", "redirect to raw disk device"),
@@ -115,6 +120,12 @@ DENY_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"\bchown\s+-R\s+.*\s+/\b", "recursive chown of root"),
     (r">\s*/etc/passwd\b", "overwrite /etc/passwd"),
     (r">\s*/etc/shadow\b", "overwrite /etc/shadow"),
+    # Command chaining / substitution that destroys the safety model of
+    # single-command classification.
+    (r"[;&]", "command chaining with ; or &"),
+    (r"\|\s*\S", "pipe to another command"),
+    (r"\$\([^)]*\)", "command substitution $()"),
+    (r"`[^`]*`", "command substitution backticks"),
 )
 
 #: Ordering used to combine per-command risks into an overall risk.
@@ -181,6 +192,7 @@ class ShellCommandPlanner:
         self._generate_fn = generate_fn
         self._allowlist: frozenset[str] = frozenset(ALLOWLIST) | frozenset(allowlist or ())
         self._denylist: frozenset[str] = frozenset(DENYLIST) | frozenset(denylist or ())
+        self._cautionlist: frozenset[str] = frozenset(_CAUTION_COMMANDS)
         patterns: list[tuple[re.Pattern[str], str]] = [
             (re.compile(pat), reason) for pat, reason in DENY_PATTERNS
         ]
@@ -245,6 +257,15 @@ class ShellCommandPlanner:
                 risk="safe",
                 risk_reason=f"base command '{base_name}' is on allow-list",
                 requires_confirmation=False,
+            )
+
+        if base_name in self._cautionlist:
+            return ShellCommand(
+                cmd=base,
+                args=args,
+                risk="caution",
+                risk_reason=f"base command '{base_name}' can execute arbitrary code",
+                requires_confirmation=True,
             )
 
         return ShellCommand(

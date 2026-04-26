@@ -1,0 +1,45 @@
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+
+# Caches
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Checkpoints / large binaries
+*.pt
+*.pth
+*.bin
+*.gguf
+*.safetensors
+checkpoints/
+runs/
+
+# Logs & data
+*.log
+wandb/
+.aurelius-*.log
+.aurelius/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# macOS
+.DS_Store
+
+# Docs (keep README, SECURITY, etc.)
+docs/plans/
