@@ -46,7 +46,7 @@ Open a Pull Request to `main` when your cycle is complete and all tests pass.
 ## Security
 
 Please do **not** open public issues for security vulnerabilities. Email
-**cantonio@bluegracegroup.com** instead. See [SECURITY.md](SECURITY.md) for
+**S3nna13** instead. See [SECURITY.md](SECURITY.md) for
 our CVE ledger and threat model.
 
 ## Additive Development
