@@ -157,6 +157,12 @@ class AgentSwarm:
     ) -> List[SubAgentResult]:
         """Dispatch *tasks* to the frozen *subagent_fn* and collect results.
 
+        Tasks are executed concurrently via a :class:`concurrent.futures.ThreadPoolExecutor`.
+        If a single task raises, the exception is captured in the result
+        (when ``subagent_fn`` returns a result object) rather than aborting
+        the entire batch.  If ``subagent_fn`` itself raises, the exception is
+        propagated after all remaining tasks finish.
+
         Parameters
         ----------
         tasks:
@@ -164,24 +170,30 @@ class AgentSwarm:
             *subagent_fn*.
         subagent_fn:
             Callable with signature ``(task, max_steps) -> SubAgentResult``.
-            Must be frozen (not modified) during swarm training.  Any
-            exception raised by the callable propagates to the caller; there
-            is no silent error swallowing.
+            Must be frozen (not modified) during swarm training.
 
         Returns
         -------
         List[SubAgentResult]
             One result per task, in the same order as *tasks*.
-
-        Raises
-        ------
-        Exception
-            Any exception raised by *subagent_fn* is re-raised immediately,
-            preserving the original traceback.
         """
-        results: List[SubAgentResult] = []
-        for task in tasks:
-            # Exceptions intentionally propagate — no silent swallowing.
-            result = subagent_fn(task, self.subagent_max_steps)
-            results.append(result)
-        return results
+        import concurrent.futures
+
+        results: List[SubAgentResult | None] = [None] * len(tasks)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(tasks), 8)) as pool:
+            futures = {
+                pool.submit(subagent_fn, task, self.subagent_max_steps): i
+                for i, task in enumerate(tasks)
+            }
+            for future in concurrent.futures.as_completed(futures):
+                idx = futures[future]
+                try:
+                    results[idx] = future.result()
+                except Exception:
+                    # Re-raise immediately so caller sees the failure,
+                    # but first cancel any pending futures to avoid wasted work.
+                    for f in futures:
+                        if not f.done():
+                            f.cancel()
+                    raise
+        return results  # type: ignore[return-value]

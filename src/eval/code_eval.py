@@ -496,7 +496,7 @@ def execute_code_safely(
     try:
         # nosec B102 — intentional sandboxed code execution; caller must
         # validate input via CodeSandbox/sanitize_code and _MAX_EXEC_LEN above.
-        exec(compiled_solution, namespace)  # noqa: S102
+        exec(compiled_solution, namespace)  # noqa: S102  # nosec B102
     except Exception as exc:  # noqa: BLE001
         return False, f"RuntimeError running solution: {type(exc).__name__}: {exc}"
 
@@ -512,7 +512,7 @@ def execute_code_safely(
         try:
             # nosec B102 — intentional sandboxed code execution; caller must
             # validate input via CodeSandbox/sanitize_code and _MAX_EXEC_LEN above.
-            exec(compiled_test, namespace)  # noqa: S102
+            exec(compiled_test, namespace)  # noqa: S102  # nosec B102
         except AssertionError:
             return False, f"AssertionError: test case failed: {test}"
         except Exception as exc:  # noqa: BLE001
